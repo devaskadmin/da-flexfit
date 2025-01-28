@@ -10,11 +10,11 @@ import {preloader} from "@/composable/disableEnablePreloaderSetting";
 import {hoverableMenu} from "@/composable/navbarSizeSetting";
 import {layoutPosition} from "@/composable/navPositionSetting";
 
-import FooterComponent from "@/components/template/FooterComponent.vue";
-import MainSidebarComponent from "@/components/template/MainSidebarComponent.vue";
-import HeaderComponent from "@/components/template/HeaderComponent.vue";
-import RightSidebarComponent from "@/components/template/RightSidebarComponent.vue";
-import ProfileRightSidebarComponent from "@/components/template/ProfileRightSidebarComponent.vue";
+import FooterComponent from "@/components/FooterComponent.vue";
+import MainSidebarComponent from "@/components/MainSidebarComponent.vue";
+import HeaderComponent from "@/components/HeaderComponent.vue";
+import RightSidebarComponent from "@/components/RightSidebarComponent.vue";
+import ProfileRightSidebarComponent from "@/components/ProfileRightSidebarComponent.vue";
 
 import router from '@/router/index'
 import layouts from "@/layouts";

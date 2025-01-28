@@ -7,34 +7,34 @@ export const sidebarMenus = ref([
             {
                 name: 'Home',
                 link_name: 'dashboard_index',
-                icon: 'fa-light fa-cart-shopping-fast'
+                icon: 'fa-solid fa-house'              
             },
 
             {
                 name: 'Log Workout',
                 link_name: 'log_workout',
-                icon: 'fa-light fa-cart-shopping-fast'
+                icon: 'fa-solid fa-dumbbell'
             },
 
             {
                 name: 'Log Nutrition',
                 link_name: 'log_workout',
-                icon: 'fa-light fa-cart-shopping-fast'
+                icon: 'fa-solid fa-utensils'
             },
             {
                 name: 'View Progress',
                 link_name: 'log_workout',
-                icon: 'fa-light fa-user-headset'
+                icon: 'fa-solid fa-chart-line'
             },
             {
                 name: 'Upload Picture',
                 link_name: 'log_workout',
-                icon: 'fa-light fa-user-tie'
+                icon: 'fa-solid fa-images'
             },
             {
                 name: 'Chat with Trainer',
                 link_name: 'log_workout',
-                icon: 'fa-light fa-user-tie'
+                icon: 'fa-regular fa-message'
             },
             {
                 name: 'Scheduling',

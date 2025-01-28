@@ -1,6 +1,6 @@
 
 //Default Home Page
-import HomeView from '@/views/template/dashboard/eCommerceDashboard.vue'
+import HomeView from '@/views/HomeDashboard.vue'
 
 
 //Guest Routes

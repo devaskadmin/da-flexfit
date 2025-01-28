@@ -7,7 +7,7 @@ import {useRoute} from "vue-router";
 import SidebarMenuComponent from "@/components/template/menu/SidebarMenuComponent.vue";
 import {vClickOutside} from "@/composable/outsideClicker";
 import {mainSidebarBg, useSidebarCurrentBG} from "@/composable/mainSidebarBackgroundSetting"
-import {sidebarMenus} from "@/composable/sidebarMenu"
+import {sidebarMenus} from "@/components/sidebarMenu"
 import {currentNavbarSize, hoverableMenu, hoverableSidebar, hoverableOutSidebar} from "@/composable/navbarSizeSetting"
 
 import {layoutPosition} from "@/composable/navPositionSetting";
