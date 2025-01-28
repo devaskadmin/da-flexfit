@@ -1,40 +1,39 @@
 const express = require('express');
-const sql = require('mssql');
-const dbConfig = require('./dbConfig');
+const mysql = require('mysql2/promise'); // Use mysql2 with promises
+const dbConfig = require('./dbConfig'); // Import the database configuration
 
 const app = express();
 app.use(express.json());
 
-// Establish a connection pool
-const pool = new sql.ConnectionPool(dbConfig);
-const poolConnect = pool.connect();
+// Create a MySQL connection pool
+const pool = mysql.createPool(dbConfig);
 
-pool.on('error', err => {
-  console.error('SQL Pool Error', err);
-});
-
-// Route to test database connection
+// Test database connection route
 app.get('/api/test-connection', async (req, res) => {
   try {
-    await poolConnect; // Wait for the connection pool to be ready
-    const result = await pool.request().query('SELECT 1 AS test'); // Sample query
-    res.status(200).json({ message: 'Connection successful!', result: result.recordset });
+    // Use the connection pool to query the database
+    const [rows] = await pool.query('SELECT 1 AS test');
+    res.status(200).json({ message: 'Connection successful', result: rows });
   } catch (err) {
-    console.error('SQL Error', err);
+    console.error('Database connection error:', err.message);
     res.status(500).json({ error: 'Database connection failed', details: err.message });
   }
 });
 
-// Example route to fetch data
+// Example route to fetch data from a table
 app.get('/api/users', async (req, res) => {
   try {
-    await poolConnect;
-    const result = await pool.request().query('SELECT * FROM Users'); // Adjust your query
-    res.status(200).json(result.recordset);
+    const [rows] = await pool.query('SELECT * FROM Users'); // Replace 'Users' with your table name
+    res.status(200).json(rows);
   } catch (err) {
-    console.error('SQL Error', err);
+    console.error('Database query error:', err.message);
     res.status(500).json({ error: 'Failed to fetch users', details: err.message });
   }
+});
+
+// Handle invalid routes
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
 });
 
 // Start the server
