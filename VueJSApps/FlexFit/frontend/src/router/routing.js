@@ -202,8 +202,8 @@ export const pagesRoutes = [
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {
-        path: '/',
-        component: HomeView,
+        path: '/log_workout',
+        component: () => import('@/views/LogWorkout.vue'),
         name: 'log_workout',
         meta: { layout: 'AppLayout', isPartials: true },
     },
@@ -215,7 +215,7 @@ export const pagesRoutes = [
     },
     {
         path: '/hrm-dashboard',
-        component: () => import('@/views/templates/dashboard/HrmDashboard.vue'),
+        component: HomeView,
         name: 'hrm_dashboard',
         meta: { layout: 'AppLayout', isPartials: true },
     },

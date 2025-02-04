@@ -8,8 +8,8 @@ import {toggleTheme, currentActiveTheme} from "@/composable/manageThemeSetting.j
 import {layoutPosition} from "@/composable/navPositionSetting";
 
 const isFullScreen = ref(false);
-const lightThemeLogo = new URL('/src/assets/images/logo-black.png', import.meta.url)
-const darkThemeLogo = new URL('/src/assets/images/logo-big.png', import.meta.url)
+const lightThemeLogo = new URL('/src/assets/images/flex-fitlogo-light.JPG', import.meta.url)
+const darkThemeLogo = new URL('/src/assets/images/flex-fitlogo-dark.JPG', import.meta.url)
 
 const toggleFullscreen = () => {
   let elem = document.documentElement;
