@@ -1,5 +1,6 @@
 <script setup>
-import vueApexcharts from "vue3-apexcharts/src";
+import vueApexcharts from "vue3-apexcharts";
+
 import {
   useLineChartData,
   useAreaChartData,
