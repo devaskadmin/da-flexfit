@@ -23,5 +23,10 @@ onBeforeMount(() => {
 </template>
 
 <style scoped>
+ .light-theme .main-content.login-panel {
+    background: url('@/assets/images/login-background2.jpg') center center no-repeat;
+    background-size: cover;
+  }
+  
 
 </style>

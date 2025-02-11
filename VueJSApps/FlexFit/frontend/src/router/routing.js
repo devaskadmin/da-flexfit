@@ -7,20 +7,8 @@ import HomeView from '@/views/HomeDashboard.vue'
 const guestRoutes = [
     {
         path: '/login',
-        component: () => import('@/views/template/pages/authentication/Login.vue'),
+        component: () => import('@/views/Guest/Login.vue'),
         name: 'login',
-        meta: { layout: 'GuestLayout' },
-    },
-    {
-        path: '/login-2',
-        component: () => import('@/views/template/pages/authentication/Login-2.vue'),
-        name: 'login_2',
-        meta: { layout: 'GuestLayout' },
-    },
-    {
-        path: '/login-3',
-        component: () => import('@/views/template/pages/authentication/Login-3.vue'),
-        name: 'login_3',
         meta: { layout: 'GuestLayout' },
     },
     {

@@ -1,6 +1,7 @@
 <script setup>
 import {ref} from "vue";
 
+
 const isPasswordShow = ref(false)
 </script>
 
@@ -10,7 +11,7 @@ const isPasswordShow = ref(false)
       <div class="login-body">
         <div class="top d-flex justify-content-between align-items-center">
           <div class="logo">
-            <img src="@/assets/images/logo-big.png" alt="Logo">
+            <img src="@/assets/images/flex-fitlogo-transparent.png" alt="Logo">
           </div>
           <router-link :to="{ name: 'dashboard_index' }"><i class="fa-duotone fa-house-chimney"></i></router-link>
         </div>
@@ -53,5 +54,10 @@ const isPasswordShow = ref(false)
 </template>
 
 <style scoped>
+.light-theme .main-content .login-body {
+    background: rgba(255, 255, 255, 1);
+    border: 1px solid black;
+}
+
 
 </style>
