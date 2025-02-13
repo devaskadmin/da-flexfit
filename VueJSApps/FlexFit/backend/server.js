@@ -2,8 +2,17 @@ const express = require('express');
 const mysql = require('mysql2/promise'); // Use mysql2 with promises
 const dbConfig = require('./dbConfig'); // Import the database configuration
 
+const bcrypt = require('bcryptjs');
+const session = require('express-session');
+const cors = require('cors');
+
 const app = express();
 app.use(express.json());
+app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+
+
+
+
 
 // Create a MySQL connection pool
 const pool = mysql.createPool(dbConfig);
