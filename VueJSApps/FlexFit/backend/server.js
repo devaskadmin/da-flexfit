@@ -1,12 +1,12 @@
 const express = require('express');
-const mysql = require('mysql2/promise'); // Use mysql2 with promises
+const mysql = require('mysql2'); // Use mysql2 with promises
 const dbConfig = require('./dbConfig'); // Import the database configuration
 
 const app = express();
 app.use(express.json());
 
 // Create a MySQL connection pool
-const pool = mysql.createPool(dbConfig);
+const pool = mysql.createPool(dbConfig).promise();
 
 // Test database connection route
 app.get('/api/test-connection', async (req, res) => {
@@ -36,8 +36,18 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
+//Session
+app.get('/session', (req, res) => {
+  if (req.session.user) {
+    res.send({ loggedIn: true, user: req.session.user });
+  } else {
+    res.send({ loggedIn: false });
+  }
+});
+
+
 // Start the server
-const PORT = 5000;
+const PORT = 6000;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });

@@ -1,8 +1,32 @@
 <script setup>
+
 import {ref} from "vue";
+import axios from 'axios';
 
 
-const isPasswordShow = ref(false)
+const username = ref('');
+const password = ref('');
+const isPasswordShow = ref(false);
+
+const errorMsg = ref('');
+
+
+
+//Login Function
+const login = async () => {
+  try {
+    const response = await axios.post('http://localhost:5000/login', {
+      username: username.value,
+      password: password.value
+    }, { withCredentials: true });
+
+    if (response.data.message === 'Login successful') {
+      router.push({ name: 'dashboard_index' });  // Redirect after successful login
+    }
+  } catch (error) {
+    errorMsg.value = error.response ? error.response.data : 'An error occurred';
+  }
+};
 </script>
 
 <template>
@@ -17,14 +41,14 @@ const isPasswordShow = ref(false)
         </div>
         <div class="bottom">
           <h3 class="panel-title">Login</h3>
-          <form>
+          <form @submit.prevent="login">
             <div class="input-group mb-25">
               <span class="input-group-text"><i class="fa-regular fa-user"></i></span>
-              <input type="text" class="form-control" placeholder="Username or email address">
+              <input v-model="username" type="text" class="form-control" placeholder="Username or email address">
             </div>
             <div class="input-group mb-20">
               <span class="input-group-text"><i class="fa-regular fa-lock"></i></span>
-              <input :type="[isPasswordShow ? 'text' : 'password']" class="form-control rounded-end" placeholder="Password">
+              <input v-model="password" :type="[isPasswordShow ? 'text' : 'password']" class="form-control rounded-end" placeholder="Password">
               <a role="button" class="password-show" @click="isPasswordShow = !isPasswordShow"><i class="fa-duotone" :class="[isPasswordShow ? 'fa-eye-slash':'fa-eye']"></i></a>
             </div>
             <div class="d-flex justify-content-between mb-25">
