@@ -1,18 +1,14 @@
-//Vue Routing Library
 import { createRouter, createWebHistory } from 'vue-router';
-
-//Imports and manages routes
 import appRoutes from "@/router/routing";
-import "./Session"; // Import the session check; 
 import axios from "axios";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [...appRoutes],
-})
+});
 
-// Environment variable check for bypassing authentication
-const DEBUG_NO_AUTH = import.meta.env.DEBUG_NO_AUTH;
+// Ensure environment variable is read correctly
+const DEBUG_NO_AUTH = import.meta.env.VITE_DEBUG_NO_AUTH === "true";
 
 router.beforeEach(async (to, from, next) => {
   if (DEBUG_NO_AUTH) {
@@ -21,17 +17,26 @@ router.beforeEach(async (to, from, next) => {
   }
 
   try {
-    const response = await axios.get('http://localhost:6000/session', { withCredentials: true });
+    const response = await axios.get('http://localhost:5000/session', { withCredentials: true });
 
-    if (!response.data.loggedIn && to.name !== 'login') {
-      return next({ name: 'login' }); // Redirect to login if not authenticated
+    if (!response.data.loggedIn) {
+      // ✅ Fix: ONLY redirect to login if not already there
+      if (to.name !== 'login') {
+        console.log("not logged in");
+        return next({ name: 'login' });
+      }
+    } else {
+      // ✅ Fix: Prevent re-directing logged-in users to login
+      if (to.name === 'login') {
+        return next({ name: 'dashboard_index' }); // Change to the actual dashboard route
+      }
     }
 
-    next(); // Allow navigation if authenticated
+    next(); // Allow navigation if everything is fine
   } catch (error) {
     console.error("Session check error:", error);
-    next({ name: 'login' });
+    next(); // Allow the user to proceed without breaking
   }
 });
 
-export default router
+export default router;
