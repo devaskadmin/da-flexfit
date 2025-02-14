@@ -9,6 +9,11 @@ export const sidebarMenus = ref([
                 link_name: 'dashboard_index',
                 icon: 'fa-solid fa-house'              
             },
+            {
+                name: 'login',
+                link_name: 'login',
+                icon: 'fa-solid fa-house'              
+            },
 
             {
                 name: 'Log Workout',
@@ -73,14 +78,6 @@ export const sidebarMenus = ref([
                     {
                         name: 'Login 01',
                         link_name: 'login'
-                    },
-                    {
-                        name: 'Login 02',
-                        link_name: 'login_2'
-                    },
-                    {
-                        name: 'Login 03',
-                        link_name: 'login_3'
                     },
                     {
                         name: 'Registration 01',
