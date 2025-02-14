@@ -1,30 +1,34 @@
 <script setup>
+import { ref } from "vue";
+import axios from "axios";
+import { useRouter } from "vue-router"; // ✅ Import Vue Router
 
-import {ref} from "vue";
-import axios from 'axios';
+const router = useRouter(); // ✅ Initialize Vue Router
 
-
-const username = ref('');
-const password = ref('');
+const username = ref("");
+const password = ref("");
 const isPasswordShow = ref(false);
+const errorMsg = ref("");
 
-const errorMsg = ref('');
-
-
-
-//Login Function
+// 🔹 Login Function
 const login = async () => {
   try {
-    const response = await axios.post('http://localhost:5000/login', {
-      username: username.value,
-      password: password.value
-    }, { withCredentials: true });
+    const response = await axios.post(
+      "http://localhost:5000/api/login",
+      {
+        username: username.value,
+        password: password.value
+      },
+      { withCredentials: true }
+    );
 
-    if (response.data.message === 'Login successful') {
-      router.push({ name: 'dashboard_index' });  // Redirect after successful login
+    console.log("Username:", username.value);
+
+    if (response.data.message === "Login successful") {
+      router.push({ name: "dashboard_index" }); // ✅ Redirect after login
     }
   } catch (error) {
-    errorMsg.value = error.response ? error.response.data : 'An error occurred';
+    errorMsg.value = error.response ? error.response.data : "An error occurred";
   }
 };
 </script>

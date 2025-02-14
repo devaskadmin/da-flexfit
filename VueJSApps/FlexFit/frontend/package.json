@@ -3,7 +3,7 @@
     "version": "0.0.9",
     "private": true,
     "scripts": {
-        "dev": "concurrently \"node ../backend/server\" \"vite\"",
+        "dev": "concurrently \"cd ../backend && npm run dev\" \"vite\"",
         "build": "vite build",
         "preview": "vite preview"
     },
