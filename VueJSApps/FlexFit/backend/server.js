@@ -5,9 +5,8 @@ const session = require('express-session'); // ✅ Import express-session
 const dbConfig = require('./dbConfig');
 const bcrypt = require('bcryptjs'); // ✅ Import bcrypt for password hashing
 
-const bcrypt = require('bcryptjs');
-const session = require('express-session');
-const cors = require('cors');
+
+
 
 const app = express();
 app.use(express.json());
