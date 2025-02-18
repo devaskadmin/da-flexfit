@@ -62,7 +62,7 @@ export const sidebarMenus = ref([
             },
             {
                 name: 'Logout',
-                link_name: 'calendar',
+                link_name: 'logout',
                 icon: 'fa-light fa-calendar'
             },
         ]

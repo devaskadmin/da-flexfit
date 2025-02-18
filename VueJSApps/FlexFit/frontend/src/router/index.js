@@ -17,7 +17,7 @@ router.beforeEach(async (to, from, next) => {
   }
 
   try {
-    const response = await axios.get('http://localhost:5000/session', { withCredentials: true });
+    const response = await axios.get('http://localhost:5000/api/session', { withCredentials: true });
 
     if (!response.data.loggedIn) {
       // ✅ Fix: ONLY redirect to login if not already there

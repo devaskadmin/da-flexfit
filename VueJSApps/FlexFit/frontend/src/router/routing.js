@@ -190,6 +190,12 @@ export const pagesRoutes = [
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {
+        path: '/logout',
+        component: () => import('@/views/Member/Logout.vue'),
+        name: 'logout',
+        meta: { layout: 'GuestLayout' },
+    },
+    {
         path: '/log_workout',
         component: () => import('@/views/LogWorkout.vue'),
         name: 'log_workout',

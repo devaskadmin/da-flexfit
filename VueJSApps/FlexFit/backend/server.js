@@ -1,22 +1,42 @@
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
-const session = require('express-session'); // ✅ Import express-session
+const session = require('express-session');
 const dbConfig = require('./dbConfig');
 const bcrypt = require('bcryptjs'); // ✅ Import bcrypt for password hashing
+<<<<<<< Updated upstream
+=======
+require('dotenv').config(); // ✅ Load environment variables
+>>>>>>> Stashed changes
 
 const app = express();
 app.use(express.json());
 
+<<<<<<< Updated upstream
 // ✅ Enable CORS (Ensure credentials are included)
 
+=======
+// ✅ Get frontend port from environment variable or default to `5173`
+const FRONTEND_PORT = process.env.FRONTEND_PORT || 5173;
+const DEFAULT_ORIGIN = `http://localhost:${FRONTEND_PORT}`;
+
+console.log(`🚀 Allowing frontend origin: ${DEFAULT_ORIGIN}`);
+
+// ✅ Enable CORS with dynamic origin
+>>>>>>> Stashed changes
 app.use(cors({
-  origin: "http://localhost:5174", // Allow frontend requests
-  credentials: true // Allow cookies/session authentication
+  origin: (origin, callback) => {
+    // Allow frontend requests dynamically based on request origin
+    if (!origin || origin.startsWith('http://localhost:')) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true
 }));
 
-// ✅ Configure Express Sessions **BEFORE ROUTES**
-
+// ✅ Configure Express Sessions
 app.use(session({
   secret: 'foifoiofiofri99990!', // 🔐 Change to a secure key
   resave: false,
@@ -28,25 +48,24 @@ app.use(session({
   }
 }));
 
-// ✅ Ensure session middleware is working
+// ✅ Debug Session Middleware
 app.use((req, res, next) => {
-  console.log("Session Middleware:", req.session); // Debugging
+  console.log("Session Middleware:", req.session);
   next();
 });
 
 // ✅ Create MySQL connection pool
 const pool = mysql.createPool(dbConfig).promise();
 
-// ✅ Fix: Add `/session` route to check authentication
-app.get('/session', (req, res) => {
+// ✅ Session Check Route
+app.get('/api/session', (req, res) => {
   if (req.session && req.session.user) {
     return res.json({ loggedIn: true, user: req.session.user });
   }
   res.json({ loggedIn: false });
 });
 
-// ✅ User Login Route
-
+// ✅ Login Route
 app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -57,7 +76,6 @@ app.post('/api/login', async (req, res) => {
       return res.status(400).json({ error: "Username and password are required" });
     }
 
-    // 🔹 Query database for user
     const [rows] = await pool.query('SELECT * FROM users WHERE username = ?', [username]);
 
     if (rows.length === 0) {
@@ -79,20 +97,24 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-
 // ✅ Logout Route
-app.get('/logout', (req, res) => {
+app.post('/api/logout', (req, res) => {
+  console.log("A");
+  req.session.destroy(err => {
+    if (err) return res.status(500).send("Logout failed");
+    res.json({ message: "Logged out successfully" });
+  });
+});
+app.get('/api/logout', (req, res) => {
+  console.log("A");
   req.session.destroy(err => {
     if (err) return res.status(500).send("Logout failed");
     res.json({ message: "Logged out successfully" });
   });
 });
 
-
-
-
 // ✅ Registration Route (Insert `demo` User)
-app.get('/register', async (req, res) => {
+app.get('/api/register', async (req, res) => {
   try {
     const username = "demo"; // ✅ Hardcoded username
     const password = "demo"; // ✅ Hardcoded password
@@ -100,7 +122,6 @@ app.get('/register', async (req, res) => {
     // ✅ Hash the password before storing it
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // ✅ Insert user into the database (if not already exists)
     await pool.query('INSERT INTO Users (username, password) VALUES (?, ?) ON DUPLICATE KEY UPDATE password = VALUES(password)', [username, hashedPassword]);
 
     res.json({ message: "User 'demo' registered successfully" });
@@ -111,16 +132,16 @@ app.get('/register', async (req, res) => {
   }
 });
 
+// ✅ Fetch All Users
 app.get('/api/users', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM Users'); // Replace 'Users' with your table name
+    const [rows] = await pool.query('SELECT * FROM Users');
     res.status(200).json(rows);
   } catch (err) {
     console.error('Database query error:', err.message);
     res.status(500).json({ error: 'Failed to fetch users', details: err.message });
   }
 });
-
 
 // ✅ Start Server
 const PORT = process.env.PORT || 5000;
