@@ -4,18 +4,17 @@ const cors = require('cors');
 const session = require('express-session');
 const dbConfig = require('./dbConfig');
 const bcrypt = require('bcryptjs'); // ✅ Import bcrypt for password hashing
-<<<<<<< Updated upstream
-=======
+
 require('dotenv').config(); // ✅ Load environment variables
->>>>>>> Stashed changes
+
 
 const app = express();
 app.use(express.json());
 
-<<<<<<< Updated upstream
+
 // ✅ Enable CORS (Ensure credentials are included)
 
-=======
+
 // ✅ Get frontend port from environment variable or default to `5173`
 const FRONTEND_PORT = process.env.FRONTEND_PORT || 5173;
 const DEFAULT_ORIGIN = `http://localhost:${FRONTEND_PORT}`;
@@ -23,7 +22,7 @@ const DEFAULT_ORIGIN = `http://localhost:${FRONTEND_PORT}`;
 console.log(`🚀 Allowing frontend origin: ${DEFAULT_ORIGIN}`);
 
 // ✅ Enable CORS with dynamic origin
->>>>>>> Stashed changes
+
 app.use(cors({
   origin: (origin, callback) => {
     // Allow frontend requests dynamically based on request origin
