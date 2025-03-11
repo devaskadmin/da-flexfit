@@ -17,9 +17,9 @@
       </li>
       <li>
         <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="showUsername" checked>
-          <label class="form-check-label" for="showUsername">
-            Username
+          <input class="form-check-input" type="checkbox" id="email_user_id" checked>
+          <label class="form-check-label" for="email_user_id">
+            email_user_id
           </label>
         </div>
       </li>

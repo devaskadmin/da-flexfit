@@ -66,8 +66,10 @@ app.get('/api/session', (req, res) => {
 
 // ✅ Login Route
 app.post('/api/login', async (req, res) => {
+
   try {
     const { username, password } = req.body;
+    
 
     console.log("Login attempt:", username, password);
     
@@ -78,7 +80,7 @@ app.post('/api/login', async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM users WHERE username = ?', [username]);
 
     if (rows.length === 0) {
-      console.log("❌ User not found:", username);
+      console.log("User not found:", username);
       return res.status(401).json({ error: "User not found" });
     }
 
@@ -113,15 +115,28 @@ app.get('/api/logout', (req, res) => {
 });
 
 // ✅ Registration Route (Insert `demo` User)
-app.get('/api/register', async (req, res) => {
+app.post('/api/register', async (req, res) => {
   try {
-    const username = "demo"; // ✅ Hardcoded username
+    const firstName = "demo"; // ✅ Hardcoded first name
+    const lastName = "demo"; // ✅ Hardcoded last name
+    const username = "demo@demo.com"; // ✅ Hardcoded email
     const password = "demo"; // ✅ Hardcoded password
 
     // ✅ Hash the password before storing it
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await pool.query('INSERT INTO Users (username, password) VALUES (?, ?) ON DUPLICATE KEY UPDATE password = VALUES(password)', [username, hashedPassword]);
+    // ✅ Check if user `demo` already exists
+    const [existingUser] = await pool.query("SELECT * FROM users WHERE username = ?", [username]);
+    if (existingUser.length > 0) {
+      return res.status(400).json({ error: "User 'demo' already exists" });
+    }
+
+    // ✅ Insert the `demo` user (DO NOT specify `id`)
+    await pool.query(`
+      INSERT INTO users (FirstName, LastName, username, Password) 
+      VALUES (?, ?, ?, ?)`, 
+      [firstName, lastName, username, hashedPassword]
+    );
 
     res.json({ message: "User 'demo' registered successfully" });
 
@@ -130,6 +145,7 @@ app.get('/api/register', async (req, res) => {
     res.status(500).json({ error: "Registration failed" });
   }
 });
+
 
 // ✅ Fetch All Users
 app.get('/api/users', async (req, res) => {
