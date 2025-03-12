@@ -22,7 +22,7 @@ const login = async () => {
       { withCredentials: true }
     );
 
-    console.log("Username:", username.value);
+    console.log("username:", username.value);
 
     if (response.data.message === "Login successful") {
       router.push({ name: "dashboard_index" }); // ✅ Redirect after login
