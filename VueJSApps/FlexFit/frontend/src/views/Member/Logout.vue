@@ -76,6 +76,7 @@ onMounted(fetchUserSession);
         </div>
       </div>
 
+      
       <!-- ✅ Show Logout Success Message -->
       <div v-if="showNotification" class="notification">
         {{ logoutMessage }}
