@@ -106,13 +106,7 @@ app.post('/api/logout', (req, res) => {
     res.json({ message: "Logged out successfully" });
   });
 });
-app.get('/api/logout', (req, res) => {
-  console.log("A");
-  req.session.destroy(err => {
-    if (err) return res.status(500).send("Logout failed");
-    res.json({ message: "Logged out successfully" });
-  });
-});
+
 
 // ✅ Registration Route (Insert `demo` User)
 app.post('/api/register', async (req, res) => {
