@@ -1,10 +1,12 @@
+const fs = require('fs');
+const path = require('path'); // ✅ This was missing
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const session = require('express-session');
 const dbConfig = require('./dbConfig');
-const bcrypt = require('bcryptjs'); // ✅ Import bcrypt for password hashing
-
+const bcrypt = require('bcryptjs');
+const net = require('net');
 require('dotenv').config(); // ✅ Load environment variables
 
 
@@ -106,13 +108,6 @@ app.post('/api/logout', (req, res) => {
     res.json({ message: "Logged out successfully" });
   });
 });
-app.get('/api/logout', (req, res) => {
-  console.log("A");
-  req.session.destroy(err => {
-    if (err) return res.status(500).send("Logout failed");
-    res.json({ message: "Logged out successfully" });
-  });
-});
 
 // ✅ Registration Route (Insert `demo` User)
 app.post('/api/register', async (req, res) => {
@@ -158,8 +153,69 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// ✅ Start Server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-});
+
+
+// ✅ Read `BACKEND_PORT` instead of `PORT`
+const DEFAULT_BACKEND_PORT = process.env.BACKEND_PORT || 5000;
+const FRONTEND_ENV_PATH = process.env.FRONTEND_ENV_PATH || '../frontend/.env';
+
+// ✅ Function to check if a port is available
+const checkPort = (port) => {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once('error', () => resolve(false));
+    server.once('listening', () => {
+      server.close(() => resolve(true));
+    });
+    server.listen(port);
+  });
+};
+
+// ✅ Function to find the next available port
+const getAvailablePort = async () => {
+  const ports = [DEFAULT_BACKEND_PORT, DEFAULT_BACKEND_PORT + 1, DEFAULT_BACKEND_PORT + 2];
+  for (const port of ports) {
+    if (await checkPort(port)) {
+      return port;
+    }
+  }
+  return DEFAULT_BACKEND_PORT;
+};
+
+// ✅ Function to update frontend `.env` file while keeping existing variables
+const updateFrontendEnv = (port) => {
+  const frontendEnvPath = path.join(__dirname, FRONTEND_ENV_PATH);
+  let envContent = '';
+
+  try {
+    if (fs.existsSync(frontendEnvPath)) {
+      envContent = fs.readFileSync(frontendEnvPath, 'utf8');
+
+      // 🔹 Check if `VITE_API_BASE` already exists, replace it, else append it
+      if (envContent.includes('VITE_API_BASE=')) {
+        envContent = envContent.replace(/VITE_API_BASE=.*/g, `VITE_API_BASE=http://localhost:${port}`);
+      } else {
+        envContent += `\nVITE_API_BASE=http://localhost:${port}\n`;
+      }
+    } else {
+      // 🔹 If `.env` file does not exist, create it
+      envContent = `VITE_API_BASE=http://localhost:${port}\n`;
+    }
+
+    fs.writeFileSync(frontendEnvPath, envContent);
+    console.log(`✅ Updated frontend .env: VITE_API_BASE=http://localhost:${port}`);
+  } catch (error) {
+    console.error("❌ Failed to update frontend .env file:", error);
+  }
+};
+
+// ✅ Start the server with a dynamically selected port
+(async () => {
+  const PORT = await getAvailablePort();
+  updateFrontendEnv(PORT);
+
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`🔗 Backend API URL: http://localhost:${PORT}`);
+  });
+})();
