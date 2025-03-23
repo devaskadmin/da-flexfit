@@ -7,11 +7,15 @@ const session = require('express-session');
 const dbConfig = require('./dbConfig');
 const bcrypt = require('bcryptjs');
 const net = require('net');
+const helmet = require("helmet");
 require('dotenv').config(); // ✅ Load environment variables
+
+
 
 
 const app = express();
 app.use(express.json());
+app.use(helmet());
 
 
 // ✅ Enable CORS (Ensure credentials are included)
@@ -66,31 +70,39 @@ app.get('/api/session', (req, res) => {
   res.json({ loggedIn: false });
 });
 
+
 // ✅ Login Route
 app.post('/api/login', async (req, res) => {
-
   try {
     const { username, password } = req.body;
-    
 
-    console.log("Login attempt:", username, password);
-    
+    console.log("Login attempt:", username);
+
     if (!username || !password) {
       return res.status(400).json({ error: "Username and password are required" });
     }
 
+    // ✅ Check if user exists
     const [rows] = await pool.query('SELECT * FROM users WHERE username = ?', [username]);
 
     if (rows.length === 0) {
-      console.log("User not found:", username);
-      return res.status(401).json({ error: "User not found" });
+      console.log("❌ User not found:", username);
+      return res.status(401).json({ error: "Invalid credentials" }); // Don't reveal if it's user or pass
     }
 
     const user = rows[0];
 
-    // 🔹 Set session
+    // ✅ Compare hashed password
+    const isMatch = await bcrypt.compare(password, user.Password); // Assuming 'Password' is the column
+
+    if (!isMatch) {
+      console.log("❌ Invalid password for:", username);
+      return res.status(401).json({ error: "Invalid credentials" }); // Generic error for safety
+    }
+
+    // ✅ Set session only if login is successful
     req.session.user = { id: user.id, username: user.username };
-    console.log("User logged in:", req.session.user);
+    console.log("✅ User logged in:", req.session.user);
 
     res.json({ message: "Login successful", user: req.session.user });
 
@@ -99,6 +111,7 @@ app.post('/api/login', async (req, res) => {
     res.status(500).json({ error: "Login failed" });
   }
 });
+
 
 // ✅ Logout Route
 app.post('/api/logout', (req, res) => {
@@ -109,37 +122,43 @@ app.post('/api/logout', (req, res) => {
   });
 });
 
-// ✅ Registration Route (Insert `demo` User)
+
+
+//Reegistration route
 app.post('/api/register', async (req, res) => {
   try {
-    const firstName = "demo"; // ✅ Hardcoded first name
-    const lastName = "demo"; // ✅ Hardcoded last name
-    const username = "demo@demo.com"; // ✅ Hardcoded email
-    const password = "demo"; // ✅ Hardcoded password
+    const { firstName, lastName, username, password } = req.body;
 
-    // ✅ Hash the password before storing it
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // ✅ Check if user `demo` already exists
-    const [existingUser] = await pool.query("SELECT * FROM users WHERE username = ?", [username]);
-    if (existingUser.length > 0) {
-      return res.status(400).json({ error: "User 'demo' already exists" });
+    if (!firstName || !lastName || !username || !password) {
+      return res.status(400).json({ error: "All fields are required." });
     }
 
-    // ✅ Insert the `demo` user (DO NOT specify `id`)
-    await pool.query(`
-      INSERT INTO users (FirstName, LastName, username, Password) 
-      VALUES (?, ?, ?, ?)`, 
+    // ✅ Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // ✅ Check if user already exists
+    const [existingUser] = await pool.query(
+      "SELECT * FROM users WHERE username = ?",
+      [username]
+    );
+
+    if (existingUser.length > 0) {
+      return res.status(400).json({ error: "User already exists." });
+    }
+
+    // ✅ Insert new user (adjust columns if needed)
+    await pool.query(
+      `INSERT INTO users (FirstName, LastName, username, Password) VALUES (?, ?, ?, ?)`,
       [firstName, lastName, username, hashedPassword]
     );
 
-    res.json({ message: "User 'demo' registered successfully" });
-
+    res.status(201).json({ message: "User registered successfully!" });
   } catch (err) {
     console.error("❌ Registration error:", err);
-    res.status(500).json({ error: "Registration failed" });
+    res.status(500).json({ error: "Registration failed. Please try again." });
   }
 });
+
 
 
 // ✅ Fetch All Users

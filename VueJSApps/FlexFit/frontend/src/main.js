@@ -27,6 +27,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 
 import router from './router';
+const helmet = require("helmet");
 
 const app = createApp(App)
 
@@ -35,6 +36,7 @@ app.use(ToastPlugin);
 app.use(createPinia());
 app.use(router);
 app.use(VueSweetalert2);
+app.use(helmet());
 
 
 app.mount('#app', AOS.init());

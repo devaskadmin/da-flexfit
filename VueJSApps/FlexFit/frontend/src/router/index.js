@@ -18,28 +18,34 @@ console.log("🛠️ DEBUG_NO_AUTH is", DEBUG_NO_AUTH);
 router.beforeEach(async (to, from, next) => {
   if (DEBUG_NO_AUTH) {
     console.warn("🚀 DEBUG MODE: Bypassing authentication");
-    return next(); // ✅ Skip auth if debug flag is true
+    return next();
   }
+
+  // ✅ Allow access to public pages without authentication
+  const publicPages = [
+    'login', 
+    'registration', 
+    'reset_password'];
+    
+  const authRequired = !publicPages.includes(to.name);
 
   try {
     const response = await axios.get(`${API_BASE}/api/session`, { withCredentials: true });
 
-    if (!response.data.loggedIn) {
-      if (to.name !== 'login') {
-        console.log("❌ Not logged in, redirecting to login");
-        return next({ name: 'login' });
-      }
-    } else {
-      if (to.name === 'login') {
-        console.log("✅ Already logged in, redirecting to dashboard");
-        return next({ name: 'dashboard_index' });
-      }
+    if (!response.data.loggedIn && authRequired) {
+      console.log("❌ Not logged in, redirecting to login");
+      return next({ name: 'login' });
     }
 
-    next(); // ✅ Allow access
+    if (response.data.loggedIn && to.name === 'login') {
+      console.log("✅ Already logged in, redirecting to dashboard");
+      return next({ name: 'dashboard_index' });
+    }
+
+    next();
   } catch (error) {
     console.error("❌ Session check error:", error);
-    next(); // ✅ Allow navigation even if session check fails (optional)
+    next(); // Fallback: allow navigation
   }
 });
 
