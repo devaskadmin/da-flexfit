@@ -300,7 +300,7 @@ onUnmounted(() => {
               <li><a class="dropdown-item" href="#"><span class="dropdown-icon"><i class="fa-regular fa-circle-question"></i></span> Help</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><router-link class="dropdown-item" :to="{ name: 'edit_profile' }"><span class="dropdown-icon"><i class="fa-regular fa-gear"></i></span> Settings</router-link></li>
-              <li><router-link class="dropdown-item" :to="{ name: 'login' }"><span class="dropdown-icon"><i class="fa-regular fa-arrow-right-from-bracket"></i></span> Logout</router-link></li>
+              <li><router-link class="dropdown-item" :to="{ name: 'logout' }"><span class="dropdown-icon"><i class="fa-regular fa-arrow-right-from-bracket"></i></span> Logout</router-link></li>
             </ul>
           </div>
         </div>
