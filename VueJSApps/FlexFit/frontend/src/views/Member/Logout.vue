@@ -9,10 +9,15 @@ const logoutMessage = ref("");
 const showNotification = ref(false);
 const showConfirmation = ref(true); // ✅ Show confirmation first
 
+// 🔹 Load Backend API URL from `.env` file
+const API_BASE = import.meta.env.VITE_API_BASE;
+
+console.log(`🔗 Logout page using backend: ${API_BASE}`);
+
 // ✅ Fetch the logged-in user from session
 const fetchUserSession = async () => {
   try {
-    const response = await axios.get("http://localhost:5000/api/session", { withCredentials: true });
+    const response = await axios.get(`${API_BASE}/api/session`, { withCredentials: true });
 
     if (response.data.loggedIn && response.data.user) {
       username.value = response.data.user.username;
@@ -30,21 +35,19 @@ const fetchUserSession = async () => {
 // ✅ Logout Function
 const logout = async () => {
   try {
-  
-    await axios.post("http://localhost:5000/api/logout", {}, { withCredentials: true });
+    await axios.post(`${API_BASE}/api/logout`, {}, { withCredentials: true });
     console.log("✅ Logout successful");
 
     // ✅ Show logout message
     logoutMessage.value = `You have successfully logged out, ${username.value}.`;
     showNotification.value = true;
-    showConfirmation.value = false; // Hide confirmation message
-    
+    showConfirmation.value = false;
 
-    // ✅ Wait 2 seconds before redirecting to login
+    // ✅ Wait before redirecting to login
     setTimeout(() => {
       showNotification.value = false;
       router.push({ name: "login" });
-    }, 200);
+    }, 2000);
   } catch (error) {
     console.error("❌ Logout failed:", error);
     logoutMessage.value = "Logout failed. Please try again.";
@@ -76,6 +79,7 @@ onMounted(fetchUserSession);
         </div>
       </div>
 
+      
       <!-- ✅ Show Logout Success Message -->
       <div v-if="showNotification" class="notification">
         {{ logoutMessage }}

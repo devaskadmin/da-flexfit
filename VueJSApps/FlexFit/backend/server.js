@@ -1,15 +1,21 @@
+const fs = require('fs');
+const path = require('path'); // ✅ This was missing
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const session = require('express-session');
 const dbConfig = require('./dbConfig');
-const bcrypt = require('bcryptjs'); // ✅ Import bcrypt for password hashing
-
+const bcrypt = require('bcryptjs');
+const net = require('net');
+const helmet = require("helmet");
 require('dotenv').config(); // ✅ Load environment variables
+
+
 
 
 const app = express();
 app.use(express.json());
+app.use(helmet());
 
 
 // ✅ Enable CORS (Ensure credentials are included)
@@ -64,31 +70,39 @@ app.get('/api/session', (req, res) => {
   res.json({ loggedIn: false });
 });
 
+
 // ✅ Login Route
 app.post('/api/login', async (req, res) => {
-
   try {
     const { username, password } = req.body;
-    
 
-    console.log("Login attempt:", username, password);
-    
+    console.log("Login attempt:", username);
+
     if (!username || !password) {
       return res.status(400).json({ error: "Username and password are required" });
     }
 
+    // ✅ Check if user exists
     const [rows] = await pool.query('SELECT * FROM users WHERE username = ?', [username]);
 
     if (rows.length === 0) {
-      console.log("User not found:", username);
-      return res.status(401).json({ error: "User not found" });
+      console.log("❌ User not found:", username);
+      return res.status(401).json({ error: "Invalid credentials" }); // Don't reveal if it's user or pass
     }
 
     const user = rows[0];
 
-    // 🔹 Set session
+    // ✅ Compare hashed password
+    const isMatch = await bcrypt.compare(password, user.Password); // Assuming 'Password' is the column
+
+    if (!isMatch) {
+      console.log("❌ Invalid password for:", username);
+      return res.status(401).json({ error: "Invalid credentials" }); // Generic error for safety
+    }
+
+    // ✅ Set session only if login is successful
     req.session.user = { id: user.id, username: user.username };
-    console.log("User logged in:", req.session.user);
+    console.log("✅ User logged in:", req.session.user);
 
     res.json({ message: "Login successful", user: req.session.user });
 
@@ -98,6 +112,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+
 // ✅ Logout Route
 app.post('/api/logout', (req, res) => {
   console.log("A");
@@ -106,39 +121,48 @@ app.post('/api/logout', (req, res) => {
     res.json({ message: "Logged out successfully" });
   });
 });
+<<<<<<< HEAD
+
+=======
+>>>>>>> flexfit-frontend
 
 
-// ✅ Registration Route (Insert `demo` User)
+
+//Reegistration route
 app.post('/api/register', async (req, res) => {
   try {
-    const firstName = "demo"; // ✅ Hardcoded first name
-    const lastName = "demo"; // ✅ Hardcoded last name
-    const username = "demo@demo.com"; // ✅ Hardcoded email
-    const password = "demo"; // ✅ Hardcoded password
+    const { firstName, lastName, username, password } = req.body;
 
-    // ✅ Hash the password before storing it
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // ✅ Check if user `demo` already exists
-    const [existingUser] = await pool.query("SELECT * FROM users WHERE username = ?", [username]);
-    if (existingUser.length > 0) {
-      return res.status(400).json({ error: "User 'demo' already exists" });
+    if (!firstName || !lastName || !username || !password) {
+      return res.status(400).json({ error: "All fields are required." });
     }
 
-    // ✅ Insert the `demo` user (DO NOT specify `id`)
-    await pool.query(`
-      INSERT INTO users (FirstName, LastName, username, Password) 
-      VALUES (?, ?, ?, ?)`, 
+    // ✅ Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // ✅ Check if user already exists
+    const [existingUser] = await pool.query(
+      "SELECT * FROM users WHERE username = ?",
+      [username]
+    );
+
+    if (existingUser.length > 0) {
+      return res.status(400).json({ error: "User already exists." });
+    }
+
+    // ✅ Insert new user (adjust columns if needed)
+    await pool.query(
+      `INSERT INTO users (FirstName, LastName, username, Password) VALUES (?, ?, ?, ?)`,
       [firstName, lastName, username, hashedPassword]
     );
 
-    res.json({ message: "User 'demo' registered successfully" });
-
+    res.status(201).json({ message: "User registered successfully!" });
   } catch (err) {
     console.error("❌ Registration error:", err);
-    res.status(500).json({ error: "Registration failed" });
+    res.status(500).json({ error: "Registration failed. Please try again." });
   }
 });
+
 
 
 // ✅ Fetch All Users
@@ -152,8 +176,69 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// ✅ Start Server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-});
+
+
+// ✅ Read `BACKEND_PORT` instead of `PORT`
+const DEFAULT_BACKEND_PORT = process.env.BACKEND_PORT || 5000;
+const FRONTEND_ENV_PATH = process.env.FRONTEND_ENV_PATH || '../frontend/.env';
+
+// ✅ Function to check if a port is available
+const checkPort = (port) => {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once('error', () => resolve(false));
+    server.once('listening', () => {
+      server.close(() => resolve(true));
+    });
+    server.listen(port);
+  });
+};
+
+// ✅ Function to find the next available port
+const getAvailablePort = async () => {
+  const ports = [DEFAULT_BACKEND_PORT, DEFAULT_BACKEND_PORT + 1, DEFAULT_BACKEND_PORT + 2];
+  for (const port of ports) {
+    if (await checkPort(port)) {
+      return port;
+    }
+  }
+  return DEFAULT_BACKEND_PORT;
+};
+
+// ✅ Function to update frontend `.env` file while keeping existing variables
+const updateFrontendEnv = (port) => {
+  const frontendEnvPath = path.join(__dirname, FRONTEND_ENV_PATH);
+  let envContent = '';
+
+  try {
+    if (fs.existsSync(frontendEnvPath)) {
+      envContent = fs.readFileSync(frontendEnvPath, 'utf8');
+
+      // 🔹 Check if `VITE_API_BASE` already exists, replace it, else append it
+      if (envContent.includes('VITE_API_BASE=')) {
+        envContent = envContent.replace(/VITE_API_BASE=.*/g, `VITE_API_BASE=http://localhost:${port}`);
+      } else {
+        envContent += `\nVITE_API_BASE=http://localhost:${port}\n`;
+      }
+    } else {
+      // 🔹 If `.env` file does not exist, create it
+      envContent = `VITE_API_BASE=http://localhost:${port}\n`;
+    }
+
+    fs.writeFileSync(frontendEnvPath, envContent);
+    console.log(`✅ Updated frontend .env: VITE_API_BASE=http://localhost:${port}`);
+  } catch (error) {
+    console.error("❌ Failed to update frontend .env file:", error);
+  }
+};
+
+// ✅ Start the server with a dynamically selected port
+(async () => {
+  const PORT = await getAvailablePort();
+  updateFrontendEnv(PORT);
+
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`🔗 Backend API URL: http://localhost:${PORT}`);
+  });
+})();

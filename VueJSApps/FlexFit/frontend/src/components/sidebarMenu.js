@@ -80,12 +80,8 @@ export const sidebarMenus = ref([
                         link_name: 'login'
                     },
                     {
-                        name: 'Registration 01',
+                        name: 'registration',
                         link_name: 'registration'
-                    },
-                    {
-                        name: 'Registration 02',
-                        link_name: 'registration_2'
                     },
                     {
                         name: 'Reset Password',
