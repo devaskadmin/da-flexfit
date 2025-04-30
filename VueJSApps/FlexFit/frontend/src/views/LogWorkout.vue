@@ -16,6 +16,19 @@ const exercise = reactive({
   duration: "",
 });
 
+
+
+//GET USER ID
+fetch('http://localhost:5000/api/user-id', {
+  credentials: 'include'
+})
+.then(res => res.json())
+.then(data => {
+  console.log('Current user ID:', data.userId);
+})
+.catch(err => console.error('Error:', err));
+
+
 const workoutList = ref([]);
 
 const addExercise = () => {
@@ -52,6 +65,12 @@ const estimatedCalories = computed(() => {
             <h5>Log Your Workout</h5>
           </div>
           
+
+          <div>
+    <p v-if="userId">Your User ID: {{ userId }}</p>
+    <p v-else>Loading user ID...</p>
+  </div>
+
           <div class="panel-body">
             <div class="row g-3">
               <div class="col-md-3">
