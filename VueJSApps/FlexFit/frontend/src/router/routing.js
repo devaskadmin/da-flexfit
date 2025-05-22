@@ -1,6 +1,6 @@
 
 //Default Home Page
-import HomeView from '@/views/HomeDashboard.vue'
+import HomeView from '@/views/Member/HomeDashboard.vue'
 
 
 //Guest Routes
@@ -13,8 +13,14 @@ const guestRoutes = [
     },
     {
         path: '/registration',
-        component: () => import('@/views/Guest/Registration.vue'),
+        component: () => import('@/views/template/pages/authentication/Registration.vue'),
         name: 'registration',
+        meta: { layout: 'GuestLayout' },
+    },
+    {
+        path: '/registration-2',
+        component: () => import('@/views/template/pages/authentication/Registration-2.vue'),
+        name: 'registration_2',
         meta: { layout: 'GuestLayout' },
     },
     {
@@ -188,11 +194,17 @@ export const pagesRoutes = [
         component: () => import('@/views/Member/Logout.vue'),
         name: 'logout',
         meta: { layout: 'GuestLayout' },
-    },
+    },    
     {
         path: '/log_workout',
-        component: () => import('@/views/LogWorkout.vue'),
+        component: () => import('@/views/Member/LogWorkout.vue'),
         name: 'log_workout',
+        meta: { layout: 'AppLayout', isPartials: true },
+    },
+    {
+        path: '/exercises',
+        component: () => import('@/views/Member/exercises.vue'),
+        name: 'exercises',
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {

@@ -10,14 +10,11 @@ const password = ref("");
 const isPasswordShow = ref(false);
 const errorMsg = ref("");
 
-const API_BASE = import.meta.env.VITE_API_BASE;
-console.log(`🔗 Connecting to backend at: ${API_BASE}`);
-
 // 🔹 Login Function
 const login = async () => {
   try {
     const response = await axios.post(
-      `${API_BASE}/api/login`,
+      "http://localhost:5000/api/login",
       {
         username: username.value,
         password: password.value
@@ -68,10 +65,6 @@ const login = async () => {
               <router-link :to="{ name: 'reset_password' }" class="text-white fs-14">Forgot Password?</router-link>
             </div>
             <button class="btn btn-primary w-100 login-btn">Sign in</button>
-
-           
-
-
           </form>
           <div class="other-option">
             <p>Or continue with</p>
@@ -81,24 +74,7 @@ const login = async () => {
               <a href="#"><i class="fa-brands fa-google"></i></a>
               <a href="#"><i class="fa-brands fa-instagram"></i></a>
             </div>
-            </div>
-
-         
-    
-
-            <div class="other-option">
-              <p>Don't have an account? 
-              <router-link :to="{ name: 'registration' }" class="text-white text-decoration-underline">
-                 Click here to register
-              </router-link>
-              </p>
-           
-            </div>
-
-         
-      
-
-        
+          </div>
         </div>
       </div>
     </div>

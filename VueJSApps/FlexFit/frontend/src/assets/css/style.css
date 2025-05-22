@@ -11593,7 +11593,7 @@ a.ck.ck-button:focus {
   color: #97a3bb;
 }
 .light-theme .mx-btn {
-  color: #97a3bb;
+  color: black;
 }
 .light-theme .mx-calendar-content .cell.active {
   color: #fff;
@@ -15493,3 +15493,69 @@ th.fc-col-header-cell {
     padding-left: 230px;
   }
 }
+
+
+
+
+
+
+
+
+
+
+.mx-datepicker-popup {
+  display: flex !important;
+  width: auto !important;
+  min-width: 300px;
+  border:1px solid black;
+}
+
+.mx-datepicker-sidebar,
+.mx-datepicker-sidebar + .mx-datepicker-content {
+  min-width: 150px;
+  
+}
+
+.mx-datepicker-content {
+  padding-left: 10px;
+}
+.full-datepicker {
+  min-width: 350px;
+  max-width: 600px;
+  font-size: 14px;
+}
+
+/* Flex popup layout */
+:deep(.mx-datepicker-popup) {
+  display: flex;
+  width: auto !important;
+  min-width: 400px;
+}
+
+/* Sidebar and calendar width */
+:deep(.mx-datepicker-sidebar) {
+  min-width: 300px;
+  padding-right: 12px;
+}
+
+:deep(.mx-datepicker-content) {
+  min-width: 300px;
+}
+:deep(.mx-btn){
+  color: black;
+}
+:deep(.mx-btn-icon-double-left){
+  color:black;
+ }
+
+
+ .mx-btn-icon-left,
+ .mx-btn-icon-right,
+ .mx-btn-icon-double-left,
+ .mx-btn-icon-double-right {
+   color: black !important; /* or #c8d4f0 for a brighter tint */
+   opacity: 1 !important;
+ }
+ .light-theme .mx-icon-calendar, .light-theme .mx-input, .light-theme .mx-icon-clear{
+  color:black;
+ }
