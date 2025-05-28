@@ -7,45 +7,35 @@ const router = createRouter({
   routes: [...appRoutes],
 });
 
-// ✅ Load environment variables
+// Ensure environment variable is read correctly
 const DEBUG_NO_AUTH = import.meta.env.VITE_DEBUG_NO_AUTH === "true";
-const API_BASE = import.meta.env.VITE_API_BASE;
 
-console.log("🔗 Router using backend:", API_BASE);
-console.log("🛠️ DEBUG_NO_AUTH is", DEBUG_NO_AUTH);
-
-// ✅ Route Guard (Check session unless in debug mode)
 router.beforeEach(async (to, from, next) => {
   if (DEBUG_NO_AUTH) {
     console.warn("🚀 DEBUG MODE: Bypassing authentication");
-    return next();
+    return next(); // Allow navigation without authentication
   }
 
-  // ✅ Allow access to public pages without authentication
-  const publicPages = [
-    'login', 
-    'registration', 
-    'reset_password'];
-    
-  const authRequired = !publicPages.includes(to.name);
-
   try {
-    const response = await axios.get(`${API_BASE}/api/session`, { withCredentials: true });
+    const response = await axios.get('http://localhost:5000/api/session', { withCredentials: true });
 
-    if (!response.data.loggedIn && authRequired) {
-      console.log("❌ Not logged in, redirecting to login");
-      return next({ name: 'login' });
+    if (!response.data.loggedIn) {
+      // ✅ Fix: ONLY redirect to login if not already there
+      if (to.name !== 'login') {
+        console.log("not logged in");
+        return next({ name: 'login' });
+      }
+    } else {
+      // ✅ Fix: Prevent re-directing logged-in users to login
+      if (to.name === 'login') {
+        return next({ name: 'dashboard_index' }); // Change to the actual dashboard route
+      }
     }
 
-    if (response.data.loggedIn && to.name === 'login') {
-      console.log("✅ Already logged in, redirecting to dashboard");
-      return next({ name: 'dashboard_index' });
-    }
-
-    next();
+    next(); // Allow navigation if everything is fine
   } catch (error) {
-    console.error("❌ Session check error:", error);
-    next(); // Fallback: allow navigation
+    console.error("Session check error:", error);
+    next(); // Allow the user to proceed without breaking
   }
 });
 

@@ -281,6 +281,18 @@ provide('app:layout', layout.value)
   </div>
 </template>
 
-<style scoped>
+<style lang="scss">
+.mx-calendar-header .mx-btn-icon-left i,
+.mx-calendar-header .mx-btn-icon-right i,
+.mx-calendar-header .mx-btn-icon-double-left i,
+.mx-calendar-header .mx-btn-icon-double-right i {
+  color: #000000 !important;
+  font-size: 1.2em !important;
+  opacity: 1 !important;
+}
 
+.mx-calendar-header .mx-btn:hover i {
+  color: #007bff !important;
+}
 </style>
+

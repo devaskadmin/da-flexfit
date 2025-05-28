@@ -391,6 +391,8 @@
   }
 }
 
+
+
 @media (min-width: 730px) {
   .daterangepicker .ranges {
     width: auto;
@@ -408,3 +410,5 @@
     clear: none !important;
   }
 }
+
+

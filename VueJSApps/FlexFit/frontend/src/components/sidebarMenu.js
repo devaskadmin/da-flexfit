@@ -10,9 +10,9 @@ export const sidebarMenus = ref([
                 icon: 'fa-solid fa-house'              
             },
             {
-                name: 'login',
-                link_name: 'login',
-                icon: 'fa-solid fa-house'              
+                name: 'exercises',
+                link_name: 'exercises',
+                icon: 'fa-solid fa-person-walking'              
             },
 
             {
@@ -80,8 +80,12 @@ export const sidebarMenus = ref([
                         link_name: 'login'
                     },
                     {
-                        name: 'registration',
+                        name: 'Registration 01',
                         link_name: 'registration'
+                    },
+                    {
+                        name: 'Registration 02',
+                        link_name: 'registration_2'
                     },
                     {
                         name: 'Reset Password',
