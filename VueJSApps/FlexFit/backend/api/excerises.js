@@ -1,8 +1,8 @@
+//Varibles
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { sanitizeText, parseNumber } = require('../utils/sanitize.js');
-
 
 // ✅ DB Connect
 const pool = require('../db');
@@ -132,5 +132,50 @@ router.get('/get-exercises', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch exercises' });
   }
 });
+
+
+
+//Check exercises
+router.get('/check-exercises', async (req, res) => {
+  const { userId, exerciseId, date } = req.query;
+  const [rows] = await pool.query(
+    `SELECT * FROM workout_log WHERE UserID = ? AND ExerciseID = ? AND WorkoutDate = ?`,
+    [userId, exerciseId, date]
+  );
+  res.json({ exists: rows.length > 0, data: rows[0] });
+});
+//End of Check exercises
+
+
+//Delete Workout Log
+
+
+
+
+
+
+module.exports = router;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 module.exports = router;

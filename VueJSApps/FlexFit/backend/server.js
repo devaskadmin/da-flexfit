@@ -8,9 +8,8 @@ const path = require('path');
 const fs = require('fs');
 
 
+
 require('dotenv').config();
-
-
 
 const app = express();
 app.use(express.json());
@@ -52,11 +51,21 @@ app.use((req, res, next) => {
 // ✅ DB Connect
 const pool = require('./db.js');
 
+
+//Define Workout Routes - Loads workout log API
+const workoutLogRoutes = require('./api/workout-log'); // ✅ correct path
+
+
 // Import routes
 app.use('/api', require('./api/auth.js'));
 app.use('/api', require('./api/users.js'));
 app.use('/api', require('./api/excerises.js'));
-app.use('/api', require('./api/workouts.js'));
+app.use('/api/workout-log', workoutLogRoutes);
+
+
+
+
+
 
 // ✅ Start server
 const PORT = process.env.PORT || 5000;

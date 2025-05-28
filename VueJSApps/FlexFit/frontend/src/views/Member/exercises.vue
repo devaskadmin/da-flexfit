@@ -12,6 +12,10 @@
    const selectedEquipment = ref("All");
    const searchExercise = ref("");
    const workoutList = ref([]);
+
+   const existingLogs = ref([]);
+   
+   
    
    const exercise = reactive({
      sets: "",
@@ -94,8 +98,8 @@
     date: selectedDate.value,
     image: selectedImage.value,
     calories: duration * 10,  // simple calc
-    distance: 2.0,            // placeholder
-    speed: 6.5,               // placeholder
+    distance: 0,            // placeholder
+    speed: 0,               // placeholder
     type: workoutType.value
   });
 
@@ -129,64 +133,184 @@ const removeWorkout = (index) => {
    
    
    
+   //Update Date format
+  const toMySQLDate = (date) => {
+    const d = new Date(date);
+    const month = `${d.getMonth() + 1}`.padStart(2, '0');
+    const day = `${d.getDate()}`.padStart(2, '0');
+    const year = d.getFullYear();
+    return `${year}-${month}-${day}`;
+  };
+
+
+
+
+
+//Save Workout
+const saveWorkout = async () => {
+  console.log("A");
+  const formattedDate = toMySQLDate(selectedDate.value);
+
+  // ✅ Step 1: Load latest logs first
+  await loadWorkoutLogs();
+
+  // Create map for easier comparison
+  const existingMap = new Map();
+  for (const log of existingLogs.value) {
+    existingMap.set(log.ExerciseID, log);
+  }
+
+  // ✅ Step 3: Track ExerciseIDs that will remain
+  const savedIds = new Set();
+  
+  //Loop through each value and compare 
+  for (const workout of workoutList.value) {
+    const matched = allExercises.value.find(ex => ex.ExerciseTitle === workout.name);
+    if (!matched) continue;
+
+    const existing = existingMap.get(matched.ExerciseID);
+    savedIds.add(matched.ExerciseID);
+
+    if (existing) {
+      // Check if fields changed
+      const changed = (
+        existing.Reps != workout.reps ||
+        existing.Sets != workout.sets ||
+        existing.Weight != workout.weight ||
+        existing.Duration != workout.duration
+      );
+
+      if (changed) {
+        await fetch(`${import.meta.env.VITE_API_BASE}/api/workout-log/update-workout-log`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            WorkoutLogID: existing.WorkoutLogID,
+            Reps: workout.reps,
+            Sets: workout.sets,
+            Weight: workout.weight,
+            Duration: workout.duration,
+            Calories: workout.calories,
+            Distance: workout.distance,
+            Speed: workout.speed,
+            'Laps-Rep': workout['Laps-Rep']
+          })
+        });
+        console.log("🔁 Updated:", workout.name);
+      } else {
+        console.log("⏭️ Skipped identical:", workout.name);
+      }
+    } else {
+      // New insert
+      await fetch(`${import.meta.env.VITE_API_BASE}/api/workout-log/add-workout-log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          UserID: userId.value,
+          ExerciseID: matched.ExerciseID,
+          WorkoutDate: formattedDate,
+          WorkoutType: workout.type,
+          Duration: workout.duration || 1,
+          Reps: workout.reps || null,
+          Sets: workout.sets || null,
+          Weight: workout.weight || null,
+          Calories: workout.calories || null,
+          Distance: workout.distance || null,
+          Speed: workout.speed || null,
+          'Laps-Rep': workout['Laps-Rep'] || null
+        })
+      });
+      console.log("✅ Inserted:", workout.name);
+    }
+  }
+
+  // Delete removed logs
+  for (const log of existingLogs.value) {
+    if (!savedIds.has(log.ExerciseID)) {
+      await fetch(`${import.meta.env.VITE_API_BASE}/api/workout-log/delete-workout-log/${log.WorkoutLogID}`, {
+        method: 'DELETE'
+      });
+      console.log("🗑️ Deleted:", log.ExerciseTitle);
+    }
+  }
+
+  // ✅ Step 5: Reload logs and clear list
+  await loadWorkoutLogs();
+  workoutList.value = [];
+  alert("✅ Workout log synced and reset!");
+};
+//Save Workout
    
-   //Saved 
-   const saveWorkout = async () => {
-     if (!selectedDate.value) {
-       alert("Please select a workout date.");
-       return;
-     }
+
+   //End of Load Logs
+   const fetchWorkoutLogs = async () => {
+  if (!userId.value || !selectedDate.value) return;
+
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/workout-log/get-workout-log?userId=${userId.value}&date=${selectedDate.value}`, {
+      credentials: 'include'
+    });
+
+    const data = await res.json();
+
+    workoutList.value = data.map(log => ({
+      name: log.ExerciseTitle,
+      type: log.WorkoutType,
+      sets: log.Sets,
+      reps: log.Reps,
+      weight: log.Weight,
+      duration: log.Duration,
+      calories: log.Calories,
+      distance: log.Distance,
+      speed: log.Speed,
+      'Laps-Rep': log['Laps-Rep'],
+      date: log.WorkoutDate,
+      image: log.ImageGallery ? `/assets/Excerises/${JSON.parse(log.ImageGallery)[0]}` : '/assets/Excerises/default/default.jpg'
+    }));
+
+  } catch (err) {
+    console.error("❌ Failed to load workout logs:", err);
+  }
+};
+
+//End of Load logs
    
-     for (const workout of workoutList.value) {
-       try {
-         const res = await fetch(import.meta.env.VITE_API_BASE + '/api/workout-log', {
-           method: 'POST',
-           credentials: 'include',
-           headers: {
-             'Content-Type': 'application/json'
-           },
-           body: JSON.stringify({
-             ExerciseTitle: workout.name,
-             ExerciseType: workoutType.value,
-             Reps: workout.reps,
-             Sets: workout.sets,
-             Weight: workout.weight,
-             Duration: workout.duration,
-             WorkoutDate: selectedDate.value
-           })
-         });
+
+
+
+
+
    
-         const data = await res.json();
-         if (!res.ok) throw new Error(data.error || "Unknown error");
-   
-         console.log("✅ Workout saved:", workout.name);
-       } catch (err) {
-         console.error("❌ Failed to save workout:", err);
-       }
-     }
-   
-     alert("✅ All workouts saved!");
-     workoutList.value = []; // Clear after save
-   };
-   //------------------
-   
-   
-   
-   
-   
+
+
    
    
    
    
-   //USER ID
-   const userId = ref(null);
+   
+   
+  //Get Excerises
+  const userId = ref(null);
+  
+  // Use Date object for selected date
+  const selectedDateRaw = ref(new Date());
+
+   
+  // Computed: Format the date as d/m/yyyy (e.g., 6/5/2025)   
+  const selectedDate = computed(() => {
+  const d = selectedDateRaw.value;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0'); // months are 0-based
+  const year = d.getFullYear();
+  return `${month}/${day}/${year}`;
+});
    
    //Async function to pass data from front end to backend
    onMounted(async () => {
-   
-     //Fetch exercises
-     const res = await fetch("http://localhost:5000/api/get-exercises");
-     allExercises.value = await res.json();
+
+    //Get All exercises
+    const res = await fetch("http://localhost:5000/api/get-exercises");
+    allExercises.value = await res.json();
    
      //Get user ID
      try {
@@ -203,21 +327,33 @@ const removeWorkout = (index) => {
        console.error('Failed to fetch user ID:', err);
        userId.value = 'Error';
      }
-     //USER ID
-   });
+     //End of Get user ID
+
+
+    //Get Workout Logs
+    const loadWorkoutLogs = async () => {
+        
+        if (!userId.value || !selectedDate.value) return;
+        const formattedDate = toMySQLDate(selectedDate.value);
+
+        const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/workout-log/get-workout-log?userId=${userId.value}&date=${formattedDate}`);
+        const data = await res.json();
+        existingLogs.value = data;
+    };
+    loadWorkoutLogs();
+    //End of Get Workout Logs
+    
+    //This Updates and Fetches workout logs when selectedDateRaw changes.
+    watch(selectedDateRaw, () => {
+      loadWorkoutLogs();
+    });
+     
+}); //End of on mounted
    
    
-   //DATE FUNCTION--
-   // Use Date object for selected date
-   // Use Date object for selected date
-   const selectedDateRaw = ref(new Date());
+
+
    
-   // Computed: Format the date as d/m/yyyy (e.g., 6/5/2025)   
-   const selectedDate = computed(() => {
-     const d = selectedDateRaw.value;
-     console.log("Selected raw date:", d.getMonth()); // logs the actual Date object
-     return `${d.getDate()+1}/${d.getDate()}/${d.getFullYear()}`;
-   });
    
    
    
@@ -231,14 +367,16 @@ const removeWorkout = (index) => {
    
    
    const getFirstImage = (gallery) => {
-     try {
-       const images = JSON.parse(gallery);
-       return images.length > 0 ? images[0] : 'fallback.jpg';
-     } catch {
-       return 'fallback.jpg';
-     }
-   };
-   
+  try {
+    const images = typeof gallery === 'string' ? JSON.parse(gallery) : gallery;
+    return images?.length > 0
+      ? `/assets/Excerises/${images[0]}`
+      : '/assets/Excerises/default/default.jpg';
+  } catch {
+    return '/assets/Excerises/default/default.jpg';
+  }
+};
+
    
    const loadMore = () => {
      visibleCount.value += itemsPerPage.value;
@@ -282,7 +420,7 @@ const removeWorkout = (index) => {
    };
    
    
-
+//Selected excerise Image handeling
 const selectedImage = computed(() => {
   if (!selectedExercise.value) {
     return '/assets/Excerises/default/default.jpg';
@@ -302,9 +440,7 @@ const selectedImage = computed(() => {
     return '/assets/Excerises/default/default.jpg';
   }
 });
-   
-   
-   //End of Selected Excerise
+//End of Selected Excerise image
    
    
    //Edit Excerise
@@ -362,8 +498,8 @@ const selectedImage = computed(() => {
 <template>
    <div class="dashboard-breadcrumb mb-25">
       <h2>Log Workout</h2>
-      SelectDate:
-      <DateDropDown v-model="selectedDate" />
+      SelectDate:{{ selectedDate }}
+      <DateDropDown v-model="selectedDateRaw" />
    </div>
 
   <!--PAGE CONTAINER -->
@@ -610,10 +746,11 @@ const selectedImage = computed(() => {
                   <div class="exercise-row" v-for="ex in pagedExercises" :key="ex.ExerciseID">
                      <div class="exercise-img">
                         <img
-                           :src="`/assets/Excerises/${getFirstImage(ex.ImageGallery)}`"
+                          :src="getFirstImage(ex.ImageGallery)"
                            @click="selectExerciseFromList(ex)"
                            class="clickable"
                            />
+                           
                      </div>
                      <div class="exercise-info">
                         <h6 class="exercise-title">Excerise: {{ ex.ExerciseTitle }}</h6>
@@ -646,13 +783,86 @@ const selectedImage = computed(() => {
 
     
      
-      <!-- Workout Summary -->
-      <div class="panel-body workout-summary-list">
-  <div
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+         <div class="container mt-8 container-block">
+      <div class="panel">
+         <!--Start of panel-->
+         <div class="panel-header">
+            <!-- Panel Header-->
+            
+              <h4>Workout Log</h4>
+            <!--End of container-->
+         </div>
+         <!--end of panel header-->
+         <div class="panel-body">
+            <!--Start of panel body-->
+
+
+            <!--Start of Row-->
+            <div class="row g-2">
+               <!--Workout Log-->
+               <div class="col-md-12">
+                  
+                  
+
+
+<!--Edit Workout log-->
+<!-- Add headers -->
+<div class="row font-weight-bold">
+  <div class="col">Info</div>
+  <div class="col">Exercise Name</div>
+  <div class="col">Sets</div>
+  <div class="col">Reps</div>
+  <div class="col">Weight</div>
+  <div class="col">Actions</div>
+</div>
+
+<!-- Render existing logs -->
+<div v-for="log in existingLogs" :key="log.WorkoutLogID" class="row align-items-center mb-2">
+  <div class="col">
+    <img :src="getFirstImage(log.ImageGallery)" class="summary-img me-2" />
+
+    
+  </div>
+
+  <div class="col"> {{ log.ExerciseTitle }} </div>
+
+  <div class="col"><input v-model="log.Sets" type="number" class="form-control" /></div>
+  <div class="col"><input v-model="log.Reps" type="number" class="form-control" /></div>
+  <div class="col"><input v-model="log.Weight" type="number" class="form-control" /></div>
+  <div class="col">
+    <button @click="updateLog(log)" class="btn btn-sm btn-success me-2">💾</button>
+    <button @click="deleteLog(log.WorkoutLogID)" class="btn btn-sm btn-danger">🗑️</button>
+  </div>
+</div>
+<!--Edit Workout Log-->
+
+
+
+
+                <div
     class="list-group-item d-flex align-items-center"
     v-for="(workout, index) in workoutList"
     :key="index"
   >
+
     <!-- Remove Icon -->
     <i class="fas fa-times text-danger me-3 clickable" @click="removeWorkout(index)"></i>
 
@@ -675,7 +885,47 @@ const selectedImage = computed(() => {
       <div class="text-muted small">Date: {{ workout.date }}</div>
     </div>
   </div>
-</div>
+
+
+
+
+  <button 
+  @click="saveWorkout" 
+  class="btn btn-success" 
+  :disabled="workoutList.length === 0"
+>
+  Save Workouts
+</button>
+               
+               
+               
+               
+               
+               
+               
+               
+               
+               
+               
+               
+                </div>
+               <!--End of Workout log-->
+
+               
+              
+
+               
+              
+            </div>
+            <!--End of Row-->
+         
+         
+         
+          </div>
+      </div>
+      <!--End of Panel-->
+  </div>
+
 
       <!--end of workout summary-->
   </div>
@@ -690,8 +940,7 @@ const selectedImage = computed(() => {
          <!--Start of panel-->
          <div class="panel-header">
             <!-- Panel Header-->
-            
-              <h4>Debug</h4>
+              <h4>Debug info</h4>
            </div>
                <!--Displays User id-->
       <div v-if="userId && typeof userId === 'number'">
@@ -706,7 +955,7 @@ const selectedImage = computed(() => {
       <!--Displays user id-->
       <!--Display selected date-->
       <div class="mb-3">
-         <label class="form-label">Workout Date: {{ selectedDate }}</label>
+         Workout Date: {{ selectedDate }}
       </div>
       <!--- End select date-->
 

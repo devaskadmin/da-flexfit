@@ -20,6 +20,10 @@ const workoutList = ref([]);
 onMounted(async () => {
   const res = await fetch("http://localhost:5000/api/exercises");
   allExercises.value = await res.json();
+
+
+
+  
 });
 
 // When user selects an exercise, update exercise.ImageGallery

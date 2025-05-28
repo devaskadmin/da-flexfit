@@ -1,11 +1,18 @@
 <script setup>
-import { ref } from "vue";
+import { defineProps, defineEmits, computed } from 'vue';
 import DatePicker from "vue-datepicker-next";
 
-// v-model bound single date
-const date = ref(new Date());
+// Props and emit
+const props = defineProps(['modelValue']);
+const emit = defineEmits(['update:modelValue']);
 
-// Shortcut buttons returning single dates
+// 2-way computed binding to sync with parent
+const date = computed({
+  get: () => props.modelValue,
+  set: (val) => emit('update:modelValue', val)
+});
+
+// Shortcuts
 const shortcuts = [
   {
     text: "Today",
@@ -37,6 +44,7 @@ const shortcuts = [
   },
 ];
 
+// Date format
 const formatter = {
   stringify: (date) => {
     const d = new Date(date);
@@ -47,7 +55,6 @@ const formatter = {
     return new Date(year, month - 1, day);
   },
 };
-
 </script>
 
 <template>
@@ -62,21 +69,19 @@ const formatter = {
   </div>
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 .full-datepicker {
   min-width: 350px;
   max-width: 600px;
   font-size: 14px;
 }
 
-/* Flex layout for popup */
 :deep(.mx-datepicker-popup) {
   display: flex;
   width: auto !important;
   min-width: 400px;
 }
 
-/* Sidebar and main content sizing */
 :deep(.mx-datepicker-sidebar) {
   min-width: 300px;
   padding-right: 12px;

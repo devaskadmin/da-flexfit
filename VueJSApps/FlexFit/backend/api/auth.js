@@ -5,12 +5,8 @@ const bcrypt = require('bcryptjs');
 const dbConfig = require('../dbConfig');
 const { sanitizeText, parseNumber } = require('../utils/sanitize.js');
 
-
-
 // ✅ DB Connect
 const pool = require('../db.js');
-
-
 
 // POST /api/login
 router.post('/login', async (req, res) => {
