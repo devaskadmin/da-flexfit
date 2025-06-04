@@ -41,7 +41,7 @@ const seeDropdown = ref(false)
     <div class="bottom-panel">
       <div class="button-group">
         <router-link to="/edit-profile"><i class="fa-light fa-gear"></i><span>Settings</span></router-link>
-        <router-link to="/login"><i class="fa-light fa-power-off"></i><span>Logout</span></router-link>
+        <router-link to="/logout"><i class="fa-light fa-power-off"></i><span>Logout</span></router-link>
       </div>
     </div>
   </div>

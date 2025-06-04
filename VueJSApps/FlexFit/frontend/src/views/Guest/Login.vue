@@ -3,6 +3,10 @@ import { ref } from "vue";
 import axios from "axios";
 import { useRouter } from "vue-router"; // ✅ Import Vue Router
 
+// Near top of file
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
+
 const router = useRouter(); // ✅ Initialize Vue Router
 
 const username = ref("");
@@ -13,8 +17,10 @@ const errorMsg = ref("");
 // 🔹 Login Function
 const login = async () => {
   try {
-    const response = await axios.post(
-      "http://localhost:5000/api/login",
+    errorMsg.value = ""; // Clear old error
+
+
+    const response = await axios.post(`${API_BASE}/api/login`,
       {
         username: username.value,
         password: password.value
@@ -22,15 +28,17 @@ const login = async () => {
       { withCredentials: true }
     );
 
-    console.log("username:", username.value);
-
     if (response.data.message === "Login successful") {
-      router.push({ name: "dashboard_index" }); // ✅ Redirect after login
+      router.push({ name: "dashboard_index" });
+    } else {
+      errorMsg.value = response.data.message || "Login failed. Try again.";
     }
   } catch (error) {
-    errorMsg.value = error.response ? error.response.data : "An error occurred";
+    errorMsg.value =
+      error.response?.data?.message || "Error: incorrect username and/or password.";
   }
 };
+
 </script>
 
 <template>
@@ -63,9 +71,22 @@ const login = async () => {
                 </label>
               </div>
               <router-link :to="{ name: 'reset_password' }" class="text-white fs-14">Forgot Password?</router-link>
+
+              
             </div>
+
+
+
+            <div v-if="errorMsg" class="alert alert-danger text-center mb-3">
+  {{ errorMsg }}
+</div>
+
+
             <button class="btn btn-primary w-100 login-btn">Sign in</button>
           </form>
+          
+          
+          
           <div class="other-option">
             <p>Or continue with</p>
             <div class="social-box d-flex justify-content-center gap-20">
@@ -75,6 +96,20 @@ const login = async () => {
               <a href="#"><i class="fa-brands fa-instagram"></i></a>
             </div>
           </div>
+
+
+
+          <!-- Registration link -->
+<div class="other-option mt-3">
+        <p class="mb-0 text-white">Don't have an account? 
+          <router-link to="/register" class="text-white text-decoration-underline">Click here to sign up.</router-link>
+        </p>
+      </div>
+
+
+
+
+
         </div>
       </div>
     </div>
