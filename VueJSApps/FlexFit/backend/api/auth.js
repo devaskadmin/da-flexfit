@@ -69,29 +69,46 @@ router.get('/session', (req, res) => {
 
 //Register
 router.post('/register', async (req, res) => {
-    try {
-      const firstName = "demo";
-      const lastName = "demo";
-      const username = "demo@demo.com";
-      const password = "demo";
-  
-      const hashedPassword = await bcrypt.hash(password, 10);
-  
-      const [existingUser] = await pool.query("SELECT * FROM users WHERE username = ?", [username]);
-      if (existingUser.length > 0) {
-        return res.status(400).json({ error: "User already exists" });
-      }
-  
-      await pool.query(
-        "INSERT INTO users (FirstName, LastName, username, Password) VALUES (?, ?, ?, ?)",
-        [firstName, lastName, username, hashedPassword]
-      );
-  
-      res.json({ message: "Demo user registered" });
-    } catch (err) {
-      console.error("❌ Registration error:", err);
-      res.status(500).json({ error: "Registration failed" });
+  try {
+    const { firstName, lastName, username, password } = req.body;
+
+    if (!firstName || !lastName || !username || !password) {
+      return res.status(400).json({ error: "All fields are required" });
     }
-  });
+
+    console.log("Submitting:", {
+      firstName,
+      lastName,
+      username,
+      password,
+    });
+    
+
+    const safeFirst = sanitizeText(firstName, 100);
+    const safeLast = sanitizeText(lastName, 100);
+    const safeUser = sanitizeText(username, 100);
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+
+    
+    
+
+    const [existingUser] = await pool.query("SELECT * FROM users WHERE username = ?", [safeUser]);
+    if (existingUser.length > 0) {
+      return res.status(409).json({ error: "User already exists" });
+    }
+
+    await pool.query(
+      "INSERT INTO users (FirstName, LastName, username, Password) VALUES (?, ?, ?, ?)",
+      [safeFirst, safeLast, safeUser, hashedPassword]
+    );
+
+    res.status(201).json({ message: "Registration successful" });
+  } catch (err) {
+    console.error("❌ Registration error:", err);
+    res.status(500).json({ error: "Registration failed" });
+  }
+});
+
 
 module.exports = router;

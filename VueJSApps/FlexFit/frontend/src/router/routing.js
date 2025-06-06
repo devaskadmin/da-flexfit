@@ -12,9 +12,9 @@ const guestRoutes = [
         meta: { layout: 'GuestLayout' },
     },
     {
-        path: '/registration',
-        component: () => import('@/views/template/pages/authentication/Registration.vue'),
-        name: 'registration',
+        path: '/register',
+        component: () => import('@/views/Guest/register.vue'),
+        name: 'register',
         meta: { layout: 'GuestLayout' },
     },
     {

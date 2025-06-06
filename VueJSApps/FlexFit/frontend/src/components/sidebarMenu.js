@@ -14,13 +14,6 @@ export const sidebarMenus = ref([
                 link_name: 'exercises',
                 icon: 'fa-solid fa-person-walking'              
             },
-
-            {
-                name: 'Log Workout',
-                link_name: 'log_workout',
-                icon: 'fa-solid fa-dumbbell'
-            },
-
             {
                 name: 'Log Nutrition',
                 link_name: 'log_workout',
@@ -78,10 +71,6 @@ export const sidebarMenus = ref([
                     {
                         name: 'Login 01',
                         link_name: 'login'
-                    },
-                    {
-                        name: 'Registration 01',
-                        link_name: 'registration'
                     },
                     {
                         name: 'Registration 02',

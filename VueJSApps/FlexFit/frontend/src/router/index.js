@@ -13,30 +13,32 @@ const DEBUG_NO_AUTH = import.meta.env.VITE_DEBUG_NO_AUTH === "true";
 router.beforeEach(async (to, from, next) => {
   if (DEBUG_NO_AUTH) {
     console.warn("🚀 DEBUG MODE: Bypassing authentication");
-    return next(); // Allow navigation without authentication
+    return next();
   }
 
   try {
     const response = await axios.get('http://localhost:5000/api/session', { withCredentials: true });
 
-    if (!response.data.loggedIn) {
-      // ✅ Fix: ONLY redirect to login if not already there
-      if (to.name !== 'login') {
-        console.log("not logged in");
-        return next({ name: 'login' });
-      }
-    } else {
-      // ✅ Fix: Prevent re-directing logged-in users to login
-      if (to.name === 'login') {
-        return next({ name: 'dashboard_index' }); // Change to the actual dashboard route
-      }
+    const isLoggedIn = response.data.loggedIn;
+
+    // Allow unauthenticated access only to login and register
+    const publicPages = ['login', 'register', 'reset_password'];
+
+    if (!isLoggedIn && !publicPages.includes(to.name)) {
+      return next({ name: 'login' });
     }
 
-    next(); // Allow navigation if everything is fine
+    // Prevent logged-in users from visiting login/register
+    if (isLoggedIn && publicPages.includes(to.name)) {
+      return next({ name: 'dashboard_index' });
+    }
+
+    next(); // Allow navigation
   } catch (error) {
     console.error("Session check error:", error);
-    next(); // Allow the user to proceed without breaking
+    next(); // Fail open rather than block routing
   }
 });
+
 
 export default router;
