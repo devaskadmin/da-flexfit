@@ -10,7 +10,7 @@ export const sidebarMenus = ref([
                 icon: 'fa-solid fa-house'              
             },
             {
-                name: 'exercises',
+                name: 'Exercises',
                 link_name: 'exercises',
                 icon: 'fa-solid fa-person-walking'              
             },

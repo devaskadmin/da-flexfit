@@ -18,19 +18,17 @@ const fileFilter = (req, file, cb) => {
 // Max file size = 1GB per image (adjustable)
 const MAX_SIZE = 1024 * 1024 * 1024;
 
+// Enhanced storage logic for add/edit
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const rawTitle = req.body.ExerciseTitle;
     if (!rawTitle) return cb(new Error("ExerciseTitle is required"));
-
     const folderName = rawTitle.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
     const fullPath = path.join(uploadPath, folderName);
-
-    if (fs.existsSync(fullPath)) {
-      return cb(new Error("Folder for this exercise already exists"));
+    // Always create the folder if it doesn't exist (for add or edit)
+    if (!fs.existsSync(fullPath)) {
+      fs.mkdirSync(fullPath, { recursive: true });
     }
-
-    fs.mkdirSync(fullPath, { recursive: true });
     cb(null, fullPath);
   },
   filename: (req, file, cb) => {
@@ -39,10 +37,27 @@ const storage = multer.diskStorage({
   }
 });
 
+// Multer middleware: allow up to 2 images per request
 const upload = multer({
   storage,
   fileFilter,
   limits: { fileSize: MAX_SIZE }
-}).array('images', 3); // max 3 images
+}).array('images', 2); // max 2 images
 
-module.exports = upload;
+// Helper to delete images from disk
+function deleteImagesFromDisk(exerciseTitle, imagesToDelete = []) {
+  if (!exerciseTitle || !Array.isArray(imagesToDelete) || imagesToDelete.length === 0) return;
+  const folderName = exerciseTitle.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
+  const fullPath = path.join(uploadPath, folderName);
+  for (const img of imagesToDelete) {
+    const imgPath = path.join(fullPath, img);
+    if (fs.existsSync(imgPath)) {
+      try { fs.unlinkSync(imgPath); } catch (e) { /* ignore */ }
+    }
+  }
+}
+
+module.exports = {
+  upload,
+  deleteImagesFromDisk
+};
