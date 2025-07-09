@@ -39,6 +39,32 @@ const login = async () => {
   }
 };
 
+
+
+// 🔹 Temp Login Bypass Function
+const tempLoginBypass = async () => {
+  username.value = "demo@demo.com";
+  password.value = "demo";
+  errorMsg.value = "";
+  try {
+    const response = await axios.post(`${API_BASE}/api/tmp-login`,
+      {
+        username: username.value,
+        password: password.value
+      },
+      { withCredentials: true }
+    );
+    if (response.data.message === "Login successful") {
+      router.push({ name: "dashboard_index" });
+    } else {
+      errorMsg.value = response.data.message || "Login failed. Try again.";
+    }
+  } catch (error) {
+    errorMsg.value =
+      error.response?.data?.message || "Error: incorrect username and/or password.";
+  }
+};
+
 </script>
 
 <template>
@@ -83,6 +109,7 @@ const login = async () => {
 
 
             <button class="btn btn-primary w-100 login-btn">Sign in</button>
+            <button type="button" class="btn btn-secondary w-100 mt-2" @click="tempLoginBypass">Temp Login Bypass (Demo)</button>
           </form>
           
           
