@@ -196,14 +196,14 @@ export const pagesRoutes = [
         meta: { layout: 'GuestLayout' },
     },    
     {
-        path: '/log_workout',
-        component: () => import('@/views/Member/LogWorkout.vue'),
-        name: 'log_workout',
+        path: '/nutrition',
+        component: () => import('@/views/Member/nutrition.vue'),
+        name: 'nutrition',
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {
         path: '/exercises',
-        component: () => import('@/views/Member/exercises.vue'),
+        component: () => import('@/views/Member/Exercises.vue'),
         name: 'exercises',
         meta: { layout: 'AppLayout', isPartials: true },
     },

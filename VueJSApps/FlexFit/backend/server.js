@@ -20,12 +20,20 @@ app.use(express.json());
 
 // ✅ Setup frontend origin
 const FRONTEND_PORT = process.env.FRONTEND_PORT || 5173;
-const FRONTEND_ORIGIN = `http://localhost:${FRONTEND_PORT}`;
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || `http://localhost:${FRONTEND_PORT}`;
 console.log(`🚀 Allowing frontend origin: ${FRONTEND_ORIGIN}`);
 
 // ✅ Use CORS (must come before session)
 app.use(cors({
-  origin: FRONTEND_ORIGIN,
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    // Allow localhost:5173 and localhost:5174 for dev
+    if (["http://localhost:5173", "http://localhost:5174"].includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true
 }));
 
@@ -54,6 +62,8 @@ const pool = require('./db.js');
 
 //Define Workout Routes - Loads workout log API
 const workoutLogRoutes = require('./api/workout-log'); // ✅ correct path
+const fatsecretApiRoutes = require('./api/fatsecret-API/main-api.js');
+
 
 
 // Import routes
@@ -61,14 +71,11 @@ app.use('/api', require('./api/auth.js'));
 app.use('/api', require('./api/users.js'));
 app.use('/api', require('./api/excerises.js'));
 app.use('/api/workout-log', workoutLogRoutes);
+app.use('/api', fatsecretApiRoutes);
 
 
-
-
-
-
-
-
+// Reference FatSecret session helper (do not call here)
+const fatsecretSession = require('./api/fatsecret-API/Session.js');
 
 
 // ✅ Start server

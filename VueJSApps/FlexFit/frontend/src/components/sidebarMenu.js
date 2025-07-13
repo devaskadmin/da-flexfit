@@ -15,23 +15,23 @@ export const sidebarMenus = ref([
                 icon: 'fa-solid fa-person-walking'              
             },
             {
-                name: 'Log Nutrition',
-                link_name: 'log_workout',
+                name: 'nutrition',
+                link_name: 'nutrition',
                 icon: 'fa-solid fa-utensils'
             },
             {
                 name: 'View Progress',
-                link_name: 'log_workout',
+                link_name: 'dashboard_index', // changed from 'log_workout'
                 icon: 'fa-solid fa-chart-line'
             },
             {
                 name: 'Upload Picture',
-                link_name: 'log_workout',
+                link_name: 'dashboard_index', // changed from 'log_workout'
                 icon: 'fa-solid fa-images'
             },
             {
                 name: 'Chat with Trainer',
-                link_name: 'log_workout',
+                link_name: 'dashboard_index', // changed from 'log_workout'
                 icon: 'fa-regular fa-message'
             },
             {
