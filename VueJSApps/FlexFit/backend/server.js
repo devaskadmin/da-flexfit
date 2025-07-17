@@ -6,9 +6,6 @@ const dbConfig = require('./dbConfig');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
-
-
-
 require('dotenv').config();
 
 const app = express();
@@ -17,9 +14,9 @@ app.use(express.json());
 // Middleware
 app.use(express.json());
 
-
 // ✅ Setup frontend origin
-const FRONTEND_PORT = process.env.FRONTEND_PORT || 5173;
+const FRONTEND_PORTS = [5173, 5174, 5175];
+let FRONTEND_PORT = FRONTEND_PORTS[0];
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || `http://localhost:${FRONTEND_PORT}`;
 console.log(`🚀 Allowing frontend origin: ${FRONTEND_ORIGIN}`);
 
@@ -28,15 +25,14 @@ app.use(cors({
   origin: function(origin, callback) {
     // Allow requests with no origin (like mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
-    // Allow localhost:5173 and localhost:5174 for dev
-    if (["http://localhost:5173", "http://localhost:5174"].includes(origin)) {
+    // Allow localhost:5173, localhost:5174, and localhost:5175 for dev
+    if (FRONTEND_PORTS.map(port => `http://localhost:${port}`).includes(origin)) {
       return callback(null, true);
     }
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true
 }));
-
 
 // ✅ Configure session (only once)
 app.use(session({
@@ -59,27 +55,37 @@ app.use((req, res, next) => {
 // ✅ DB Connect
 const pool = require('./db.js');
 
-
 //Define Workout Routes - Loads workout log API
 const workoutLogRoutes = require('./api/workout-log'); // ✅ correct path
-const fatsecretApiRoutes = require('./api/fatsecret-API/main-api.js');
-
-
+const openFoodFactsRoutes = require('./api/OpenFoodFactsAPI/main-api.js');
 
 // Import routes
 app.use('/api', require('./api/auth.js'));
 app.use('/api', require('./api/users.js'));
 app.use('/api', require('./api/excerises.js'));
 app.use('/api/workout-log', workoutLogRoutes);
-app.use('/api', fatsecretApiRoutes);
+app.use('/api', openFoodFactsRoutes);
 
+// ✅ Dynamic backend port handling
+const BACKEND_PORTS = [5000, 5001, 5002];
+let BACKEND_PORT = BACKEND_PORTS[0];
 
-// Reference FatSecret session helper (do not call here)
-const fatsecretSession = require('./api/fatsecret-API/Session.js');
+const tryPort = async (portIndex = 0) => {
+  if (portIndex >= BACKEND_PORTS.length) {
+    console.error("❌ No available ports for the backend.");
+    process.exit(1);
+  }
 
+  const testPort = BACKEND_PORTS[portIndex];
+  const server = app.listen(testPort, () => {
+    BACKEND_PORT = testPort;
+    console.log(`🚀 Backend running at http://localhost:${BACKEND_PORT}`);
+  });
 
-// ✅ Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
-});
+  server.on("error", () => {
+    console.warn(`⚠️ Port ${testPort} is in use. Trying next port...`);
+    tryPort(portIndex + 1);
+  });
+};
+
+tryPort();

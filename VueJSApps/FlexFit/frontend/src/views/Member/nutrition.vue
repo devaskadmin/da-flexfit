@@ -1,6 +1,5 @@
 <script setup>
 import { ref } from "vue";
-import { searchFoodFatSecret } from "@/api/nutrition";
 
 const foodSearchQuery = ref("");
 const foodSearchResults = ref([]);
@@ -14,10 +13,10 @@ const searchFood = async () => {
   foodSearchPerformed.value = false;
   foodSearchResults.value = [];
   try {
-    // Call backend utility (which handles all FatSecret API logic server-side)
-    const data = await searchFoodFatSecret(foodSearchQuery.value);
-    if (data && data.foods && Array.isArray(data.foods.food)) {
-      foodSearchResults.value = data.foods.food;
+    const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/openfoodfacts-search?query=${encodeURIComponent(foodSearchQuery.value)}`);
+    const data = await res.json();
+    if (data.products && Array.isArray(data.products)) {
+      foodSearchResults.value = data.products;
     } else {
       foodSearchResults.value = [];
     }
@@ -36,7 +35,7 @@ const searchFood = async () => {
   <div class="container mt-8">
     <div class="panel">
       <div class="panel-header">
-        <h4>Nutrition Search</h4>
+        <h4>Nutrition Log</h4>
       </div>
       <div class="panel-body">
         <div class="row">
@@ -53,10 +52,10 @@ const searchFood = async () => {
             <div v-if="foodSearchResults.length > 0">
               <h5>Results</h5>
               <ul class="list-group">
-                <li v-for="food in foodSearchResults" :key="food.food_id" class="list-group-item d-flex justify-content-between align-items-center">
+                <li v-for="food in foodSearchResults" :key="food.id" class="list-group-item d-flex justify-content-between align-items-center">
                   <div>
-                    <strong>{{ food.food_name }}</strong>
-                    <div class="small text-muted">{{ food.food_description }}</div>
+                    <strong>{{ food.product_name }}</strong>
+                    <div class="small text-muted">{{ food.brands }}</div>
                   </div>
                 </li>
               </ul>
@@ -68,11 +67,3 @@ const searchFood = async () => {
     </div>
   </div>
 </template>
-
-<style scoped>
-.panel {
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  padding: 15px;
-}
-</style>
