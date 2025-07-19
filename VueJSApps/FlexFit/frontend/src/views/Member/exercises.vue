@@ -174,6 +174,23 @@ const removeWorkout = (index) => {
 //Remove Excerise
 
 
+
+//Delete excerise log
+const deleteLog = async (workoutLogId) => {
+  if (!workoutLogId) return;
+  if (!confirm('Are you sure you want to delete this workout log?')) return;
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/workout-log/delete-workout-log/${workoutLogId}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Failed to delete workout log');
+    await loadWorkoutLogs();
+  } catch (err) {
+    alert('Failed to delete workout log.');
+  }
+};
+
+
    // ---- ADD EXERCISE ----
    
    // ---- ESTIMATE CALORIES ----
@@ -1745,9 +1762,18 @@ border: none;
 
 /* Add more left padding to the info (middle) column in the workout log */
 /* Add more left padding to the info (middle) column in the workout log */
-.list-group-item.d-flex.align-items-center > div[style*="flex-basis: 70%"],
-.list-group-item.d-flex.align-items-center > div[style*="max-width: 70%"] {
+.list-group-item.d-flex.align-items-start > div[style*="flex-basis: 70%"],
+.list-group-item.d-flex.align-items-start > div[style*="max-width: 70%"] {
   padding-left: 37px !important;
+}
+.list-group-item.d-flex.align-items-start {
+  margin-bottom: 32px !important;
+  margin-top: 16px !important;
+  padding-top: 18px !important;
+  padding-bottom: 18px !important;
+}
+.panel-body {
+  margin-bottom: 32px;
 }
 .list-group-item.d-flex.align-items-center {
   padding-top: 6px !important;
