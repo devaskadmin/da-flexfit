@@ -323,42 +323,49 @@ const saveFoodItem = async () => {
 
 <template>
 
-
-
   <div class="container mt-8">
     <div class="panel">
       <div class="panel-header">
         <h4>Nutrition Log</h4>
-      </div>
-
-
-
-
-
-
-
-
-
-  <div>
-    <!-- Top area: search input and date picker -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <div class="w-75">
-        <input v-model="foodSearchQuery" @keyup.enter="searchFood" type="text" class="form-control" placeholder="Search foods (press Enter)" />
-      </div>
+      
       <div class="ms-3">
-        <DateDropDown v-model="selectedDateRaw" />
-      </div>
-    </div>
+                    <DateDropDown v-model="selectedDateRaw" />
+                  </div></div>
+      
+
+
+
+
+ 
+  <div class="panel-body">
+        <div class="row">
+          <div class="col-md-12">
+          
+            <div class="input-group mb-3">
+
+               
+                <!-- Top area: search input and date picker -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div class="w-75">
+                     <label class="form-label">Search Food</label>
+                    <input v-model="foodSearchQuery" @keyup.enter="searchFood" type="text" class="form-control" placeholder="Search foods (press Enter)" />
+                  </div>
+                  
+                </div>
+                </div
+    
 
     <!-- Filters / categories / brands / labels tabs -->
-    <CTabs>
-      <CTabList>
-        <CTab itemKey="tab1">Categories</CTab>
-        <CTab itemKey="tab2">Brands</CTab>
-        <CTab itemKey="tab3">Labels</CTab>
+    <CTabs v-model="pageTab" :activeItemKey="pageTab">
+      <CTabList variant="tabs">
+        <CTab itemKey="FoodCategories"> Food Categories</CTab>
+        <CTab itemKey="FoodBrands">Brands</CTab>
+        <CTab itemKey="FoodLabels">Labels</CTab>
       </CTabList>
+      
       <CTabContent>
-        <CTabPanel class="p-3" itemKey="tab1">
+        <CTabPanel class="p-3" itemKey="FoodCategories">
+          <div class="mt-3">
           <label class="form-label">Search By Category:</label>
           <input v-model="categorySearch" type="text" class="form-control mb-2" placeholder="e.g. Beverages, Snacks" />
           <div class="border rounded p-2">
@@ -369,8 +376,11 @@ const saveFoodItem = async () => {
               </ul>
             </div>
           </div>
+        </div>
+
         </CTabPanel>
-        <CTabPanel class="p-3" itemKey="tab2">
+        <CTabPanel class="p-3" itemKey="FoodBrands">
+                <div class="mt-3">
           <label class="form-label">Search By Brand:</label>
           <input v-model="brandSearch" type="text" class="form-control mb-2" placeholder="Brand name" />
           <div class="border rounded p-2">
@@ -381,8 +391,10 @@ const saveFoodItem = async () => {
               </ul>
             </div>
           </div>
+        </div>
         </CTabPanel>
-        <CTabPanel class="p-3" itemKey="tab3">
+        <CTabPanel class="p-3" itemKey="FoodLabels">
+                <div class="mt-3">
           <label class="form-label">Search By Labels:</label>
           <input v-model="labelSearch" type="text" class="form-control mb-2" placeholder="e.g. Organic, Gluten-Free" />
           <div class="border rounded p-2">
@@ -392,9 +404,10 @@ const saveFoodItem = async () => {
                 <li v-for="label in filteredLabels" :key="label" role="button" class="list-group-item py-1 clickable" @click="selectLabel(label)">{{ label }}</li>
               </ul>
             </div>
-          </div>
+          </div></div>
         </CTabPanel>
       </CTabContent>
+
     </CTabs>
 
     <!-- Selected filters and clear button -->
@@ -419,8 +432,11 @@ const saveFoodItem = async () => {
         <CTab itemKey="addeditfood">Add/Edit Food</CTab>
         <CTab itemKey="mynutrition">My Nutrition</CTab>
       </CTabList>
+      
       <CTabContent>
         <CTabPanel itemKey="results" class="p-3">
+
+
           <!-- Product detail view -->
           <div v-if="!ShowFoodSearch" class="mt-3">
             <button class="btn btn-link mb-3" @click="backToSearch">← Back to results</button>
@@ -623,94 +639,9 @@ const saveFoodItem = async () => {
         </CTabPanel>
       </CTabContent>
     </CTabs>
-  </div>
-
-
-
-
-  <div class="container mt-8">
-    <div class="panel">
-      <div class="panel-header">
-        <h4>Nutrition Log</h4>
-      </div>
-
-
-
-
-</div></div></div></div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- <!-- Your other page content ... -->
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  </div>
+</div></div></div></div>
 
 
 
@@ -732,21 +663,59 @@ const saveFoodItem = async () => {
   margin-top: 10px;
 }
 
-/* Tab nav styles (copied from exercises.vue) */
-nav > .nav.nav-tabs {
+/* Tab nav styles (kept in sync with exercises.vue) */
+nav > .nav.nav-tabs{
+
+  border: none;
+  color:#fff;
+  background:#272e38;
+  border-radius:0;
+
+}
+nav > div a.nav-item.nav-link,
+nav > div a.nav-item.nav-link.active
+{
+  border: none;
+  padding: 18px 25px;
+  color:#fff;
+  background:#272e38;
+  border-radius:0;
+}
+
+nav > div a.nav-item.nav-link.active:after
+{
+  content: "";
+  position: relative;
+  bottom: -60px;
+  left: -20%;
+  border: 15px solid transparent;
+  border-top-color: #e74c3c ;
+}
+.tab-content{
+background: #fdfdfd;
+  line-height: 25px;
+  border: 1px solid #ddd;
+  border-top:5px solid #e74c3c;
+  border-bottom:5px solid #e74c3c;
+  padding:30px 25px;
+}
+
+/* Additional selectors to cover Bootstrap/CoreUI rendered markup */
+.nav.nav-tabs{
   border: none;
   color: #fff;
   background: #272e38;
   border-radius: 0;
 }
-nav > div a.nav-item.nav-link,
-nav > div a.nav-item.nav-link.active {
+.nav.nav-tabs .nav-link,
+.nav.nav-tabs .nav-link.active {
   border: none;
   padding: 18px 25px;
   color: #fff;
   background: #272e38;
   border-radius: 0;
 }
+.nav.nav-tabs .nav-link.active::after,
 nav > div a.nav-item.nav-link.active:after {
   content: "";
   position: relative;
@@ -755,22 +724,24 @@ nav > div a.nav-item.nav-link.active:after {
   border: 15px solid transparent;
   border-top-color: #e74c3c;
 }
-nav > div a.nav-item.nav-link:hover,
-nav > div a.nav-item.nav-link:focus {
-  border: none;
+.nav.nav-tabs .nav-link:hover,
+.nav.nav-tabs .nav-link:focus {
   background: #e74c3c;
   color: #fff;
-  border-radius: 0;
-  transition: background 0.20s linear;
+  transition: background 0.2s linear;
 }
 
-.tab-content {
-  background: #fdfdfd;
-  line-height: 25px;
-  border: 1px solid #ddd;
-  border-top: 5px solid #e74c3c;
-  border-bottom: 5px solid #e74c3c;
-  padding: 30px 25px;
+/* CoreUI tab list wrapper selectors (fallback) */
+.c-tabs .nav,
+.c-tabs .nav-tabs {
+  background: #272e38;
+}
+.c-tabs .nav .nav-link {
+  color: #fff;
+  padding: 14px 20px;
+}
+.c-tabs .nav .nav-link.active {
+  background: #272e38;
 }
 
 /* Nutrition filter and list styles */
@@ -846,46 +817,7 @@ nav > div a.nav-item.nav-link:focus {
   margin-top: 10px;
 }
 
-/* Tab nav styles (copied from exercises.vue) */
-nav > .nav.nav-tabs {
-  border: none;
-  color: #fff;
-  background: #272e38;
-  border-radius: 0;
-}
-nav > div a.nav-item.nav-link,
-nav > div a.nav-item.nav-link.active {
-  border: none;
-  padding: 18px 25px;
-  color: #fff;
-  background: #272e38;
-  border-radius: 0;
-}
-nav > div a.nav-item.nav-link.active:after {
-  content: "";
-  position: relative;
-  bottom: -60px;
-  left: -20%;
-  border: 15px solid transparent;
-  border-top-color: #e74c3c;
-}
-nav > div a.nav-item.nav-link:hover,
-nav > div a.nav-item.nav-link:focus {
-  border: none;
-  background: #e74c3c;
-  color: #fff;
-  border-radius: 0;
-  transition: background 0.20s linear;
-}
-
-.tab-content {
-  background: #fdfdfd;
-  line-height: 25px;
-  border: 1px solid #ddd;
-  border-top: 5px solid #e74c3c;
-  border-bottom: 5px solid #e74c3c;
-  padding: 30px 25px;
-}
+/* (normalized) tab styles already declared above */
 
 .tab {
   overflow: hidden;
