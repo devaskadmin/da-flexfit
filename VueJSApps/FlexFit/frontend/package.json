@@ -10,6 +10,7 @@
     "dependencies": {
         "@ckeditor/ckeditor5-build-classic": "^40.1.0",
         "@ckeditor/ckeditor5-vue": "^5.1.0",
+        "@coreui/vue": "^5.5.0",
         "@fortawesome/fontawesome-free": "^6.7.2",
         "@fullcalendar/core": "^6.1.10",
         "@fullcalendar/daygrid": "^6.1.10",
@@ -21,7 +22,7 @@
         "aos": "^2.3.4",
         "apexcharts": "^4.4.0",
         "axios": "^1.7.9",
-        "bootstrap": "5.3.0-alpha1",
+        "bootstrap": "^5.3.0-alpha1",
         "dropzone": "^6.0.0-beta.2",
         "express-session": "^1.18.1",
         "moment": "^2.29.4",

@@ -15,8 +15,8 @@ export const sidebarMenus = ref([
                 icon: 'fa-solid fa-person-walking'              
             },
             {
-                name: 'nutrition',
-                link_name: 'nutrition',
+                name: 'Nutrition',
+                link_name: 'Nutrition',
                 icon: 'fa-solid fa-utensils'
             },
             {
@@ -45,11 +45,13 @@ export const sidebarMenus = ref([
                 sub_menus: [
                     {
                         name: 'View Profile',
-                        link_name: 'view_profile'
+                        link_name: 'view_profile',
+                        icon: 'fa-light fa-address-card'
                     },
                     {
                         name: 'Edit Profile',
-                        link_name: 'edit_profile'
+                        link_name: 'edit_profile',
+                        icon: 'fa-light fa-sliders'
                     },
                 ]
             },

@@ -1,5 +1,5 @@
 <script setup>
-const nutritionLogs = [
+const NutritionLogs = [
   { date: "Nov 23", meal: "Breakfast", details: "Oatmeal, Banana, Coffee", calories: "320 kcal" },
   { date: "Nov 23", meal: "Lunch", details: "Grilled Chicken Salad, Water", calories: "450 kcal" },
   { date: "Nov 23", meal: "Snack", details: "Protein Bar, Green Tea", calories: "200 kcal" },
@@ -17,7 +17,7 @@ const nutritionLogs = [
     </div>
     <div class="panel-body">
       <div class="table-responsive">
-        <table class="table table-hover table-nutrition">
+        <table class="table table-hover table-Nutrition">
           <thead>
             <tr>
               <th>Date</th>
@@ -27,7 +27,7 @@ const nutritionLogs = [
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(log, index) in nutritionLogs" :key="index">
+            <tr v-for="(log, index) in NutritionLogs" :key="index">
               <td>{{ log.date }}</td>
               <td>{{ log.meal }}</td>
               <td>{{ log.details }}</td>

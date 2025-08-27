@@ -196,9 +196,9 @@ export const pagesRoutes = [
         meta: { layout: 'GuestLayout' },
     },    
     {
-        path: '/nutrition',
-        component: () => import('@/views/Member/nutrition.vue'),
-        name: 'nutrition',
+        path: '/Nutrition',
+        component: () => import('@/views/Member/Nutrition.vue'),
+        name: 'Nutrition',
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {

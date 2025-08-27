@@ -462,7 +462,7 @@
 }
 .main-content .chatting-panel .chatting-option ul li a span {
   margin-right: 0;
-  margin-left: 10px;
+  margin-left: 1px;
 }
 .main-content .email-panel > .panel:first-child {
   border-right: 0 !important;

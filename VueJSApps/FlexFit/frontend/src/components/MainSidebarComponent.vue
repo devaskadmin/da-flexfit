@@ -120,18 +120,18 @@ onMounted(() => {
                 <li v-for="(menu, mIndex) in sidebar.menus" class="sidebar-dropdown-item">
                   <template v-if="menu.link_name">
                     <router-link :to="{ name: `${menu.link_name}` }" class="sidebar-link" :class="{active : currentRoute === menu.link_name }">
-                      <span class="nav-icon"><i :class="menu.icon"></i></span> <span class="sidebar-txt">{{ $t(menu.name) }}</span>
+                      <span class="nav-icon"><i :class="menu.icon"></i></span><span class="sidebar-txt">{{ $t(menu.name) }}</span>
                     </router-link>
                   </template>
                   <template v-if="menu.sub_menus">
                     <template v-if="horizontalMenuEnabled">
                     <a role="button" class="sidebar-link has-sub" :id="'parentSubDropdownMenu'+index" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                      <span v-if="menu.icon" class="nav-icon"><i :class="menu.icon"></i></span> <span class="sidebar-txt">{{ $t(menu.name) }}</span>
+                      <span v-if="menu.icon" class="nav-icon"><i :class="menu.icon"></i></span><span class="sidebar-txt">{{ $t(menu.name) }}</span>
                     </a>
                     </template>
                     <template v-else>
                       <a role="button" class="sidebar-link has-sub" data-bs-toggle="collapse" :href="`#subCollapseMenu-${mIndex}-${index}`" aria-expanded="false" :aria-controls="`subCollapseMenu-${mIndex}-${index}`" @click="findMenuByName(menu.name)">
-                        <span v-if="menu.icon" class="nav-icon"><i :class="menu.icon"></i></span> <span class="sidebar-txt">{{ $t(menu.name) }}</span>
+                        <span v-if="menu.icon" class="nav-icon"><i :class="menu.icon"></i></span><span class="sidebar-txt">{{ $t(menu.name) }}</span>
                       </a>
                     </template>
                   </template>
@@ -139,7 +139,7 @@ onMounted(() => {
                     <li v-for="(sub_menu, sIndex) in menu.sub_menus" class="sidebar-dropdown-item">
                       <template v-if="sub_menu.link_name">
                         <router-link :to="{ name: `${sub_menu.link_name}` }" class="sidebar-link" :class="{active : currentRoute === sub_menu.link_name }">
-                          <span v-if="sub_menu.icon" class="nav-icon"><i :class="sub_menu.icon"></i></span> <span :class="{'sidebar-txt': (currentNavbarSize !== 'small' && layoutPosition !== 'twoColumn')}">{{ sub_menu.name }}</span>
+                          <span v-if="sub_menu.icon" class="nav-icon"><i :class="sub_menu.icon"></i></span><span :class="{'sidebar-txt': (currentNavbarSize !== 'small' && layoutPosition !== 'twoColumn')}">{{ sub_menu.name }}</span>
                         </router-link>
                       </template>
                       <template v-else>
