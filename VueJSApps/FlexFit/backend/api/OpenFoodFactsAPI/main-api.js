@@ -2,6 +2,24 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 
+// Helper: axios get with simple retry/backoff
+const axiosGetWithRetry = async (url, opts = {}, retries = 2, backoffMs = 500) => {
+  let lastErr;
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const cfg = Object.assign({ timeout: 10000 }, opts);
+      return await axios.get(url, cfg);
+    } catch (err) {
+      lastErr = err;
+      // If no more retries, break and throw
+      if (i === retries) break;
+      // backoff
+      await new Promise(r => setTimeout(r, backoffMs * (i + 1)));
+    }
+  }
+  throw lastErr;
+};
+
 // GET /api/openfoodfacts-search
 router.get('/openfoodfacts-search', async (req, res) => {
   const { query } = req.query;
@@ -10,17 +28,23 @@ router.get('/openfoodfacts-search', async (req, res) => {
   }
 
   try {
-    const response = await axios.get(`https://world.openfoodfacts.org/cgi/search.pl`, {
+    const response = await axiosGetWithRetry(`https://world.openfoodfacts.org/cgi/search.pl`, {
       params: {
         search_terms: query,
         search_simple: 1,
         json: 1,
-      },
+      }
     });
     res.json(response.data);
   } catch (error) {
-    console.error('Error fetching data from OpenFoodFacts:', error.message);
-    res.status(500).json({ error: 'Failed to Load data.' });
+    console.error('Error fetching data from OpenFoodFacts:', error && error.message || error);
+    // If axios provided a response (e.g., 502 from upstream), forward status and body where possible
+    if (error && error.response) {
+      const status = error.response.status || 502;
+      const data = error.response.data || { error: error.message || 'Upstream error' };
+      return res.status(status).json({ error: data });
+    }
+    res.status(502).json({ error: error.message || 'Failed to load data from OpenFoodFacts' });
   }
 });
 

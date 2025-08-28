@@ -1,4 +1,3 @@
-
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
 import DateDropDown from '@/components/DropDownDate.vue';
@@ -26,7 +25,7 @@ const labels = ref([]);
 const categoriesPage = ref(1);
 const brandsPage = ref(1);
 const labelsPage = ref(1);
-const pageSize = 500;
+const pageSize = 2000;
 
 const foodPage = ref(1);
 const resultsPerPage = ref(8);
@@ -137,7 +136,14 @@ const searchFood = async () => {
   } finally { foodSearchLoading.value = false; }
 };
 
-onMounted(() => { fetchCategories(); fetchBrands(); fetchLabels(); fetchAllFoods(); });
+onMounted(() => {
+  // ensure selected date defaults to today on page load
+  selectedDateRaw.value = new Date();
+  fetchCategories();
+  fetchBrands();
+  fetchLabels();
+  fetchAllFoods();
+});
 
 // --- Filtered lists (searchable lists) ---
 const filteredCategories = computed(() => {
@@ -159,6 +165,9 @@ const filteredLabels = computed(() => {
 watch(categorySearch, () => { categoriesPage.value = 1; });
 watch(brandSearch, () => { brandsPage.value = 1; });
 watch(labelSearch, () => { labelsPage.value = 1; });
+
+// set active tab to FoodCategories when Show Filters toggle is turned on
+watch(showFilters, (v) => { if (v) pageTab.value = 'FoodCategories'; });
 
 // --- Displayed foods and pagination ---
 const displayedFoods = computed(() => {
@@ -206,16 +215,16 @@ watch(resultsPerPage, (v) => { foodPageSize.value = Number(v) || 8; foodPage.val
 
 const selectedFilters = computed(() => {
   const arr = [];
-  for (const v of categoryFilters.value || []) arr.push({ type: 'Category', value: v });
-  for (const v of brandFilters.value || []) arr.push({ type: 'Brand', value: v });
-  for (const v of labelFilters.value || []) arr.push({ type: 'Label', value: v });
+  for (const v of categoryFilters.value || []) arr.push({ type: 'FoodCategories', value: v });
+  for (const v of brandFilters.value || []) arr.push({ type: 'FoodBrands', value: v });
+  for (const v of labelFilters.value || []) arr.push({ type: 'FoodLabels', value: v });
   return arr.slice(0, 8);
 });
 
 const removeFilter = (type, value) => {
-  if (type === 'Category') categoryFilters.value = (categoryFilters.value || []).filter(x => x !== value);
-  if (type === 'Brand') brandFilters.value = (brandFilters.value || []).filter(x => x !== value);
-  if (type === 'Label') labelFilters.value = (labelFilters.value || []).filter(x => x !== value);
+  if (type === 'FoodCategories') categoryFilters.value = (categoryFilters.value || []).filter(x => x !== value);
+  if (type === 'FoodBrands') brandFilters.value = (brandFilters.value || []).filter(x => x !== value);
+  if (type === 'FoodLabels') labelFilters.value = (labelFilters.value || []).filter(x => x !== value);
 };
 
 const selectCategory = async (cat) => { if (!categoryFilters.value.includes(cat) && categoryFilters.value.length < 8) categoryFilters.value.push(cat); categoriesPage.value = 1; if (!foodSearchResults.value.length) await fetchAllFoods(); };
@@ -234,6 +243,19 @@ const getProductLabels = (product) => {
   const field = product.labels || product.labels_tags || '';
   return _formatField(field);
 };
+// --- New: determine source for displayed food items ---
+const getFoodSource = (food) => {
+  if (!food) return 'Local';
+  // If there's an explicit source flag or an OpenFoodFacts url, treat as External
+  const src = String(food.source || '').toLowerCase();
+  if (src && src !== 'local') return 'External';
+  const url = String(food.off_url || food.url || '').toLowerCase();
+  if (url.includes('openfoodfacts')) return 'External';
+  // if item has an OpenFoodFacts barcode/code but no local id, assume external
+  if ((food.code || food.id) && !food._id) return 'External';
+  return 'Local';
+};
+
 const truncateCategory = (catStr) => {
   if (!catStr) return catStr;
   try { const parts = catStr.split(',').map(p => p.trim()).filter(Boolean); return parts.length <= 3 ? parts.join(', ') : parts.slice(0,3).join(', ') + '...'; } catch (e) { return catStr; }
@@ -317,6 +339,82 @@ const saveFoodItem = async () => {
     addEditSuccess.value = 'Saved food item.';
   } catch (err) { addEditError.value = err.message || 'Save failed.'; } finally { addEditLoading.value = false; }
 };
+
+// --- New: favorites + edit handlers ---
+const favoriteCodes = ref(new Set());
+
+const getFoodCode = (food) => {
+  return String(food?.code || food?._id || food?.id || '');
+};
+const isFavorited = (food) => {
+  const c = getFoodCode(food);
+  return c && favoriteCodes.value.has(c);
+};
+const toggleFavorite = (food) => {
+  const c = getFoodCode(food);
+  if (!c) return;
+  if (favoriteCodes.value.has(c)) favoriteCodes.value.delete(c);
+  else favoriteCodes.value.add(c);
+  // ensure reactivity for Set changes
+  favoriteCodes.value = new Set(favoriteCodes.value);
+};
+
+// --- New helpers to populate Add/Edit form from any food object ---
+const getFirstString = (val) => {
+  if (val === null || typeof val === 'undefined') return '';
+  if (Array.isArray(val)) return val.join(', ');
+  return String(val);
+};
+const getNutriment = (n, keys) => {
+  if (!n) return '';
+  for (const k of keys) {
+    if (typeof n[k] !== 'undefined' && n[k] !== null) return n[k];
+  }
+  return '';
+};
+
+const fillAddEditFromFood = (food) => {
+  resetAddEditForm();
+  if (!food) return;
+  addEditForm.value.barcode_code = getFirstString(food.code || food.barcode_code || food.id || food._id);
+  addEditForm.value.product_name = getFirstString(food.product_name || food.name || food.product || '');
+  addEditForm.value.generic_name = getFirstString(food.generic_name || '');
+  addEditForm.value.brand_name = getFirstString(food.brands || (food.brands_tags && food.brands_tags.join(', ')) || food.brand_name || '');
+  addEditForm.value.quantity = getFirstString(food.quantity || '');
+  addEditForm.value.category_tags = Array.isArray(food.categories_tags) ? food.categories_tags.join(', ') : getFirstString(food.categories || food.category || '');
+  addEditForm.value.label_tags = Array.isArray(food.labels_tags) ? food.labels_tags.join(', ') : getFirstString(food.labels || '');
+  addEditForm.value.ingredients_text = getFirstString(food.ingredients_text || food.ingredients || '');
+  addEditForm.value.allergens = getFirstString(food.allergens || '');
+  addEditForm.value.traces = getFirstString(food.traces || '');
+  addEditForm.value.additives_tags = Array.isArray(food.additives_tags) ? food.additives_tags.join(', ') : getFirstString(food.additives_tags || '');
+  addEditForm.value.packaging = getFirstString(food.packaging || '');
+  addEditForm.value.serving_size_text = getFirstString(food.serving_size || food.serving_size_text || '');
+  addEditForm.value.nutriscore_grade = getFirstString(food.nutrition_grades || food.nutriscore_grade || '');
+  addEditForm.value.nova_group = (typeof food.nova_group !== 'undefined') ? food.nova_group : null;
+  addEditForm.value.image_front_url = getFirstString(food.image_front_url || food.image_front_thumb_url || food.image_small_url || food.image_url || '');
+  addEditForm.value.image_nutrition_url = getFirstString(food.image_nutrition_url || '');
+  addEditForm.value.image_thumb_url = getFirstString(food.image_thumb_url || food.image_small_url || '');
+  addEditForm.value.off_url = getFirstString(food.off_url || food.url || '');
+  addEditForm.value.source = getFirstString(food.source || (getFoodSource(food).toLowerCase() === 'external' ? 'openfoodfacts' : 'local'));
+  addEditForm.value.last_modified_ts = food.last_modified_t ? new Date(Number(food.last_modified_t) * 1000).toISOString() : (food.last_modified_ts || '');
+
+  const n = food.nutriments || food.nutrients || {};
+  addEditForm.value.nutriments.energy_kcal_100g = getNutriment(n, ['energy-kcal_100g','energy-kcal','energy_kcal_100g','energy_kcal','energy']) || '';
+  addEditForm.value.nutriments.fat_100g = getNutriment(n, ['fat_100g','fat']) || '';
+  addEditForm.value.nutriments.saturated_fat_100g = getNutriment(n, ['saturated-fat_100g','saturated-fat','saturated_fat_100g','saturated_fat']) || '';
+  addEditForm.value.nutriments.carbohydrates_100g = getNutriment(n, ['carbohydrates_100g','carbohydrates']) || '';
+  addEditForm.value.nutriments.sugars_100g = getNutriment(n, ['sugars_100g','sugars']) || '';
+  addEditForm.value.nutriments.fiber_100g = getNutriment(n, ['fiber_100g','fiber']) || '';
+  addEditForm.value.nutriments.proteins_100g = getNutriment(n, ['proteins_100g','proteins']) || '';
+  addEditForm.value.nutriments.salt_100g = getNutriment(n, ['salt_100g','salt']) || '';
+  addEditForm.value.nutriments.sodium_100g = getNutriment(n, ['sodium_100g','sodium']) || '';
+};
+
+// Replace editFood to populate form and switch to Add/Edit tab
+const editFood = async (food) => {
+  fillAddEditFromFood(food);
+  pageTab.value = 'addeditfood';
+};
 </script>
 
 
@@ -329,34 +427,39 @@ const saveFoodItem = async () => {
         <h4>Nutrition Log</h4>
       
       <div class="ms-3">
-                    <DateDropDown v-model="selectedDateRaw" />
-                  </div></div>
-      
+        SelectedDate: {{ selectedDate }}
+      </div>
 
+      <div class="ms-3">
+        <DateDropDown v-model="selectedDateRaw" />
+      </div>
+      <!-- Show Filters toggle removed from here -->
+    </div>
 
+    <div class="panel-body">
+      <div class="row">
+        <div class="col-md-12">
 
-
- 
-  <div class="panel-body">
-        <div class="row">
-          <div class="col-md-12">
-          
-            <div class="input-group mb-3">
-
-               
-                <!-- Top area: search input and date picker -->
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                  <div class="w-75">
-                     <label class="form-label">Search Food</label>
-                    <input v-model="foodSearchQuery" @keyup.enter="searchFood" type="text" class="form-control" placeholder="Search foods (press Enter)" />
-                  </div>
-                  
+          <div class="input-group mb-3">
+            <!-- Top area: search input with Show Filters toggle moved here -->
+            <div class="d-flex justify-content-between align-items-center mb-3 w-100">
+              <!-- SHOW FILTERS: placed to the left of the search input as requested -->
+              <div class="me-3 d-flex align-items-center">
+                <label class="me-2 mb-0">Show Filters</label>
+                <div class="form-check form-switch mb-0">
+                  <input id="showFiltersSwitch" class="form-check-input toggle-red" type="checkbox" role="switch" v-model="showFilters" />
                 </div>
-                </div
-    
+              </div>
+
+              <div class="input-group flex-grow-1">
+                <input v-model="foodSearchQuery" @keyup.enter="searchFood" type="text" class="form-control" placeholder="Search foods (press Enter)" />
+                <button class="btn btn-primary" type="button" @click="searchFood">Search</button>
+              </div>
+            </div>
+          </div>
 
     <!-- Filters / categories / brands / labels tabs -->
-    <CTabs v-model="pageTab" :activeItemKey="pageTab">
+    <CTabs v-if="showFilters" v-model="pageTab" :activeItemKey="pageTab">
       <CTabList variant="tabs">
         <CTab itemKey="FoodCategories"> Food Categories</CTab>
         <CTab itemKey="FoodBrands">Brands</CTab>
@@ -421,7 +524,7 @@ const saveFoodItem = async () => {
         </div>
       </div>
       <div class="col-md-4 text-end">
-        <button class="btn btn-secondary" @click="clearFilters">Clear</button>
+        <button class="btn btn-secondary" @click="clearFilters">Clear Search</button>
       </div>
     </div>
 
@@ -430,7 +533,8 @@ const saveFoodItem = async () => {
       <CTabList variant="tabs">
         <CTab itemKey="results">Food Results</CTab>
         <CTab itemKey="addeditfood">Add/Edit Food</CTab>
-        <CTab itemKey="mynutrition">My Nutrition</CTab>
+        <CTab itemKey="mynutrition">My Nutrition Log</CTab>
+        <CTab itemKey="mynutritionfav">My Favorite Foods</CTab>
       </CTabList>
       
       <CTabContent>
@@ -494,17 +598,35 @@ const saveFoodItem = async () => {
             <div class="row gx-3 gy-4">
               <div v-for="food in displayedFoodsPaginated" :key="food.id || food._id || food.code" class="col-12 col-sm-6 col-lg-3">
                 <div class="card h-100" style="position:relative;">
-                  <button class="plus-overlay btn btn-sm btn-primary" @click.stop="viewProduct(food)">+</button>
-                  <div class="card-body d-flex flex-column align-items-center text-center clickable" @click="viewProduct(food)" style="cursor:pointer;">
-                    <div class="w-100">
-                      <h6 class="card-title mb-2">{{ food.product_name }}</h6>
+                  <div class="card-body d-flex flex-column clickable" @click="viewProduct(food)" style="cursor:pointer;">
+                    <!-- header row: title on left, icons on right -->
+                    <div class="d-flex w-100 align-items-start mb-2">
+                      <div class="me-2">
+                        <h6 class="card-title mb-0 text-start">{{ food.product_name }}</h6>
+                      </div>
+                      <div class="card-actions ms-auto">
+                        <button class="btn btn-sm btn-outline-secondary action-btn bookmark-btn" :title="isFavorited(food) ? 'Unbookmark' : 'Bookmark'" @click.stop="toggleFavorite(food)">
+                          <svg v-if="isFavorited(food)" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#e74c3c"><path d="M6 2h12v20l-6-3-6 3z"/></svg>
+                          <svg v-else xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h12v20l-6-3-6 3z"/></svg>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary action-btn edit-btn" title="Edit" @click.stop="editFood(food)">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21v-3l11-11 3 3L6 21H3z"/><path d="M14 7l3 3"/></svg>
+                        </button>
+                        <button class="btn btn-sm btn-primary action-btn plus-btn" @click.stop="viewProduct(food)">+</button>
+                      </div>
                     </div>
+                    
+
+                    
+
                     <img v-if="food.image_front_thumb_url" :src="food.image_front_thumb_url" alt="food image" class="food-thumb mb-2" />
                     <img v-else src="https://via.placeholder.com/144?text=No+Image" alt="no image" class="food-thumb mb-2" />
-                    <div class="w-100">
+                    <div class="w-100 text-start">
                       <div class="small text-muted"><strong>Brand Name:</strong> {{ food.brands }}</div>
                       <div class="small text-muted"><strong>Category:</strong> {{ truncateCategory(getProductCategories(food)) }}</div>
                       <div class="small text-muted"><strong>Food Label:</strong> {{ getProductLabels(food) }}</div>
+                      <!-- New: Source label -->
+                      <div class="small text-muted"><strong>Source:</strong> {{ getFoodSource(food) }}</div>
                     </div>
                   </div>
                 </div>
@@ -525,8 +647,17 @@ const saveFoodItem = async () => {
 
         <CTabPanel itemKey="addeditfood" class="p-3">
           <div class="p-3">
+            <div class="row" style="padding-bottom:10px; margin-top:-10px;">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary" :disabled="addEditLoading" @click="saveFoodItem">Save</button>
+                    <button class="btn btn-secondary" type="button" @click="resetAddEditForm">Reset</button>
+                  </div>
+            </div>
             <div class="row">
+             
+
               <div class="col-12 col-lg-6">
+               
                 <div class="panel">
                   <h5>Add / Edit Food</h5>
 
@@ -599,10 +730,7 @@ const saveFoodItem = async () => {
                     <input v-model="addEditForm.traces" type="text" class="form-control" placeholder="Traces (text)" />
                   </div>
 
-                  <div class="d-flex gap-2">
-                    <button class="btn btn-primary" :disabled="addEditLoading" @click="saveFoodItem">Save</button>
-                    <button class="btn btn-secondary" type="button" @click="resetAddEditForm">Reset</button>
-                  </div>
+                  
                 </div>
               </div>
 
@@ -633,8 +761,15 @@ const saveFoodItem = async () => {
 
         <CTabPanel itemKey="mynutrition" class="p-3">
           <div class="p-4">
-            <h5>My Nutrition</h5>
-            <p>This is your nutrition overview. (Placeholder)</p>
+            <h5>My Nutrition Log</h5>
+            <p>This is your nutrition log overview.</p>
+          </div>
+        </CTabPanel>
+
+         <CTabPanel itemKey="mynutritionfav" class="p-3">
+          <div class="p-4">
+            <h5>My Favorite Foods</h5>
+            <p>This is your list of favorite foods.</p>
           </div>
         </CTabPanel>
       </CTabContent>
@@ -720,7 +855,7 @@ nav > div a.nav-item.nav-link.active:after {
   content: "";
   position: relative;
   bottom: -60px;
-  left: -20%;
+  left: -40%;
   border: 15px solid transparent;
   border-top-color: #e74c3c;
 }
@@ -852,4 +987,55 @@ nav > div a.nav-item.nav-link.active:after {
   overflow-y: auto;
 }
 
+/* red-styled bootstrap switch when checked */
+.form-check-input.toggle-red:checked {
+  background-color: #e74c3c;
+  border-color: #e74c3c;
+}
+.form-check-input.toggle-red:focus {
+  box-shadow: 0 0 0 0.25rem rgba(231,76,60,0.25);
+}
+
+/* action buttons group (bookmark + edit + plus) */
+.card-actions{
+  position: relative;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.card-actions .action-btn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 6px;
+}
+/* plus button now shares same sizing */
+.card-actions .plus-btn{
+  background-color: #0d6efd;
+  color: #fff;
+  border: none;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+}
+/* ensure bookmark svg is visible and sized */
+.card-actions .bookmark-btn svg {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  color:red;
+  vertical-align: middle;
+}
+
+/* remove absolute placement from previous plus-overlay rule */
+.plus-overlay {
+  /* no absolute positioning when used in header; kept for backward compatibility */
+  position: static;
+  width: 32px;
+  height: 32px;
+}
 </style>
