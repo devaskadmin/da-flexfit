@@ -47,6 +47,7 @@ const estimatedCalories = computed(() => {
 </script>
 
 <template>
+  
   <!--End of BreadCrumb-->
   <div class="dashboard-breadcrumb mb-25">
     <h2>Log Workout</h2>

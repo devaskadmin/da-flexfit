@@ -2,7 +2,11 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 
-// Helper: axios get with simple retry/backoff
+const DEBUG = process.env.DEBUG === 'true' || process.env.DEBUG === '1';
+
+/* ------------------------ Helpers ------------------------ */
+
+// axios GET with simple retry/backoff
 const axiosGetWithRetry = async (url, opts = {}, retries = 2, backoffMs = 500) => {
   let lastErr;
   for (let i = 0; i <= retries; i++) {
@@ -11,16 +15,40 @@ const axiosGetWithRetry = async (url, opts = {}, retries = 2, backoffMs = 500) =
       return await axios.get(url, cfg);
     } catch (err) {
       lastErr = err;
-      // If no more retries, break and throw
       if (i === retries) break;
-      // backoff
       await new Promise(r => setTimeout(r, backoffMs * (i + 1)));
     }
   }
   throw lastErr;
 };
 
-// GET /api/openfoodfacts-search
+// normalize OFF tag like "en:walmart" => "walmart"
+const normalizeTag = (t) => {
+  if (!t) return '';
+  const s = String(t).toLowerCase().trim();
+  return (s.includes(':') ? s.split(':')[1] : s).replace(/[^a-z0-9_-]/g, '');
+};
+
+const ensureArray = (v) => Array.isArray(v) ? v : (v == null ? [] : [v]);
+
+// add a tag filter block to OFF v1 params using next available index
+const addTagFilter = (params, { type, contains = 'contains', value }) => {
+  let i = 1;
+  while (params[`tagtype_${i}`]) i++;
+  params[`tagtype_${i}`] = type;
+  params[`tag_contains_${i}`] = contains;
+  params[`tag_${i}`] = value;
+};
+
+/* ------------------------ Routes ------------------------ */
+
+/**
+ * GET /api/openfoodfacts-search
+ * Examples:
+ *   /api/openfoodfacts-search?query=chicken
+ *   /api/openfoodfacts-search?store=walmart
+ *   /api/openfoodfacts-search?query=protein&store=walmart&country=United%20States&page_size=200
+ */
 router.get('/openfoodfacts-search', async (req, res) => {
   const { query } = req.query;
   if (!query) {
@@ -28,18 +56,29 @@ router.get('/openfoodfacts-search', async (req, res) => {
   }
 
   try {
-    const response = await axiosGetWithRetry(`https://world.openfoodfacts.org/cgi/search.pl`, {
-      params: {
-        search_terms: query,
-        search_simple: 1,
-        json: 1,
-      }
+    // Always search for store 'harris teeter'
+    const params = {
+      action: 'process',
+      search_terms: query,
+      tagtype_1: 'stores',
+      tag_contains_1: 'contains',
+      tag_1: 'harris teeter',
+      sort_by: 'unique_scans_n',
+      page_size: 20,
+      json: 1
+    };
+    const qs = new URLSearchParams(params).toString();
+    const requestUrl = `https://world.openfoodfacts.org/cgi/search.pl?${qs}`;
+    if (DEBUG) console.log('OpenFoodFacts Nutrition URL:', requestUrl);
+    const response = await axiosGetWithRetry('https://world.openfoodfacts.org/cgi/search.pl', { params });
+    const products = Array.isArray(response.data?.products) ? response.data.products : [];
+    res.json({
+      request_url: requestUrl,
+      products
     });
-    res.json(response.data);
   } catch (error) {
-    console.error('Error fetching data from OpenFoodFacts:', error && error.message || error);
-    // If axios provided a response (e.g., 502 from upstream), forward status and body where possible
-    if (error && error.response) {
+    console.error('Error fetching data from OpenFoodFacts:', error?.message || error);
+    if (error?.response) {
       const status = error.response.status || 502;
       const data = error.response.data || { error: error.message || 'Upstream error' };
       return res.status(status).json({ error: data });
@@ -48,12 +87,15 @@ router.get('/openfoodfacts-search', async (req, res) => {
   }
 });
 
-// GET /api/openfoodfacts-product?code=xxxx
+/**
+ * GET /api/openfoodfacts-product?code=xxxx
+ * Fetch a single product by barcode
+ */
 router.get('/openfoodfacts-product', async (req, res) => {
   const { code } = req.query;
   if (!code) return res.status(400).json({ error: 'Missing product code' });
   try {
-    const response = await axios.get(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`);
+    const response = await axios.get(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, { timeout: 10000 });
     res.json(response.data);
   } catch (err) {
     console.error('Error fetching product:', err.message);
@@ -61,10 +103,13 @@ router.get('/openfoodfacts-product', async (req, res) => {
   }
 });
 
-// GET /api/openfoodfacts-get-category
-router.get('/openfoodfacts-get-category', async (req, res) => {
+/**
+ * GET /api/openfoodfacts-get-category
+ * Returns category names list
+ */
+router.get('/openfoodfacts-get-category', async (_req, res) => {
   try {
-    const response = await axios.get('https://world.openfoodfacts.org/categories.json');
+    const response = await axios.get('https://world.openfoodfacts.org/categories.json', { timeout: 10000 });
     const categories = (response.data.tags || []).map(tag => tag.name).filter(Boolean);
     res.json(categories);
   } catch (error) {
@@ -73,10 +118,13 @@ router.get('/openfoodfacts-get-category', async (req, res) => {
   }
 });
 
-// GET /api/openfoodfacts-get-brandname
-router.get('/openfoodfacts-get-brandname', async (req, res) => {
+/**
+ * GET /api/openfoodfacts-get-brandname
+ * Returns brand names list
+ */
+router.get('/openfoodfacts-get-brandname', async (_req, res) => {
   try {
-    const response = await axios.get('https://world.openfoodfacts.org/brands.json');
+    const response = await axios.get('https://world.openfoodfacts.org/brands.json', { timeout: 10000 });
     const brands = (response.data.tags || []).map(tag => tag.name).filter(Boolean);
     res.json(brands);
   } catch (error) {
@@ -85,10 +133,13 @@ router.get('/openfoodfacts-get-brandname', async (req, res) => {
   }
 });
 
-// GET /api/openfoodfacts-get-labels
-router.get('/openfoodfacts-get-labels', async (req, res) => {
+/**
+ * GET /api/openfoodfacts-get-labels
+ * Returns label names list
+ */
+router.get('/openfoodfacts-get-labels', async (_req, res) => {
   try {
-    const response = await axios.get('https://world.openfoodfacts.org/labels.json');
+    const response = await axios.get('https://world.openfoodfacts.org/labels.json', { timeout: 10000 });
     const labels = (response.data.tags || []).map(tag => tag.name).filter(Boolean);
     res.json(labels);
   } catch (error) {
@@ -98,3 +149,4 @@ router.get('/openfoodfacts-get-labels', async (req, res) => {
 });
 
 module.exports = router;
+

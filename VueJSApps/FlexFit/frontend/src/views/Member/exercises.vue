@@ -868,7 +868,16 @@ const deleteExercise = async (exercise) => {
   }
 };
 
-
+// add this function near other handlers (e.g. after AddWorkout or near pagination handlers)
+const clearFilters = () => {
+  workoutType.value = 'All';
+  selectedMuscleGroup.value = 'All';
+  selectedEquipment.value = 'All';
+  searchExercise.value = '';
+  currentPage.value = 1;
+  // reset any derived pagination/display state if you need:
+  displayLimit.value = 3;
+};
 
 
 </script>
@@ -1091,9 +1100,12 @@ const deleteExercise = async (exercise) => {
             
                     <div class="row g-3 mt-3">
 
-                      <button class="btn btn-success add-exercise-centered" @click="showAddForm = !showAddForm">
-  {{ showAddForm ? 'Cancel' : '➕ Add New Exercise' }}
-</button>
+                      <div class="add-exercise-row">
+                        <button class="btn btn-success add-exercise-centered" @click="showAddForm = !showAddForm">
+                          {{ showAddForm ? 'Cancel' : '➕ Add New Exercise' }}
+                        </button>
+                        <button class="btn btn-outline-secondary clear-filters-btn" @click="clearFilters" title="Reset filters">Clear Filters</button>
+                      </div>
 
                        <div v-if="showAddForm" class="panel mt-4">
   <div class="panel-header">
@@ -1738,6 +1750,17 @@ border: none;
   background-color: #ccc;
 }
 
+/* layout for add + clear buttons */
+.add-exercise-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.clear-filters-btn {
+  min-width: 140px;
+}
 </style>
 <style scoped>
 .add-exercise-centered {
