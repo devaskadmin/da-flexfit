@@ -11,7 +11,7 @@ from typing import Callable
 from app.ftp_client import FTPClient
 from app.local_watcher import LocalWatcher
 from app.logger import AppLogger
-from app.models import ConnectionProfile, OperationResult
+from app.models import ConnectionProfile, OperationResult, RemoteFileInfo
 from app.utils import is_same_file_state, remote_to_relative, should_exclude, to_remote_path
 
 
@@ -29,6 +29,8 @@ class AutoSyncRuntime:
     worker_thread: Thread
     pending_files: dict[str, float] = field(default_factory=dict)
     changed_files: list[str] = field(default_factory=list)
+    last_remote_state: dict[str, RemoteFileInfo] = field(default_factory=dict)
+    last_reconcile_at: float = 0.0
     lock: Lock = field(default_factory=Lock)
 
 
@@ -320,6 +322,185 @@ class SyncCoordinator:
                 pass
 
             self._flush_auto_sync_queue(profile, runtime)
+
+            now = monotonic()
+            if runtime.last_reconcile_at == 0.0 or now - runtime.last_reconcile_at >= profile.poll_interval_seconds:
+                self._reconcile_live_sync(profile, runtime)
+                runtime.last_reconcile_at = now
+
+    def _build_local_state(self, profile: ConnectionProfile) -> dict[str, tuple[Path, int, datetime]]:
+        """Builds local relative-file metadata map for live reconciliation."""
+        root = Path(profile.local_path)
+        state: dict[str, tuple[Path, int, datetime]] = {}
+        if not root.exists():
+            return state
+
+        for file_path in root.rglob("*"):
+            if not file_path.is_file():
+                continue
+
+            rel = str(file_path.relative_to(root)).replace("\\", "/")
+            if should_exclude(rel, profile.exclude):
+                continue
+
+            try:
+                stat = file_path.stat()
+            except OSError:
+                continue
+
+            modified = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
+            state[rel] = (file_path, stat.st_size, modified)
+
+        return state
+
+    def _cleanup_empty_parent_dirs(self, file_path: Path, root: Path) -> None:
+        """Removes empty parent directories up to the local sync root."""
+        current = file_path.parent
+        while current != root and root in current.parents:
+            try:
+                if any(current.iterdir()):
+                    break
+                current.rmdir()
+                current = current.parent
+            except Exception:
+                break
+
+    def _reconcile_live_sync(self, profile: ConnectionProfile, runtime: AutoSyncRuntime) -> None:
+        """Performs bidirectional local/remote reconciliation for live sync."""
+        listed = self._ftp.list_files(profile, profile.remote_path)
+        if not listed.ok or listed.data is None:
+            self._logger.warning(
+                "Live sync reconciliation skipped (remote list failed).",
+                profile=profile.title,
+                error=listed.error,
+            )
+            return
+
+        remote_map: dict[str, RemoteFileInfo] = {}
+        for rf in listed.data:
+            rel = remote_to_relative(profile.remote_path, rf.path)
+            if should_exclude(rel, profile.exclude):
+                continue
+            remote_map[rel] = rf
+
+        local_state = self._build_local_state(profile)
+        local_root = Path(profile.local_path)
+
+        with runtime.lock:
+            previous_remote = dict(runtime.last_remote_state)
+
+        remote_deleted = set(previous_remote.keys()) - set(remote_map.keys())
+
+        uploaded = 0
+        downloaded = 0
+        deleted_local = 0
+        skipped = 0
+
+        for rel in remote_deleted:
+            local_info = local_state.get(rel)
+            if local_info is None:
+                continue
+
+            local_path = local_info[0]
+            try:
+                local_path.unlink(missing_ok=True)
+                self._cleanup_empty_parent_dirs(local_path, local_root)
+                deleted_local += 1
+                self._logger.info(
+                    "Live sync removed local file missing on remote.",
+                    profile=profile.title,
+                    file=rel,
+                )
+            except Exception as ex:
+                self._logger.warning(
+                    "Live sync could not remove local file.",
+                    profile=profile.title,
+                    file=rel,
+                    error=str(ex),
+                )
+
+        for rel, (local_path, local_size, local_modified) in local_state.items():
+            remote = remote_map.get(rel)
+            if remote is None:
+                if rel in remote_deleted:
+                    skipped += 1
+                    continue
+
+                remote_file = to_remote_path(profile.remote_path, Path(rel))
+                result = self._ftp.upload_file(profile, local_path, remote_file)
+                if result.ok:
+                    uploaded += 1
+                else:
+                    self._logger.warning(
+                        "Live sync upload failed.",
+                        profile=profile.title,
+                        file=rel,
+                        error=result.error,
+                    )
+                continue
+
+            if is_same_file_state(
+                local_size=local_size,
+                local_modified=local_modified,
+                remote_size=remote.size,
+                remote_modified=remote.modified,
+            ):
+                skipped += 1
+                continue
+
+            should_upload = remote.modified is None or local_modified > remote.modified
+            if should_upload:
+                remote_file = to_remote_path(profile.remote_path, Path(rel))
+                result = self._ftp.upload_file(profile, local_path, remote_file)
+                if result.ok:
+                    uploaded += 1
+                else:
+                    self._logger.warning(
+                        "Live sync upload failed.",
+                        profile=profile.title,
+                        file=rel,
+                        error=result.error,
+                    )
+            else:
+                result = self._ftp.download_file(profile, remote.path, local_path)
+                if result.ok:
+                    downloaded += 1
+                else:
+                    self._logger.warning(
+                        "Live sync download failed.",
+                        profile=profile.title,
+                        file=rel,
+                        error=result.error,
+                    )
+
+        for rel, remote in remote_map.items():
+            if rel in local_state:
+                continue
+
+            local_path = local_root / Path(rel)
+            result = self._ftp.download_file(profile, remote.path, local_path)
+            if result.ok:
+                downloaded += 1
+            else:
+                self._logger.warning(
+                    "Live sync download failed.",
+                    profile=profile.title,
+                    file=rel,
+                    error=result.error,
+                )
+
+        with runtime.lock:
+            runtime.last_remote_state = remote_map
+
+        if uploaded or downloaded or deleted_local:
+            self._logger.info(
+                "Live sync cycle complete.",
+                profile=profile.title,
+                uploaded=uploaded,
+                downloaded=downloaded,
+                deletedLocal=deleted_local,
+                skipped=skipped,
+            )
 
     def _flush_auto_sync_queue(self, profile: ConnectionProfile, runtime: AutoSyncRuntime) -> None:
         ready_files: list[str] = []

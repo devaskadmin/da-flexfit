@@ -30,8 +30,8 @@ class DevAsterisksApp(ctk.CTk):
         self._pending_labels: dict[str, ctk.CTkLabel] = {}
         self._auto_sync_buttons: dict[str, ctk.CTkButton] = {}
         self._nav_buttons: dict[str, ctk.CTkButton] = {}
-        self._app_version = "1.0.0"
-        self._app_version_var = ctk.StringVar(value="Beta 0.8")
+        self._app_version = "1.0"
+        self._app_version_var = ctk.StringVar(value="1.0")
         self._last_result_var = ctk.StringVar(value="Ready.")
         self._profile_count_var = ctk.StringVar(value="0 profiles")
         self._active_watchers_var = ctk.StringVar(value="0 watching")
@@ -39,6 +39,7 @@ class DevAsterisksApp(ctk.CTk):
         self._search_var = ctk.StringVar(value="")
         self._status_filter_var = ctk.StringVar(value="all")
         self._logs_collapsed = False
+        self._profiles_min_content_width = 1500
         self._title_font = ctk.CTkFont(size=26, weight="bold")
         self._subtitle_font = ctk.CTkFont(size=12)
         self._section_font = ctk.CTkFont(size=15, weight="bold")
@@ -59,6 +60,7 @@ class DevAsterisksApp(ctk.CTk):
         self._logger.subscribe(self._on_log)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.bind("<Control-o>", lambda _event: self._menu_load_config())
+        self._focus_section("dashboard")
         self.after(1000, self._refresh_auto_sync_state)
         self._try_load(default_config_path)
 
@@ -81,31 +83,32 @@ class DevAsterisksApp(ctk.CTk):
 
         nav = ctk.CTkFrame(sidebar, fg_color="transparent")
         nav.pack(fill="x", padx=14, pady=(0, 18))
-        self._create_nav_button(nav, "dashboard", "⌂  Dashboard", lambda: self._focus_section("profiles")).pack(fill="x", pady=4)
-        self._create_nav_button(nav, "connections", "⇅  Connections", lambda: self._focus_section("profiles")).pack(fill="x", pady=4)
+        self._create_nav_button(nav, "dashboard", "⌂  Dashboard", lambda: self._focus_section("dashboard")).pack(fill="x", pady=4)
+        self._create_nav_button(nav, "connections", "⇅  Connections", lambda: self._focus_section("connections")).pack(fill="x", pady=4)
         self._create_nav_button(nav, "activity", "☰  Activity Log", lambda: self._focus_section("logs")).pack(fill="x", pady=4)
         self._create_nav_button(nav, "about", "ⓘ  About", self._show_about).pack(fill="x", pady=4)
+        self._create_nav_button(nav, "exit", "⏻  Exit", self._on_close).pack(fill="x", pady=4)
         self._highlight_nav_button("dashboard")
 
-        sidebar_stats = ctk.CTkFrame(sidebar, fg_color="transparent")
-        sidebar_stats.pack(fill="x", padx=14, pady=(0, 18))
-        self._create_stat_card(sidebar_stats, "Connections", self._profile_count_var, "Configured profiles ready for sync").pack(fill="x", pady=6)
-        self._create_stat_card(sidebar_stats, "Background Watchers", self._active_watchers_var, "Profiles currently auto syncing").pack(fill="x", pady=6)
-        self._create_stat_card(sidebar_stats, "Pending Uploads", self._pending_total_var, "Queued file transfers across profiles").pack(fill="x", pady=6)
+        self._sidebar_stats = ctk.CTkFrame(sidebar, fg_color="transparent")
+        self._sidebar_stats.pack(fill="x", padx=14, pady=(0, 18))
+        self._create_stat_card(self._sidebar_stats, "Connections", self._profile_count_var, "Configured profiles ready for sync").pack(fill="x", pady=6)
+        self._create_stat_card(self._sidebar_stats, "Background Watchers", self._active_watchers_var, "Profiles currently auto syncing").pack(fill="x", pady=6)
+        self._create_stat_card(self._sidebar_stats, "Pending Uploads", self._pending_total_var, "Queued file transfers across profiles").pack(fill="x", pady=6)
 
-        sidebar_footer = ctk.CTkFrame(sidebar, fg_color="transparent")
-        sidebar_footer.pack(side="bottom", fill="x", padx=18, pady=18)
-        ctk.CTkLabel(sidebar_footer, text="Build", font=ctk.CTkFont(size=11, weight="bold"), text_color=("#64748b", "#94a3b8")).pack(anchor="w")
-        ctk.CTkLabel(sidebar_footer, textvariable=self._app_version_var, font=self._subtitle_font, text_color=("#0f172a", "#e2e8f0")).pack(anchor="w", pady=(2, 0))
-        ctk.CTkLabel(sidebar_footer, text="Reliable push, pull, and auto-sync operations.", font=self._subtitle_font, wraplength=210, justify="left", text_color=("#64748b", "#94a3b8")).pack(anchor="w", pady=(6, 0))
+        self._sidebar_footer = ctk.CTkFrame(sidebar, fg_color="transparent")
+        self._sidebar_footer.pack(side="bottom", fill="x", padx=18, pady=18)
+        ctk.CTkLabel(self._sidebar_footer, text="Build", font=ctk.CTkFont(size=11, weight="bold"), text_color=("#64748b", "#94a3b8")).pack(anchor="w")
+        ctk.CTkLabel(self._sidebar_footer, textvariable=self._app_version_var, font=self._subtitle_font, text_color=("#0f172a", "#e2e8f0")).pack(anchor="w", pady=(2, 0))
+        ctk.CTkLabel(self._sidebar_footer, text="Reliable push, pull, and auto-sync operations.", font=self._subtitle_font, wraplength=210, justify="left", text_color=("#64748b", "#94a3b8")).pack(anchor="w", pady=(6, 0))
 
-        main = ctk.CTkFrame(shell, fg_color="transparent")
-        main.grid(row=0, column=1, sticky="nsew")
+        self._main = ctk.CTkFrame(shell, fg_color="transparent")
+        self._main.grid(row=0, column=1, sticky="nsew")
 
-        hero = ctk.CTkFrame(main, corner_radius=20, fg_color=("#ffffff", "#111827"))
-        hero.pack(fill="x", pady=(0, 16))
+        self._hero = ctk.CTkFrame(self._main, corner_radius=20, fg_color=("#ffffff", "#111827"))
+        self._hero.pack(fill="x", pady=(0, 16))
 
-        hero_left = ctk.CTkFrame(hero, fg_color="transparent")
+        hero_left = ctk.CTkFrame(self._hero, fg_color="transparent")
         hero_left.pack(side="left", fill="both", expand=True, padx=22, pady=18)
         ctk.CTkLabel(
             hero_left,
@@ -127,7 +130,7 @@ class DevAsterisksApp(ctk.CTk):
         self._create_stat_chip(chips, "Watching", self._active_watchers_var).pack(side="left", padx=(0, 10))
         self._create_stat_chip(chips, "Pending", self._pending_total_var).pack(side="left")
 
-        hero_right = ctk.CTkFrame(hero, fg_color="transparent")
+        hero_right = ctk.CTkFrame(self._hero, fg_color="transparent")
         hero_right.pack(side="right", padx=22, pady=18)
         ctk.CTkLabel(
             hero_right,
@@ -142,17 +145,17 @@ class DevAsterisksApp(ctk.CTk):
             text_color=("#64748b", "#94a3b8"),
         ).pack(anchor="e", pady=(4, 0))
 
-        content = ctk.CTkFrame(main, fg_color="transparent")
-        content.pack(fill="both", expand=True)
-        content.grid_columnconfigure(0, weight=1)
-        content.grid_rowconfigure(2, weight=1)
-        content.grid_rowconfigure(3, weight=1)
+        self._content = ctk.CTkFrame(self._main, fg_color="transparent")
+        self._content.pack(fill="both", expand=True)
+        self._content.grid_columnconfigure(0, weight=1)
+        self._content.grid_rowconfigure(2, weight=3, minsize=540)
+        self._content.grid_rowconfigure(3, weight=2, minsize=260)
 
-        config_card = ctk.CTkFrame(content, corner_radius=18, fg_color=("#ffffff", "#111827"))
-        config_card.grid(row=0, column=0, sticky="nsew", padx=(0, 0), pady=(0, 16))
-        self._build_section_header(config_card, "⚙  Configuration", "Load and switch between saved connection profiles.").pack(fill="x", padx=18, pady=(16, 8))
+        self._config_card = ctk.CTkFrame(self._content, corner_radius=18, fg_color=("#ffffff", "#111827"))
+        self._config_card.grid(row=0, column=0, sticky="nsew", padx=(0, 0), pady=(0, 16))
+        self._build_section_header(self._config_card, "⚙  Configuration", "Load and switch between saved connection profiles.").pack(fill="x", padx=18, pady=(16, 8))
 
-        config_controls = ctk.CTkFrame(config_card, fg_color="transparent")
+        config_controls = ctk.CTkFrame(self._config_card, fg_color="transparent")
         config_controls.pack(fill="x", padx=18, pady=(0, 16))
 
         self.config_path_var = ctk.StringVar(value="")
@@ -166,11 +169,11 @@ class DevAsterisksApp(ctk.CTk):
         ctk.CTkButton(config_controls, text="Browse Config", width=140, height=42, corner_radius=12, command=self._browse_config).pack(side="left", padx=(0, 10))
         ctk.CTkButton(config_controls, text="Load", width=120, height=42, corner_radius=12, command=self._load_clicked).pack(side="left")
 
-        result_card = ctk.CTkFrame(content, corner_radius=18, fg_color=("#ffffff", "#111827"))
-        result_card.grid(row=1, column=0, sticky="nsew", pady=(0, 16))
-        self._build_section_header(result_card, "✓  Last Result", "The latest operation outcome and diagnostics.").pack(fill="x", padx=18, pady=(16, 8))
+        self._result_card = ctk.CTkFrame(self._content, corner_radius=18, fg_color=("#ffffff", "#111827"))
+        self._result_card.grid(row=1, column=0, sticky="nsew", pady=(0, 16))
+        self._build_section_header(self._result_card, "✓  Last Result", "The latest operation outcome and diagnostics.").pack(fill="x", padx=18, pady=(16, 8))
         ctk.CTkLabel(
-            result_card,
+            self._result_card,
             textvariable=self._last_result_var,
             anchor="w",
             justify="left",
@@ -179,11 +182,11 @@ class DevAsterisksApp(ctk.CTk):
             text_color=("#334155", "#cbd5e1"),
         ).pack(fill="x", padx=18, pady=(0, 18))
 
-        connections_card = ctk.CTkFrame(content, corner_radius=18, fg_color=("#ffffff", "#111827"))
-        connections_card.grid(row=2, column=0, sticky="nsew", pady=(0, 16))
-        self._build_section_header(connections_card, "⇅  Connections", "Operate profiles individually with clear status, pull/push controls, and auto sync.").pack(fill="x", padx=18, pady=(16, 8))
+        self._connections_card = ctk.CTkFrame(self._content, corner_radius=18, fg_color=("#ffffff", "#111827"))
+        self._connections_card.grid(row=2, column=0, sticky="nsew", pady=(0, 16))
+        self._build_section_header(self._connections_card, "⇅  Connections", "Operate profiles individually with clear status, pull/push controls, and auto sync.").pack(fill="x", padx=18, pady=(16, 8))
 
-        filter_row = ctk.CTkFrame(connections_card, fg_color="transparent")
+        filter_row = ctk.CTkFrame(self._connections_card, fg_color="transparent")
         filter_row.pack(fill="x", padx=18, pady=(0, 12))
         ctk.CTkEntry(
             filter_row,
@@ -203,14 +206,23 @@ class DevAsterisksApp(ctk.CTk):
         self._status_filter_segment.pack(side="left")
 
         self.profiles_frame = ctk.CTkScrollableFrame(
-            connections_card,
+            self._connections_card,
             label_text="",
             corner_radius=0,
             fg_color="transparent",
+            height=500,
         )
-        self.profiles_frame.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+        self.profiles_frame.pack(fill="both", expand=True, padx=12, pady=(0, 6))
+        self._profiles_hscroll = ctk.CTkScrollbar(
+            self._connections_card,
+            orientation="horizontal",
+            command=self._on_profiles_horizontal_scroll,
+            height=14,
+        )
+        self._profiles_hscroll.pack(fill="x", padx=16, pady=(0, 12))
+        self._enable_profiles_horizontal_scroll()
 
-        self._log_card = ctk.CTkFrame(content, corner_radius=18, fg_color=("#ffffff", "#111827"))
+        self._log_card = ctk.CTkFrame(self._content, corner_radius=18, fg_color=("#ffffff", "#111827"))
         self._log_card.grid(row=3, column=0, sticky="nsew")
         log_header = ctk.CTkFrame(self._log_card, fg_color="transparent")
         log_header.pack(fill="x", padx=18, pady=(16, 8))
@@ -319,8 +331,9 @@ class DevAsterisksApp(ctk.CTk):
         menu_bar.add_cascade(label="File", menu=file_menu)
 
         nav_menu = tk.Menu(menu_bar, tearoff=0)
-        nav_menu.add_command(label="Profiles", command=lambda: self._focus_section("profiles"))
-        nav_menu.add_command(label="Logs", command=lambda: self._focus_section("logs"))
+        nav_menu.add_command(label="Dashboard", command=lambda: self._focus_section("dashboard"))
+        nav_menu.add_command(label="Connections", command=lambda: self._focus_section("connections"))
+        nav_menu.add_command(label="Activity Log", command=lambda: self._focus_section("logs"))
         menu_bar.add_cascade(label="Navigate", menu=nav_menu)
 
         help_menu = tk.Menu(menu_bar, tearoff=0)
@@ -330,15 +343,100 @@ class DevAsterisksApp(ctk.CTk):
         self.configure(menu=menu_bar)
 
     def _focus_section(self, section: str) -> None:
-        """Simple top navigation actions."""
-        if section == "profiles":
+        """Switches the visible dashboard section."""
+        if section == "dashboard":
+            self._highlight_nav_button("dashboard")
+            self._show_dashboard_view()
+            self._logger.info("Navigated to Dashboard.")
+        elif section == "connections":
             self._highlight_nav_button("connections")
+            self._show_connections_view()
             self.profiles_frame.focus_set()
-            self._logger.info("Navigated to Profiles.")
+            self._logger.info("Navigated to Connections.")
         elif section == "logs":
             self._highlight_nav_button("activity")
+            self._show_logs_view()
             self.log_text.focus_set()
-            self._logger.info("Navigated to Logs.")
+            self._logger.info("Navigated to Activity Log.")
+
+    def _show_dashboard_view(self) -> None:
+        """Shows only the dashboard summary and configuration sections."""
+        self._set_hero_visible(True)
+        self._set_sidebar_stats_visible(False)
+        self._content.grid_rowconfigure(2, weight=0, minsize=0)
+        self._content.grid_rowconfigure(3, weight=0, minsize=0)
+        self._config_card.grid()
+        self._result_card.grid_remove()
+        self._connections_card.grid_remove()
+        self._log_card.grid_remove()
+
+    def _show_connections_view(self) -> None:
+        """Shows the connections area with logs directly below it."""
+        self._set_hero_visible(False)
+        self._set_sidebar_stats_visible(False)
+        self._content.grid_rowconfigure(2, weight=3, minsize=540)
+        self._content.grid_rowconfigure(3, weight=2, minsize=260)
+        self._config_card.grid_remove()
+        self._result_card.grid_remove()
+        self._connections_card.grid()
+        self._log_card.grid()
+
+    def _show_logs_view(self) -> None:
+        """Shows the activity log view only."""
+        self._set_hero_visible(False)
+        self._set_sidebar_stats_visible(False)
+        self._content.grid_rowconfigure(2, weight=0, minsize=0)
+        self._content.grid_rowconfigure(3, weight=1, minsize=620)
+        self._config_card.grid_remove()
+        self._result_card.grid_remove()
+        self._connections_card.grid_remove()
+        self._log_card.grid()
+
+    def _set_hero_visible(self, visible: bool) -> None:
+        """Shows or hides the hero header while preserving layout order."""
+        if visible:
+            if not self._hero.winfo_manager():
+                self._hero.pack(before=self._content, fill="x", pady=(0, 16))
+        else:
+            if self._hero.winfo_manager():
+                self._hero.pack_forget()
+
+    def _set_sidebar_stats_visible(self, visible: bool) -> None:
+        """Shows or hides the left sidebar stat stack."""
+        if visible:
+            if not self._sidebar_stats.winfo_manager():
+                self._sidebar_stats.pack(fill="x", padx=14, pady=(0, 18), before=self._sidebar_footer)
+        else:
+            if self._sidebar_stats.winfo_manager():
+                self._sidebar_stats.pack_forget()
+
+    def _on_profiles_horizontal_scroll(self, *args: str) -> None:
+        """Routes horizontal scrollbar events to the profiles canvas."""
+        canvas = getattr(self.profiles_frame, "_parent_canvas", None)
+        if canvas is not None:
+            canvas.xview(*args)
+
+    def _enable_profiles_horizontal_scroll(self) -> None:
+        """Enables horizontal scrolling for wide profile rows."""
+        canvas = getattr(self.profiles_frame, "_parent_canvas", None)
+        if canvas is None:
+            return
+
+        canvas.configure(xscrollcommand=self._profiles_hscroll.set)
+
+        def sync_width(_event: object | None = None) -> None:
+            try:
+                content = getattr(self.profiles_frame, "_scrollable_frame", None)
+                if content is not None:
+                    target_width = max(canvas.winfo_width(), self._profiles_min_content_width)
+                    content.configure(width=target_width)
+                canvas.configure(scrollregion=canvas.bbox("all"))
+            except Exception:
+                pass
+
+        canvas.bind("<Configure>", lambda e: sync_width(e), add="+")
+        self.profiles_frame.bind("<Configure>", lambda e: sync_width(e), add="+")
+        self.after(120, sync_width)
 
     def _show_about(self) -> None:
         """Shows About dialog with version."""
@@ -403,7 +501,7 @@ class DevAsterisksApp(ctk.CTk):
 
         self._config = result.data
         self._app_version = self._config.app_version
-        self._app_version_var.set(f"Beta {self._app_version}")
+        self._app_version_var.set(self._app_version)
         self.title(f"{self._config.app_title} v{self._app_version}")
         self._last_result_var.set(f"Configuration loaded: {file_path.name}")
         self._logger.info("Config loaded.", profiles=len(self._config.connections))
@@ -426,7 +524,8 @@ class DevAsterisksApp(ctk.CTk):
         filtered_profiles = [profile for profile in self._config.connections if self._matches_profile_filter(profile)]
 
         header = ctk.CTkFrame(self.profiles_frame)
-        header.pack(fill="x", padx=8, pady=(4, 8))
+        header.pack(anchor="w", padx=8, pady=(4, 8))
+        header.configure(width=self._profiles_min_content_width)
         header.configure(fg_color=("#f8fafc", "#0b1220"), corner_radius=14)
         ctk.CTkLabel(header, text="Profile", width=430, anchor="w", font=ctk.CTkFont(size=12, weight="bold")).pack(side="left", padx=12, pady=10)
         ctk.CTkLabel(header, text="Status", width=110, anchor="w", font=ctk.CTkFont(size=12, weight="bold")).pack(side="left", padx=4, pady=10)
@@ -435,13 +534,17 @@ class DevAsterisksApp(ctk.CTk):
 
         if not filtered_profiles:
             empty_state = ctk.CTkFrame(self.profiles_frame, corner_radius=16, fg_color=("#f8fafc", "#0b1220"), border_width=1, border_color=("#e2e8f0", "#1e293b"))
-            empty_state.pack(fill="x", padx=8, pady=4)
+            empty_state.pack(anchor="w", padx=8, pady=4)
+            empty_state.configure(width=self._profiles_min_content_width)
             ctk.CTkLabel(empty_state, text="No connections match the current search or filter.", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", padx=18, pady=(16, 4))
             ctk.CTkLabel(empty_state, text="Try a different search term or switch the status filter back to 'all'.", font=self._subtitle_font, text_color=("#64748b", "#94a3b8")).pack(anchor="w", padx=18, pady=(0, 16))
+            self.after(50, self._enable_profiles_horizontal_scroll)
             return
 
         for profile in filtered_profiles:
             self._add_profile_row(profile)
+
+        self.after(50, self._enable_profiles_horizontal_scroll)
 
     def _matches_profile_filter(self, profile: ConnectionProfile) -> bool:
         """Returns True when a profile matches the active search and status filter."""
@@ -483,7 +586,8 @@ class DevAsterisksApp(ctk.CTk):
 
     def _add_profile_row(self, profile: ConnectionProfile) -> None:
         row = ctk.CTkFrame(self.profiles_frame, corner_radius=16, fg_color=("#f8fafc", "#0b1220"), border_width=1, border_color=("#e2e8f0", "#1e293b"))
-        row.pack(fill="x", padx=8, pady=4)
+        row.pack(anchor="w", padx=8, pady=4)
+        row.configure(width=self._profiles_min_content_width)
 
         profile_block = ctk.CTkFrame(row, fg_color="transparent")
         profile_block.pack(side="left", fill="x", expand=True, padx=(14, 8), pady=10)
