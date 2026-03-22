@@ -97,3 +97,226 @@
 [2026-03-21 19:33:28] [INFO] Navigated to Profiles.
 [2026-03-21 19:33:29] [INFO] Navigated to Logs.
 [2026-03-21 19:33:32] [INFO] Navigated to Profiles.
+[2026-03-21 19:43:24] [INFO] Navigated to Dashboard.
+[2026-03-21 19:43:24] [INFO] Config loaded. | profiles=4
+[2026-03-21 19:43:27] [INFO] Navigated to Connections.
+[2026-03-21 19:43:31] [INFO] Navigated to Activity Log.
+[2026-03-21 19:43:38] [INFO] Navigated to Dashboard.
+[2026-03-21 19:43:40] [INFO] Navigated to Connections.
+[2026-03-21 19:43:43] [INFO] test_connection started. | profile=Dev Asterisks LLC - Hosting
+[2026-03-21 19:43:43] [WARNING] TLS certificate verification disabled for profile. | profile=Dev Asterisks LLC - Hosting; host=ftp.stephenkarpath.com
+[2026-03-21 19:43:43] [INFO] test_connection finished. | profile=Dev Asterisks LLC - Hosting
+[2026-03-21 19:43:43] [INFO] Connection test passed. | profile=Dev Asterisks LLC - Hosting
+[2026-03-21 19:43:49] [INFO] test_connection started. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:43:49] [INFO] test_connection finished. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:43:49] [INFO] Connection test passed. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:43:53] [INFO] pull started. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:43:53] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 19:43:53] [INFO] pull finished. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:43:53] [INFO] Pull complete. Downloaded 2, skipped 0. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:44:18] [INFO] Auto sync started. | profile=Web Dev - Wordpress Stack (SK) - local; pollIntervalSeconds=15; uploadFileSyncInterval=3
+[2026-03-21 19:44:18] [INFO] Auto sync started. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:45:00] [INFO] Auto sync stopped. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:45:00] [INFO] Auto sync stopped. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:45:00] [INFO] pull started. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:45:00] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 19:45:00] [INFO] pull finished. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:45:00] [INFO] Pull complete. Downloaded 2, skipped 0. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:45:15] [INFO] pull started. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:45:15] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 19:45:15] [INFO] pull finished. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:45:15] [INFO] Pull complete. Downloaded 2, skipped 0. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:46:34] [INFO] Auto sync started. | profile=Web Dev - Wordpress Stack (SK) - local; pollIntervalSeconds=15; uploadFileSyncInterval=3
+[2026-03-21 19:46:34] [INFO] Auto sync started. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:47:49] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php; pending=1
+[2026-03-21 19:47:52] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php
+[2026-03-21 19:48:49] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php; pending=1
+[2026-03-21 19:48:52] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php
+[2026-03-21 19:49:12] [INFO] push started. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:49:12] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 19:49:12] [INFO] push finished. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:49:12] [INFO] Push complete. Uploaded 6, skipped 0. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:49:44] [INFO] Auto sync stopped. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:49:44] [INFO] Auto sync stopped. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:49:44] [INFO] pull started. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:49:44] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 19:49:44] [INFO] pull finished. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 19:49:44] [INFO] Pull complete. Downloaded 6, skipped 0. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 20:02:52] [INFO] Navigated to Dashboard.
+[2026-03-21 20:02:52] [INFO] Config loaded. | profiles=4
+[2026-03-21 20:02:55] [INFO] Navigated to Connections.
+[2026-03-21 20:05:17] [INFO] Navigated to Dashboard.
+[2026-03-21 20:05:17] [INFO] Config loaded. | profiles=4
+[2026-03-21 20:05:21] [INFO] Navigated to Connections.
+[2026-03-21 20:05:35] [INFO] Auto sync started. | profile=Web Dev - Wordpress Stack (SK) - local; pollIntervalSeconds=10; uploadFileSyncInterval=3
+[2026-03-21 20:05:35] [INFO] Auto sync started. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 20:05:36] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 20:05:36] [INFO] Live sync cycle complete. | profile=Web Dev - Wordpress Stack (SK) - local; uploaded=5; downloaded=1; deletedLocal=0; skipped=0
+[2026-03-21 20:05:45] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=smartftp.json; pending=1
+[2026-03-21 20:05:46] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 20:05:46] [INFO] Live sync cycle complete. | profile=Web Dev - Wordpress Stack (SK) - local; uploaded=1; downloaded=5; deletedLocal=0; skipped=0
+[2026-03-21 20:05:48] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=smartftp.json
+[2026-03-21 20:05:55] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php; pending=1
+[2026-03-21 20:05:55] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt; pending=2
+[2026-03-21 20:05:55] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md; pending=3
+[2026-03-21 20:05:55] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt; pending=4
+[2026-03-21 20:05:55] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php; pending=5
+[2026-03-21 20:05:56] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 20:05:56] [INFO] Live sync cycle complete. | profile=Web Dev - Wordpress Stack (SK) - local; uploaded=0; downloaded=6; deletedLocal=0; skipped=0
+[2026-03-21 20:05:58] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php
+[2026-03-21 20:05:58] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt
+[2026-03-21 20:05:58] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md
+[2026-03-21 20:05:58] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt
+[2026-03-21 20:05:58] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php
+[2026-03-21 20:06:05] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php; pending=1
+[2026-03-21 20:06:05] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt; pending=2
+[2026-03-21 20:06:05] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md; pending=3
+[2026-03-21 20:06:05] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt; pending=4
+[2026-03-21 20:06:05] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=smartftp.json; pending=5
+[2026-03-21 20:06:05] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php; pending=6
+[2026-03-21 20:06:06] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 20:06:06] [INFO] Live sync removed local file missing on remote. | profile=Web Dev - Wordpress Stack (SK) - local; file=smartftp.json
+[2026-03-21 20:06:06] [INFO] Live sync cycle complete. | profile=Web Dev - Wordpress Stack (SK) - local; uploaded=0; downloaded=5; deletedLocal=1; skipped=1
+[2026-03-21 20:06:08] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php
+[2026-03-21 20:06:08] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt
+[2026-03-21 20:06:08] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md
+[2026-03-21 20:06:08] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt
+[2026-03-21 20:06:08] [WARNING] Auto sync skipped missing file. | profile=Web Dev - Wordpress Stack (SK) - local; file=smartftp.json
+[2026-03-21 20:06:08] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php
+[2026-03-21 20:06:15] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php; pending=1
+[2026-03-21 20:06:15] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt; pending=2
+[2026-03-21 20:06:15] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md; pending=3
+[2026-03-21 20:06:15] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt; pending=4
+[2026-03-21 20:06:15] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php; pending=5
+[2026-03-21 20:06:16] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 20:06:16] [INFO] Live sync cycle complete. | profile=Web Dev - Wordpress Stack (SK) - local; uploaded=0; downloaded=5; deletedLocal=0; skipped=0
+[2026-03-21 20:06:18] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php
+[2026-03-21 20:06:18] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt
+[2026-03-21 20:06:18] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md
+[2026-03-21 20:06:18] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt
+[2026-03-21 20:06:18] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php
+[2026-03-21 20:06:25] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php; pending=1
+[2026-03-21 20:06:25] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt; pending=2
+[2026-03-21 20:06:25] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md; pending=3
+[2026-03-21 20:06:25] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt; pending=4
+[2026-03-21 20:06:25] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php; pending=5
+[2026-03-21 20:06:26] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 20:06:26] [INFO] Live sync cycle complete. | profile=Web Dev - Wordpress Stack (SK) - local; uploaded=0; downloaded=5; deletedLocal=0; skipped=0
+[2026-03-21 20:06:28] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php
+[2026-03-21 20:06:28] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt
+[2026-03-21 20:06:28] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md
+[2026-03-21 20:06:28] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt
+[2026-03-21 20:06:28] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php
+[2026-03-21 20:06:35] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php; pending=1
+[2026-03-21 20:06:35] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt; pending=2
+[2026-03-21 20:06:35] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md; pending=3
+[2026-03-21 20:06:35] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt; pending=4
+[2026-03-21 20:06:35] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php; pending=5
+[2026-03-21 20:06:36] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 20:06:36] [INFO] Live sync cycle complete. | profile=Web Dev - Wordpress Stack (SK) - local; uploaded=0; downloaded=5; deletedLocal=0; skipped=0
+[2026-03-21 20:06:38] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php
+[2026-03-21 20:06:38] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt
+[2026-03-21 20:06:38] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md
+[2026-03-21 20:06:38] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt
+[2026-03-21 20:06:38] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php
+[2026-03-21 20:06:45] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php; pending=1
+[2026-03-21 20:06:45] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt; pending=2
+[2026-03-21 20:06:45] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md; pending=3
+[2026-03-21 20:06:45] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt; pending=4
+[2026-03-21 20:06:45] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php; pending=5
+[2026-03-21 20:06:46] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 20:06:46] [INFO] Live sync cycle complete. | profile=Web Dev - Wordpress Stack (SK) - local; uploaded=0; downloaded=5; deletedLocal=0; skipped=0
+[2026-03-21 20:06:48] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php
+[2026-03-21 20:06:48] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt
+[2026-03-21 20:06:48] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md
+[2026-03-21 20:06:48] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt
+[2026-03-21 20:06:48] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php
+[2026-03-21 20:06:55] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php; pending=1
+[2026-03-21 20:06:55] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt; pending=2
+[2026-03-21 20:06:55] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md; pending=3
+[2026-03-21 20:06:55] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt; pending=4
+[2026-03-21 20:06:55] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php; pending=5
+[2026-03-21 20:06:56] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 20:06:56] [INFO] Live sync cycle complete. | profile=Web Dev - Wordpress Stack (SK) - local; uploaded=0; downloaded=5; deletedLocal=0; skipped=0
+[2026-03-21 20:06:58] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php
+[2026-03-21 20:06:58] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt
+[2026-03-21 20:06:58] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md
+[2026-03-21 20:06:58] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt
+[2026-03-21 20:06:58] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php
+[2026-03-21 20:07:05] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php; pending=1
+[2026-03-21 20:07:05] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt; pending=2
+[2026-03-21 20:07:05] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md; pending=3
+[2026-03-21 20:07:05] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt; pending=4
+[2026-03-21 20:07:05] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php; pending=5
+[2026-03-21 20:07:06] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 20:07:06] [INFO] Live sync cycle complete. | profile=Web Dev - Wordpress Stack (SK) - local; uploaded=0; downloaded=5; deletedLocal=0; skipped=0
+[2026-03-21 20:07:08] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php
+[2026-03-21 20:07:08] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt
+[2026-03-21 20:07:08] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md
+[2026-03-21 20:07:08] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt
+[2026-03-21 20:07:08] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php
+[2026-03-21 20:07:15] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php; pending=1
+[2026-03-21 20:07:15] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt; pending=2
+[2026-03-21 20:07:15] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md; pending=3
+[2026-03-21 20:07:15] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt; pending=4
+[2026-03-21 20:07:15] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php; pending=5
+[2026-03-21 20:07:16] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 20:07:16] [INFO] Live sync cycle complete. | profile=Web Dev - Wordpress Stack (SK) - local; uploaded=0; downloaded=5; deletedLocal=0; skipped=0
+[2026-03-21 20:07:18] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php
+[2026-03-21 20:07:18] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt
+[2026-03-21 20:07:18] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md
+[2026-03-21 20:07:18] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt
+[2026-03-21 20:07:18] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php
+[2026-03-21 20:07:25] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php; pending=1
+[2026-03-21 20:07:25] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt; pending=2
+[2026-03-21 20:07:25] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md; pending=3
+[2026-03-21 20:07:25] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt; pending=4
+[2026-03-21 20:07:25] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php; pending=5
+[2026-03-21 20:07:26] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 20:07:26] [INFO] Live sync cycle complete. | profile=Web Dev - Wordpress Stack (SK) - local; uploaded=0; downloaded=5; deletedLocal=0; skipped=0
+[2026-03-21 20:07:28] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php
+[2026-03-21 20:07:28] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt
+[2026-03-21 20:07:28] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md
+[2026-03-21 20:07:28] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt
+[2026-03-21 20:07:28] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php
+[2026-03-21 20:07:35] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php; pending=1
+[2026-03-21 20:07:35] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt; pending=2
+[2026-03-21 20:07:35] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md; pending=3
+[2026-03-21 20:07:35] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt; pending=4
+[2026-03-21 20:07:35] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php; pending=5
+[2026-03-21 20:07:36] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 20:07:36] [INFO] Live sync cycle complete. | profile=Web Dev - Wordpress Stack (SK) - local; uploaded=0; downloaded=5; deletedLocal=0; skipped=0
+[2026-03-21 20:07:38] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php
+[2026-03-21 20:07:38] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt
+[2026-03-21 20:07:38] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md
+[2026-03-21 20:07:38] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt
+[2026-03-21 20:07:38] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php
+[2026-03-21 20:07:45] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php; pending=1
+[2026-03-21 20:07:45] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt; pending=2
+[2026-03-21 20:07:45] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md; pending=3
+[2026-03-21 20:07:45] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt; pending=4
+[2026-03-21 20:07:45] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php; pending=5
+[2026-03-21 20:07:46] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 20:07:46] [INFO] Live sync cycle complete. | profile=Web Dev - Wordpress Stack (SK) - local; uploaded=0; downloaded=5; deletedLocal=0; skipped=0
+[2026-03-21 20:07:48] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php
+[2026-03-21 20:07:48] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt
+[2026-03-21 20:07:48] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md
+[2026-03-21 20:07:48] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt
+[2026-03-21 20:07:48] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php
+[2026-03-21 20:07:55] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php; pending=1
+[2026-03-21 20:07:55] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt; pending=2
+[2026-03-21 20:07:55] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md; pending=3
+[2026-03-21 20:07:55] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt; pending=4
+[2026-03-21 20:07:55] [INFO] Auto sync queued file change. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php; pending=5
+[2026-03-21 20:07:56] [WARNING] MLSD unsupported. Falling back to legacy FTP listing. | profile=Web Dev - Wordpress Stack (SK) - local; remotePath=/wp-content/plugins/wp-threat-detect; error=500 Unknown command.
+[2026-03-21 20:07:56] [INFO] Live sync cycle complete. | profile=Web Dev - Wordpress Stack (SK) - local; uploaded=0; downloaded=5; deletedLocal=0; skipped=0
+[2026-03-21 20:07:58] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=hello-world.php
+[2026-03-21 20:07:58] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=LICENSE.txt
+[2026-03-21 20:07:58] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=README.md
+[2026-03-21 20:07:58] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=readme.txt
+[2026-03-21 20:07:58] [INFO] Auto sync uploaded file. | profile=Web Dev - Wordpress Stack (SK) - local; file=Test.php
+[2026-03-21 20:08:02] [INFO] Auto sync stopped. | profile=Web Dev - Wordpress Stack (SK) - local
+[2026-03-21 20:08:07] [INFO] Navigated to Dashboard.
+[2026-03-21 20:08:07] [INFO] Config loaded. | profiles=4
+[2026-03-21 20:09:48] [INFO] Navigated to Dashboard.
+[2026-03-21 20:09:48] [INFO] Config loaded. | profiles=4

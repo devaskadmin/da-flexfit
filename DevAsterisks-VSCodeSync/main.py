@@ -10,7 +10,7 @@ from app.sync_coordinator import SyncCoordinator
 def main() -> None:
     project_root = Path(__file__).resolve().parent
     logs_dir = project_root / "logs"
-    default_config = project_root / "config" / "example-config.json"
+    default_config = project_root / "config" / "synctool-ftp-settings.json"
 
     logger = AppLogger(logs_dir=logs_dir, file_name="app.log")
     config_manager = ConfigManager()
