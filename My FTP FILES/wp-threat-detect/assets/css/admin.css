@@ -1,22 +1,129 @@
+.wpsa-wrap {
+	max-width: 1200px;
+	margin-top: 20px;
+}
+
+.wpsa-wrap .wpsa-page-head {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 14px;
+	flex-wrap: wrap;
+	margin-bottom: 16px;
+	padding: 16px 18px;
+	border-radius: 12px;
+	background: linear-gradient(135deg, #111827 0%, #1f2937 55%, #374151 100%);
+	color: #f9fafb;
+	box-shadow: 0 8px 24px rgba(17, 24, 39, 0.18);
+}
+
+.wpsa-wrap .wpsa-head-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.wpsa-wrap .wpsa-head-actions form {
+	margin: 0;
+}
+
+.wpsa-wrap .wpsa-page-head .button {
+	border-radius: 9px;
+	padding-left: 12px;
+	padding-right: 12px;
+	font-weight: 600;
+}
+
+.wpsa-wrap .wpsa-page-head .button:not(.button-primary) {
+	background: rgba(255, 255, 255, 0.12);
+	color: #fff;
+	border-color: rgba(255, 255, 255, 0.3);
+}
+
+.wpsa-wrap .wpsa-page-head .button:not(.button-primary):hover,
+.wpsa-wrap .wpsa-page-head .button:not(.button-primary):focus {
+	background: rgba(255, 255, 255, 0.18);
+	border-color: rgba(255, 255, 255, 0.4);
+	color: #fff;
+}
+
+.wpsa-wrap .wpsa-page-head h1 {
+	margin: 0;
+	color: #fff;
+	font-size: 1.5rem;
+	line-height: 1.25;
+}
+
+.wpsa-wrap .wpsa-page-head p {
+	margin: 6px 0 0;
+	color: #d1d5db;
+}
+
+.wpsa-wrap .wpsa-page-head .button.button-primary {
+	background: #10b981;
+	border-color: #10b981;
+	color: #052e16;
+	font-weight: 600;
+	padding: 4px 14px;
+	min-height: 34px;
+}
+
+.wpsa-wrap .wpsa-page-head .button.button-primary:hover,
+.wpsa-wrap .wpsa-page-head .button.button-primary:focus {
+	background: #34d399;
+	border-color: #34d399;
+	color: #052e16;
+}
+
 .wpsa-wrap .wpsa-card-grid {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(220px, 1fr));
-	gap: 12px;
+	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+	gap: 14px;
 	margin: 16px 0;
 }
 
 .wpsa-wrap .wpsa-card {
 	background: #fff;
-	border: 1px solid #dcdcde;
-	border-radius: 6px;
-	padding: 14px;
+	border: 1px solid #e5e7eb;
+	border-radius: 12px;
+	padding: 16px;
 	margin: 12px 0;
+	box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
+}
+
+.wpsa-wrap .wpsa-kpi-card {
+	position: relative;
+	overflow: hidden;
+}
+
+.wpsa-wrap .wpsa-kpi-card::before {
+	content: '';
+	position: absolute;
+	inset: 0 0 auto 0;
+	height: 3px;
+	background: linear-gradient(90deg, #10b981, #14b8a6, #22c55e);
+}
+
+.wpsa-wrap .wpsa-card h2 {
+	margin-top: 0;
+	font-size: 1.04rem;
+	color: #111827;
 }
 
 .wpsa-wrap .wpsa-score {
-	font-size: 2rem;
-	font-weight: 700;
-	margin: 0;
+	font-size: 2.2rem;
+	font-weight: 750;
+	line-height: 1;
+	margin: 4px 0 8px;
+	color: #0f172a;
+}
+
+.wpsa-wrap .wpsa-score span {
+	font-size: 1rem;
+	font-weight: 600;
+	color: #6b7280;
+	margin-left: 4px;
 }
 
 .wpsa-progress {
@@ -29,12 +136,12 @@
 
 .wpsa-progress-bar {
 	height: 100%;
-	background: linear-gradient(90deg, #16a34a, #22c55e);
-	transition: width 0.2s ease-in-out;
+	background: linear-gradient(90deg, #10b981, #22c55e);
+	transition: width 0.25s ease-in-out;
 }
 
 .wpsa-category-row {
-	margin-bottom: 12px;
+	margin-bottom: 14px;
 }
 
 .wpsa-category-row-head {
@@ -42,10 +149,21 @@
 	justify-content: space-between;
 	align-items: center;
 	gap: 12px;
+	margin-bottom: 4px;
+}
+
+.wpsa-category-row-head strong {
+	color: #111827;
+}
+
+.wpsa-priority-list {
+	margin: 0;
+	padding-left: 18px;
 }
 
 .wpsa-priority-list li {
-	margin-bottom: 6px;
+	margin-bottom: 10px;
+	line-height: 1.45;
 }
 
 .wpsa-filter-bar {
@@ -54,30 +172,57 @@
 	gap: 10px;
 	margin: 10px 0 14px;
 	flex-wrap: wrap;
+	padding: 12px;
+	border: 1px solid #e5e7eb;
+	border-radius: 10px;
+	background: #fff;
 }
 
 .wpsa-filter-bar label {
 	display: grid;
 	gap: 4px;
+	font-weight: 600;
+	color: #1f2937;
 }
 
 .wpsa-wrap .wpsa-form-grid {
 	display: grid;
-	gap: 12px;
-	max-width: 800px;
+	gap: 14px;
+	max-width: 840px;
+	background: #fff;
+	padding: 16px;
+	border-radius: 12px;
+	border: 1px solid #e5e7eb;
+	box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
 }
 
 .wpsa-wrap .wpsa-form-grid label {
 	display: grid;
-	gap: 4px;
+	gap: 6px;
+	font-weight: 600;
+	color: #1f2937;
+}
+
+.wpsa-wrap .wpsa-form-grid input[type='number'],
+.wpsa-wrap .wpsa-form-grid input[type='text'],
+.wpsa-wrap .wpsa-form-grid select {
+	max-width: 360px;
+	border-radius: 8px;
+	border-color: #d1d5db;
+}
+
+.wpsa-wrap .wpsa-form-grid input[type='checkbox'] {
+	margin-right: 6px;
 }
 
 .wpsa-badge {
 	display: inline-block;
-	padding: 2px 8px;
+	padding: 3px 10px;
 	border-radius: 999px;
 	font-size: 12px;
-	font-weight: 600;
+	font-weight: 700;
+	line-height: 1.2;
+	white-space: nowrap;
 }
 
 .wpsa-status-pass {
@@ -99,4 +244,84 @@
 .wpsa-status-skipped {
 	background: #e5e7eb;
 	color: #374151;
+}
+
+.wpsa-wrap .wpsa-subtle {
+	color: #6b7280;
+	margin-top: 4px;
+}
+
+.wpsa-wrap .wpsa-table {
+	border: 1px solid #e5e7eb;
+	border-radius: 10px;
+	overflow: hidden;
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.wpsa-wrap .wpsa-table thead th {
+	background: #f8fafc;
+	color: #111827;
+	font-weight: 700;
+	border-bottom: 1px solid #e5e7eb;
+}
+
+.wpsa-wrap .wpsa-table td {
+	vertical-align: top;
+}
+
+.wpsa-wrap pre {
+	margin: 0;
+	padding: 10px;
+	background: #0b1020;
+	color: #d1fae5;
+	border-radius: 8px;
+	max-height: 190px;
+	overflow: auto;
+	font-size: 12px;
+}
+
+.wpsa-wrap .wpsa-inline-stats {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 10px;
+}
+
+.wpsa-wrap .wpsa-inline-stat {
+	padding: 6px 10px;
+	border-radius: 999px;
+	background: #f3f4f6;
+	color: #1f2937;
+	font-weight: 600;
+	font-size: 12px;
+}
+
+.wpsa-wrap .wpsa-inline-stat-pass {
+	background: #dcfce7;
+	color: #166534;
+}
+
+.wpsa-wrap .wpsa-inline-stat-warning {
+	background: #fef9c3;
+	color: #854d0e;
+}
+
+.wpsa-wrap .wpsa-inline-stat-fail {
+	background: #fee2e2;
+	color: #991b1b;
+}
+
+.wpsa-wrap .wpsa-inline-stat-unknown,
+.wpsa-wrap .wpsa-inline-stat-skipped {
+	background: #e5e7eb;
+	color: #374151;
+}
+
+.wpsa-wrap .wpsa-action-remediation {
+	margin-top: 5px;
+	color: #374151;
+	background: #f8fafc;
+	border: 1px solid #e5e7eb;
+	border-radius: 8px;
+	padding: 8px 10px;
 }

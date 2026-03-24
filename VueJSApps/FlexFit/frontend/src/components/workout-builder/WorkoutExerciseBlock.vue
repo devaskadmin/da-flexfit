@@ -1,0 +1,240 @@
+<script setup>
+const props = defineProps({
+  exercise: {
+    type: Object,
+    required: true,
+  },
+  index: {
+    type: Number,
+    required: true,
+  },
+  total: {
+    type: Number,
+    required: true,
+  },
+});
+
+const emit = defineEmits(['update-field', 'remove', 'move-up', 'move-down']);
+
+const updateField = (field, value, isNumeric = false) => {
+  emit('update-field', {
+    id: props.exercise.id,
+    field,
+    value: isNumeric ? Number(value || 0) : value,
+  });
+};
+</script>
+
+<template>
+  <article class="exercise-block">
+    <header class="exercise-block__head">
+      <div class="exercise-block__identity">
+        <img
+          v-if="exercise.image"
+          :src="exercise.image"
+          :alt="exercise.name"
+        />
+        <div>
+          <h4>{{ exercise.name }}</h4>
+          <p>{{ exercise.muscleGroup || 'N/A' }} • {{ exercise.equipment || 'Bodyweight' }}</p>
+        </div>
+      </div>
+
+      <div class="exercise-block__actions">
+        <button type="button" :disabled="index === 0" @click="emit('move-up', exercise.id)">↑</button>
+        <button type="button" :disabled="index === total - 1" @click="emit('move-down', exercise.id)">↓</button>
+        <button type="button" class="btn-remove" @click="emit('remove', exercise.id)">Remove</button>
+      </div>
+    </header>
+
+    <div class="exercise-block__fields">
+      <label>
+        <span>Sets</span>
+        <input
+          :value="exercise.sets"
+          type="number"
+          min="0"
+          @input="updateField('sets', $event.target.value, true)"
+        />
+      </label>
+
+      <label>
+        <span>Reps</span>
+        <input
+          :value="exercise.reps"
+          type="number"
+          min="0"
+          @input="updateField('reps', $event.target.value, true)"
+        />
+      </label>
+
+      <label>
+        <span>Weight</span>
+        <input
+          :value="exercise.weight"
+          type="number"
+          min="0"
+          @input="updateField('weight', $event.target.value, true)"
+        />
+      </label>
+
+      <label>
+        <span>Duration (min)</span>
+        <input
+          :value="exercise.duration"
+          type="number"
+          min="0"
+          @input="updateField('duration', $event.target.value, true)"
+        />
+      </label>
+
+      <label>
+        <span>Rest (sec)</span>
+        <input
+          :value="exercise.restTime"
+          type="number"
+          min="0"
+          @input="updateField('restTime', $event.target.value, true)"
+        />
+      </label>
+
+      <label class="field-notes">
+        <span>Notes</span>
+        <input
+          :value="exercise.notes"
+          type="text"
+          placeholder="Tempo, cues, target effort"
+          @input="updateField('notes', $event.target.value)"
+        />
+      </label>
+    </div>
+  </article>
+</template>
+
+<style scoped>
+.exercise-block {
+  border: 1px solid #dbe4ef;
+  border-radius: 16px;
+  background: #fff;
+  padding: 14px;
+}
+
+.exercise-block + .exercise-block {
+  margin-top: 12px;
+}
+
+.exercise-block__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.exercise-block__identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.exercise-block__identity img {
+  width: 68px;
+  height: 68px;
+  object-fit: cover;
+  border-radius: 10px;
+  background: #f1f5f9;
+}
+
+.exercise-block__identity h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.exercise-block__identity p {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.exercise-block__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.exercise-block__actions button {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 8px;
+  height: 32px;
+  padding: 0 10px;
+  color: #1f2937;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.exercise-block__actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.exercise-block__actions .btn-remove {
+  border-color: #fecaca;
+  color: #b91c1c;
+  background: #fff5f5;
+}
+
+.exercise-block__fields {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.exercise-block__fields label {
+  display: grid;
+  gap: 5px;
+}
+
+.exercise-block__fields span {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.exercise-block__fields input {
+  border: 1px solid #d1d5db;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.field-notes {
+  grid-column: span 2;
+}
+
+@media (max-width: 1200px) {
+  .exercise-block__fields {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .field-notes {
+    grid-column: span 3;
+  }
+}
+
+@media (max-width: 768px) {
+  .exercise-block__head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .exercise-block__fields {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .field-notes {
+    grid-column: span 2;
+  }
+}
+</style>

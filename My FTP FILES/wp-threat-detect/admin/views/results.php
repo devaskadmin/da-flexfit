@@ -12,11 +12,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 ?>
 <div class="wrap wpsa-wrap">
-	<h1><?php esc_html_e( 'Scan Results', 'wp-security-saas-alpha' ); ?></h1>
-	<form method="post" style="margin-bottom:12px;">
-		<?php wp_nonce_field( 'wpsa_run_scan_action', 'wpsa_run_scan_nonce' ); ?>
-		<button type="submit" name="wpsa_run_scan" class="button button-primary"><?php esc_html_e( 'Run New Scan', 'wp-security-saas-alpha' ); ?></button>
-	</form>
+	<div class="wpsa-page-head">
+		<div>
+			<h1><?php esc_html_e( 'Scan Results', 'wp-security-saas-alpha' ); ?></h1>
+			<p><?php esc_html_e( 'Filter and review findings by status and category.', 'wp-security-saas-alpha' ); ?></p>
+		</div>
+		<form method="post">
+			<?php wp_nonce_field( 'wpsa_run_scan_action', 'wpsa_run_scan_nonce' ); ?>
+			<button type="submit" name="wpsa_run_scan" class="button button-primary"><?php esc_html_e( 'Run New Scan', 'wp-security-saas-alpha' ); ?></button>
+		</form>
+	</div>
 
 	<?php if ( empty( $latest ) ) : ?>
 		<div class="notice notice-info"><p><?php esc_html_e( 'No scan data found.', 'wp-security-saas-alpha' ); ?></p></div>
@@ -82,7 +87,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<?php foreach ( $grouped as $category => $findings ) : ?>
 			<div class="wpsa-card">
 				<h2><?php echo esc_html( $category ); ?></h2>
-				<table class="widefat striped">
+				<table class="widefat striped wpsa-table">
 					<thead>
 						<tr>
 							<th><?php esc_html_e( 'Control', 'wp-security-saas-alpha' ); ?></th>
