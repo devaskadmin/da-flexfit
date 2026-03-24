@@ -15,6 +15,16 @@ export const sidebarMenus = ref([
                 icon: 'fa-solid fa-person-walking'              
             },
             {
+                name: 'Workouts',
+                link_name: 'workouts',
+                icon: 'fa-solid fa-list-check'
+            },
+            {
+                name: 'Workout Builder',
+                link_name: 'workout_builder',
+                icon: 'fa-solid fa-dumbbell'
+            },
+            {
                 name: 'Nutrition',
                 link_name: 'Nutrition',
                 icon: 'fa-solid fa-utensils'

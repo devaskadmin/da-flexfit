@@ -143,55 +143,57 @@ class SyncCoordinator:
         progress: ProgressCallback | None = None,
     ) -> None:
         def action() -> OperationResult[None]:
+            self._logger.info("=== PULL OPERATION STARTED ===", profile=profile.title)
+            self._logger.info(
+                "Pull parameters.",
+                profile=profile.title,
+                localPath=profile.local_path,
+                remotePath=profile.remote_path,
+                excludePatterns=str(profile.exclude),
+            )
+            
             local_root = Path(profile.local_path)
+            self._logger.info("Creating local directory.", profile=profile.title, path=str(local_root))
             local_root.mkdir(parents=True, exist_ok=True)
+            self._logger.info("Local directory ready.", profile=profile.title, path=str(local_root))
 
-            listed = self._ftp.list_files(profile, profile.remote_path)
-            if not listed.ok or listed.data is None:
-                return OperationResult(ok=False, message="Pull failed while listing files.", error=listed.error)
+            self._logger.info(
+                "Starting streaming pull.",
+                profile=profile.title,
+                remotePath=profile.remote_path,
+            )
+            result = self._ftp.pull_directory_streaming(
+                profile=profile,
+                remote_root=profile.remote_path,
+                local_root=local_root,
+                exclude=profile.exclude,
+                progress=lambda message: self._emit_progress(progress, message),
+            )
+            if not result.ok:
+                error_msg = result.error or "Unknown error"
+                self._logger.error(
+                    "Pull failed during streaming download.",
+                    profile=profile.title,
+                    error=error_msg,
+                )
+                return OperationResult(ok=False, message="Pull failed.", error=error_msg)
 
-            eligible_files: list[tuple[object, str]] = []
-            for rf in listed.data:
-                rel = remote_to_relative(profile.remote_path, rf.path)
-                if should_exclude(rel, profile.exclude):
-                    continue
-                eligible_files.append((rf, rel))
-
-            total_files = len(eligible_files)
             downloaded = 0
-            skipped = 0
-            processed = 0
+            excluded = 0
+            if result.data is not None:
+                downloaded = int(result.data.get("downloaded", 0))
+                excluded = int(result.data.get("excluded", 0))
 
-            if total_files == 0:
-                self._emit_progress(progress, "Pull 0/0")
-
-            for rf, rel in eligible_files:
-                processed += 1
-
-                local_target = local_root / Path(rel)
-                if local_target.exists() and local_target.is_file():
-                    stat = local_target.stat()
-                    local_size = stat.st_size
-                    local_modified = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
-                    if is_same_file_state(
-                        local_size=local_size,
-                        local_modified=local_modified,
-                        remote_size=rf.size,
-                        remote_modified=rf.modified,
-                    ):
-                        skipped += 1
-                        self._emit_progress(progress, f"Pull {processed}/{total_files} ({downloaded} downloaded)")
-                        continue
-
-                r = self._ftp.download_file(profile, rf.path, local_target)
-                if not r.ok:
-                    return OperationResult(ok=False, message="Pull failed.", error=r.error)
-                downloaded += 1
-                self._emit_progress(progress, f"Pull {processed}/{total_files} ({downloaded} downloaded)")
-
+            self._logger.info(
+                "=== PULL OPERATION COMPLETED ===",
+                profile=profile.title,
+                downloaded=downloaded,
+                excluded=excluded,
+            )
+            self._emit_progress(progress, f"Pull complete ({downloaded} downloaded, {excluded} excluded)")
             return OperationResult(
                 ok=True,
-                message=f"Pull complete. Downloaded {downloaded}, skipped {skipped}.",
+                message=f"Pull complete. Downloaded {downloaded}, excluded {excluded}.",
             )
 
         self._start_job(profile, "pull", action, done)

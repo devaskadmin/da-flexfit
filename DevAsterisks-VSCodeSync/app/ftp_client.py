@@ -9,6 +9,7 @@ from typing import Callable, TypeVar
 
 from app.logger import AppLogger
 from app.models import ConnectionProfile, OperationResult, RemoteFileInfo
+from app.utils import remote_to_relative, should_exclude
 
 
 T = TypeVar("T")
@@ -102,21 +103,50 @@ class FTPClient:
     def connect(self, profile: ConnectionProfile) -> OperationResult[FTP | FTP_TLS]:
         """Connects and authenticates to FTP server."""
         def action() -> FTP | FTP_TLS:
+            self._logger.info(
+                "FTP connection attempt started.",
+                profile=profile.title,
+                host=profile.host,
+                port=profile.port,
+                protocol=profile.protocol,
+            )
+            
             if profile.protocol in {"ftpes", "ftps"}:
+                self._logger.info("Using FTPS with TLS.", profile=profile.title)
                 ftp = FTP_TLS(context=self._build_tls_context(profile))
                 ftp.connect(profile.host, profile.port, timeout=15)
+                self._logger.info("FTPS connection established.", profile=profile.title)
                 ftp.login(profile.username, profile.password)
+                self._logger.info("FTPS login successful.", profile=profile.title)
                 ftp.prot_p()
+                self._logger.info("FTPS data connection protection enabled.", profile=profile.title)
             else:
+                self._logger.info("Using standard FTP.", profile=profile.title)
                 ftp = FTP()
                 ftp.connect(profile.host, profile.port, timeout=15)
+                self._logger.info("FTP connection established.", profile=profile.title)
                 ftp.login(profile.username, profile.password)
+                self._logger.info("FTP login successful.", profile=profile.title)
 
             ftp.encoding = "utf-8"
             ftp.set_pasv(profile.passive_mode)
+            self._logger.info(
+                "FTP connection ready.",
+                profile=profile.title,
+                passiveMode=profile.passive_mode,
+            )
             return ftp
 
-        return self._retry(action, f"connect:{profile.title}")
+        result = self._retry(action, f"connect:{profile.title}")
+        if result.ok:
+            self._logger.info("FTP connection successful.", profile=profile.title)
+        else:
+            self._logger.error(
+                "FTP connection failed after retries.",
+                profile=profile.title,
+                error=result.error,
+            )
+        return result
 
     def test_connection(self, profile: ConnectionProfile) -> OperationResult[None]:
         """Tests FTP connectivity and basic remote path access."""
@@ -185,25 +215,267 @@ class FTPClient:
 
     def download_file(self, profile: ConnectionProfile, remote_file: str, local_file: Path) -> OperationResult[None]:
         """Downloads a single remote file to local path."""
+        self._logger.info(
+            "Download file operation started.",
+            profile=profile.title,
+            remoteFile=remote_file,
+            localFile=str(local_file),
+        )
+        
         conn = self.connect(profile)
         if not conn.ok or conn.data is None:
+            self._logger.error(
+                "Download failed - connection error.",
+                profile=profile.title,
+                remoteFile=remote_file,
+                error=conn.error,
+            )
             return OperationResult(ok=False, message="Download failed (connect).", error=conn.error)
 
         ftp = conn.data
         try:
             local_file.parent.mkdir(parents=True, exist_ok=True)
+            self._logger.info(
+                "Local directory created.",
+                profile=profile.title,
+                localDir=str(local_file.parent),
+            )
+            
+            # Verify the remote file exists before downloading
+            self._logger.info(
+                "Checking remote file size.",
+                profile=profile.title,
+                remoteFile=remote_file,
+            )
+            try:
+                ftp_size = ftp.size(remote_file)
+                self._logger.info(
+                    "Remote file size retrieved.",
+                    profile=profile.title,
+                    remoteFile=remote_file,
+                    sizeBytes=ftp_size,
+                )
+                if ftp_size is None or ftp_size < 0:
+                    raise ValueError(f"Invalid remote file size: {ftp_size}")
+            except Exception as size_check_ex:
+                self._logger.error(
+                    "Remote file size check failed.",
+                    profile=profile.title,
+                    remoteFile=remote_file,
+                    error=str(size_check_ex),
+                )
+                ftp.quit()
+                return OperationResult(
+                    ok=False,
+                    message=f"Download failed: {remote_file} (file check)",
+                    error=f"File verification failed: {str(size_check_ex)}",
+                )
+            
+            self._logger.info(
+                "Starting binary transfer.",
+                profile=profile.title,
+                remoteFile=remote_file,
+                localFile=str(local_file),
+            )
             with local_file.open("wb") as f:
                 ftp.retrbinary(f"RETR {remote_file}", f.write)
+            
+            self._logger.info(
+                "File download completed.",
+                profile=profile.title,
+                remoteFile=remote_file,
+                localFile=str(local_file),
+            )
             ftp.quit()
             return OperationResult(ok=True, message=f"Downloaded {local_file.name}.")
         except Exception as ex:
+            self._logger.error(
+                "File download failed with exception.",
+                profile=profile.title,
+                remoteFile=remote_file,
+                localFile=str(local_file),
+                error=str(ex),
+                errorType=type(ex).__name__,
+            )
+            try:
+                ftp.quit()
+            except Exception as quit_ex:
+                self._logger.warning("Failed to close FTP connection.", error=str(quit_ex))
+            return OperationResult(
+                ok=False,
+                message=f"Download failed: {remote_file}",
+                error=self._format_exception(ex),
+            )
+
+    def pull_directory_streaming(
+        self,
+        profile: ConnectionProfile,
+        remote_root: str,
+        local_root: Path,
+        exclude: list[str],
+        progress: Callable[[str], None] | None = None,
+    ) -> OperationResult[dict[str, int]]:
+        """Recursively pulls files while walking directories, without pre-listing all files first."""
+
+        def emit(message: str) -> None:
+            if progress is None:
+                return
+            try:
+                progress(message)
+            except Exception:
+                pass
+
+        def join_remote(parent: str, child: str) -> str:
+            clean_child = child.replace("\\", "/").strip()
+            if clean_child.startswith("/") or clean_child.startswith("~/"):
+                return clean_child
+            if parent in {"", "/"}:
+                return f"/{clean_child.lstrip('/')}"
+            return f"{parent.rstrip('/')}/{clean_child.lstrip('/')}"
+
+        self._logger.info(
+            "Streaming pull operation started.",
+            profile=profile.title,
+            remoteRoot=remote_root,
+            localRoot=str(local_root),
+        )
+
+        conn = self.connect(profile)
+        if not conn.ok or conn.data is None:
+            self._logger.error(
+                "Streaming pull failed - connection error.",
+                profile=profile.title,
+                error=conn.error,
+            )
+            return OperationResult(ok=False, message="Pull failed (connect).", error=conn.error)
+
+        ftp = conn.data
+        counters: dict[str, int] = {
+            "downloaded": 0,
+            "excluded": 0,
+            "directories": 0,
+        }
+        visited_directories: set[str] = set()
+
+        def download_remote_file(remote_file: str) -> None:
+            relative_path = remote_to_relative(remote_root, remote_file)
+            if should_exclude(relative_path, exclude):
+                counters["excluded"] += 1
+                return
+
+            local_target = local_root / Path(relative_path)
+            local_target.parent.mkdir(parents=True, exist_ok=True)
+            with local_target.open("wb") as stream:
+                ftp.retrbinary(f"RETR {remote_file}", stream.write)
+
+            counters["downloaded"] += 1
+            emit(f"Pull downloaded {counters['downloaded']}: {relative_path}")
+
+        def walk_legacy(path: str) -> None:
+            normalized_path = path.replace("\\", "/") or "/"
+            if normalized_path in visited_directories:
+                return
+            visited_directories.add(normalized_path)
+            counters["directories"] += 1
+
+            previous_dir = ftp.pwd()
+            ftp.cwd(normalized_path)
+            current_dir = ftp.pwd()
+            try:
+                try:
+                    entries = ftp.nlst()
+                except error_perm as ex:
+                    if "550" in str(ex):
+                        entries = []
+                    else:
+                        raise
+
+                for raw_entry in entries:
+                    entry = raw_entry.replace("\\", "/").strip()
+                    if not entry:
+                        continue
+
+                    name = entry.rstrip("/").split("/")[-1]
+                    if name in {".", ".."}:
+                        continue
+
+                    full_path = entry if entry.startswith("/") or entry.startswith("~/") else join_remote(current_dir, entry)
+                    if full_path in {current_dir, previous_dir}:
+                        continue
+
+                    if self._is_remote_directory(ftp, full_path):
+                        walk_legacy(full_path)
+                        ftp.cwd(current_dir)
+                        continue
+
+                    download_remote_file(full_path)
+            finally:
+                ftp.cwd(previous_dir)
+
+        def walk(path: str) -> None:
+            normalized_path = path.replace("\\", "/") or "/"
+            if normalized_path in visited_directories:
+                return
+            visited_directories.add(normalized_path)
+            counters["directories"] += 1
+
+            try:
+                entries = list(ftp.mlsd(normalized_path))
+            except Exception as mlsd_ex:
+                if self._supports_legacy_list_fallback(mlsd_ex):
+                    self._logger.warning(
+                        "MLSD unsupported during streaming pull. Falling back to legacy walk.",
+                        profile=profile.title,
+                        path=normalized_path,
+                        error=str(mlsd_ex),
+                    )
+                    walk_legacy(normalized_path)
+                    return
+                raise
+
+            for name, facts in entries:
+                if name in {".", ".."}:
+                    continue
+
+                full_path = join_remote(normalized_path, name)
+                kind = facts.get("type", "file")
+                if kind == "dir":
+                    walk(full_path)
+                elif kind == "file":
+                    download_remote_file(full_path)
+
+        try:
+            local_root.mkdir(parents=True, exist_ok=True)
+            ftp.cwd(remote_root)
+            emit("Pull started...")
+            walk(remote_root)
+            ftp.quit()
+            self._logger.info(
+                "Streaming pull completed.",
+                profile=profile.title,
+                downloaded=counters["downloaded"],
+                excluded=counters["excluded"],
+                directories=counters["directories"],
+            )
+            return OperationResult(
+                ok=True,
+                message="Pull completed.",
+                data=counters,
+            )
+        except Exception as ex:
+            self._logger.error(
+                "Streaming pull failed with exception.",
+                profile=profile.title,
+                error=str(ex),
+                errorType=type(ex).__name__,
+            )
             try:
                 ftp.quit()
             except Exception:
                 pass
             return OperationResult(
                 ok=False,
-                message=f"Download failed: {remote_file}",
+                message="Pull failed.",
                 error=self._format_exception(ex),
             )
 
@@ -330,32 +602,113 @@ class FTPClient:
 
     def list_files(self, profile: ConnectionProfile, remote_root: str) -> OperationResult[list[RemoteFileInfo]]:
         """Lists remote files recursively using MLSD when supported."""
+        self._logger.info(
+            "List files operation started.",
+            profile=profile.title,
+            remoteRoot=remote_root,
+        )
+        
         conn = self.connect(profile)
         if not conn.ok or conn.data is None:
+            self._logger.error(
+                "List files failed - connection error.",
+                profile=profile.title,
+                error=conn.error,
+            )
             return OperationResult(ok=False, message="List files failed (connect).", error=conn.error)
 
         ftp = conn.data
         files: list[RemoteFileInfo] = []
+        
+        # First, verify we can access the remote root
+        self._logger.info("Verifying remote directory access.", profile=profile.title, path=remote_root)
+        try:
+            ftp.cwd(remote_root)
+            self._logger.info("Successfully changed to remote directory.", profile=profile.title, path=remote_root)
+        except Exception as cwd_ex:
+            self._logger.error(
+                "Failed to access remote directory.",
+                profile=profile.title,
+                path=remote_root,
+                error=str(cwd_ex),
+            )
+            try:
+                ftp.quit()
+            except Exception:
+                pass
+            return OperationResult(
+                ok=False,
+                message="List files failed.",
+                error=self._build_cwd_failure_message(ftp, profile, cwd_ex),
+            )
 
-        def walk(path: str) -> None:
-            entries = list(ftp.mlsd(path))
+        def walk(path: str, depth: int = 0) -> None:
+            self._logger.info(
+                "Walking remote directory.",
+                profile=profile.title,
+                path=path,
+                depth=depth,
+            )
+            try:
+                entries = list(ftp.mlsd(path))
+                self._logger.info(
+                    f"MLSD returned {len(entries)} entries.",
+                    profile=profile.title,
+                    path=path,
+                    count=len(entries),
+                )
+            except Exception as mlsd_ex:
+                self._logger.warning(
+                    "MLSD failed, trying fallback.",
+                    profile=profile.title,
+                    path=path,
+                    error=str(mlsd_ex),
+                )
+                entries = []
+                
             for name, facts in entries:
                 full = f"{path.rstrip('/')}/{name}".replace("//", "/")
                 kind = facts.get("type", "file")
                 if kind == "dir":
-                    walk(full)
+                    self._logger.debug("Found directory.", profile=profile.title, path=full)
+                    try:
+                        walk(full, depth + 1)
+                    except Exception as walk_ex:
+                        self._logger.warning(
+                            "Error walking subdirectory.",
+                            profile=profile.title,
+                            path=full,
+                            error=str(walk_ex),
+                        )
                 elif kind == "file":
                     size = int(facts["size"]) if "size" in facts else None
                     modified = self._parse_mlsd_modify(facts.get("modify"))
                     files.append(
                         RemoteFileInfo(path=full, size=size, modified=modified, is_dir=False)
                     )
+                    self._logger.debug(
+                        "Found file.",
+                        profile=profile.title,
+                        path=full,
+                        size=size,
+                    )
 
         try:
             walk(remote_root)
+            self._logger.info(
+                "Remote directory walk completed.",
+                profile=profile.title,
+                totalFiles=len(files),
+            )
             ftp.quit()
+            self._logger.info("FTP connection closed.", profile=profile.title)
             return OperationResult(ok=True, message="Listed remote files.", data=files)
         except Exception as ex:
+            self._logger.error(
+                "List files walk failed.",
+                profile=profile.title,
+                error=str(ex),
+            )
             if self._supports_legacy_list_fallback(ex):
                 try:
                     self._logger.warning(
@@ -365,6 +718,11 @@ class FTPClient:
                         error=str(ex),
                     )
                     files = self._list_files_legacy(ftp, remote_root)
+                    self._logger.info(
+                        "Legacy listing completed.",
+                        profile=profile.title,
+                        totalFiles=len(files),
+                    )
                     ftp.quit()
                     return OperationResult(
                         ok=True,
@@ -372,6 +730,11 @@ class FTPClient:
                         data=files,
                     )
                 except Exception as legacy_ex:
+                    self._logger.error(
+                        "Legacy FTP listing also failed.",
+                        profile=profile.title,
+                        error=str(legacy_ex),
+                    )
                     try:
                         ftp.quit()
                     except Exception:

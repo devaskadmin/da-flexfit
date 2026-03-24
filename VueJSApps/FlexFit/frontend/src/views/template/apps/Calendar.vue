@@ -11,7 +11,7 @@ import l from "moment";
 import EventModalComponent from "@/components/template/modals/EventModalComponent.vue";
 import EventDeleteModal from "@/components/template/modals/EventDeleteModal.vue";
 import ModalWindow from "@/components/template/ModalWindow.vue";
-import {initCalendar} from "@/composable/template/dashboardManage";
+import {initCalendar} from "@/composable/dashboardManage";
 const e = new Date(l.now());
 
 const currentEvents = ref([]);

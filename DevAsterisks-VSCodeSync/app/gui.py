@@ -703,7 +703,9 @@ class DevAsterisksApp(ctk.CTk):
         self._coordinator.push_profile(profile, lambda r: self.after(0, self._on_done, profile, r))
 
     def _run_pull(self, profile: ConnectionProfile) -> None:
+        self._logger.info("Pull operation initiated by user.", profile=profile.title)
         self._set_status(profile, "Syncing")
+        self._last_result_var.set(f"{profile.title}: Initializing pull operation...")
         self._coordinator.pull_profile(
             profile,
             lambda r: self.after(0, self._on_done, profile, r),
@@ -712,6 +714,7 @@ class DevAsterisksApp(ctk.CTk):
 
     def _on_progress(self, profile: ConnectionProfile, message: str) -> None:
         """Updates UI while a long-running pull is in progress."""
+        self._logger.info("Pull progress update.", profile=profile.title, progress=message)
         self._set_status(profile, message)
         self._last_result_var.set(f"{profile.title}: {message}")
 
@@ -737,8 +740,19 @@ class DevAsterisksApp(ctk.CTk):
 
     def _on_done(self, profile: ConnectionProfile, result: OperationResult[None]) -> None:
         if result.ok:
+            self._logger.info(
+                "Pull operation succeeded.",
+                profile=profile.title,
+                resultMessage=result.message,
+            )
             self._set_status(profile, "Watching" if self._coordinator.is_auto_sync_active(profile) else "Idle")
         else:
+            self._logger.error(
+                "Pull operation failed.",
+                profile=profile.title,
+                resultMessage=result.message,
+                error=result.error,
+            )
             self._set_status(profile, "Error")
         result_message = self._build_result_message(profile, result)
         self._last_result_var.set(result_message)

@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 ?>
 <div class="wrap wpsa-wrap">
-	<h1><?php esc_html_e( 'WP Security SaaS Alpha', 'wp-security-saas-alpha' ); ?></h1>
+	<h1><?php esc_html_e( 'WP Threat Detect', 'wp-security-saas-alpha' ); ?></h1>
 	<p><?php esc_html_e( 'Security posture scanner for WordPress (assessment only).', 'wp-security-saas-alpha' ); ?></p>
 
 	<form method="post">

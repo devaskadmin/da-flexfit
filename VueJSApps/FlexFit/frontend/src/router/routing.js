@@ -197,7 +197,7 @@ export const pagesRoutes = [
     },    
     {
         path: '/Nutrition',
-        component: () => import('@/views/Member/Nutrition.vue'),
+        component: () => import('@/views/Member/NutritionWorkspace.vue'),
         name: 'Nutrition',
         meta: { layout: 'AppLayout', isPartials: true },
     },
@@ -205,6 +205,18 @@ export const pagesRoutes = [
         path: '/exercises',
         component: () => import('@/views/Member/Exercises.vue'),
         name: 'exercises',
+        meta: { layout: 'AppLayout', isPartials: true },
+    },
+    {
+        path: '/workouts',
+        component: () => import('@/views/Member/LogWorkout.vue'),
+        name: 'workouts',
+        meta: { layout: 'AppLayout', isPartials: true },
+    },
+    {
+        path: '/workout-builder',
+        component: () => import('@/views/Member/WorkoutBuilder.vue'),
+        name: 'workout_builder',
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {
