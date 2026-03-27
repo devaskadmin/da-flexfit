@@ -30,18 +30,34 @@ export const sidebarMenus = ref([
                 icon: 'fa-solid fa-utensils'
             },
             {
+                name: 'Settings',
+                link_name: 'user_settings',
+                icon: 'fa-solid fa-gear'
+            },
+            {
+                name: 'Logout',
+                link_name: 'logout',
+                icon: 'fa-light fa-calendar'
+            },
+        ]
+    },
+    {
+        menu_name: 'Administrator',
+        linkClass: 'admin-black',
+        menus: [
+            {
                 name: 'View Progress',
-                link_name: 'dashboard_index', // changed from 'log_workout'
+                link_name: 'dashboard_index',
                 icon: 'fa-solid fa-chart-line'
             },
             {
                 name: 'Upload Picture',
-                link_name: 'dashboard_index', // changed from 'log_workout'
+                link_name: 'dashboard_index',
                 icon: 'fa-solid fa-images'
             },
             {
                 name: 'Chat with Trainer',
-                link_name: 'dashboard_index', // changed from 'log_workout'
+                link_name: 'dashboard_index',
                 icon: 'fa-regular fa-message'
             },
             {
@@ -50,25 +66,19 @@ export const sidebarMenus = ref([
                 icon: 'fa-light fa-calendar'
             },
             {
-                name: 'User Settings',
-                icon: 'fa-light fa-user',
-                sub_menus: [
-                    {
-                        name: 'View Profile',
-                        link_name: 'view_profile',
-                        icon: 'fa-light fa-address-card'
-                    },
-                    {
-                        name: 'Edit Profile',
-                        link_name: 'edit_profile',
-                        icon: 'fa-light fa-sliders'
-                    },
-                ]
+                name: 'Users',
+                link_name: 'admin_users',
+                icon: 'fa-solid fa-users'
             },
             {
-                name: 'Logout',
-                link_name: 'logout',
-                icon: 'fa-light fa-calendar'
+                name: 'Roles',
+                link_name: 'admin_roles',
+                icon: 'fa-solid fa-id-badge'
+            },
+            {
+                name: 'Test Roles',
+                link_name: 'admin_test_roles',
+                icon: 'fa-solid fa-vial-circle-check'
             },
         ]
     },

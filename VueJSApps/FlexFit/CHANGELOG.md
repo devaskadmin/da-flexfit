@@ -4,6 +4,20 @@ All notable changes to **FlexFit** are documented in this file.
 
 ---
 
+## [0.6.1] - 2026-03-26
+
+### Added
+- Enhanced exercise browser with improved search filtering and category navigation.
+- Nutrition macro tracking stabilized with improved Open Food Facts API reliability.
+- Workout log history pagination and export functionality.
+- Admin dashboard for managing members, exercises, and content.
+
+### Improved
+- Workout log UI refinements and data consistency fixes carried forward from 0.6.0-alpha.
+- General stability and performance improvements across member-facing views.
+
+---
+
 ## [0.6.0-alpha] - 2026-03-23
 
 > ⚠️ **Alpha Release** — Active development. Features may be incomplete or subject to change.

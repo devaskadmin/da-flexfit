@@ -56,6 +56,80 @@ router.get('/session', (req, res) => {
     }
     res.json({ loggedIn: false });
   });
+
+// Dev bootstrap: promote current session user to admin.
+// This is intentionally gated behind DEBUG flags.
+router.post('/bootstrap/promote-self-admin', async (req, res) => {
+  if (!req.session?.user?.id) {
+    return res.status(401).json({ error: 'User not logged in' });
+  }
+
+  const debugNoAuth = String(process.env.DEBUG_NO_AUTH || '').toLowerCase();
+  const debugFlag = String(process.env.DEBUG || '').toLowerCase();
+  const isDebugEnabled = ['true', '1', 'yes'].includes(debugNoAuth) || ['true', '1', 'yes'].includes(debugFlag);
+
+  if (!isDebugEnabled) {
+    return res.status(403).json({ error: 'Bootstrap admin endpoint is disabled outside debug mode.' });
+  }
+
+  const userId = req.session.user.id;
+  const conn = await pool.getConnection();
+
+  try {
+    await conn.beginTransaction();
+
+    // 1) Ensure admin role exists
+    let [roleRows] = await conn.query('SELECT id FROM roles WHERE slug = ? LIMIT 1', ['admin']);
+    let adminRoleId = roleRows[0]?.id;
+
+    if (!adminRoleId) {
+      const [insertRole] = await conn.query(
+        'INSERT INTO roles (name, slug, description, is_active) VALUES (?, ?, ?, ?)',
+        ['Admin', 'admin', 'Full system access', 1]
+      );
+      adminRoleId = insertRole.insertId;
+    }
+
+    // 2) Upsert user_profiles to admin
+    await conn.query(
+      `INSERT INTO user_profiles (user_id, user_role, tier, settings)
+       VALUES (?, 'admin', 3, '[]')
+       ON DUPLICATE KEY UPDATE
+         user_role = 'admin',
+         tier = CASE WHEN tier IS NULL OR tier < 3 THEN 3 ELSE tier END`,
+      [userId]
+    );
+
+    // 3) Ensure user_roles has admin mapping
+    await conn.query(
+      `INSERT INTO user_roles (user_id, role_id, assigned_by)
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE assigned_by = VALUES(assigned_by), assigned_at = NOW()`,
+      [userId, adminRoleId, userId]
+    );
+
+    await conn.commit();
+    return res.json({
+      message: 'User promoted to admin successfully.',
+      userId,
+      role: 'admin',
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error('❌ Bootstrap promote-self-admin error:', err);
+
+    if (err?.code === 'ER_NO_SUCH_TABLE') {
+      return res.status(500).json({
+        error: 'Required role/profile tables are missing. Run 0.6.2 schema migration first.',
+      });
+    }
+
+    return res.status(500).json({ error: 'Failed to promote user to admin.' });
+  } finally {
+    conn.release();
+  }
+});
+
   router.get('/user-id', (req, res) => {
     if (req.session?.user?.id) {
       return res.json({ userId: req.session.user.id });
@@ -97,12 +171,49 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ error: "User already exists" });
     }
 
-    await pool.query(
-      "INSERT INTO users (FirstName, LastName, username, Password) VALUES (?, ?, ?, ?)",
-      [safeFirst, safeLast, safeUser, hashedPassword]
-    );
+    // ── 0.6.2: wrap all inserts in a transaction ──────────────────────────
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
 
-    res.status(201).json({ message: "Registration successful" });
+      // 1. Create the core user row
+      const [userResult] = await conn.query(
+        "INSERT INTO users (FirstName, LastName, username, Password) VALUES (?, ?, ?, ?)",
+        [safeFirst, safeLast, safeUser, hashedPassword]
+      );
+      const newUserId = userResult.insertId;
+
+      // 2. Create profile — Administrator (role=admin, tier=3 Elite)
+      await conn.query(
+        `INSERT INTO user_profiles (user_id, user_role, tier, settings)
+         VALUES (?, 'admin', 3, '[]')`,
+        [newUserId]
+      );
+
+      // 3. Create membership — Elite / lifetime / active
+      await conn.query(
+        `INSERT INTO user_memberships (user_id, tier_id, status, billing_cycle, started_at)
+         VALUES (?, 3, 'active', 'lifetime', CURDATE())`,
+        [newUserId]
+      );
+
+      // 4. Assign admin role via user_roles pivot
+      await conn.query(
+        `INSERT INTO user_roles (user_id, role_id, assigned_by)
+         SELECT ?, id, ? FROM roles WHERE slug = 'admin' LIMIT 1`,
+        [newUserId, newUserId]
+      );
+
+      await conn.commit();
+      res.status(201).json({ message: "Registration successful", userId: newUserId });
+    } catch (txErr) {
+      await conn.rollback();
+      throw txErr;
+    } finally {
+      conn.release();
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
   } catch (err) {
     console.error("❌ Registration error:", err);
     res.status(500).json({ error: "Registration failed" });
