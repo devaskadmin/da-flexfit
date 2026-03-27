@@ -68,8 +68,8 @@ const tempLoginBypass = async () => {
 </script>
 
 <template>
-  <div class="container">
-    <div class="d-flex justify-content-end">
+  <div class="container login-center-wrap">
+    <div class="d-flex justify-content-center align-items-center">
       <div class="login-body">
         <div class="top d-flex justify-content-between align-items-center">
           <div class="logo">
@@ -144,10 +144,14 @@ const tempLoginBypass = async () => {
 </template>
 
 <style scoped>
-.light-theme .main-content .login-body {
-    background: rgba(255, 255, 255, 1);
-    border: 1px solid black;
+.login-center-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-
-
+.light-theme .main-content .login-body {
+  background: rgba(255, 255, 255, 1);
+  border: 1px solid black;
+}
 </style>

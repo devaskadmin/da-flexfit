@@ -65,6 +65,7 @@ app.use('/api', require('./api/users.js'));
 app.use('/api', require('./api/excerises.js'));
 app.use('/api/workout-log', workoutLogRoutes);
 app.use('/api', openFoodFactsRoutes);
+app.use('/api/admin', require('./api/admin.js')); // 🔒 Admin-only routes
 
 // ✅ Dynamic backend port handling
 const BACKEND_PORTS = [5000, 5001, 5002];

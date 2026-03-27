@@ -31,3 +31,6 @@ yarn.lock
 package-lock.json
 .vscode/extensions.json
 sync_config.jsonc
+
+# Local DB migration scratch file
+/DATABASE schema update file.txt

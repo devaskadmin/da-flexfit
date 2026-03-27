@@ -119,7 +119,11 @@ onMounted(() => {
               <ul class="sidebar-link-group" :class="[horizontalMenuEnabled ? 'dropdown-menu' : 'show']" :aria-labelledby="[horizontalMenuEnabled ? 'parentDropdownMenu'+index  : '']" :id="[horizontalMenuEnabled ? 'AppDropDownId'+index : `collapseExample-${index}`]" data-bs-parent="#testAccordionExample">
                 <li v-for="(menu, mIndex) in sidebar.menus" class="sidebar-dropdown-item">
                   <template v-if="menu.link_name">
-                    <router-link :to="{ name: `${menu.link_name}` }" class="sidebar-link" :class="{active : currentRoute === menu.link_name }">
+                    <router-link
+                      :to="{ name: `${menu.link_name}` }"
+                      class="sidebar-link"
+                      :class="[sidebar.linkClass || '', {active : currentRoute === menu.link_name }]"
+                    >
                       <span class="nav-icon"><i :class="menu.icon"></i></span><span class="sidebar-txt">{{ $t(menu.name) }}</span>
                     </router-link>
                   </template>
@@ -188,5 +192,16 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.sidebar-link.admin-black,
+.sidebar-link.admin-black .sidebar-txt,
+.sidebar-link.admin-black .nav-icon i {
+  color: #111111 !important;
+}
+
+.sidebar-link.admin-black:hover,
+.sidebar-link.admin-black:hover .sidebar-txt,
+.sidebar-link.admin-black:hover .nav-icon i {
+  color: #000000 !important;
+}
 
 </style>

@@ -220,6 +220,30 @@ export const pagesRoutes = [
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {
+        path: '/settings',
+        component: () => import('@/views/Member/UserSettings.vue'),
+        name: 'user_settings',
+        meta: { layout: 'AppLayout', isPartials: true },
+    },
+    {
+        path: '/admin/users',
+        component: () => import('@/views/Member/AdminUsers.vue'),
+        name: 'admin_users',
+        meta: { layout: 'AppLayout', isPartials: true },
+    },
+    {
+        path: '/admin/roles',
+        component: () => import('@/views/Member/AdminRoles.vue'),
+        name: 'admin_roles',
+        meta: { layout: 'AppLayout', isPartials: true },
+    },
+    {
+        path: '/admin/test-roles',
+        component: () => import('@/views/Member/AdminRoleTester.vue'),
+        name: 'admin_test_roles',
+        meta: { layout: 'AppLayout', isPartials: true },
+    },
+    {
         path: '/crm-dashboard',
         component: () => import('@/views/template/dashboard/CrmDashboard.vue'),
         name: 'crm_dashboard',
