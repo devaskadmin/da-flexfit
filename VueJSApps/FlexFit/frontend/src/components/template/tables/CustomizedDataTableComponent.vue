@@ -9,7 +9,7 @@ import ProductInfoComponent from "@/components/template/product/ProductInfoCompo
 import ProductRatingComponent from "@/components/template/product/ProductRatingComponent.vue";
 import ProductTableFilterOption from "@/components/template/product/ProductTableFilterOption.vue";
 import PagePanelHeader from "@/components/template/PagePanelHeader.vue";
-import ProductTableHeaderComponent from "@/components/template/Product/ProductTableHeaderComponent.vue";
+import ProductTableHeaderComponent from "@/components/template/product/ProductTableHeaderComponent.vue";
 
 const productActionComponent = shallowRef(ProductTableAction);
 const productInfoComponent = shallowRef(ProductInfoComponent);
