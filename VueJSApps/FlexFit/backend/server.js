@@ -11,14 +11,15 @@ require('dotenv').config();
 const app = express();
 app.use(express.json());
 
-const RUN_PUBLIC = String(process.env.RUN_PUBLIC || 'no').toLowerCase() === 'yes';
+const IS_RENDER = String(process.env.RENDER || '').toLowerCase() === 'true' || !!process.env.RENDER_EXTERNAL_URL;
+const RUN_PUBLIC = String(process.env.RUN_PUBLIC || 'no').toLowerCase() === 'yes' || IS_RENDER;
 
 // Middleware
 app.use(express.json());
 
 // ✅ Setup frontend origin + CORS strategy
 const FRONTEND_PORTS = [5173, 5174, 5175];
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || (RUN_PUBLIC ? '' : 'http://localhost:5173');
 
 // Optional comma-separated explicit allow-list for public hosting.
 // Example: CORS_ORIGINS=https://my-frontend.onrender.com,https://staging.myapp.com
@@ -27,11 +28,11 @@ const CORS_ORIGINS = String(process.env.CORS_ORIGINS || '')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-const allowedPublicOrigins = new Set([FRONTEND_ORIGIN, ...CORS_ORIGINS]);
+const allowedPublicOrigins = new Set([FRONTEND_ORIGIN, ...CORS_ORIGINS].filter(Boolean));
 const allowedLocalOrigins = new Set(FRONTEND_PORTS.map((port) => `http://localhost:${port}`));
 
 console.log(`🌐 RUN_PUBLIC=${RUN_PUBLIC ? 'yes' : 'no'}`);
-console.log(`🚀 FRONTEND_ORIGIN=${FRONTEND_ORIGIN}`);
+console.log(`🚀 FRONTEND_ORIGIN=${FRONTEND_ORIGIN || '(not set)'}`);
 
 // ✅ Use CORS (must come before session)
 app.use(cors({
@@ -41,6 +42,13 @@ app.use(cors({
 
     // Public deploy mode (Render): only allow configured origins.
     if (RUN_PUBLIC && allowedPublicOrigins.has(origin)) {
+      return callback(null, true);
+    }
+
+    // Public deploy mode fallback for testing on Render when no explicit origin list is set.
+    // Recommended for production: set FRONTEND_ORIGIN and/or CORS_ORIGINS.
+    if (RUN_PUBLIC && allowedPublicOrigins.size === 0) {
+      if (origin.includes('.onrender.com')) return callback(null, true);
       return callback(null, true);
     }
 
@@ -55,13 +63,18 @@ app.use(cors({
 }));
 
 // ✅ Configure session (only once)
+if (RUN_PUBLIC) {
+  app.set('trust proxy', 1);
+}
+
 app.use(session({
   secret: 'foifoiofiofri99990!',
   resave: false,
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure: false, // true if using HTTPS
+    secure: RUN_PUBLIC, // required for sameSite='none' on Render HTTPS
+    sameSite: RUN_PUBLIC ? 'none' : 'lax',
     maxAge: 1800000 // 30 min
   }
 }));
