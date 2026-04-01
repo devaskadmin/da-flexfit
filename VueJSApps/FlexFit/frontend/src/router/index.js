@@ -35,8 +35,14 @@ router.beforeEach(async (to, from, next) => {
     const isLoggedIn = sessionResult.status === 'fulfilled' && sessionResult.value?.data?.loggedIn === true;
     const isDatabaseConnected = dbStatusResult.status === 'fulfilled' && dbStatusResult.value?.data?.connected === true;
 
-    if (!isDatabaseConnected || !isLoggedIn) {
+    // If backend/database cannot be validated, fail closed to 404.
+    if (!isDatabaseConnected) {
       return next({ name: 'error_404' });
+    }
+
+    // Enforce login-first UX for protected routes.
+    if (!isLoggedIn) {
+      return next({ name: 'login' });
     }
 
     next(); // Allow navigation
