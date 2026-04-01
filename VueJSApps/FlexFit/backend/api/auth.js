@@ -15,7 +15,25 @@ router.get('/db-status', async (req, res) => {
     return res.json({ connected: true });
   } catch (err) {
     console.error('❌ DB status check failed:', err?.message || err);
-    return res.status(500).json({ connected: false });
+    const isDebugEnabled = ['true', '1', 'yes'].includes(String(process.env.DEBUG || '').toLowerCase());
+
+    return res.status(500).json({
+      connected: false,
+      ...(isDebugEnabled
+        ? {
+            debug: {
+              code: err?.code || null,
+              errno: err?.errno || null,
+              sqlState: err?.sqlState || null,
+              message: err?.message || 'Unknown database connection error',
+              host: process.env.DB_HOST || null,
+              port: process.env.DB_PORT || null,
+              database: process.env.DB_DATABASE || null,
+              user: process.env.DB_USER || null,
+            },
+          }
+        : {}),
+    });
   }
 });
 
