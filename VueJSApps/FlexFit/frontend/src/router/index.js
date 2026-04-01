@@ -8,35 +8,41 @@ const router = createRouter({
 });
 
 // Ensure environment variable is read correctly
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 const DEBUG_NO_AUTH = import.meta.env.VITE_DEBUG_NO_AUTH === "true";
+const IS_LOCALHOST = typeof window !== 'undefined' && ["localhost", "127.0.0.1"].includes(window.location.hostname);
+
+const publicPages = ['login', 'register', 'reset_password'];
+const errorPages = ['error_400', 'error_403', 'error_404', 'error_408', 'error_500', 'error_503', 'error_504'];
+const alwaysAllowedPages = new Set([...publicPages, ...errorPages]);
 
 router.beforeEach(async (to, from, next) => {
-  if (DEBUG_NO_AUTH) {
+  if (DEBUG_NO_AUTH && IS_LOCALHOST) {
     console.warn("🚀 DEBUG MODE: Bypassing authentication");
     return next();
   }
 
+  if (alwaysAllowedPages.has(to.name)) {
+    return next();
+  }
+
   try {
-    const response = await axios.get('http://localhost:5000/api/session', { withCredentials: true });
+    const [sessionResult, dbStatusResult] = await Promise.allSettled([
+      axios.get(`${API_BASE}/api/session`, { withCredentials: true }),
+      axios.get(`${API_BASE}/api/db-status`, { withCredentials: true }),
+    ]);
 
-    const isLoggedIn = response.data.loggedIn;
+    const isLoggedIn = sessionResult.status === 'fulfilled' && sessionResult.value?.data?.loggedIn === true;
+    const isDatabaseConnected = dbStatusResult.status === 'fulfilled' && dbStatusResult.value?.data?.connected === true;
 
-    // Allow unauthenticated access only to login and register
-    const publicPages = ['login', 'register', 'reset_password'];
-
-    if (!isLoggedIn && !publicPages.includes(to.name)) {
-      return next({ name: 'login' });
-    }
-
-    // Prevent logged-in users from visiting login/register
-    if (isLoggedIn && publicPages.includes(to.name)) {
-      return next({ name: 'dashboard_index' });
+    if (!isDatabaseConnected || !isLoggedIn) {
+      return next({ name: 'error_404' });
     }
 
     next(); // Allow navigation
   } catch (error) {
     console.error("Session check error:", error);
-    next(); // Fail open rather than block routing
+    next({ name: 'error_404' });
   }
 });
 
