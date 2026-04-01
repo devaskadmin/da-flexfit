@@ -271,12 +271,12 @@ onMounted(async () => {
 
 <template>
   <div class="nutrition-workspace">
-    <section class="workspace-hero panel-bg">
+    <section class="workspace-hero dashboard-breadcrumb ff-page-header panel-bg">
       <div>
         <h2>Nutrition Workspace</h2>
         <p>Search, review, and log foods in one workflow.</p>
       </div>
-      <div class="workspace-date">
+      <div class="workspace-date dashboard-filter">
         <label>Date</label>
         <DateDropDown v-model="selectedDateRaw" />
         <span>{{ selectedDateLabel }}</span>
@@ -416,33 +416,38 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.nutrition-workspace { display: grid; gap: 14px; }
-.workspace-hero { border: 1px solid var(--border-color); border-radius: 16px; padding: 18px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-.workspace-hero h2 { margin: 0; color: var(--text-color); }
-.workspace-hero p { margin: 4px 0 0; color: var(--text-color-secondary); }
+.nutrition-workspace {
+  --ff-border-strong: rgba(148, 163, 184, 0.48);
+  --ff-border-soft: rgba(148, 163, 184, 0.34);
+  display: grid;
+  gap: 14px;
+}
+.workspace-hero { border: 1.5px solid var(--ff-border-strong); border-radius: 16px; padding: 18px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.workspace-hero h2 { margin: 0; color: #ffffff; }
+.workspace-hero p { margin: 4px 0 0; color: #cbd5e1; }
 .workspace-date { display: grid; align-content: start; justify-items: end; gap: 4px; }
-.workspace-date label { color: var(--text-color-secondary); font-size: 0.8rem; }
-.workspace-date span { color: var(--text-color); font-size: 0.84rem; }
+.workspace-date label { color: #e2e8f0; font-size: 0.8rem; }
+.workspace-date span { color: #e2e8f0; font-size: 0.84rem; }
 .workspace-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; }
-.workspace-main { border: 1px solid var(--border-color); border-radius: 16px; padding: 14px; }
-.workspace-tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
-.workspace-tabs button { border: 1px solid var(--border-color); background: transparent; color: var(--text-color-secondary); border-radius: 999px; padding: 6px 12px; font-size: 0.82rem; font-weight: 600; }
+.workspace-main { border: 1.5px solid var(--ff-border-strong); border-radius: 16px; padding: 14px; }
+.workspace-tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1.5px solid var(--ff-border-soft); padding-bottom: 10px; }
+.workspace-tabs button { border: 1.5px solid var(--ff-border-soft); background: transparent; color: var(--text-color); border-radius: 999px; padding: 6px 12px; font-size: 0.82rem; font-weight: 600; }
 .workspace-tabs button.active { border-color: #4f46e5; color: #a5b4fc; background: rgba(79, 70, 229, 0.18); }
 .workspace-section { margin-top: 12px; }
 .search-controls { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 8px; }
-.search-controls input, .search-controls select { border: 1px solid var(--border-color); background: var(--main-color); color: var(--text-color); border-radius: 10px; padding: 9px 10px; }
+.search-controls input, .search-controls select { border: 1.5px solid var(--ff-border-soft); background: var(--main-color); color: var(--text-color); border-radius: 10px; padding: 9px 10px; }
 .btn-search { border: none; background: #2563eb; color: #fff; border-radius: 10px; padding: 9px 12px; font-weight: 700; }
 .food-grid { margin-top: 12px; display: grid; gap: 10px; }
-.state-msg { margin-top: 12px; border: 1px dashed var(--border-color); border-radius: 10px; color: var(--text-color-secondary); padding: 12px; }
+.state-msg { margin-top: 12px; border: 1.5px dashed var(--ff-border-soft); border-radius: 10px; color: var(--text-color-secondary); padding: 12px; }
 .state-msg.err { color: #fca5a5; border-color: #7f1d1d; }
 .add-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.form-card { border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; }
+.form-card { border: 1.5px solid var(--ff-border-soft); border-radius: 12px; padding: 12px; }
 .form-card h3 { margin: 0; color: var(--text-color); font-size: 1rem; }
 .form-card p { margin: 4px 0 10px; color: var(--text-color-secondary); font-size: 0.82rem; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .form-grid label { display: grid; gap: 4px; }
 .form-grid span { color: var(--text-color-secondary); font-size: 0.74rem; }
-.form-grid input { border: 1px solid var(--border-color); background: var(--main-color); color: var(--text-color); border-radius: 8px; padding: 8px 9px; }
+.form-grid input { border: 1.5px solid var(--ff-border-soft); background: var(--main-color); color: var(--text-color); border-radius: 8px; padding: 8px 9px; }
 .form-actions { margin-top: 10px; display: flex; gap: 8px; }
 .btn-save, .btn-clear { border: none; border-radius: 8px; padding: 8px 12px; font-weight: 700; }
 .btn-save { background: #16a34a; color: #fff; }
@@ -451,11 +456,15 @@ onMounted(async () => {
 .btn-remove-custom { border: 1px dashed #fca5a5; background: transparent; color: #fca5a5; border-radius: 8px; padding: 7px 10px; text-align: left; }
 .workspace-side { display: grid; align-content: start; gap: 10px; }
 .details-overlay { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.65); display: grid; place-items: center; padding: 16px; z-index: 1200; }
-.details-modal { width: min(460px, 100%); border: 1px solid var(--border-color); border-radius: 14px; padding: 14px; }
+.details-modal { width: min(460px, 100%); border: 1.5px solid var(--ff-border-strong); border-radius: 14px; padding: 14px; }
 .details-modal h3 { margin: 0; color: var(--text-color); }
 .details-modal p { margin: 4px 0 10px; color: var(--text-color-secondary); }
 .details-macros { display: grid; gap: 6px; color: var(--text-color); }
 .details-modal button { margin-top: 12px; border: none; background: #374151; color: #fff; border-radius: 8px; padding: 8px 12px; }
+:global(body.light-theme) .nutrition-workspace {
+  --ff-border-strong: rgba(15, 23, 42, 0.28);
+  --ff-border-soft: rgba(15, 23, 42, 0.22);
+}
 @media (max-width: 1100px) { .workspace-layout { grid-template-columns: 1fr; } .workspace-side { order: -1; } }
 @media (max-width: 768px) { .search-controls, .add-edit-grid, .form-grid { grid-template-columns: 1fr; } }
 </style>

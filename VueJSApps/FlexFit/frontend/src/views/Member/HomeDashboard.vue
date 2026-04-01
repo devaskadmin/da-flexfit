@@ -44,7 +44,7 @@ const recentActivity = [
 </script>
 
 <template>
-  <div class="dashboard-breadcrumb mb-25">
+  <div class="dashboard-breadcrumb ff-page-header mb-25">
     <h2>Welcome back</h2>
     <DateRangePicker />
   </div>

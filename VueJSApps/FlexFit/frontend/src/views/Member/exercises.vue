@@ -884,10 +884,12 @@ const clearFilters = () => {
 
 <template>
 
-   <div class="dashboard-breadcrumb mb-25">
+  <div class="dashboard-breadcrumb ff-page-header mb-25">
       <h2>Log Workout</h2>
-      SelectedDate: {{ selectedDate }}
+    <div class="dashboard-filter">
+      <span class="header-meta">SelectedDate: {{ selectedDate }}</span>
       <DateDropDown v-model="selectedDateRaw" />
+    </div>
    </div>
 
 
@@ -1586,6 +1588,11 @@ Please Select an excerise
    .dashboard-breadcrumb {
    margin-bottom: 20px;
    }
+  .header-meta {
+  color: #ffffff;
+  font-weight: 600;
+  margin-right: 10px;
+  }
    .panel {
    border: 1px solid #ddd;
    border-radius: 5px;

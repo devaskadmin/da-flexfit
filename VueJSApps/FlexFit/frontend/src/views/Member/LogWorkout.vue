@@ -49,7 +49,7 @@ const startBuilder = () => {
 </script>
 
 <template>
-  <div class="dashboard-breadcrumb mb-25">
+  <div class="dashboard-breadcrumb ff-page-header mb-25">
     <h2>Workouts</h2>
     <DateRangePicker />
   </div>

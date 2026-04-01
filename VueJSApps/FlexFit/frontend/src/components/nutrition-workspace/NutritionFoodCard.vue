@@ -37,7 +37,7 @@ const fallbackImage = 'https://images.unsplash.com/photo-1498837167922-ddd27525d
 
 <style scoped>
 .food-card {
-  border: 1px solid var(--border-color);
+  border: 1.5px solid var(--ff-border-soft, var(--border-color));
   border-radius: 14px;
   overflow: hidden;
   display: grid;
@@ -97,7 +97,7 @@ const fallbackImage = 'https://images.unsplash.com/photo-1498837167922-ddd27525d
 }
 
 .food-card__actions button {
-  border: 1px solid var(--border-color);
+  border: 1.5px solid var(--ff-border-soft, var(--border-color));
   background: transparent;
   color: var(--text-color);
   border-radius: 8px;

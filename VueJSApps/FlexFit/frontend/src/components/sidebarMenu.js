@@ -91,14 +91,6 @@ export const sidebarMenus = ref([
                 icon: 'fa-light fa-user-cog',
                 sub_menus: [
                     {
-                        name: 'Login 01',
-                        link_name: 'login'
-                    },
-                    {
-                        name: 'Registration 02',
-                        link_name: 'registration_2'
-                    },
-                    {
                         name: 'Reset Password',
                         link_name: 'reset_password'
                     },

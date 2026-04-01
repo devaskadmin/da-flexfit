@@ -203,7 +203,7 @@ export const pagesRoutes = [
     },
     {
         path: '/exercises',
-        component: () => import('@/views/Member/Exercises.vue'),
+        component: () => import('@/views/Member/exercises.vue'),
         name: 'exercises',
         meta: { layout: 'AppLayout', isPartials: true },
     },
@@ -223,6 +223,12 @@ export const pagesRoutes = [
         path: '/settings',
         component: () => import('@/views/Member/UserSettings.vue'),
         name: 'user_settings',
+        meta: { layout: 'AppLayout', isPartials: true },
+    },
+    {
+        path: '/notifications',
+        component: () => import('@/views/Member/Notifications.vue'),
+        name: 'notifications',
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {

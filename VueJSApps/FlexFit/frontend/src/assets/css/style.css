@@ -1703,6 +1703,7 @@ input[type=checkbox] {
   --bs-border-radius: 3px;
   --bs-border-color: rgba(255, 255, 255, 0.07);
   --bs-primary-bg-subtle: #23365e;
+  --ff-page-header-bg: linear-gradient(120deg, #020617 0%, #081a3a 56%, #0a1f4a 100%);
 }
 :root .light-theme {
   --bs-border-color: rgba(0, 0, 0, 0.1);
@@ -5611,6 +5612,52 @@ pre .punctuation {
   width: max-content;
   border-right-width: 1px;
   cursor: pointer;
+}
+
+/* Reusable page header gradient variant */
+.main-content .dashboard-breadcrumb.ff-page-header,
+.dark-theme .main-content .dashboard-breadcrumb.ff-page-header,
+.light-theme .main-content .dashboard-breadcrumb.ff-page-header {
+  background: var(--ff-page-header-bg);
+}
+
+.main-content .dashboard-breadcrumb.ff-page-header h2,
+.dark-theme .main-content .dashboard-breadcrumb.ff-page-header h2,
+.light-theme .main-content .dashboard-breadcrumb.ff-page-header h2 {
+  color: #ffffff;
+}
+
+.main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter,
+.dark-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter,
+.light-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter {
+  background: transparent;
+}
+
+.main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .form-control,
+.dark-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .form-control,
+.light-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .form-control,
+.main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .input-group-text,
+.dark-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .input-group-text,
+.light-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .input-group-text {
+  color: #ffffff;
+}
+
+.main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-input,
+.dark-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-input,
+.light-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-input,
+.main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-icon-calendar,
+.dark-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-icon-calendar,
+.light-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-icon-calendar,
+.main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-icon-clear,
+.dark-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-icon-clear,
+.light-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-icon-clear {
+  color: #0f172a;
+}
+
+.main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-input::placeholder,
+.dark-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-input::placeholder,
+.light-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-input::placeholder {
+  color: #475569;
 }
 .main-content .dashboard-top-box {
   padding: 20px;

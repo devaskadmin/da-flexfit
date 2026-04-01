@@ -37,7 +37,7 @@ const props = defineProps({
 
 <style scoped>
 .macro-summary {
-  border: 1px solid var(--border-color);
+  border: 1.5px solid var(--ff-border-strong, var(--border-color));
   border-radius: 14px;
   padding: 14px;
 }
@@ -62,7 +62,7 @@ const props = defineProps({
 }
 
 .macro-summary__grid article {
-  border: 1px solid var(--border-color);
+  border: 1.5px solid var(--ff-border-soft, var(--border-color));
   border-radius: 10px;
   padding: 10px;
   display: grid;

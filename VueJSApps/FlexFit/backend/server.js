@@ -11,24 +11,44 @@ require('dotenv').config();
 const app = express();
 app.use(express.json());
 
+const RUN_PUBLIC = String(process.env.RUN_PUBLIC || 'no').toLowerCase() === 'yes';
+
 // Middleware
 app.use(express.json());
 
-// ✅ Setup frontend origin
+// ✅ Setup frontend origin + CORS strategy
 const FRONTEND_PORTS = [5173, 5174, 5175];
-let FRONTEND_PORT = FRONTEND_PORTS[0];
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || `http://localhost:${FRONTEND_PORT}`;
-console.log(`🚀 Allowing frontend origin: ${FRONTEND_ORIGIN}`);
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+
+// Optional comma-separated explicit allow-list for public hosting.
+// Example: CORS_ORIGINS=https://my-frontend.onrender.com,https://staging.myapp.com
+const CORS_ORIGINS = String(process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const allowedPublicOrigins = new Set([FRONTEND_ORIGIN, ...CORS_ORIGINS]);
+const allowedLocalOrigins = new Set(FRONTEND_PORTS.map((port) => `http://localhost:${port}`));
+
+console.log(`🌐 RUN_PUBLIC=${RUN_PUBLIC ? 'yes' : 'no'}`);
+console.log(`🚀 FRONTEND_ORIGIN=${FRONTEND_ORIGIN}`);
 
 // ✅ Use CORS (must come before session)
 app.use(cors({
   origin: function(origin, callback) {
     // Allow requests with no origin (like mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
-    // Allow localhost:5173, localhost:5174, and localhost:5175 for dev
-    if (FRONTEND_PORTS.map(port => `http://localhost:${port}`).includes(origin)) {
+
+    // Public deploy mode (Render): only allow configured origins.
+    if (RUN_PUBLIC && allowedPublicOrigins.has(origin)) {
       return callback(null, true);
     }
+
+    // Local mode: allow localhost dev ports.
+    if (!RUN_PUBLIC && allowedLocalOrigins.has(origin)) {
+      return callback(null, true);
+    }
+
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true
@@ -63,30 +83,40 @@ const openFoodFactsRoutes = require('./api/OpenFoodFactsAPI/main-api.js');
 app.use('/api', require('./api/auth.js'));
 app.use('/api', require('./api/users.js'));
 app.use('/api', require('./api/excerises.js'));
+app.use('/api', require('./api/notifications.js'));
 app.use('/api/workout-log', workoutLogRoutes);
 app.use('/api', openFoodFactsRoutes);
 app.use('/api/admin', require('./api/admin.js')); // 🔒 Admin-only routes
 
-// ✅ Dynamic backend port handling
-const BACKEND_PORTS = [5000, 5001, 5002];
-let BACKEND_PORT = BACKEND_PORTS[0];
-
-const tryPort = async (portIndex = 0) => {
-  if (portIndex >= BACKEND_PORTS.length) {
-    console.error("❌ No available ports for the backend.");
-    process.exit(1);
-  }
-
-  const testPort = BACKEND_PORTS[portIndex];
-  const server = app.listen(testPort, () => {
-    BACKEND_PORT = testPort;
-    console.log(`🚀 Backend running at http://localhost:${BACKEND_PORT}`);
+// ✅ Backend port handling
+if (RUN_PUBLIC) {
+  // Render assigns PORT dynamically. Always bind to process.env.PORT in public mode.
+  const PUBLIC_PORT = Number.parseInt(process.env.PORT, 10) || 10000;
+  app.listen(PUBLIC_PORT, '0.0.0.0', () => {
+    console.log(`🚀 Public backend running on 0.0.0.0:${PUBLIC_PORT}`);
   });
+} else {
+  // Local/dev fallback behavior: try common local ports.
+  const BACKEND_PORTS = [5000, 5001, 5002];
+  let BACKEND_PORT = BACKEND_PORTS[0];
 
-  server.on("error", () => {
-    console.warn(`⚠️ Port ${testPort} is in use. Trying next port...`);
-    tryPort(portIndex + 1);
-  });
-};
+  const tryPort = async (portIndex = 0) => {
+    if (portIndex >= BACKEND_PORTS.length) {
+      console.error("❌ No available ports for the backend.");
+      process.exit(1);
+    }
 
-tryPort();
+    const testPort = BACKEND_PORTS[portIndex];
+    const server = app.listen(testPort, () => {
+      BACKEND_PORT = testPort;
+      console.log(`🚀 Backend running at http://localhost:${BACKEND_PORT}`);
+    });
+
+    server.on("error", () => {
+      console.warn(`⚠️ Port ${testPort} is in use. Trying next port...`);
+      tryPort(portIndex + 1);
+    });
+  };
+
+  tryPort();
+}
