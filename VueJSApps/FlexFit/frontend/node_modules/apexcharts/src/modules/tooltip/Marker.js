@@ -1,7 +1,10 @@
+// @ts-check
 import Graphics from '../Graphics'
 import Position from './Position'
 import Markers from '../../modules/Markers'
 import Utils from '../../utils/Utils'
+import { BrowserAPIs } from '../../ssr/BrowserAPIs.js'
+import { SVGNS } from '../../svg/math'
 
 /**
  * ApexCharts Tooltip.Marker Class to draw texts on the tooltip.
@@ -13,6 +16,9 @@ import Utils from '../../utils/Utils'
  **/
 
 export default class Marker {
+  /**
+   * @param {import('./Tooltip').default} tooltipContext
+   */
   constructor(tooltipContext) {
     this.w = tooltipContext.w
     this.ttCtx = tooltipContext
@@ -21,17 +27,21 @@ export default class Marker {
   }
 
   drawDynamicPoints() {
-    let w = this.w
+    const w = this.w
 
-    let graphics = new Graphics(this.ctx)
-    let marker = new Markers(this.ctx)
+    const graphics = new Graphics(this.w)
+    const marker = new Markers(this.w, this.ctx)
 
-    let elsSeries = w.globals.dom.baseEl.querySelectorAll('.apexcharts-series')
-
-    elsSeries = [...elsSeries]
+    const elsSeries = /** @type {any[]} */ ([
+      ...w.dom.baseEl.querySelectorAll('.apexcharts-series'),
+    ])
 
     if (w.config.chart.stacked) {
-      elsSeries.sort((a, b) => {
+      /**
+       * @param {any} a
+       * @param {any} b
+       */
+      elsSeries.sort((/** @type {any} */ a, /** @type {any} */ b) => {
         return (
           parseFloat(a.getAttribute('data:realIndex')) -
           parseFloat(b.getAttribute('data:realIndex'))
@@ -40,14 +50,12 @@ export default class Marker {
     }
 
     for (let i = 0; i < elsSeries.length; i++) {
-      let pointsMain = elsSeries[i].querySelector(
-        `.apexcharts-series-markers-wrap`
+      const pointsMain = elsSeries[i].querySelector(
+        `.apexcharts-series-markers-wrap`,
       )
 
       if (pointsMain !== null) {
         // it can be null as we have tooltips in donut/bar charts
-        let point
-
         let PointClasses = `apexcharts-marker w${(Math.random() + 1)
           .toString(36)
           .substring(4)}`
@@ -59,16 +67,16 @@ export default class Marker {
           PointClasses += ' no-pointer-events'
         }
 
-        let elPointOptions = marker.getMarkerConfig({
+        const elPointOptions = marker.getMarkerConfig({
           cssClass: PointClasses,
           seriesIndex: Number(pointsMain.getAttribute('data:realIndex')), // fixes apexcharts/apexcharts.js #1427
         })
 
-        point = graphics.drawMarker(0, 0, elPointOptions)
+        const point = graphics.drawMarker(0, 0, elPointOptions)
 
         point.node.setAttribute('default-marker-size', 0)
 
-        let elPointsG = document.createElementNS(w.globals.SVGNS, 'g')
+        const elPointsG = BrowserAPIs.createElementNS(SVGNS, 'g')
         elPointsG.classList.add('apexcharts-series-markers')
 
         elPointsG.appendChild(point.node)
@@ -77,8 +85,14 @@ export default class Marker {
     }
   }
 
+  /**
+   * @param {any} rel
+   * @param {any} point
+   * @param {number | null} [x]
+   * @param {number | null} [y]
+   */
   enlargeCurrentPoint(rel, point, x = null, y = null) {
-    let w = this.w
+    const w = this.w
 
     if (w.config.chart.type !== 'bubble') {
       this.newPointSize(rel, point)
@@ -94,9 +108,11 @@ export default class Marker {
 
     this.tooltipPosition.moveXCrosshairs(cx)
 
+    // @ts-ignore — fixedTooltip is set by Tooltip.js on this.marker instance
     if (!this.fixedTooltip) {
       if (w.config.chart.type === 'radar') {
         const elGrid = this.ttCtx.getElGrid()
+        if (!elGrid) return
         const seriesBound = elGrid.getBoundingClientRect()
 
         cx = this.ttCtx.e.clientX - seriesBound.left
@@ -106,38 +122,46 @@ export default class Marker {
     }
   }
 
+  /**
+   * @param {number} j
+   */
   enlargePoints(j) {
-    let w = this.w
-    let me = this
+    const w = this.w
+    const me = this
     const ttCtx = this.ttCtx
 
-    let col = j
+    const col = j
 
-    let points = w.globals.dom.baseEl.querySelectorAll(
-      '.apexcharts-series:not(.apexcharts-series-collapsed) .apexcharts-marker'
+    const points = w.dom.baseEl.querySelectorAll(
+      '.apexcharts-series:not(.apexcharts-series-collapsed) .apexcharts-marker',
     )
 
     let newSize = w.config.markers.hover.size
 
     for (let p = 0; p < points.length; p++) {
-      let rel = points[p].getAttribute('rel')
-      let index = points[p].getAttribute('index')
+      const rel = points[p].getAttribute('rel')
+      const index = points[p].getAttribute('index')
 
       if (newSize === undefined) {
         newSize =
-          w.globals.markers.size[index] + w.config.markers.hover.sizeOffset
+          w.globals.markers.size[/** @type {any} */ (index)] +
+          w.config.markers.hover.sizeOffset
       }
 
-      if (col === parseInt(rel, 10)) {
+      if (col === parseInt(rel ?? '0', 10)) {
         me.newPointSize(col, points[p])
 
-        let cx = points[p].getAttribute('cx')
-        let cy = points[p].getAttribute('cy')
+        const cx = points[p].getAttribute('cx') ?? '0'
+        const cy = points[p].getAttribute('cy') ?? '0'
 
-        me.tooltipPosition.moveXCrosshairs(cx)
+        me.tooltipPosition.moveXCrosshairs(parseFloat(cx))
 
         if (!ttCtx.fixedTooltip) {
-          me.tooltipPosition.moveTooltip(cx, cy, newSize)
+          me.tooltipPosition.moveTooltip(
+            parseFloat(cx),
+            parseFloat(cy),
+            newSize,
+          )
         }
       } else {
         me.oldPointSize(points[p])
@@ -145,11 +169,15 @@ export default class Marker {
     }
   }
 
+  /**
+   * @param {any} rel
+   * @param {any} point
+   */
   newPointSize(rel, point) {
-    let w = this.w
+    const w = this.w
     let newSize = w.config.markers.hover.size
 
-    let elPoint =
+    const elPoint =
       rel === 0 ? point.parentNode.firstChild : point.parentNode.lastChild
 
     if (elPoint.getAttribute('default-marker-size') !== '0') {
@@ -168,6 +196,9 @@ export default class Marker {
     }
   }
 
+  /**
+   * @param {any} point
+   */
   oldPointSize(point) {
     const size = parseFloat(point.getAttribute('default-marker-size'))
     const path = this.ttCtx.tooltipUtil.getPathFromPoint(point, size)
@@ -175,14 +206,16 @@ export default class Marker {
   }
 
   resetPointsSize() {
-    let w = this.w
+    const w = this.w
 
-    let points = w.globals.dom.baseEl.querySelectorAll(
-      '.apexcharts-series:not(.apexcharts-series-collapsed) .apexcharts-marker'
+    const points = w.dom.baseEl.querySelectorAll(
+      '.apexcharts-series:not(.apexcharts-series-collapsed) .apexcharts-marker',
     )
 
     for (let p = 0; p < points.length; p++) {
-      const size = parseFloat(points[p].getAttribute('default-marker-size'))
+      const size = parseFloat(
+        points[p].getAttribute('default-marker-size') ?? '0',
+      )
 
       if (Utils.isNumber(size) && size > 0) {
         const path = this.ttCtx.tooltipUtil.getPathFromPoint(points[p], size)

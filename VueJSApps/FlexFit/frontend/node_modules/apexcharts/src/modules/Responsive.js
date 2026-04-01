@@ -1,6 +1,8 @@
+// @ts-check
 import Config from './settings/Config'
 import Utils from '../utils/Utils'
 import CoreUtils from './CoreUtils'
+import { Environment } from '../utils/Environment.js'
 
 /**
  * ApexCharts Responsive Class to override options for different screen sizes.
@@ -9,13 +11,18 @@ import CoreUtils from './CoreUtils'
  **/
 
 export default class Responsive {
-  constructor(ctx) {
-    this.ctx = ctx
-    this.w = ctx.w
+  /**
+   * @param {import('../types/internal').ChartStateW} w
+   */
+  constructor(w) {
+    this.w = w
   }
 
   // the opts parameter if not null has to be set overriding everything
   // as the opts is set by user externally
+  /**
+   * @param {object} opts
+   */
   checkResponsiveConfig(opts) {
     const w = this.w
     const cnf = w.config
@@ -23,30 +30,38 @@ export default class Responsive {
     // check if responsive config exists
     if (cnf.responsive.length === 0) return
 
-    let res = cnf.responsive.slice()
+    const res = cnf.responsive.slice()
     res
-      .sort((a, b) =>
-        a.breakpoint > b.breakpoint ? 1 : b.breakpoint > a.breakpoint ? -1 : 0
+      .sort(
+        (
+          /** @type {{ breakpoint: number }} */ a,
+          /** @type {{ breakpoint: number }} */ b,
+        ) =>
+          a.breakpoint > b.breakpoint
+            ? 1
+            : b.breakpoint > a.breakpoint
+              ? -1
+              : 0,
       )
       .reverse()
 
-    let config = new Config({})
+    const config = new Config({})
 
     const iterateResponsiveOptions = (newOptions = {}) => {
-      let largestBreakpoint = res[0].breakpoint
-      const width = window.innerWidth > 0 ? window.innerWidth : screen.width
+      const largestBreakpoint = res[0].breakpoint
+      const width = Environment.isBrowser()
+        ? window.innerWidth > 0
+          ? window.innerWidth
+          : screen.width
+        : 0
 
       if (width > largestBreakpoint) {
-        let initialConfig = Utils.clone(w.globals.initialConfig)
+        const initialConfig = Utils.clone(w.globals.initialConfig)
         // Retain state of series in case any have been collapsed
         // (indicated by series.data === [], these series' will be zeroed later
         // enabling stacking to work correctly)
         initialConfig.series = Utils.clone(w.config.series)
-        let options = CoreUtils.extendArrayProps(
-          config,
-          initialConfig,
-          w
-        )
+        const options = CoreUtils.extendArrayProps(config, initialConfig, w)
         newOptions = Utils.extend(options, newOptions)
         newOptions = Utils.extend(w.config, newOptions)
         this.overrideResponsiveOptions(newOptions)
@@ -71,8 +86,11 @@ export default class Responsive {
     }
   }
 
+  /**
+   * @param {Record<string, any>} newOptions
+   */
   overrideResponsiveOptions(newOptions) {
-    let newConfig = new Config(newOptions).init({ responsiveOverride: true })
-    this.w.config = newConfig
+    const newConfig = new Config(newOptions).init({ responsiveOverride: true })
+    this.w.config = /** @type {any} */ (newConfig)
   }
 }

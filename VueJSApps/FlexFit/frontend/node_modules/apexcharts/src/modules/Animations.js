@@ -1,3 +1,4 @@
+// @ts-check
 import Utils from '../utils/Utils'
 
 /**
@@ -7,18 +8,33 @@ import Utils from '../utils/Utils'
  **/
 
 export default class Animations {
-  constructor(ctx) {
-    this.ctx = ctx
-    this.w = ctx.w
+  /**
+   * @param {import('../types/internal').ChartStateW} w
+   * @param {import('../types/internal').ChartContext} [ctx]
+   */
+  constructor(w, ctx) {
+    this.w = w
+    this.ctx = ctx // kept for animationEnd user callback: chart.events.animationEnd(ctx, …)
   }
 
+  /**
+   * @param {any} el
+   * @param {Record<string, any>} from
+   * @param {Record<string, any>} to
+   * @param {object} speed
+   */
   animateLine(el, from, to, speed) {
     el.attr(from).animate(speed).attr(to)
   }
 
   /*
    ** Animate radius of a circle element
+   * @param {any} el
+   * @param {number} speed
+   * @param {string} easing
+   * @param {Function} cb
    */
+  /** @param {any} el @param {any} speed @param {any} easing @param {any} cb */
   animateMarker(el, speed, easing, cb) {
     el.attr({
       opacity: 0,
@@ -34,7 +50,13 @@ export default class Animations {
 
   /*
    ** Animate rect properties
+   * @param {any} el
+   * @param {any} from
+   * @param {any} to
+   * @param {number} speed
+   * @param {Function} fn
    */
+  /** @param {any} el @param {any} from @param {any} to @param {any} speed @param {any} fn */
   animateRect(el, from, to, speed, fn) {
     el.attr(from)
       .animate(speed)
@@ -42,11 +64,14 @@ export default class Animations {
       .after(() => fn())
   }
 
+  /**
+   * @param {Record<string, any>} params
+   */
   animatePathsGradually(params) {
-    let { el, realIndex, j, fill, pathFrom, pathTo, speed, delay } = params
+    const { el, realIndex, j, fill, pathFrom, pathTo, speed, delay } = params
 
-    let me = this
-    let w = this.w
+    const me = this
+    const w = this.w
 
     let delayFactor = 0
 
@@ -72,11 +97,14 @@ export default class Animations {
       pathFrom,
       pathTo,
       speed,
-      delay * delayFactor
+      delay * delayFactor,
     )
   }
 
   showDelayedElements() {
+    /**
+     * @param {object} d
+     */
     this.w.globals.delayedElements.forEach((d) => {
       const ele = d.el
       ele.classList.remove('apexcharts-element-hidden')
@@ -84,6 +112,9 @@ export default class Animations {
     })
   }
 
+  /**
+   * @param {any} el
+   */
   animationCompleted(el) {
     const w = this.w
     if (w.globals.animationEnded) return
@@ -97,8 +128,18 @@ export default class Animations {
   }
 
   // SVG.js animation for morphing one path to another
+  /**
+   * @param {any} el
+   * @param {number} realIndex
+   * @param {number} j
+   * @param {string} fill
+   * @param {string} pathFrom
+   * @param {string} pathTo
+   * @param {number} speed
+   * @param {number} delay
+   */
   morphSVG(el, realIndex, j, fill, pathFrom, pathTo, speed, delay) {
-    let w = this.w
+    const w = this.w
 
     if (!pathFrom) {
       pathFrom = el.attr('pathFrom')
@@ -108,13 +149,13 @@ export default class Animations {
       pathTo = el.attr('pathTo')
     }
 
-    const disableAnimationForCorrupPath = (path) => {
+    const disableAnimationForCorrupPath = () => {
       if (w.config.chart.type === 'radar') {
         // radar chart drops the path to bottom and hence a corrup path looks ugly
         // therefore, disable animation for such a case
         speed = 1
       }
-      return `M 0 ${w.globals.gridHeight}`
+      return `M 0 ${w.layout.gridHeight}`
     }
 
     if (
@@ -145,7 +186,8 @@ export default class Animations {
         // a flag to indicate that the original mount function can return true now as animation finished here
         if (Utils.isNumber(j)) {
           if (
-            j === w.globals.series[w.globals.maxValsInArrayIndex].length - 2 &&
+            j ===
+              w.seriesData.series[w.globals.maxValsInArrayIndex].length - 2 &&
             w.globals.shouldAnimate
           ) {
             this.animationCompleted(el)
@@ -153,7 +195,7 @@ export default class Animations {
         } else if (fill !== 'none' && w.globals.shouldAnimate) {
           if (
             (!w.globals.comboCharts &&
-              realIndex === w.globals.series.length - 1) ||
+              realIndex === w.seriesData.series.length - 1) ||
             w.globals.comboCharts
           ) {
             this.animationCompleted(el)
