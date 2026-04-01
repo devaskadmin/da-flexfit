@@ -280,7 +280,7 @@ onMounted(async () => {
 .builder-hero {
   border-radius: 18px;
   padding: 20px;
-  background: linear-gradient(145deg, #0f172a, #1e293b 65%, #334155);
+  background: linear-gradient(120deg, #020617 0%, #081a3a 56%, #0a1f4a 100%);
   color: #fff;
   display: flex;
   justify-content: space-between;

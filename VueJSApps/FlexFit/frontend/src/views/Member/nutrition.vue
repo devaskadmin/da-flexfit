@@ -627,10 +627,12 @@ const goToFavoritesTab = () => {
 
 
 <!--End of BreadCrumb-->
-  <div class="dashboard-breadcrumb mb-25">
+  <div class="dashboard-breadcrumb ff-page-header mb-25">
     <h2>Nutrition Log</h2>
-    <div>SelectedDate: {{ selectedDate }}</div>
+    <div class="dashboard-filter">
+        <span class="header-meta">SelectedDate: {{ selectedDate }}</span>
         <DateDropDown v-model="selectedDateRaw" />
+    </div>
   </div>
 
 
@@ -972,6 +974,11 @@ const goToFavoritesTab = () => {
 </template>
 
 <style scoped>
+.header-meta {
+  color: #ffffff;
+  font-weight: 600;
+  margin-right: 10px;
+}
 .panel {
   border: 1px solid #ddd;
   border-radius: 5px;

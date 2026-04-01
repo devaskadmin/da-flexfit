@@ -2,10 +2,13 @@
 const props = defineProps(['onNavCloseClick', 'isExpanded', 'toggleSidebar', 'profileToggleSidebar'])
 import {onMounted, ref, onUnmounted, watchEffect, computed} from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import Tr from "@/i18n/translation"
-import Calculator from "@/components/template/HeaderCalculator.vue"
 import {toggleTheme, currentActiveTheme} from "@/composable/manageThemeSetting.js"
 import {layoutPosition} from "@/composable/navPositionSetting";
+
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000'
+const router = useRouter()
 
 const isFullScreen = ref(false);
 const lightThemeLogo = new URL('/src/assets/images/flex-fitlogo-light.JPG', import.meta.url)
@@ -71,6 +74,28 @@ const isLightTheme = computed(() => {
   return currentActiveTheme.value === 'light-theme';
 })
 
+const unreadCount = ref(0)
+const unreadBadge = computed(() => (unreadCount.value > 9 ? '9+' : String(unreadCount.value)))
+let unreadPollTimer = null
+
+const loadUnreadCount = async () => {
+  try {
+    const response = await fetch(`${API_BASE}/api/notifications/unread-count`, {
+      credentials: 'include',
+    })
+
+    if (!response.ok) return
+    const data = await response.json()
+    unreadCount.value = Number(data?.unreadCount || 0)
+  } catch {
+    unreadCount.value = 0
+  }
+}
+
+const openNotifications = () => {
+  router.push({ name: 'notifications' })
+}
+
 watchEffect(() => {
   window.addEventListener('resize', checkScreenSize());
   checkScreenSize();
@@ -81,6 +106,8 @@ onMounted(() => {
   document.getElementById('btnFullscreen').addEventListener('click', toggleFullscreen);
 
   window.addEventListener('resize', handleResize)
+  loadUnreadCount()
+  unreadPollTimer = setInterval(loadUnreadCount, 60000)
 })
 
 const themeIconClass = computed(() => {
@@ -89,6 +116,9 @@ const themeIconClass = computed(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  if (unreadPollTimer) {
+    clearInterval(unreadPollTimer)
+  }
 })
 </script>
 
@@ -111,7 +141,6 @@ onUnmounted(() => {
         <div v-if="layoutPosition !== 'horizontal'" class="nav-close-btn">
           <button id="navClose" @click="onNavCloseClick"><i class="fa-light fa-bars-sort"></i></button>
         </div>
-        <a href="#" target="_blank" class="btn btn-sm btn-primary site-view-btn"><i class="fa-light fa-globe me-1"></i> <span>{{ $t('nav.view_website') }}</span></a>
       </div>
       <div class="col-4 d-lg-none">
         <div class="mobile-logo">
@@ -190,83 +219,10 @@ onUnmounted(() => {
                   </ul>
                 </div>
                 <div class="header-btn-box">
-                  <button class="header-btn" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                  <button class="header-btn" @click="openNotifications" title="Notifications" aria-label="Open notifications">
                     <i class="fa-light fa-bell animate"></i>
-                    <span class="badge bg-danger">9+</span>
+                    <span v-if="unreadCount > 0" class="badge bg-danger">{{ unreadBadge }}</span>
                   </button>
-                  <ul class="notification-dropdown dropdown-menu" aria-labelledby="notificationDropdown">
-                    <li>
-                      <a href="#" class="d-flex align-items-center">
-                        <div class="avatar">
-                          <img src="@/assets/images/avatar.png" alt="image">
-                        </div>
-                        <div class="notification-txt">
-                          <span class="notification-icon text-primary"><i class="fa-solid fa-thumbs-up"></i></span> <span class="fw-bold">Archer</span> Likes your post
-                        </div>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#" class="d-flex align-items-center">
-                        <div class="avatar">
-                          <img src="@/assets/images/avatar-2.png" alt="image">
-                        </div>
-                        <div class="notification-txt">
-                          <span class="notification-icon text-success"><i class="fa-solid fa-comment-dots"></i></span> <span class="fw-bold">Cody</span> Commented on your post
-                        </div>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#" class="d-flex align-items-center">
-                        <div class="avatar">
-                          <img src="@/assets/images/avatar-3.png" alt="image">
-                        </div>
-                        <div class="notification-txt">
-                          <span class="notification-icon"><i class="fa-solid fa-share"></i></span> <span class="fw-bold">Zane</span> Shared your post
-                        </div>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#" class="d-flex align-items-center">
-                        <div class="avatar">
-                          <img src="@/assets/images/avatar-4.png" alt="image">
-                        </div>
-                        <div class="notification-txt">
-                          <span class="notification-icon text-primary"><i class="fa-solid fa-thumbs-up"></i></span> <span class="fw-bold">Christopher</span> Likes your post
-                        </div>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#" class="d-flex align-items-center">
-                        <div class="avatar">
-                          <img src="@/assets/images/avatar-5.png" alt="image">
-                        </div>
-                        <div class="notification-txt">
-                          <span class="notification-icon text-success"><i class="fa-solid fa-comment-dots"></i></span> <span class="fw-bold">Charlie</span> Commented on your post
-                        </div>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#" class="d-flex align-items-center">
-                        <div class="avatar">
-                          <img src="@/assets/images/avatar-6.png" alt="image">
-                        </div>
-                        <div class="notification-txt">
-                          <span class="notification-icon"><i class="fa-solid fa-share"></i></span> <span class="fw-bold">Jayden</span> Shared your post
-                        </div>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#" class="show-all-btn">Show all message</a>
-                    </li>
-                  </ul>
-                </div>
-                <div class="header-btn-box">
-                  <div class="dropdown">
-                    <button class="header-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                      <i class="fa-light fa-calculator"></i>
-                    </button>
-                    <Calculator />
-                  </div>
                 </div>
                 <button class="header-btn fullscreen-btn" id="btnFullscreen" @click="toggleFullscreen">
                   <i :class="isFullScreen ? 'fa-light fa-compress' : 'fa-light fa-expand'"></i>
