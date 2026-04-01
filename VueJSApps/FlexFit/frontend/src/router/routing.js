@@ -185,6 +185,10 @@ const errorPageRoutes = [
 export const pagesRoutes = [
     {
         path: '/',
+        redirect: { name: 'login' },
+    },
+    {
+        path: '/dashboard',
         component: HomeView,
         name: 'dashboard_index',
         meta: { layout: 'AppLayout', isPartials: true },
