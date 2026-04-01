@@ -8,6 +8,17 @@ const { sanitizeText, parseNumber } = require('../utils/sanitize.js');
 // ✅ DB Connect
 const pool = require('../db.js');
 
+// Temporary public health endpoint for login page status display
+router.get('/db-status', async (req, res) => {
+  try {
+    await pool.query('SELECT 1 AS ok');
+    return res.json({ connected: true });
+  } catch (err) {
+    console.error('❌ DB status check failed:', err?.message || err);
+    return res.status(500).json({ connected: false });
+  }
+});
+
 // POST /api/login
 router.post('/login', async (req, res) => {
     try {

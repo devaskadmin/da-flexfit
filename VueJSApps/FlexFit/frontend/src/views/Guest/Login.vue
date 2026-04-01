@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import axios from "axios";
 import { useRouter } from "vue-router"; // ✅ Import Vue Router
 
@@ -13,6 +13,16 @@ const username = ref("");
 const password = ref("");
 const isPasswordShow = ref(false);
 const errorMsg = ref("");
+const dbStatus = ref("checking");
+
+const checkDatabaseStatus = async () => {
+  try {
+    const response = await axios.get(`${API_BASE}/api/db-status`, { withCredentials: true });
+    dbStatus.value = response?.data?.connected ? "connected" : "disconnected";
+  } catch (error) {
+    dbStatus.value = "disconnected";
+  }
+};
 
 // 🔹 Login Function
 const login = async () => {
@@ -65,6 +75,10 @@ const tempLoginBypass = async () => {
   }
 };
 
+onMounted(() => {
+  checkDatabaseStatus();
+});
+
 </script>
 
 <template>
@@ -110,6 +124,12 @@ const tempLoginBypass = async () => {
 
             <button class="btn btn-primary w-100 login-btn">Sign in</button>
             <button type="button" class="btn btn-secondary w-100 mt-2" @click="tempLoginBypass">Temp Login Bypass (Demo)</button>
+
+            <div class="db-status mt-3 p-2 text-center rounded"
+                 :class="dbStatus === 'connected' ? 'db-ok' : dbStatus === 'disconnected' ? 'db-down' : 'db-checking'">
+              Database status:
+              <strong>{{ dbStatus === 'checking' ? 'checking...' : dbStatus }}</strong>
+            </div>
           </form>
           
           
@@ -153,5 +173,27 @@ const tempLoginBypass = async () => {
 .light-theme .main-content .login-body {
   background: rgba(255, 255, 255, 1);
   border: 1px solid black;
+}
+
+.db-status {
+  font-size: 0.9rem;
+}
+
+.db-ok {
+  background: rgba(25, 135, 84, 0.15);
+  border: 1px solid rgba(25, 135, 84, 0.45);
+  color: #198754;
+}
+
+.db-down {
+  background: rgba(220, 53, 69, 0.15);
+  border: 1px solid rgba(220, 53, 69, 0.45);
+  color: #dc3545;
+}
+
+.db-checking {
+  background: rgba(108, 117, 125, 0.15);
+  border: 1px solid rgba(108, 117, 125, 0.45);
+  color: #6c757d;
 }
 </style>
