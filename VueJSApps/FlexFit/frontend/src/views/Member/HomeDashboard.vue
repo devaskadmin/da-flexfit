@@ -2,7 +2,7 @@
 import DateRangePicker from '@/components/template/DateRangePicker.vue';
 import FitnessMetricCard from '@/components/fitness/FitnessMetricCard.vue';
 import ProgressChart from '@/components/Widgets/ProgressChart.vue';
-import NutritionLogChart from '@/components/widgets/NutritionLogChart.vue';
+import NutritionLogChart from '@/components/Widgets/NutritionLogChart.vue';
 
 const metrics = [
   {

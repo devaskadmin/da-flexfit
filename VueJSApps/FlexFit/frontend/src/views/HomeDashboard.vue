@@ -1,7 +1,7 @@
 <script setup>
 import {onMounted, ref} from "vue";
 import WorkoutStatsComponent from "@/components/Widgets/WorkoutStats.vue";
-import NutritionLogChart from "@/components/widgets/NutritionLogChart.vue";
+import NutritionLogChart from "@/components/Widgets/NutritionLogChart.vue";
 import AssignedWorkoutsMini from "@/components/Widgets/AssignedWorkoutsMini.vue";
 import ProgressChart from "@/components/Widgets/ProgressChart.vue"
 
