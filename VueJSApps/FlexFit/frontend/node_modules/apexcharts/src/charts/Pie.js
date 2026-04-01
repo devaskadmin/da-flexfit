@@ -1,3 +1,4 @@
+// @ts-check
 import Animations from '../modules/Animations'
 import Fill from '../modules/Fill'
 import Utils from '../utils/Utils'
@@ -11,10 +12,13 @@ import Helpers from './common/circle/Helpers'
  **/
 
 class Pie {
-  constructor(ctx) {
+  /**
+   * @param {import('../types/internal').ChartStateW} w
+   * @param {import('../types/internal').ChartContext} ctx
+   */
+  constructor(w, ctx) {
     this.ctx = ctx
-    this.w = ctx.w
-    const w = this.w
+    this.w = w
 
     this.chartType = this.w.config.chart.type
 
@@ -33,16 +37,16 @@ class Pie {
         ? w.globals.stroke.colors
         : w.globals.colors
 
-    this.defaultSize = Math.min(w.globals.gridWidth, w.globals.gridHeight)
+    this.defaultSize = Math.min(w.layout.gridWidth, w.layout.gridHeight)
 
     this.centerY = this.defaultSize / 2
-    this.centerX = w.globals.gridWidth / 2
+    this.centerX = w.layout.gridWidth / 2
 
     if (w.config.chart.type === 'radialBar') {
       this.fullAngle = 360
     } else {
       this.fullAngle = Math.abs(
-        w.config.plotOptions.pie.endAngle - w.config.plotOptions.pie.startAngle
+        w.config.plotOptions.pie.endAngle - w.config.plotOptions.pie.startAngle,
       )
     }
     this.initialAngle = w.config.plotOptions.pie.startAngle % this.fullAngle
@@ -57,31 +61,38 @@ class Pie {
         parseInt(w.config.plotOptions.pie.donut.size, 10)) /
       100
 
-    let scaleSize = w.config.plotOptions.pie.customScale
-    let halfW = w.globals.gridWidth / 2
-    let halfH = w.globals.gridHeight / 2
+    const scaleSize = w.config.plotOptions.pie.customScale
+    const halfW = w.layout.gridWidth / 2
+    const halfH = w.layout.gridHeight / 2
     this.translateX = halfW - halfW * scaleSize
     this.translateY = halfH - halfH * scaleSize
 
-    this.dataLabelsGroup = new Graphics(this.ctx).group({
+    this.dataLabelsGroup = new Graphics(this.w).group({
       class: 'apexcharts-datalabels-group',
       transform: `translate(${this.translateX}, ${this.translateY}) scale(${scaleSize})`,
     })
 
     this.maxY = 0
+    /** @type {any} */
+    /** @type {any[]} */
     this.sliceLabels = []
+    /** @type {any} */
     this.sliceSizes = []
 
+    /** @type {any} */
     this.prevSectorAngleArr = [] // for dynamic animations
   }
 
+  /**
+   * @param {any[]} series
+   */
   draw(series) {
-    let self = this
-    let w = this.w
+    const self = this
+    const w = this.w
 
-    const graphics = new Graphics(this.ctx)
+    const graphics = new Graphics(this.w)
 
-    let elPie = graphics.group({
+    const elPie = graphics.group({
       class: 'apexcharts-pie',
     })
 
@@ -93,16 +104,19 @@ class Pie {
       total += Utils.negToZero(series[k])
     }
 
-    let sectorAngleArr = []
+    const sectorAngleArr = []
 
     // el to which series will be drawn
-    let elSeries = graphics.group()
+    const elSeries = graphics.group()
 
     // prevent division by zero error if there is no data
     if (total === 0) {
       total = 0.00001
     }
 
+    /**
+     * @param {number} m
+     */
     series.forEach((m) => {
       this.maxY = Math.max(this.maxY, m)
     })
@@ -118,7 +132,7 @@ class Pie {
 
     for (let i = 0; i < series.length; i++) {
       // CALCULATE THE ANGLES
-      let angle = (this.fullAngle * Utils.negToZero(series[i])) / total
+      const angle = (this.fullAngle * Utils.negToZero(series[i])) / total
       sectorAngleArr.push(angle)
 
       if (this.chartType === 'polarArea') {
@@ -167,7 +181,7 @@ class Pie {
       elSeries.add(circle)
     }
 
-    let elG = self.drawArcs(sectorAngleArr, series)
+    const elG = self.drawArcs(sectorAngleArr, series)
 
     // add slice dataLabels at the end
     this.sliceLabels.forEach((s) => {
@@ -183,7 +197,7 @@ class Pie {
     elPie.add(elSeries)
 
     if (this.donutDataLabels.show) {
-      let dataLabels = this.renderInnerDataLabels(
+      const dataLabels = this.renderInnerDataLabels(
         this.dataLabelsGroup,
         this.donutDataLabels,
         {
@@ -191,7 +205,7 @@ class Pie {
           centerX: this.centerX,
           centerY: this.centerY,
           opacity: this.donutDataLabels.show,
-        }
+        },
       )
 
       elPie.add(dataLabels)
@@ -205,13 +219,17 @@ class Pie {
   }
 
   // core function for drawing pie arcs
+  /**
+   * @param {any[]} sectorAngleArr
+   * @param {any[]} series
+   */
   drawArcs(sectorAngleArr, series) {
-    let w = this.w
-    const filters = new Filters(this.ctx)
+    const w = this.w
+    const filters = new Filters(this.w)
 
-    let graphics = new Graphics(this.ctx)
-    let fill = new Fill(this.ctx)
-    let g = graphics.group({
+    const graphics = new Graphics(this.w)
+    const fill = new Fill(this.w)
+    const g = graphics.group({
       class: 'apexcharts-slices',
     })
 
@@ -223,9 +241,9 @@ class Pie {
     this.strokeWidth = w.config.stroke.show ? w.config.stroke.width : 0
 
     for (let i = 0; i < sectorAngleArr.length; i++) {
-      let elPieArc = graphics.group({
+      const elPieArc = graphics.group({
         class: `apexcharts-series apexcharts-pie-series`,
-        seriesName: Utils.escapeString(w.globals.seriesNames[i]),
+        seriesName: Utils.escapeString(w.seriesData.seriesNames[i]),
         rel: i + 1,
         'data:realIndex': i,
       })
@@ -243,15 +261,15 @@ class Pie {
           ? this.fullAngle + endAngle - startAngle
           : endAngle - startAngle
 
-      let pathFill = fill.fillPath({
+      const pathFill = fill.fillPath({
         seriesNumber: i,
         size: this.sliceSizes[i],
         value: series[i],
       }) // additionally, pass size for gradient drawing in the fillPath function
 
-      let path = this.getChangedPath(prevStartAngle, prevEndAngle)
+      const path = this.getChangedPath(prevStartAngle, prevEndAngle)
 
-      let elPath = graphics.drawPath({
+      const elPath = graphics.drawPath({
         d: path,
         stroke: Array.isArray(this.lineColorArr)
           ? this.lineColorArr[i]
@@ -276,17 +294,13 @@ class Pie {
 
       this.addListeners(elPath, this.donutDataLabels)
 
-      Graphics.setAttrs(elPath.node, {
-        'data:angle': angle,
-        'data:startAngle': startAngle,
-        'data:strokeWidth': this.strokeWidth,
-        'data:value': series[i],
-      })
-
       let labelPosition = {
         x: 0,
         y: 0,
       }
+
+      const midAngle = (startAngle + angle / 2) % this.fullAngle
+      let arcCenter = { x: this.centerX, y: this.centerY }
 
       if (this.chartType === 'pie' || this.chartType === 'polarArea') {
         labelPosition = Utils.polarToCartesian(
@@ -294,7 +308,13 @@ class Pie {
           this.centerY,
           w.globals.radialSize / 1.25 +
             w.config.plotOptions.pie.dataLabels.offset,
-          (startAngle + angle / 2) % this.fullAngle
+          midAngle,
+        )
+        arcCenter = Utils.polarToCartesian(
+          this.centerX,
+          this.centerY,
+          w.globals.radialSize / 2,
+          midAngle,
         )
       } else if (this.chartType === 'donut') {
         labelPosition = Utils.polarToCartesian(
@@ -302,9 +322,24 @@ class Pie {
           this.centerY,
           (w.globals.radialSize + this.donutSize) / 2 +
             w.config.plotOptions.pie.dataLabels.offset,
-          (startAngle + angle / 2) % this.fullAngle
+          midAngle,
+        )
+        arcCenter = Utils.polarToCartesian(
+          this.centerX,
+          this.centerY,
+          (w.globals.radialSize + this.donutSize) / 2,
+          midAngle,
         )
       }
+
+      Graphics.setAttrs(elPath.node, {
+        'data:angle': angle,
+        'data:startAngle': startAngle,
+        'data:strokeWidth': this.strokeWidth,
+        'data:value': series[i],
+        'data:cx': arcCenter.x,
+        'data:cy': arcCenter.y,
+      })
 
       elPieArc.add(elPath)
 
@@ -354,15 +389,15 @@ class Pie {
       }
 
       if (
-        typeof w.globals.selectedDataPoints[0] !== 'undefined' &&
-        w.globals.selectedDataPoints[0].indexOf(i) > -1
+        typeof w.interact.selectedDataPoints[0] !== 'undefined' &&
+        w.interact.selectedDataPoints[0].indexOf(i) > -1
       ) {
         this.pieClicked(i)
       }
 
       if (w.config.dataLabels.enabled) {
-        let xPos = labelPosition.x
-        let yPos = labelPosition.y
+        const xPos = labelPosition.x
+        const yPos = labelPosition.y
         let text = (100 * angle) / this.fullAngle + '%'
 
         if (
@@ -370,19 +405,19 @@ class Pie {
           w.config.plotOptions.pie.dataLabels.minAngleToShowLabel <
             sectorAngleArr[i]
         ) {
-          let formatter = w.config.dataLabels.formatter
+          const formatter = w.config.dataLabels.formatter
           if (formatter !== undefined) {
             text = formatter(w.globals.seriesPercent[i][0], {
               seriesIndex: i,
               w,
             })
           }
-          let foreColor = w.globals.dataLabels.style.colors[i]
+          const foreColor = w.globals.dataLabels.style.colors[i]
 
           const elPieLabelWrap = graphics.group({
             class: `apexcharts-datalabels`,
           })
-          let elPieLabel = graphics.drawText({
+          const elPieLabel = graphics.drawText({
             x: xPos,
             y: yPos,
             text,
@@ -417,44 +452,52 @@ class Pie {
     return g
   }
 
+  /**
+   * @param {any} elPath
+   * @param {Record<string, any>} dataLabels
+   */
   addListeners(elPath, dataLabels) {
-    const graphics = new Graphics(this.ctx)
+    const graphics = new Graphics(this.w)
     // append filters on mouseenter and mouseleave
     elPath.node.addEventListener(
       'mouseenter',
-      graphics.pathMouseEnter.bind(this, elPath)
+      graphics.pathMouseEnter.bind(this, elPath),
     )
 
     elPath.node.addEventListener(
       'mouseleave',
-      graphics.pathMouseLeave.bind(this, elPath)
+      graphics.pathMouseLeave.bind(this, elPath),
     )
     elPath.node.addEventListener(
       'mouseleave',
-      this.revertDataLabelsInner.bind(this, elPath.node, dataLabels)
+      this.revertDataLabelsInner.bind(this),
     )
     elPath.node.addEventListener(
       'mousedown',
-      graphics.pathMouseDown.bind(this, elPath)
+      graphics.pathMouseDown.bind(this, elPath),
     )
 
     if (!this.donutDataLabels.total.showAlways) {
       elPath.node.addEventListener(
         'mouseenter',
-        this.printDataLabelsInner.bind(this, elPath.node, dataLabels)
+        this.printDataLabelsInner.bind(this, elPath.node, dataLabels),
       )
 
       elPath.node.addEventListener(
         'mousedown',
-        this.printDataLabelsInner.bind(this, elPath.node, dataLabels)
+        this.printDataLabelsInner.bind(this, elPath.node, dataLabels),
       )
     }
   }
 
   // This function can be used for other circle charts too
+  /**
+   * @param {any} el
+   * @param {Record<string, any>} opts
+   */
   animatePaths(el, opts) {
-    let w = this.w
-    let me = this
+    const w = this.w
+    const me = this
 
     let angle =
       opts.endAngle < opts.startAngle
@@ -463,7 +506,7 @@ class Pie {
     let prevAngle = angle
 
     let fromStartAngle = opts.startAngle
-    let toStartAngle = opts.startAngle
+    const toStartAngle = opts.startAngle
 
     if (opts.prevStartAngle !== undefined && opts.prevEndAngle !== undefined) {
       fromStartAngle = opts.prevEndAngle
@@ -487,12 +530,20 @@ class Pie {
     me.animateArc(el, fromStartAngle, toStartAngle, angle, prevAngle, opts)
   }
 
+  /**
+   * @param {any} el
+   * @param {number} fromStartAngle
+   * @param {number} toStartAngle
+   * @param {number} angle
+   * @param {number} prevAngle
+   * @param {Record<string, any>} opts
+   */
   animateArc(el, fromStartAngle, toStartAngle, angle, prevAngle, opts) {
-    let me = this
+    const me = this
     const w = this.w
-    const animations = new Animations(this.ctx)
+    const animations = new Animations(this.w)
 
-    let size = opts.size
+    const size = opts.size
 
     let path
 
@@ -504,7 +555,7 @@ class Pie {
 
     let currAngle = angle
     let startAngle = toStartAngle
-    let fromAngle =
+    const fromAngle =
       fromStartAngle < toStartAngle
         ? this.fullAngle + fromStartAngle - toStartAngle
         : fromStartAngle - toStartAngle
@@ -527,24 +578,29 @@ class Pie {
 
     if (opts.dur !== 0) {
       el.animate(opts.dur, opts.animBeginArr[opts.i])
-        .after(function () {
-          if (
-            me.chartType === 'pie' ||
-            me.chartType === 'donut' ||
-            me.chartType === 'polarArea'
-          ) {
-            this.animate(w.config.chart.animations.dynamicAnimation.speed).attr(
-              {
+        .after(
+          /** @this {any} */ function () {
+            if (
+              me.chartType === 'pie' ||
+              me.chartType === 'donut' ||
+              me.chartType === 'polarArea'
+            ) {
+              this.animate(
+                w.config.chart.animations.dynamicAnimation.speed,
+              ).attr({
                 'stroke-width': me.strokeWidth,
-              }
-            )
-          }
+              })
+            }
 
-          if (opts.i === w.config.series.length - 1) {
-            animations.animationCompleted(el)
-          }
-        })
-        .during((pos) => {
+            if (opts.i === w.config.series.length - 1) {
+              animations.animationCompleted(el)
+            }
+          },
+        )
+        /**
+         * @param {Record<string, any>} pos
+         */
+        .during((/** @type {any} */ pos) => {
           currAngle = fromAngle + (angle - fromAngle) * pos
           if (opts.animateStartingPos) {
             currAngle = prevAngle + (angle - prevAngle) * pos
@@ -587,49 +643,51 @@ class Pie {
     }
   }
 
+  /**
+   * @param {number} i
+   */
   pieClicked(i) {
-    let w = this.w
-    let me = this
-    let path
-
-    let size =
+    const w = this.w
+    const me = this
+    const size =
       me.sliceSizes[i] + (w.config.plotOptions.pie.expandOnClick ? 4 : 0)
-    let elPath = w.globals.dom.Paper.findOne(
-      `.apexcharts-${me.chartType.toLowerCase()}-slice-${i}`
+    const elPath = w.dom.Paper.findOne(
+      `.apexcharts-${me.chartType.toLowerCase()}-slice-${i}`,
     )
 
     if (elPath.attr('data:pieClicked') === 'true') {
       elPath.attr({
         'data:pieClicked': 'false',
       })
-      this.revertDataLabelsInner(elPath.node, this.donutDataLabels)
+      this.revertDataLabelsInner()
 
-      let origPath = elPath.attr('data:pathOrig')
+      const origPath = elPath.attr('data:pathOrig')
       elPath.attr({
         d: origPath,
       })
       return
     } else {
       // reset all elems
-      let allEls = w.globals.dom.baseEl.getElementsByClassName(
-        'apexcharts-pie-area'
-      )
+      const allEls = w.dom.baseEl.getElementsByClassName('apexcharts-pie-area')
+      /**
+       * @param {any} pieSlice
+       */
       Array.prototype.forEach.call(allEls, (pieSlice) => {
         pieSlice.setAttribute('data:pieClicked', 'false')
-        let origPath = pieSlice.getAttribute('data:pathOrig')
+        const origPath = pieSlice.getAttribute('data:pathOrig')
         if (origPath) {
           pieSlice.setAttribute('d', origPath)
         }
       })
-      w.globals.capturedDataPointIndex = i
+      w.interact.capturedDataPointIndex = i
 
       elPath.attr('data:pieClicked', 'true')
     }
 
-    let startAngle = parseInt(elPath.attr('data:startAngle'), 10)
-    let angle = parseInt(elPath.attr('data:angle'), 10)
+    const startAngle = parseInt(elPath.attr('data:startAngle'), 10)
+    const angle = parseInt(elPath.attr('data:angle'), 10)
 
-    path = me.getPiePath({
+    const path = me.getPiePath({
       me,
       startAngle,
       angle,
@@ -641,6 +699,10 @@ class Pie {
     elPath.plot(path)
   }
 
+  /**
+   * @param {number} prevStartAngle
+   * @param {number} prevEndAngle
+   */
   getChangedPath(prevStartAngle, prevEndAngle) {
     let path = ''
     if (this.dynamicAnim && this.w.globals.dataChanged) {
@@ -648,18 +710,20 @@ class Pie {
         me: this,
         startAngle: prevStartAngle,
         angle: prevEndAngle - prevStartAngle,
+        // @ts-ignore — size is set dynamically during draw()
         size: this.size,
       })
     }
     return path
   }
 
+  /** @param {{me: any, startAngle: any, angle: any, size: any}} opts */
   getPiePath({ me, startAngle, angle, size }) {
     let path
-    const graphics = new Graphics(this.ctx)
+    const graphics = new Graphics(this.w)
 
-    let startDeg = startAngle
-    let startRadians = (Math.PI * (startDeg - 90)) / 180
+    const startDeg = startAngle
+    const startRadians = (Math.PI * (startDeg - 90)) / 180
 
     let endDeg = angle + startAngle
     // prevent overlap
@@ -675,27 +739,27 @@ class Pie {
     }
     if (Math.ceil(endDeg) > this.fullAngle) endDeg -= this.fullAngle
 
-    let endRadians = (Math.PI * (endDeg - 90)) / 180
+    const endRadians = (Math.PI * (endDeg - 90)) / 180
 
-    let x1 = me.centerX + size * Math.cos(startRadians)
-    let y1 = me.centerY + size * Math.sin(startRadians)
-    let x2 = me.centerX + size * Math.cos(endRadians)
-    let y2 = me.centerY + size * Math.sin(endRadians)
+    const x1 = me.centerX + size * Math.cos(startRadians)
+    const y1 = me.centerY + size * Math.sin(startRadians)
+    const x2 = me.centerX + size * Math.cos(endRadians)
+    const y2 = me.centerY + size * Math.sin(endRadians)
 
-    let startInner = Utils.polarToCartesian(
+    const startInner = Utils.polarToCartesian(
       me.centerX,
       me.centerY,
       me.donutSize,
-      endDeg
+      endDeg,
     )
-    let endInner = Utils.polarToCartesian(
+    const endInner = Utils.polarToCartesian(
       me.centerX,
       me.centerY,
       me.donutSize,
-      startDeg
+      startDeg,
     )
 
-    let largeArc = angle > 180 ? 1 : 0
+    const largeArc = angle > 180 ? 1 : 0
 
     const pathBeginning = ['M', x1, y1, 'A', size, size, 0, largeArc, 1, x2, y2]
 
@@ -720,7 +784,7 @@ class Pie {
       ].join(' ')
     } else if (me.chartType === 'pie' || me.chartType === 'polarArea') {
       path = [...pathBeginning, 'L', me.centerX, me.centerY, 'L', x1, y1].join(
-        ' '
+        ' ',
       )
     } else {
       path = [...pathBeginning].join(' ')
@@ -729,11 +793,14 @@ class Pie {
     return graphics.roundPathCorners(path, this.strokeWidth * 2)
   }
 
+  /**
+   * @param {any} parent
+   */
   drawPolarElements(parent) {
     const w = this.w
-    const scale = new Scales(this.ctx)
-    const graphics = new Graphics(this.ctx)
-    const helpers = new Helpers(this.ctx)
+    const scale = new Scales(this.w)
+    const graphics = new Graphics(this.w)
+    const helpers = new Helpers(this.w)
 
     const gCircles = graphics.group()
     const gYAxis = graphics.group()
@@ -741,12 +808,12 @@ class Pie {
     const yScale = scale.niceScale(0, Math.ceil(this.maxY), 0)
 
     const yTexts = yScale.result.reverse()
-    let len = yScale.result.length
+    const len = yScale.result.length
 
     this.maxY = yScale.niceMax
 
     let circleSize = w.globals.radialSize
-    let diff = circleSize / (len - 1)
+    const diff = circleSize / (len - 1)
 
     for (let i = 0; i < len - 1; i++) {
       const circle = graphics.drawCircle(circleSize)
@@ -766,7 +833,7 @@ class Pie {
             circleSize +
             parseInt(w.config.yaxis[0].labels.style.fontSize, 10) / 2,
           i,
-          yTexts[i]
+          yTexts[i],
         )
 
         gYAxis.add(yLabel)
@@ -783,17 +850,22 @@ class Pie {
     parent.add(gYAxis)
   }
 
+  /**
+   * @param {any} dataLabelsGroup
+   * @param {Record<string, any>} dataLabelsConfig
+   * @param {Record<string, any>} opts
+   */
   renderInnerDataLabels(dataLabelsGroup, dataLabelsConfig, opts) {
-    let w = this.w
-    const graphics = new Graphics(this.ctx)
+    const w = this.w
+    const graphics = new Graphics(this.w)
 
     const showTotal = dataLabelsConfig.total.show
 
     dataLabelsGroup.node.innerHTML = ''
     dataLabelsGroup.node.style.opacity = opts.opacity
 
-    let x = opts.centerX
-    let y = !this.donutDataLabels.total.label
+    const x = opts.centerX
+    const y = !this.donutDataLabels.total.label
       ? opts.centerY - opts.centerY / 6
       : opts.centerY
 
@@ -814,7 +886,7 @@ class Pie {
       valueColor = dataLabelsConfig.value.color
     }
 
-    let lbFormatter = dataLabelsConfig.value.formatter
+    const lbFormatter = dataLabelsConfig.value.formatter
     let val = ''
     let name = ''
 
@@ -828,9 +900,9 @@ class Pie {
         : dataLabelsConfig.total.label
       val = dataLabelsConfig.total.formatter(w)
     } else {
-      if (w.globals.series.length === 1) {
-        val = lbFormatter(w.globals.series[0], w)
-        name = w.globals.seriesNames[0]
+      if (w.seriesData.series.length === 1) {
+        val = lbFormatter(w.seriesData.series[0], w)
+        name = w.seriesData.seriesNames[0]
       }
     }
 
@@ -838,12 +910,12 @@ class Pie {
       name = dataLabelsConfig.name.formatter(
         name,
         dataLabelsConfig.total.show,
-        w
+        w,
       )
     }
 
     if (dataLabelsConfig.name.show) {
-      let elLabel = graphics.drawText({
+      const elLabel = graphics.drawText({
         x,
         y: y + parseFloat(dataLabelsConfig.name.offsetY),
         text: name,
@@ -858,11 +930,11 @@ class Pie {
     }
 
     if (dataLabelsConfig.value.show) {
-      let valOffset = dataLabelsConfig.name.show
+      const valOffset = dataLabelsConfig.name.show
         ? parseFloat(dataLabelsConfig.value.offsetY) + 16
         : dataLabelsConfig.value.offsetY
 
-      let elValue = graphics.drawText({
+      const elValue = graphics.drawText({
         x,
         y: y + valOffset,
         text: val,
@@ -885,7 +957,8 @@ class Pie {
    *
    * @param {string} name - The name of the series
    * @param {string} val - The value of that series
-   * @param {object} el - Optional el (indicates which series was hovered/clicked). If this param is not present, means we need to show total
+   * @param {any} el - Optional el (indicates which series was hovered/clicked). If this param is not present, means we need to show total
+   * @param {Record<string, any>} labelsConfig
    */
   printInnerLabels(labelsConfig, name, val, el) {
     const w = this.w
@@ -900,19 +973,15 @@ class Pie {
         labelColor = labelsConfig.name.color
       }
     } else {
-      if (w.globals.series.length > 1 && labelsConfig.total.show) {
+      if (w.seriesData.series.length > 1 && labelsConfig.total.show) {
         labelColor = labelsConfig.total.color
       }
     }
 
-    let elLabel = w.globals.dom.baseEl.querySelector(
-      '.apexcharts-datalabel-label'
-    )
-    let elValue = w.globals.dom.baseEl.querySelector(
-      '.apexcharts-datalabel-value'
-    )
+    const elLabel = w.dom.baseEl.querySelector('.apexcharts-datalabel-label')
+    const elValue = w.dom.baseEl.querySelector('.apexcharts-datalabel-value')
 
-    let lbFormatter = labelsConfig.value.formatter
+    const lbFormatter = labelsConfig.value.formatter
     val = lbFormatter(val, w)
 
     // we need to show Total Val - so get the formatter of it
@@ -933,47 +1002,58 @@ class Pie {
       elValue.textContent = val
     }
     if (elLabel !== null) {
-      elLabel.style.fill = labelColor
+      const elLabelEl = /** @type {HTMLElement} */ (elLabel)
+      elLabelEl.style.fill = labelColor
     }
   }
 
+  /**
+   * @param {any} el
+   * @param {Record<string, any>} dataLabelsConfig
+   */
   printDataLabelsInner(el, dataLabelsConfig) {
-    let w = this.w
+    const w = this.w
 
-    let val = el.getAttribute('data:value')
-    let name =
-      w.globals.seriesNames[parseInt(el.parentNode.getAttribute('rel'), 10) - 1]
+    const val = el.getAttribute('data:value')
+    const name =
+      w.seriesData.seriesNames[
+        parseInt(el.parentNode.getAttribute('rel'), 10) - 1
+      ]
 
-    if (w.globals.series.length > 1) {
+    if (w.seriesData.series.length > 1) {
       this.printInnerLabels(dataLabelsConfig, name, val, el)
     }
 
-    let dataLabelsGroup = w.globals.dom.baseEl.querySelector(
-      '.apexcharts-datalabels-group'
+    const dataLabelsGroup = w.dom.baseEl.querySelector(
+      '.apexcharts-datalabels-group',
     )
     if (dataLabelsGroup !== null) {
-      dataLabelsGroup.style.opacity = 1
+      const dataLabelsGroupEl = /** @type {HTMLElement} */ (dataLabelsGroup)
+      dataLabelsGroupEl.style.opacity = '1'
     }
   }
 
+  /**
+   * @param {any} parent
+   */
   drawSpokes(parent) {
     const w = this.w
-    const graphics = new Graphics(this.ctx)
+    const graphics = new Graphics(this.w)
     const spokeConfig = w.config.plotOptions.polarArea.spokes
 
     if (spokeConfig.strokeWidth === 0) return
 
-    let spokes = []
+    const spokes = []
 
-    let angleDivision = 360 / w.globals.series.length
-    for (let i = 0; i < w.globals.series.length; i++) {
+    const angleDivision = 360 / w.seriesData.series.length
+    for (let i = 0; i < w.seriesData.series.length; i++) {
       spokes.push(
         Utils.polarToCartesian(
           this.centerX,
           this.centerY,
           w.globals.radialSize,
-          w.config.plotOptions.pie.startAngle + angleDivision * i
-        )
+          w.config.plotOptions.pie.startAngle + angleDivision * i,
+        ),
       )
     }
 
@@ -985,7 +1065,7 @@ class Pie {
         this.centerY,
         Array.isArray(spokeConfig.connectorColors)
           ? spokeConfig.connectorColors[i]
-          : spokeConfig.connectorColors
+          : spokeConfig.connectorColors,
       )
 
       parent.add(line)
@@ -995,11 +1075,11 @@ class Pie {
   revertDataLabelsInner() {
     const w = this.w
     if (this.donutDataLabels.show) {
-      let dataLabelsGroup = w.globals.dom.Paper.findOne(
-        `.apexcharts-datalabels-group`
+      const dataLabelsGroup = w.dom.Paper.findOne(
+        `.apexcharts-datalabels-group`,
       )
 
-      let dataLabels = this.renderInnerDataLabels(
+      const dataLabels = this.renderInnerDataLabels(
         dataLabelsGroup,
         this.donutDataLabels,
         {
@@ -1007,11 +1087,11 @@ class Pie {
           centerX: this.centerX,
           centerY: this.centerY,
           opacity: this.donutDataLabels.show,
-        }
+        },
       )
 
-      let elPie = w.globals.dom.Paper.findOne(
-        '.apexcharts-radialbar, .apexcharts-pie'
+      const elPie = w.dom.Paper.findOne(
+        '.apexcharts-radialbar, .apexcharts-pie',
       )
       elPie.add(dataLabels)
     }

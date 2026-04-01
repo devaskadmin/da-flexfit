@@ -1,6 +1,8 @@
+// @ts-check
 import Defaults from './Defaults'
 import Utils from './../../utils/Utils'
 import Options from './Options'
+import { Environment } from '../../utils/Environment.js'
 
 /**
  * ApexCharts Config Class for extending user options with pre-defined ApexCharts config.
@@ -8,14 +10,18 @@ import Options from './Options'
  * @module Config
  **/
 export default class Config {
+  /**
+   * @param {Record<string, any>} opts
+   */
   constructor(opts) {
     this.opts = opts
   }
 
+  /** @param {{responsiveOverride: any}} opts */
   init({ responsiveOverride }) {
     let opts = this.opts
-    let options = new Options()
-    let defaults = new Defaults(opts)
+    const options = new Options()
+    const defaults = new Defaults(opts)
 
     this.chartType = opts.chart.type
 
@@ -46,7 +52,7 @@ export default class Config {
       ]
 
       if (chartTypes.indexOf(opts.chart.type) !== -1) {
-        chartDefaults = defaults[opts.chart.type]()
+        chartDefaults = /** @type {any} */ (defaults)[opts.chart.type]()
       } else {
         chartDefaults = defaults.line()
       }
@@ -76,10 +82,10 @@ export default class Config {
       }
 
       // If user has specified a dark theme, make the tooltip dark too
-      this.checkForDarkTheme(window.Apex) // check global window Apex options
+      this.checkForDarkTheme(Environment.getApex()) // check global window Apex options
       this.checkForDarkTheme(opts) // check locally passed options
 
-      opts.xaxis = opts.xaxis || window.Apex.xaxis || {}
+      opts.xaxis = opts.xaxis || Environment.getApex().xaxis || {}
 
       // an important boolean needs to be set here
       // otherwise all the charts will have this flag set to true window.Apex.xaxis is set globally
@@ -91,7 +97,7 @@ export default class Config {
 
       if (
         opts.chart.sparkline?.enabled ||
-        window.Apex.chart?.sparkline?.enabled
+        Environment.getApex().chart?.sparkline?.enabled
       ) {
         chartDefaults = defaults.sparkline(chartDefaults)
       }
@@ -102,7 +108,10 @@ export default class Config {
     // default-config < global-apex-variable-config < user-defined-config
 
     // get GLOBALLY defined options and merge with the default config
-    let mergedWithDefaultConfig = Utils.extend(newDefaults, window.Apex)
+    const mergedWithDefaultConfig = Utils.extend(
+      newDefaults,
+      Environment.getApex(),
+    )
 
     // get the merged config and extend with user defined config
     config = Utils.extend(mergedWithDefaultConfig, opts)
@@ -113,8 +122,13 @@ export default class Config {
     return config
   }
 
+  /**
+   * @param {string} chartType
+   * @param {Record<string, any>} chartDefaults
+   * @param {Record<string, any>} opts
+   */
   checkForCatToNumericXAxis(chartType, chartDefaults, opts) {
-    let defaults = new Defaults(opts)
+    const defaults = new Defaults(opts)
 
     const isBarHorizontal =
       (chartType === 'bar' || chartType === 'boxPlot') &&
@@ -131,7 +145,7 @@ export default class Config {
     const notNumericXAxis =
       opts.xaxis.type !== 'datetime' && opts.xaxis.type !== 'numeric'
 
-    let tickPlacement = opts.xaxis.tickPlacement
+    const tickPlacement = opts.xaxis.tickPlacement
       ? opts.xaxis.tickPlacement
       : chartDefaults.xaxis && chartDefaults.xaxis.tickPlacement
     if (
@@ -146,8 +160,12 @@ export default class Config {
     return opts
   }
 
+  /**
+   * @param {Record<string, any>} opts
+   * @param {import('../../types/internal').ChartStateW} [w]
+   */
   extendYAxis(opts, w) {
-    let options = new Options()
+    const options = new Options()
 
     if (
       typeof opts.yaxis === 'undefined' ||
@@ -158,12 +176,13 @@ export default class Config {
     }
 
     // extend global yaxis config (only if object is provided / not an array)
+    const globalApex = Environment.getApex()
     if (
       opts.yaxis.constructor !== Array &&
-      window.Apex.yaxis &&
-      window.Apex.yaxis.constructor !== Array
+      globalApex.yaxis &&
+      globalApex.yaxis.constructor !== Array
     ) {
-      opts.yaxis = Utils.extend(opts.yaxis, window.Apex.yaxis)
+      opts.yaxis = Utils.extend(opts.yaxis, globalApex.yaxis)
     }
 
     // as we can't extend nested object's array with extend, we need to do it first
@@ -176,7 +195,10 @@ export default class Config {
     }
 
     let isLogY = false
-    opts.yaxis.forEach((y) => {
+    /**
+     * @param {number} y
+     */
+    opts.yaxis.forEach((/** @type {any} */ y) => {
       if (y.logarithmic) {
         isLogY = true
       }
@@ -190,7 +212,11 @@ export default class Config {
     // A logarithmic chart works correctly when each series has a corresponding y-axis
     // If this is not the case, we manually create yaxis for multi-series log chart
     if (isLogY && series.length !== opts.yaxis.length && series.length) {
-      opts.yaxis = series.map((s, i) => {
+      /**
+       * @param {Record<string, any>} s
+       * @param {number} i
+       */
+      opts.yaxis = series.map((/** @type {any} */ s, /** @type {any} */ i) => {
         if (!s.name) {
           series[i].name = `series-${i + 1}`
         }
@@ -207,13 +233,16 @@ export default class Config {
 
     if (isLogY && series.length > 1 && series.length !== opts.yaxis.length) {
       console.warn(
-        'A multi-series logarithmic chart should have equal number of series and y-axes'
+        'A multi-series logarithmic chart should have equal number of series and y-axes',
       )
     }
     return opts
   }
 
   // annotations also accepts array, so we need to extend them manually
+  /**
+   * @param {Record<string, any>} opts
+   */
   extendAnnotations(opts) {
     if (typeof opts.annotations === 'undefined') {
       opts.annotations = {}
@@ -229,41 +258,53 @@ export default class Config {
     return opts
   }
 
+  /**
+   * @param {Record<string, any>} opts
+   */
   extendYAxisAnnotations(opts) {
-    let options = new Options()
+    const options = new Options()
 
     opts.annotations.yaxis = Utils.extendArray(
       typeof opts.annotations.yaxis !== 'undefined'
         ? opts.annotations.yaxis
         : [],
-      options.yAxisAnnotation
+      options.yAxisAnnotation,
     )
     return opts
   }
 
+  /**
+   * @param {Record<string, any>} opts
+   */
   extendXAxisAnnotations(opts) {
-    let options = new Options()
+    const options = new Options()
 
     opts.annotations.xaxis = Utils.extendArray(
       typeof opts.annotations.xaxis !== 'undefined'
         ? opts.annotations.xaxis
         : [],
-      options.xAxisAnnotation
+      options.xAxisAnnotation,
     )
     return opts
   }
+  /**
+   * @param {Record<string, any>} opts
+   */
   extendPointAnnotations(opts) {
-    let options = new Options()
+    const options = new Options()
 
     opts.annotations.points = Utils.extendArray(
       typeof opts.annotations.points !== 'undefined'
         ? opts.annotations.points
         : [],
-      options.pointAnnotation
+      options.pointAnnotation,
     )
     return opts
   }
 
+  /**
+   * @param {Record<string, any>} opts
+   */
   checkForDarkTheme(opts) {
     if (opts.theme && opts.theme.mode === 'dark') {
       if (!opts.tooltip) {
@@ -283,12 +324,15 @@ export default class Config {
     }
   }
 
+  /**
+   * @param {any} opts
+   */
   handleUserInputErrors(opts) {
-    let config = opts
+    const config = opts
     // conflicting tooltip option. intersect makes sure to focus on 1 point at a time. Shared cannot be used along with it
     if (config.tooltip.shared && config.tooltip.intersect) {
       throw new Error(
-        'tooltip.shared cannot be enabled when tooltip.intersect is true. Turn off any other option by setting it to false.'
+        'tooltip.shared cannot be enabled when tooltip.intersect is true. Turn off any other option by setting it to false.',
       )
     }
 
@@ -296,7 +340,7 @@ export default class Config {
       // No multiple yaxis for bars
       if (config.yaxis.length > 1) {
         throw new Error(
-          'Multiple Y Axis for bars are not supported. Switch to column chart by setting plotOptions.bar.horizontal=false'
+          'Multiple Y Axis for bars are not supported. Switch to column chart by setting plotOptions.bar.horizontal=false',
         )
       }
 
@@ -327,7 +371,7 @@ export default class Config {
     ) {
       if (config.yaxis[0].reversed) {
         console.warn(
-          `Reversed y-axis in ${config.chart.type} chart is not supported.`
+          `Reversed y-axis in ${config.chart.type} chart is not supported.`,
         )
         config.yaxis[0].reversed = false
       }

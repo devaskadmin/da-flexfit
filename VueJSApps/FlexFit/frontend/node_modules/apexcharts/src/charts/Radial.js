@@ -1,8 +1,10 @@
+// @ts-check
 import Pie from './Pie'
 import Utils from '../utils/Utils'
 import Fill from '../modules/Fill'
 import Graphics from '../modules/Graphics'
 import Filters from '../modules/Filters'
+import Series from '../modules/Series'
 
 /**
  * ApexCharts Radial Class for drawing Circle / Semi Circle Charts.
@@ -10,21 +12,24 @@ import Filters from '../modules/Filters'
  **/
 
 class Radial extends Pie {
-  constructor(ctx) {
-    super(ctx)
+  /**
+   * @param {import('../types/internal').ChartStateW} w
+   * @param {import('../types/internal').ChartContext} ctx
+   */
+  constructor(w, ctx) {
+    super(w, ctx)
 
     this.ctx = ctx
-    this.w = ctx.w
+    this.w = w
     this.animBeginArr = [0]
     this.animDur = 0
 
-    const w = this.w
     this.startAngle = w.config.plotOptions.radialBar.startAngle
     this.endAngle = w.config.plotOptions.radialBar.endAngle
 
     this.totalAngle = Math.abs(
       w.config.plotOptions.radialBar.endAngle -
-        w.config.plotOptions.radialBar.startAngle
+        w.config.plotOptions.radialBar.startAngle,
     )
 
     this.trackStartAngle = w.config.plotOptions.radialBar.track.startAngle
@@ -44,29 +49,32 @@ class Radial extends Pie {
     this.onBarLabelClick = this.onBarLabelClick.bind(this)
   }
 
+  /**
+   * @param {any[]} series
+   */
   draw(series) {
-    let w = this.w
-    const graphics = new Graphics(this.ctx)
+    const w = this.w
+    const graphics = new Graphics(this.w)
 
-    let ret = graphics.group({
+    const ret = graphics.group({
       class: 'apexcharts-radialbar',
     })
 
     if (w.globals.noData) return ret
 
-    let elSeries = graphics.group()
+    const elSeries = graphics.group()
 
-    let centerY = this.defaultSize / 2
-    let centerX = w.globals.gridWidth / 2
+    const centerY = this.defaultSize / 2
+    const centerX = w.layout.gridWidth / 2
 
     let size = this.defaultSize / 2.05
     if (!w.config.chart.sparkline.enabled) {
       size = size - w.config.stroke.width - w.config.chart.dropShadow.blur
     }
-    let colorArr = w.globals.fill.colors
+    const colorArr = w.globals.fill.colors
 
     if (w.config.plotOptions.radialBar.track.show) {
-      let elTracks = this.drawTracks({
+      const elTracks = this.drawTracks({
         size,
         centerX,
         centerY,
@@ -76,7 +84,7 @@ class Radial extends Pie {
       elSeries.add(elTracks)
     }
 
-    let elG = this.drawArcs({
+    const elG = this.drawArcs({
       size,
       centerX,
       centerY,
@@ -90,13 +98,13 @@ class Radial extends Pie {
       totalAngle = this.totalAngle
     }
 
-    let angleRatio = (360 - totalAngle) / 360
+    const angleRatio = (360 - totalAngle) / 360
     w.globals.radialSize = size - size * angleRatio
 
     if (this.radialDataLabels.value.show) {
-      let offset = Math.max(
+      const offset = Math.max(
         this.radialDataLabels.value.offsetY,
-        this.radialDataLabels.name.offsetY
+        this.radialDataLabels.name.offsetY,
       )
       w.globals.radialSize += offset * angleRatio
     }
@@ -115,23 +123,26 @@ class Radial extends Pie {
     return ret
   }
 
+  /**
+   * @param {Record<string, any>} opts
+   */
   drawTracks(opts) {
-    let w = this.w
-    const graphics = new Graphics(this.ctx)
+    const w = this.w
+    const graphics = new Graphics(this.w)
 
-    let g = graphics.group({
+    const g = graphics.group({
       class: 'apexcharts-tracks',
     })
 
-    let filters = new Filters(this.ctx)
-    let fill = new Fill(this.ctx)
+    const filters = new Filters(this.w)
+    const fill = new Fill(this.w)
 
-    let strokeWidth = this.getStrokeWidth(opts)
+    const strokeWidth = this.getStrokeWidth(opts)
 
     opts.size = opts.size - strokeWidth / 2
 
     for (let i = 0; i < opts.series.length; i++) {
-      let elRadialBarTrack = graphics.group({
+      const elRadialBarTrack = graphics.group({
         class: 'apexcharts-radialbar-track apexcharts-track',
       })
       g.add(elRadialBarTrack)
@@ -143,7 +154,7 @@ class Radial extends Pie {
       opts.size = opts.size - strokeWidth - this.margin
 
       const trackConfig = w.config.plotOptions.radialBar.track
-      let pathFill = fill.fillPath({
+      const pathFill = fill.fillPath({
         seriesNumber: 0,
         size: opts.size,
         fillColors: Array.isArray(trackConfig.background)
@@ -152,13 +163,13 @@ class Radial extends Pie {
         solid: true,
       })
 
-      let startAngle = this.trackStartAngle
+      const startAngle = this.trackStartAngle
       let endAngle = this.trackEndAngle
 
       if (Math.abs(endAngle) + Math.abs(startAngle) >= 360)
         endAngle = 360 - Math.abs(this.startAngle) - 0.1
 
-      let elPath = graphics.drawPath({
+      const elPath = graphics.drawPath({
         d: '',
         stroke: pathFill,
         strokeWidth:
@@ -194,20 +205,23 @@ class Radial extends Pie {
     return g
   }
 
+  /**
+   * @param {Record<string, any>} opts
+   */
   drawArcs(opts) {
-    let w = this.w
+    const w = this.w
     // size, donutSize, centerX, centerY, colorArr, lineColorArr, sectorAngleArr, series
 
-    let graphics = new Graphics(this.ctx)
-    let fill = new Fill(this.ctx)
-    let filters = new Filters(this.ctx)
-    let g = graphics.group()
+    const graphics = new Graphics(this.w)
+    const fill = new Fill(this.w)
+    const filters = new Filters(this.w)
+    const g = graphics.group()
 
-    let strokeWidth = this.getStrokeWidth(opts)
+    const strokeWidth = this.getStrokeWidth(opts)
     opts.size = opts.size - strokeWidth / 2
 
     let hollowFillID = w.config.plotOptions.radialBar.hollow.background
-    let hollowSize =
+    const hollowSize =
       opts.size -
       strokeWidth * opts.series.length -
       this.margin * opts.series.length -
@@ -216,13 +230,14 @@ class Radial extends Pie {
         100 /
         2
 
-    let hollowRadius = hollowSize - w.config.plotOptions.radialBar.hollow.margin
+    const hollowRadius =
+      hollowSize - w.config.plotOptions.radialBar.hollow.margin
 
     if (w.config.plotOptions.radialBar.hollow.image !== undefined) {
       hollowFillID = this.drawHollowImage(opts, g, hollowSize, hollowFillID)
     }
 
-    let elHollow = this.drawHollow({
+    const elHollow = this.drawHollow({
       size: hollowRadius,
       centerX: opts.centerX,
       centerY: opts.centerY,
@@ -235,15 +250,15 @@ class Radial extends Pie {
     }
 
     let shown = 1
-    if (!this.radialDataLabels.total.show && w.globals.series.length > 1) {
+    if (!this.radialDataLabels.total.show && w.seriesData.series.length > 1) {
       shown = 0
     }
 
     let dataLabels = null
 
     if (this.radialDataLabels.show) {
-      let dataLabelsGroup = w.globals.dom.Paper.findOne(
-        `.apexcharts-datalabels-group`
+      const dataLabelsGroup = w.dom.Paper.findOne(
+        `.apexcharts-datalabels-group`,
       )
 
       dataLabels = this.renderInnerDataLabels(
@@ -254,7 +269,7 @@ class Radial extends Pie {
           centerX: opts.centerX,
           centerY: opts.centerY,
           opacity: shown,
-        }
+        },
       )
     }
 
@@ -275,9 +290,9 @@ class Radial extends Pie {
       reverseLoop ? i >= 0 : i < opts.series.length;
       reverseLoop ? i-- : i++
     ) {
-      let elRadialBarArc = graphics.group({
+      const elRadialBarArc = graphics.group({
         class: `apexcharts-series apexcharts-radial-series`,
-        seriesName: Utils.escapeString(w.globals.seriesNames[i]),
+        seriesName: Utils.escapeString(w.seriesData.seriesNames[i]),
       })
       g.add(elRadialBarArc)
 
@@ -286,17 +301,17 @@ class Radial extends Pie {
         'data:realIndex': i,
       })
 
-      this.ctx.series.addCollapsedClassToSeries(elRadialBarArc, i)
+      Series.addCollapsedClassToSeries(this.w, elRadialBarArc, i)
 
       opts.size = opts.size - strokeWidth - this.margin
 
-      let pathFill = fill.fillPath({
+      const pathFill = fill.fillPath({
         seriesNumber: i,
         size: opts.size,
         value: opts.series[i],
       })
 
-      let startAngle = this.startAngle
+      const startAngle = this.startAngle
       let prevStartAngle
 
       // if data exceeds 100, make it 100
@@ -311,7 +326,7 @@ class Radial extends Pie {
         prevEndAngle =
           Math.round(
             (this.totalAngle * Utils.negToZero(w.globals.previousPaths[i])) /
-              100
+              100,
           ) + prevStartAngle
       }
 
@@ -325,13 +340,13 @@ class Radial extends Pie {
         prevEndAngle = prevEndAngle - 0.01
       }
 
-      let angle = endAngle - startAngle
+      const angle = endAngle - startAngle
 
       const dashArray = Array.isArray(w.config.stroke.dashArray)
         ? w.config.stroke.dashArray[i]
         : w.config.stroke.dashArray
 
-      let elPath = graphics.drawPath({
+      const elPath = graphics.drawPath({
         d: '',
         stroke: pathFill,
         strokeWidth,
@@ -341,9 +356,19 @@ class Radial extends Pie {
         strokeDashArray: dashArray,
       })
 
+      const radialMidAngle = startAngle + angle / 2
+      const radialArcCenter = Utils.polarToCartesian(
+        opts.centerX,
+        opts.centerY,
+        opts.size,
+        radialMidAngle,
+      )
+
       Graphics.setAttrs(elPath.node, {
         'data:angle': angle,
         'data:value': opts.series[i],
+        'data:cx': radialArcCenter.x,
+        'data:cy': radialArcCenter.y,
       })
 
       if (w.config.chart.dropShadow.enabled) {
@@ -362,17 +387,17 @@ class Radial extends Pie {
       })
 
       if (this.barLabels.enabled) {
-        let barStartCords = Utils.polarToCartesian(
+        const barStartCords = Utils.polarToCartesian(
           opts.centerX,
           opts.centerY,
           opts.size,
-          startAngle
+          startAngle,
         )
-        let text = this.barLabels.formatter(w.globals.seriesNames[i], {
+        const text = this.barLabels.formatter(w.seriesData.seriesNames[i], {
           seriesIndex: i,
           w,
         })
-        let classes = ['apexcharts-radialbar-label']
+        const classes = ['apexcharts-radialbar-label']
         if (!this.barLabels.onClick) {
           classes.push('apexcharts-no-click')
         }
@@ -387,7 +412,7 @@ class Radial extends Pie {
 
         const x = barStartCords.x + this.barLabels.offsetX
         const y = barStartCords.y + this.barLabels.offsetY
-        let elText = graphics.drawText({
+        const elText = graphics.drawText({
           x,
           y,
           text,
@@ -450,10 +475,13 @@ class Radial extends Pie {
     }
   }
 
+  /**
+   * @param {Record<string, any>} opts
+   */
   drawHollow(opts) {
-    const graphics = new Graphics(this.ctx)
+    const graphics = new Graphics(this.w)
 
-    let circle = graphics.drawCircle(opts.size * 2)
+    const circle = graphics.drawCircle(opts.size * 2)
 
     circle.attr({
       class: 'apexcharts-radialbar-hollow',
@@ -466,12 +494,18 @@ class Radial extends Pie {
     return circle
   }
 
+  /**
+   * @param {Record<string, any>} opts
+   * @param {any} g
+   * @param {number} hollowSize
+   * @param {string} hollowFillID
+   */
   drawHollowImage(opts, g, hollowSize, hollowFillID) {
     const w = this.w
-    let fill = new Fill(this.ctx)
+    const fill = new Fill(this.w)
 
-    let randID = Utils.randomId()
-    let hollowFillImg = w.config.plotOptions.radialBar.hollow.image
+    const randID = Utils.randomId()
+    const hollowFillImg = w.config.plotOptions.radialBar.hollow.image
 
     if (w.config.plotOptions.radialBar.hollow.imageClipped) {
       fill.clippedImgArea({
@@ -485,35 +519,48 @@ class Radial extends Pie {
       const imgWidth = w.config.plotOptions.radialBar.hollow.imageWidth
       const imgHeight = w.config.plotOptions.radialBar.hollow.imageHeight
       if (imgWidth === undefined && imgHeight === undefined) {
-        let image = w.globals.dom.Paper.image(hollowFillImg, function (loader) {
-          this.move(
-            opts.centerX -
-              loader.width / 2 +
-              w.config.plotOptions.radialBar.hollow.imageOffsetX,
-            opts.centerY -
-              loader.height / 2 +
-              w.config.plotOptions.radialBar.hollow.imageOffsetY
-          )
-        })
+        /**
+         * @param {Record<string, any>} loader
+         */
+        const image = w.dom.Paper.image(
+          hollowFillImg,
+          /** @this {any} */
+          function (/** @type {Record<string, any>} */ loader) {
+            this.move(
+              opts.centerX -
+                loader.width / 2 +
+                w.config.plotOptions.radialBar.hollow.imageOffsetX,
+              opts.centerY -
+                loader.height / 2 +
+                w.config.plotOptions.radialBar.hollow.imageOffsetY,
+            )
+          },
+        )
         g.add(image)
       } else {
-        let image = w.globals.dom.Paper.image(hollowFillImg, function (loader) {
-          this.move(
-            opts.centerX -
-              imgWidth / 2 +
-              w.config.plotOptions.radialBar.hollow.imageOffsetX,
-            opts.centerY -
-              imgHeight / 2 +
-              w.config.plotOptions.radialBar.hollow.imageOffsetY
-          )
-          this.size(imgWidth, imgHeight)
-        })
+        const image = w.dom.Paper.image(
+          hollowFillImg,
+          /** @this {any} */ function () {
+            this.move(
+              opts.centerX -
+                imgWidth / 2 +
+                w.config.plotOptions.radialBar.hollow.imageOffsetX,
+              opts.centerY -
+                imgHeight / 2 +
+                w.config.plotOptions.radialBar.hollow.imageOffsetY,
+            )
+            this.size(imgWidth, imgHeight)
+          },
+        )
         g.add(image)
       }
     }
     return hollowFillID
   }
 
+  /**
+   * @param {Record<string, any>} opts
+   */
   getStrokeWidth(opts) {
     const w = this.w
     return (
@@ -525,13 +572,17 @@ class Radial extends Pie {
     )
   }
 
+  /**
+   * @param {Event} e
+   */
   onBarLabelClick(e) {
-    let seriesIndex = parseInt(e.target.getAttribute('rel'), 10) - 1
+    const target = /** @type {Element} */ (e.target)
+    const seriesIndex = parseInt(target.getAttribute('rel') ?? '', 10) - 1
     const legendClick = this.barLabels.onClick
     const w = this.w
 
     if (legendClick) {
-      legendClick(w.globals.seriesNames[seriesIndex], { w, seriesIndex })
+      legendClick(w.seriesData.seriesNames[seriesIndex], { w, seriesIndex })
     }
   }
 }

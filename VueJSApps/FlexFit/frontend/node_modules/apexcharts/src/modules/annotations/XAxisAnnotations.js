@@ -1,7 +1,11 @@
+// @ts-check
 import Utils from '../../utils/Utils'
 import Helpers from './Helpers'
 
 export default class XAnnotations {
+  /**
+   * @param {import('./Annotations').default} annoCtx
+   */
   constructor(annoCtx) {
     this.w = annoCtx.w
     this.annoCtx = annoCtx
@@ -11,31 +15,36 @@ export default class XAnnotations {
     this.helpers = new Helpers(this.annoCtx)
   }
 
+  /**
+   * @param {XAxisAnnotations} anno
+   * @param {Element} parent
+   * @param {number} index
+   */
   addXaxisAnnotation(anno, parent, index) {
-    let w = this.w
+    const w = this.w
 
-    let result = this.helpers.getX1X2('x1', anno)
+    const result = this.helpers.getX1X2('x1', anno)
     let x1 = result.x
-    let clipX1 = result.clipped
+    const clipX1 = result.clipped
     let clipX2 = true
     let x2
 
     const text = anno.label.text
 
-    let strokeDashArray = anno.strokeDashArray
+    const strokeDashArray = anno.strokeDashArray
 
     if (!Utils.isNumber(x1)) return
 
     if (anno.x2 === null || typeof anno.x2 === 'undefined') {
       if (!clipX1) {
-        let line = this.annoCtx.graphics.drawLine(
+        const line = this.annoCtx.graphics.drawLine(
           x1 + anno.offsetX, // x1
           0 + anno.offsetY, // y1
           x1 + anno.offsetX, // x2
-          w.globals.gridHeight + anno.offsetY, // y2
+          w.layout.gridHeight + anno.offsetY, // y2
           anno.borderColor, // lineColor
           strokeDashArray, //dashArray
-          anno.borderWidth
+          anno.borderWidth,
         )
         parent.appendChild(line.node)
         if (anno.id) {
@@ -43,27 +52,27 @@ export default class XAnnotations {
         }
       }
     } else {
-      let result = this.helpers.getX1X2('x2', anno)
+      const result = this.helpers.getX1X2('x2', anno)
       x2 = result.x
       clipX2 = result.clipped
 
       if (x2 < x1) {
-        let temp = x1
+        const temp = x1
         x1 = x2
         x2 = temp
       }
 
-      let rect = this.annoCtx.graphics.drawRect(
+      const rect = this.annoCtx.graphics.drawRect(
         x1 + anno.offsetX, // x1
         0 + anno.offsetY, // y1
         x2 - x1, // x2
-        w.globals.gridHeight + anno.offsetY, // y2
+        w.layout.gridHeight + anno.offsetY, // y2
         0, // radius
         anno.fillColor, // color
         anno.opacity, // opacity,
         1, // strokeWidth
         anno.borderColor, // strokeColor
-        strokeDashArray // stokeDashArray
+        strokeDashArray, // stokeDashArray
       )
       rect.node.classList.add('apexcharts-annotation-rect')
       rect.attr('clip-path', `url(#gridRectMask${w.globals.cuid})`)
@@ -74,19 +83,19 @@ export default class XAnnotations {
     }
 
     if (!(clipX1 && clipX2)) {
-      let textRects = this.annoCtx.graphics.getTextRects(
+      const textRects = this.annoCtx.graphics.getTextRects(
         text,
-        parseFloat(anno.label.style.fontSize)
+        anno.label.style.fontSize,
       )
-      let textY =
+      const textY =
         anno.label.position === 'top'
           ? 4
           : anno.label.position === 'center'
-          ? w.globals.gridHeight / 2 +
-            (anno.label.orientation === 'vertical' ? textRects.width / 2 : 0)
-          : w.globals.gridHeight
+            ? w.layout.gridHeight / 2 +
+              (anno.label.orientation === 'vertical' ? textRects.width / 2 : 0)
+            : w.layout.gridHeight
 
-      let elText = this.annoCtx.graphics.drawText({
+      const elText = this.annoCtx.graphics.drawText({
         x: x1 + anno.label.offsetX,
         y:
           textY +
@@ -118,15 +127,21 @@ export default class XAnnotations {
     }
   }
   drawXAxisAnnotations() {
-    let w = this.w
+    const w = this.w
 
-    let elg = this.annoCtx.graphics.group({
+    const elg = this.annoCtx.graphics.group({
       class: 'apexcharts-xaxis-annotations',
     })
 
-    w.config.annotations.xaxis.map((anno, index) => {
-      this.addXaxisAnnotation(anno, elg.node, index)
-    })
+    /**
+     * @param {XAxisAnnotations} anno
+     * @param {number} index
+     */
+    w.config.annotations.xaxis.map(
+      (/** @type {any} */ anno, /** @type {any} */ index) => {
+        this.addXaxisAnnotation(anno, elg.node, index)
+      },
+    )
 
     return elg
   }
