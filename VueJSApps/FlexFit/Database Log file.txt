@@ -1,7 +1,7 @@
 FlexFit Database Log file
 Generated from:
 - Baseline: FlexFit - Database Backups/0.6 Release/0.6 Release.sql
-- Current Working Version: 0.6.3
+- Current Working Version: 0.6.5
 Database: flexfit12825
 
 Purpose
@@ -11,6 +11,8 @@ Purpose
 Version Changelog Index
 - 0.6.2: Membership tiers, roles, profiles, memberships, user_roles
 - 0.6.3: In-app notifications + notification preferences
+- 0.6.4: Render.com deployment (backend public mode, CORS, secure cookies)
+- 0.6.5: Environment refactor — .env / .env.local split, removed hardcoded URLs
 
 IMPORTANT
 - Run on a backup/staging DB first.
@@ -420,3 +422,80 @@ CREATE TABLE IF NOT EXISTS `notification_preferences` (
 -- SHOW TABLES LIKE 'notification_preferences';
 -- SHOW CREATE TABLE notifications;
 -- SHOW CREATE TABLE notification_preferences;
+
+============================================================
+== 0.6.4 — Render.com Deployment                         ==
+============================================================
+-- Date: April 1, 2026
+-- No database schema changes in this version.
+-- Backend and infrastructure changes only.
+
+Changes:
+- Added RUN_PUBLIC / IS_RENDER mode detection in server.js
+- Backend binds to process.env.PORT (Render assigns dynamically)
+- Session cookies set to secure=true, sameSite='none' for HTTPS on Render
+- Trust proxy enabled when running on Render
+- CORS allowlist controlled by FRONTEND_ORIGIN + CORS_ORIGINS env vars
+- Added GET /api/db-status endpoint (temporary diagnostic)
+- Added DEBUG=true mode to expose structured DB error details in /api/db-status
+- Added temporary PHP connectivity test script (backend/PHP/db_connect_test.php)
+- Fixed Linux case-sensitive import errors:
+    exercises.vue (was Exercises.vue)
+    Widgets/ folder (was widgets/)
+    product/ folder (was Product/)
+- Updated apexcharts dependency to ^5.10.4 (peer dep fix for vue3-apexcharts)
+
+Render Services:
+- Frontend static site: https://flex-fit-lkzh.onrender.com
+- Backend web service:  https://dev-asterisks-github.onrender.com
+- DB Host (unchanged):  65.181.116.252 (Hosting.com/cPanel remote access)
+
+Render SPA routing:
+- Rewrite rule required: /* -> /index.html (type: Rewrite, not Redirect)
+
+============================================================
+== 0.6.5 — Environment Refactor (.env / .env.local)      ==
+============================================================
+-- Date: April 1, 2026
+-- No database schema changes in this version.
+-- Frontend and backend configuration cleanup only.
+
+Changes:
+- Removed RUN_PUBLIC custom switch logic from server.js
+- Backend now uses standard process.env.PORT || 5000 for all environments
+- CORS controlled purely by FRONTEND_URL + CORS_ORIGINS env vars
+- Session security controlled by SESSION_COOKIE_SECURE env var
+- SESSION_SECRET moved to env var (was hardcoded)
+- NODE_ENV controlled by env var (production in .env, development in .env.local)
+- Created frontend/.env  — production/Render defaults (VITE_API_BASE = Render URL)
+- Created frontend/.env.local — local overrides (VITE_API_BASE = http://localhost:5000)
+- Created backend/.env  — production/Render defaults (FRONTEND_URL, SESSION_COOKIE_SECURE=true)
+- Created backend/.env.local — local overrides (FRONTEND_URL=localhost:5173, SESSION_COOKIE_SECURE=false)
+- Both .env.local files are gitignored via *.local rule
+- Created frontend/src/config/env.js — single shared API_BASE export for all frontend files
+- Removed all hardcoded http://localhost:5000 URLs from frontend source files:
+    src/router/index.js
+    src/router/Session.js
+    src/components/HeaderComponent.vue
+    src/components/exercises.vue
+    src/views/Guest/Login.vue
+    src/views/Guest/register.vue
+    src/views/Member/Logout.vue
+    src/views/Member/Notifications.vue
+    src/views/Member/AdminUsers.vue
+    src/views/Member/AdminRoles.vue
+    src/views/Member/AdminRoleTester.vue
+    src/views/Member/exercises.vue
+    src/views/LogWorkout.vue
+- dbConfig.js updated to also load .env.local overrides
+
+Render env vars to set in dashboard (frontend service):
+  VITE_API_BASE=https://dev-asterisks-github.onrender.com
+  VITE_DEBUG_NO_AUTH=false
+
+Render env vars to set in dashboard (backend service):
+  FRONTEND_URL=https://flex-fit-lkzh.onrender.com
+  CORS_ORIGINS=https://flex-fit-lkzh.onrender.com
+  SESSION_COOKIE_SECURE=true
+  SESSION_SECRET=<strong random string>
+  NODE_ENV=production
