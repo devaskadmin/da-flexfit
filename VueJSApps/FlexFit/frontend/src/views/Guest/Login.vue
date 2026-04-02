@@ -2,9 +2,7 @@
 import { onMounted, ref } from "vue";
 import axios from "axios";
 import { useRouter } from "vue-router"; // ✅ Import Vue Router
-
-// Near top of file
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+import { API_BASE } from '@/config/env';
 
 
 const router = useRouter(); // ✅ Initialize Vue Router

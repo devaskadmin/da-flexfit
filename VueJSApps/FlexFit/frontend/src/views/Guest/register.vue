@@ -2,12 +2,10 @@
 import { ref, watch, computed } from "vue";
 import axios from "axios";
 import { useRouter } from "vue-router";
+import { API_BASE } from '@/config/env';
 
 
 const router = useRouter();
-
-// Near top of file
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
 const firstName = ref("");
 const lastName = ref("");

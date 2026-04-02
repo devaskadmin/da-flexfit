@@ -1,14 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import appRoutes from "@/router/routing";
 import axios from "axios";
+import { API_BASE } from '@/config/env';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [...appRoutes],
 });
 
-// Ensure environment variable is read correctly
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 const DEBUG_NO_AUTH = import.meta.env.VITE_DEBUG_NO_AUTH === "true";
 const IS_LOCALHOST = typeof window !== 'undefined' && ["localhost", "127.0.0.1"].includes(window.location.hostname);
 

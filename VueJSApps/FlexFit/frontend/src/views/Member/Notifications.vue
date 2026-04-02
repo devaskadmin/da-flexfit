@@ -1,8 +1,8 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { API_BASE } from '@/config/env'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000'
 const router = useRouter()
 
 const loading = ref(false)

@@ -2,6 +2,7 @@
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import axios from "axios";
+import { API_BASE } from '@/config/env';
 
 const router = useRouter();
 const username = ref(""); // ✅ Store logged-in username
@@ -12,7 +13,7 @@ const showConfirmation = ref(true); // ✅ Show confirmation first
 // ✅ Fetch the logged-in user from session
 const fetchUserSession = async () => {
   try {
-    const response = await axios.get("http://localhost:5000/api/session", { withCredentials: true });
+    const response = await axios.get(`${API_BASE}/api/session`, { withCredentials: true });
 
     if (response.data.loggedIn && response.data.user) {
       username.value = response.data.user.username;
@@ -31,7 +32,7 @@ const fetchUserSession = async () => {
 const logout = async () => {
   try {
   
-    await axios.post("http://localhost:5000/api/logout", {}, { withCredentials: true });
+    await axios.post(`${API_BASE}/api/logout`, {}, { withCredentials: true });
     console.log("✅ Logout successful");
 
     // ✅ Show logout message
