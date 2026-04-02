@@ -4,6 +4,86 @@ All notable changes to **FlexFit** are documented in this file.
 
 ---
 
+## [0.6.5] - 2026-04-01
+
+### Changed
+- **Environment refactor** — replaced all hardcoded `localhost` URLs and custom `RUN_PUBLIC` switch logic with a clean `.env` / `.env.local` split.
+- `frontend/.env` now holds production/Render defaults (`VITE_API_BASE` = Render backend URL).
+- `frontend/.env.local` holds local dev overrides (`VITE_API_BASE=http://localhost:5000`) — gitignored.
+- `backend/.env` now holds production/Render defaults (`FRONTEND_URL`, `SESSION_COOKIE_SECURE=true`, `NODE_ENV=production`).
+- `backend/.env.local` holds local dev overrides — gitignored.
+- Created `frontend/src/config/env.js` — single shared `API_BASE` export used by all frontend files.
+- Removed hardcoded `http://localhost:5000` from all frontend source files (13 files updated).
+- Simplified `backend/server.js` — removed `RUN_PUBLIC`/`IS_RENDER` mode detection; server now uses `const PORT = process.env.PORT || 5000` for all environments.
+- CORS allowlist driven purely by `FRONTEND_URL` + `CORS_ORIGINS` env vars.
+- Session cookie security driven by `SESSION_COOKIE_SECURE` env var.
+- `SESSION_SECRET` moved from hardcoded string to env var.
+- `backend/dbConfig.js` updated to also load `.env.local` overrides.
+
+### Files Updated
+- `backend/server.js`, `backend/dbConfig.js`, `backend/.env`, `backend/.env.local` (new)
+- `frontend/.env`, `frontend/.env.local` (new), `frontend/src/config/env.js` (new)
+- `frontend/src/router/index.js`, `frontend/src/router/Session.js`
+- `frontend/src/components/HeaderComponent.vue`, `frontend/src/components/exercises.vue`
+- `frontend/src/views/Guest/Login.vue`, `frontend/src/views/Guest/register.vue`
+- `frontend/src/views/Member/Logout.vue`, `frontend/src/views/Member/Notifications.vue`
+- `frontend/src/views/Member/AdminUsers.vue`, `frontend/src/views/Member/AdminRoles.vue`
+- `frontend/src/views/Member/AdminRoleTester.vue`, `frontend/src/views/Member/exercises.vue`
+- `frontend/src/views/LogWorkout.vue`
+
+---
+
+## [0.6.4] - 2026-04-01
+
+### Added
+- **Render.com deployment** — full production deployment of frontend and backend.
+- Backend binds to `process.env.PORT` (Render dynamic port assignment).
+- Session cookies configured with `secure: true` and `sameSite: 'none'` for Render HTTPS.
+- `trust proxy` enabled for Render's reverse proxy.
+- `GET /api/db-status` endpoint for live database connectivity check.
+- `DEBUG=true` mode exposes structured DB error info (`code`, `errno`, `host`, etc.) from `/api/db-status`.
+- Temporary PHP DB connectivity test script (`backend/PHP/db_connect_test.php`).
+- In-app database status indicator on the Login page (checking / connected / disconnected).
+
+### Fixed
+- Linux case-sensitive import errors blocking Render build:
+  - `Exercises.vue` → `exercises.vue`
+  - `widgets/` → `Widgets/`
+  - `template/Product/` → `template/product/`
+- `apexcharts` dependency bumped to `^5.10.4` to satisfy `vue3-apexcharts` peer dependency.
+- Frontend router guard tightened — requires both `/api/session` and `/api/db-status` to pass before rendering protected routes.
+- Root route `/` now redirects to `/login`; dashboard moved to `/dashboard`.
+- Render SPA rewrite rule configured (`/*` → `/index.html` as Rewrite, not Redirect).
+
+### Infrastructure
+- Frontend static site: `https://flex-fit-lkzh.onrender.com`
+- Backend web service: `https://dev-asterisks-github.onrender.com`
+- DB host: `65.181.116.252` (Hosting.com/cPanel, remote access enabled for Render IPs)
+
+---
+
+## [0.6.3] - 2026-03-28
+
+### Added
+- **In-app notification system** — bell icon in header opens `/notifications` page.
+- `frontend/src/views/Member/Notifications.vue` — full notifications page with filter (all/unread), mark as read, mark all read, refresh.
+- `backend/api/notifications.js` — REST API: list, unread count, mark read, mark all read, create.
+- `backend/sql/notifications_schema.sql` — `notifications` and `notification_preferences` tables.
+- Unread badge on bell icon polls backend every 60 seconds.
+
+---
+
+## [0.6.2] - 2026-03-27
+
+### Added
+- Membership tiers (`membership_tiers` table).
+- Role-based access system (`roles`, `user_roles` tables).
+- User profiles (`user_profiles` table).
+- User membership billing history (`user_memberships` table).
+- Admin UI: Users management, Roles management, Role Tester pages.
+
+---
+
 ## [0.6.1] - 2026-03-26
 
 ### Added
