@@ -1,8 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import axios from 'axios'
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000'
+import { API_BASE } from '@/config/env'
 
 const roles = ref([])
 const members = ref([])

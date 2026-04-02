@@ -2,6 +2,7 @@
    //Import libaries
    import { ref, reactive, computed, onMounted, watch, nextTick } from "vue";
    import DateDropDown from "@/components/DropDownDate.vue"; // not template folder
+  import { API_BASE } from '@/config/env';
    import '@fortawesome/fontawesome-free/css/all.min.css';
    
    // ---- VARIABLES ----
@@ -376,7 +377,7 @@ const loadWorkoutLogs = async () => {
 //Async function to pass data from front end to backend
 onMounted(async () => {
   //Get All exercises
-  const res = await fetch("http://localhost:5000/api/get-exercises");
+  const res = await fetch(`${API_BASE}/api/get-exercises`);
   allExercises.value = await res.json();
 
   //Get user ID
@@ -570,7 +571,7 @@ const selectedImage = computed(() => {
        const result = await response.json();
        if (!response.ok) throw new Error(result.error || (isUpdate ? 'Update failed' : 'Insert failed'));
        // Refresh exercise list
-       const res = await fetch('http://localhost:5000/api/get-exercises');
+      const res = await fetch(`${API_BASE}/api/get-exercises`);
        allExercises.value = await res.json();
        alert(isUpdate ? '✅ Exercise updated successfully!' : '✅ Exercise added successfully!');
        showEditForm.value = false;
@@ -859,7 +860,7 @@ const deleteExercise = async (exercise) => {
       { method: 'DELETE' });
     if (!res.ok) throw new Error('Failed to delete exercise');
     // Refresh exercise list
-    const fetchRes = await fetch('http://localhost:5000/api/get-exercises');
+    const fetchRes = await fetch(`${API_BASE}/api/get-exercises`);
     allExercises.value = await fetchRes.json();
     alert('✅ Exercise deleted!');
     showEditForm.value = false;

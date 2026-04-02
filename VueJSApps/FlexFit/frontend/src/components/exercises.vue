@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import DateRangePicker from "@/components/template/DateRangePicker.vue";
+import { API_BASE } from '@/config/env';
 
 const allExercises = ref([]);
 const selectedExercise = ref(null);
@@ -18,7 +19,7 @@ const workoutList = ref([]);
 
 // Fetch exercises
 onMounted(async () => {
-  const res = await fetch("http://localhost:5000/api/exercises");
+  const res = await fetch(`${API_BASE}/api/exercises`);
   allExercises.value = await res.json();
 
 

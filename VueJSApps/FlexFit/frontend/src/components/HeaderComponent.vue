@@ -6,8 +6,8 @@ import { useRouter } from 'vue-router'
 import Tr from "@/i18n/translation"
 import {toggleTheme, currentActiveTheme} from "@/composable/manageThemeSetting.js"
 import {layoutPosition} from "@/composable/navPositionSetting";
+import { API_BASE } from '@/config/env'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000'
 const router = useRouter()
 
 const isFullScreen = ref(false);

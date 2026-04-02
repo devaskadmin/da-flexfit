@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed } from "vue";
 import DateRangePicker from "@/components/template/DateRangePicker.vue";
+import { API_BASE } from '@/config/env';
 
 
 import flatPickr from 'vue-flatpickr-component';
@@ -19,7 +20,7 @@ const exercise = reactive({
 
 
 //GET USER ID
-fetch('http://localhost:5000/api/user-id', {
+fetch(`${API_BASE}/api/user-id`, {
   credentials: 'include'
 })
 .then(res => res.json())
