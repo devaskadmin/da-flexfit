@@ -34,3 +34,8 @@ sync_config.jsonc
 
 # Local DB migration scratch file
 /DATABASE schema update file.txt
+
+# Environment files — exclude from git to protect secrets
+# Set all values in Render dashboard (backend) and Render build env (frontend)
+backend/.env
+frontend/.env
