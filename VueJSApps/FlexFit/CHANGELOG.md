@@ -41,6 +41,7 @@
   - Added explicit troubleshooting steps for Safari cookie/session restrictions.
   - Included API/status/network detail context in the on-screen error for faster debugging.
   - Added `Copy Login Diagnostics` action so full failure details can be copied and shared during testing.
+  - Added always-visible Safari hint banner on login so users can confirm diagnostics support is active before testing.
 
 ### Database
 - No schema changes in `0.68.3`.

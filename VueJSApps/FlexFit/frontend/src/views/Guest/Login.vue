@@ -16,6 +16,7 @@ const diagnosticsCopied = ref(false);
 const isSubmitting = ref(false);
 const appVersion = import.meta.env.VITE_APP_VERSION || '0.68.3';
 const isDev = import.meta.env.DEV;
+const safariDetected = ref(false);
 
 const isSafariBrowser = () => {
   const ua = navigator.userAgent || '';
@@ -23,6 +24,8 @@ const isSafariBrowser = () => {
   const isOtherBrowser = /(Chrome|CriOS|FxiOS|EdgiOS|Edg|OPR|Opera|SamsungBrowser|Android)/i.test(ua);
   return isSafari && !isOtherBrowser;
 };
+
+safariDetected.value = isSafariBrowser();
 
 const buildSafariLoginFailureMessage = ({
   reason = 'Login did not complete.',
@@ -348,6 +351,10 @@ const tempLoginBypass = async () => {
 
 
 
+            <div v-if="safariDetected" class="alert alert-warning mb-3 safari-login-hint">
+              Safari detected. If sign-in fails, FlexFit will show a detailed troubleshooting message and you can use <strong>Copy Login Diagnostics</strong> to share exact failure details.
+            </div>
+
             <div v-if="errorMsg" class="alert alert-danger text-center mb-3 login-error-alert">
   {{ errorMsg }}
 </div>
@@ -499,5 +506,11 @@ const tempLoginBypass = async () => {
 .login-error-alert {
   white-space: pre-line;
   text-align: left !important;
+}
+
+.safari-login-hint {
+  text-align: left;
+  font-size: 0.88rem;
+  line-height: 1.35;
 }
 </style>
