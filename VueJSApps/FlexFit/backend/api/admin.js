@@ -451,6 +451,15 @@ router.put('/roles/:id', async (req, res) => {
     const roleId = parseInt(req.params.id);
     const { name, slug, description, isActive } = req.body;
 
+    // Block editing protected system roles
+    const [[existing]] = await pool.query('SELECT slug, name FROM roles WHERE id = ? LIMIT 1', [roleId]);
+    if (!existing) return res.status(404).json({ error: 'Role not found.' });
+    if (PROTECTED_ROLE_SLUGS.includes(existing.slug)) {
+      return res.status(403).json({
+        error: `The "${existing.name}" role is a built-in system role and cannot be edited.`,
+      });
+    }
+
     const updates = [];
     const values = [];
 
@@ -485,6 +494,39 @@ router.put('/roles/:id', async (req, res) => {
   } catch (err) {
     console.error('❌ admin/roles PUT:', err);
     res.status(500).json({ error: 'Failed to update role.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// DELETE /api/admin/roles/:id  –  Delete a role
+// Protected slugs: member, trainer, admin (built-in system roles)
+// ─────────────────────────────────────────────────────────────────
+const PROTECTED_ROLE_SLUGS = ['member', 'trainer', 'admin'];
+
+router.delete('/roles/:id', async (req, res) => {
+  try {
+    const roleId = parseInt(req.params.id, 10);
+    if (!roleId) return res.status(400).json({ error: 'Invalid role id.' });
+
+    // Fetch role
+    const [[role]] = await pool.query('SELECT id, name, slug FROM roles WHERE id = ? LIMIT 1', [roleId]);
+    if (!role) return res.status(404).json({ error: 'Role not found.' });
+
+    // Block protected system roles
+    if (PROTECTED_ROLE_SLUGS.includes(role.slug)) {
+      return res.status(403).json({
+        error: `The "${role.name}" role is a built-in system role and cannot be deleted.`,
+      });
+    }
+
+    // Remove pivot assignments first, then delete the role
+    await pool.query('DELETE FROM user_roles WHERE role_id = ?', [roleId]);
+    await pool.query('DELETE FROM roles WHERE id = ?', [roleId]);
+
+    res.json({ message: 'Role deleted.' });
+  } catch (err) {
+    console.error('❌ admin/roles DELETE:', err);
+    res.status(500).json({ error: 'Failed to delete role.' });
   }
 });
 

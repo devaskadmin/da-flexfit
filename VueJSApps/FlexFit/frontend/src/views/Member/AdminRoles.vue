@@ -57,6 +57,7 @@ const loadRoles = async () => {
 }
 
 const editRole = (role) => {
+  if (isProtected(role)) return
   clearMessages()
   isEdit.value = true
   editingId.value = role.id
@@ -112,6 +113,44 @@ const saveRole = async () => {
     errorMsg.value = err.response?.data?.error || err.message || 'Failed to save role.'
   } finally {
     saving.value = false
+  }
+}
+
+// ── Delete flow ──────────────────────────────────────────────────
+const PROTECTED_SLUGS = ['member', 'trainer', 'admin']
+const deleting = ref(false)
+const confirmDeleteOpen = ref(false)
+const deleteTarget = ref(null)
+
+const isProtected = (role) => PROTECTED_SLUGS.includes(role.slug)
+
+const requestDelete = (role) => {
+  clearMessages()
+  deleteTarget.value = role
+  confirmDeleteOpen.value = true
+}
+
+const cancelDelete = () => {
+  confirmDeleteOpen.value = false
+  deleteTarget.value = null
+}
+
+const confirmDeleteRole = async () => {
+  if (!deleteTarget.value) return
+  deleting.value = true
+  const target = deleteTarget.value
+  try {
+    await axios.delete(`${API_BASE}/api/admin/roles/${target.id}`, { withCredentials: true })
+    successMsg.value = `Role "${target.name}" deleted.`
+    confirmDeleteOpen.value = false
+    deleteTarget.value = null
+    if (isEdit.value && editingId.value === target.id) resetForm()
+    await loadRoles()
+  } catch (err) {
+    errorMsg.value = err.response?.data?.error || 'Failed to delete role.'
+    confirmDeleteOpen.value = false
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -185,9 +224,25 @@ onMounted(loadRoles)
                 </span>
               </td>
               <td class="text-end">
-                <button type="button" class="btn btn-sm btn-outline-primary" @click.prevent.stop="editRole(role)">
-                  <i class="fa-solid fa-pen me-1"></i>Edit
-                </button>
+                <div class="d-flex gap-2 justify-content-end align-items-center">
+                  <!-- Non-protected: Edit + Delete -->
+                  <template v-if="!isProtected(role)">
+                    <button type="button" class="btn btn-sm btn-outline-primary" @click.prevent.stop="editRole(role)">
+                      <i class="fa-solid fa-pen me-1"></i>Edit
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" @click.prevent.stop="requestDelete(role)">
+                      <i class="fa-solid fa-trash"></i>
+                    </button>
+                  </template>
+                  <!-- Protected: lock only — no edit, no delete -->
+                  <span
+                    v-else
+                    class="role-locked-badge"
+                    title="Built-in system role — cannot be edited or deleted"
+                  >
+                    <i class="fa-solid fa-lock"></i>
+                  </span>
+                </div>
               </td>
             </tr>
             <tr v-if="!roles.length">
@@ -195,6 +250,20 @@ onMounted(loadRoles)
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+    <!-- Delete confirmation dialog -->
+    <div v-if="confirmDeleteOpen" class="roles-overlay" @click.self="cancelDelete">
+      <div class="roles-confirm-card panel-bg">
+        <h5 class="mb-2">Delete Role</h5>
+        <p class="mb-4">Are you sure you want to delete the <strong>{{ deleteTarget?.name }}</strong> role? This will remove it from all assigned users.</p>
+        <div class="d-flex gap-2 justify-content-end">
+          <button type="button" class="btn btn-outline-secondary" @click="cancelDelete">No</button>
+          <button type="button" class="btn btn-danger" :disabled="deleting" @click="confirmDeleteRole">
+            <i v-if="deleting" class="fa-solid fa-spinner fa-spin me-2"></i>
+            Yes, Delete
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -210,5 +279,40 @@ onMounted(loadRoles)
 :global(body.dark-theme) .role-form-wrap,
 :global(body.dark-theme) .role-table-wrap {
   border-color: rgba(255,255,255,.16);
+}
+
+/* Lock badge for protected system roles */
+.role-locked-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 31px;
+  height: 31px;
+  border-radius: 6px;
+  color: rgba(0,0,0,0.22);
+  cursor: not-allowed;
+}
+:global(body.dark-theme) .role-locked-badge {
+  color: rgba(255,255,255,0.2);
+}
+
+/* Delete confirmation overlay */
+.roles-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+}
+.roles-confirm-card {
+  width: min(460px, 94vw);
+  border-radius: 12px;
+  padding: 22px 24px;
+  border: 1px solid rgba(15,23,42,0.14);
+}
+:global(body.dark-theme) .roles-confirm-card {
+  border-color: rgba(255,255,255,0.16);
 }
 </style>

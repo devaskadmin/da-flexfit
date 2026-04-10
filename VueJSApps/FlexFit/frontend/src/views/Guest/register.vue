@@ -13,6 +13,8 @@ const lastName = ref("");
 const username = ref("");
 const password = ref("");
 const confirmPassword = ref("");
+const isPasswordShow = ref(false);
+const isConfirmPasswordShow = ref(false);
 const agreed = ref(false);
 const hasReadTerms = ref(false);
 
@@ -133,42 +135,48 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="login-body">
-    <div class="top d-flex justify-content-between align-items-center">
-      <div class="logo">
+  <div class="login-body auth-card">
+    <div class="top d-flex justify-content-between align-items-center auth-header">
+      <div class="logo auth-logo-wrap">
         <img src="@/assets/images/flex-fitlogo-transparent.png" alt="Logo">
       </div>
       <router-link to="/"><i class="fa-duotone fa-house-chimney"></i></router-link>
     </div>
 
-    <div class="bottom">
-      <h3 class="panel-title panel-title-form">User Registration</h3>
-      <form @submit.prevent="register">
-        <div class="input-group mb-25 input-group-rounded">
-          <input v-model="firstName" type="text" class="form-control form-control-rounded" placeholder="First Name" required>
-          <span class="input-group-text"><i class="fa-regular fa-user"></i></span>
+    <div class="bottom auth-content">
+      <h3 class="panel-title panel-title-form auth-title">User Registration</h3>
+      <form @submit.prevent="register" class="auth-form">
+        <div class="input-group mb-3 input-group-rounded auth-form-group">
+          <span class="input-group-text auth-input-icon"><i class="fa-regular fa-user"></i></span>
+          <input v-model="firstName" type="text" class="form-control form-control-rounded auth-input" placeholder="First Name" required>
         </div>
-        <div class="input-group mb-25 input-group-rounded">
-          <input v-model="lastName" type="text" class="form-control form-control-rounded" placeholder="Last Name">
-          <span class="input-group-text"><i class="fa-regular fa-user"></i></span>
+        <div class="input-group mb-3 input-group-rounded auth-form-group">
+          <span class="input-group-text auth-input-icon"><i class="fa-regular fa-user"></i></span>
+          <input v-model="lastName" type="text" class="form-control form-control-rounded auth-input" placeholder="Last Name">
         </div>
-        <div class="input-group mb-25 input-group-rounded">
-          <input v-model="username" type="email" class="form-control form-control-rounded" placeholder="Email" required>
-          <span class="input-group-text"><i class="fa-regular fa-envelope"></i></span>
+        <div class="input-group mb-3 input-group-rounded auth-form-group">
+          <span class="input-group-text auth-input-icon"><i class="fa-regular fa-envelope"></i></span>
+          <input v-model="username" type="email" class="form-control form-control-rounded auth-input" placeholder="Email" required>
         </div>
-        <div class="input-group mb-25 input-group-rounded">
-          <input v-model="password" type="password" class="form-control form-control-rounded" placeholder="Password" required>
-          <span class="input-group-text"><i class="fa-regular fa-lock"></i></span>
+        <div class="input-group mb-3 input-group-rounded auth-form-group">
+          <span class="input-group-text auth-input-icon"><i class="fa-regular fa-lock"></i></span>
+          <input v-model="password" :type="isPasswordShow ? 'text' : 'password'" class="form-control form-control-rounded auth-input" placeholder="Password" required>
+          <button type="button" class="auth-password-toggle" :aria-label="isPasswordShow ? 'Hide password' : 'Show password'" @click="isPasswordShow = !isPasswordShow">
+            <i class="fa-duotone" :class="[isPasswordShow ? 'fa-eye-slash':'fa-eye']"></i>
+          </button>
         </div>
-        <div class="input-group mb-20 input-group-rounded">
-          <input v-model="confirmPassword" type="password" class="form-control form-control-rounded" placeholder="Confirm Password" required>
-          <span class="input-group-text"><i class="fa-regular fa-lock"></i></span>
+        <div class="input-group mb-2 input-group-rounded auth-form-group">
+          <span class="input-group-text auth-input-icon"><i class="fa-regular fa-lock"></i></span>
+          <input v-model="confirmPassword" :type="isConfirmPasswordShow ? 'text' : 'password'" class="form-control form-control-rounded auth-input" placeholder="Confirm Password" required>
+          <button type="button" class="auth-password-toggle" :aria-label="isConfirmPasswordShow ? 'Hide confirm password' : 'Show confirm password'" @click="isConfirmPasswordShow = !isConfirmPasswordShow">
+            <i class="fa-duotone" :class="[isConfirmPasswordShow ? 'fa-eye-slash':'fa-eye']"></i>
+          </button>
         </div>
 
 
-<div class="mt-2" v-if="showStrengthMeter">
-  <p>Password strength: <strong :class="passwordStrengthClass">{{ passwordStrength }}</strong></p>
-  <ul class="fs-14">
+<div class="mt-2 auth-subtitle" v-if="showStrengthMeter">
+  <p class="mb-1">Password strength: <strong :class="passwordStrengthClass">{{ passwordStrength }}</strong></p>
+  <ul class="mb-0">
     <li :class="{ 'text-success': passwordChecks.length }">Min 8 characters</li>
     <li :class="{ 'text-success': passwordChecks.uppercase }">1 uppercase letter</li>
     <li :class="{ 'text-success': passwordChecks.number }">1 number</li>
@@ -177,7 +185,7 @@ onMounted(() => {
 </div>
 
 
-        <div class="d-flex justify-content-end mb-25">
+        <div class="d-flex justify-content-end mb-3 auth-subtitle auth-checkbox-row">
           <div class="form-check">
             <input class="form-check-input" type="checkbox" v-model="agreed" id="agreeCheckbox" :disabled="!hasReadTerms" required>
             <label class="form-check-label terms-label" for="agreeCheckbox">
@@ -186,7 +194,7 @@ onMounted(() => {
             </label>
           </div>
         </div>
-        <button class="btn btn-primary w-100 login-btn" :disabled="loading || !hasReadTerms || !agreed">
+          <button class="btn btn-primary w-100 login-btn auth-button" :disabled="loading || !hasReadTerms || !agreed">
   {{ loading ? 'Registering...' : 'Sign Up' }}
 
 
@@ -200,7 +208,7 @@ onMounted(() => {
         
       </form>
 
-      <div class="other-option mt-3">
+      <div class="other-option mt-2 auth-subtitle auth-footer">
         <p class="mb-0 auth-text">Already have an account? 
           <router-link to="/login" class="auth-link">Login</router-link>
         </p>
@@ -220,9 +228,12 @@ onMounted(() => {
 
 .login-body {
   border: 8px solid rgba(0, 0, 0, 0.25) !important;
-  border-radius: 12px !important;
+  border-radius: 10px !important;
   background: rgba(255, 255, 255, 0.95) !important;
-  padding: 40px !important;
+  padding: 22px !important;
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
 }
 .panel-title {
   color: white;
@@ -231,7 +242,8 @@ onMounted(() => {
 .panel-title-form {
   color: #000000;
   font-weight: 600;
-  margin-bottom: 20px;
+  font-size: 1.2rem;
+  margin-bottom: 12px;
   text-align: center;
 }
 
@@ -239,8 +251,8 @@ onMounted(() => {
 .input-group-rounded {
   display: flex;
   align-items: center;
-  border: 2px solid rgba(13, 153, 255, 0.5);
-  border-radius: 10px;
+  border: 1.5px solid rgba(13, 153, 255, 0.5);
+  border-radius: 9px;
   overflow: hidden;
   transition: all 0.3s ease;
   padding: 0;
@@ -256,7 +268,9 @@ onMounted(() => {
   border: none !important;
   border-radius: 0 !important;
   flex: 1;
-  padding: 12px 15px !important;
+  padding: 10px 12px !important;
+  min-height: 42px;
+  font-size: 0.92rem;
 }
 
 .input-group-rounded .input-group-text {
@@ -264,12 +278,31 @@ onMounted(() => {
   border-right: 1px solid rgba(13, 153, 255, 0.3) !important;
   background: transparent !important;
   border-radius: 0 !important;
-  padding: 0 12px !important;
+  padding: 0 10px !important;
   min-width: auto !important;
+  font-size: 0.9rem;
+}
+
+.auth-password-toggle {
+  border: none !important;
+  border-left: 1px solid rgba(13, 153, 255, 0.3) !important;
+  background: transparent !important;
+  color: #74819e;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  min-height: 42px;
+  cursor: pointer;
+}
+
+.auth-password-toggle:hover {
+  color: #0D99FF;
 }
 
 .terms-label {
   color: rgba(0, 0, 0, 0.8) !important;
+  font-size: 0.85rem;
 }
 
 .terms-link {
@@ -279,6 +312,7 @@ onMounted(() => {
   text-decoration: underline;
   padding: 0;
   margin-left: 4px;
+  font-size: 0.85rem;
 }
 
 .terms-link:hover {
@@ -287,11 +321,53 @@ onMounted(() => {
 
 .auth-text {
   color: rgba(0, 0, 0, 0.75);
+  font-size: 0.85rem;
 }
 
 .auth-link {
   color: rgba(0, 0, 0, 0.85);
   text-decoration: underline;
+  font-size: 0.85rem;
+}
+
+.auth-header {
+  margin-bottom: 4px;
+}
+
+.auth-logo-wrap img {
+  max-height: 38px;
+  width: auto;
+}
+
+.auth-title {
+  margin-top: 2px;
+  margin-bottom: 10px;
+}
+
+.auth-subtitle,
+.auth-subtitle p,
+.auth-subtitle li {
+  font-size: 0.84rem;
+}
+
+.auth-subtitle ul {
+  padding-left: 1rem;
+}
+
+.auth-button {
+  min-height: 40px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  font-size: 0.92rem;
+  border-radius: 8px;
+}
+
+.auth-checkbox-row {
+  margin-top: 4px;
+}
+
+.auth-footer {
+  margin-top: 10px;
 }
 
 </style>

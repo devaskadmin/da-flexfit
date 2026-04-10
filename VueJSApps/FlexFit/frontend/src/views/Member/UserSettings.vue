@@ -1,14 +1,14 @@
 ﻿<script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { API_BASE } from '@/config/env';
 
 const activeTab = ref('profile')
 
 const profile = reactive({
-  firstName: 'Mitchell',
-  lastName: 'Shay',
-  username: 'mitch_shay',
-  email: 'mitch@flexfit.com',
+  firstName: '',
+  lastName: '',
+  username: '',
+  email: '',
   phone: '',
   bio: '',
   gender: 'male',
@@ -244,6 +244,7 @@ const loadUserSettings = async () => {
     const response = await fetch(`${API_BASE}/api/user-profile-settings`, { credentials: 'include' });
     if (!response.ok) return;
     const data = await response.json();
+    applyProfileFromServer(data?.profile || {});
     const settings = data?.settings || {};
     const persistedDisplay = settings?.display || {};
     const cfg = settings?.themeConfig || {};
@@ -277,10 +278,41 @@ const saveThemeVisibility = async () => {
   await save();
 }
 
+const isLikelyEmail = (value) => /@/.test(String(value || ''));
+
+const toEmailUsername = (value) => {
+  const str = String(value || '').trim();
+  if (!str) return '';
+  const at = str.indexOf('@');
+  return at > 0 ? str.slice(0, at) : str;
+};
+
+const applyProfileFromServer = (serverProfile = {}) => {
+  const firstName = String(serverProfile?.firstName || '').trim();
+  const lastName = String(serverProfile?.lastName || '').trim();
+  const emailCandidate = String(serverProfile?.email || '').trim();
+  const usernameCandidate = String(serverProfile?.username || '').trim();
+
+  const resolvedEmail = emailCandidate || (isLikelyEmail(usernameCandidate) ? usernameCandidate : '');
+  const resolvedUsername = toEmailUsername(resolvedEmail || usernameCandidate);
+
+  profile.firstName = firstName;
+  profile.lastName = lastName;
+  profile.email = resolvedEmail;
+  profile.username = resolvedUsername;
+};
+
 onMounted(() => {
   loadDisplayFromLocalStorage();
   loadUserSettings();
 })
+
+watch(
+  () => profile.email,
+  (nextEmail) => {
+    profile.username = toEmailUsername(nextEmail);
+  }
+)
 </script>
 
 <template>
@@ -339,26 +371,26 @@ onMounted(() => {
           <div class="ff-form-grid">
             <div class="ff-field">
               <label class="ff-label">First Name</label>
-              <input v-model="profile.firstName" class="form-control" type="text" placeholder="First name" />
+              <input v-model="profile.firstName" class="form-control ff-field-needs-update" type="text" placeholder="First name" />
             </div>
             <div class="ff-field">
               <label class="ff-label">Last Name</label>
-              <input v-model="profile.lastName" class="form-control" type="text" placeholder="Last name" />
+              <input v-model="profile.lastName" class="form-control ff-field-needs-update" type="text" placeholder="Last name" />
             </div>
             <div class="ff-field">
               <label class="ff-label">Username</label>
               <div class="input-group">
                 <span class="input-group-text">@</span>
-                <input v-model="profile.username" class="form-control" type="text" placeholder="username" />
+                <input v-model="profile.username" class="form-control ff-field-needs-update" type="text" placeholder="username" />
               </div>
             </div>
             <div class="ff-field">
               <label class="ff-label">Email Address</label>
-              <input v-model="profile.email" class="form-control" type="email" placeholder="email@example.com" />
+              <input v-model="profile.email" class="form-control ff-field-needs-update" type="email" placeholder="email@example.com" />
             </div>
             <div class="ff-field">
               <label class="ff-label">Phone Number</label>
-              <input v-model="profile.phone" class="form-control" type="tel" placeholder="+1 (555) 000-0000" />
+              <input v-model="profile.phone" class="form-control ff-field-needs-update" type="tel" placeholder="+1 (555) 000-0000" />
             </div>
             <div class="ff-field">
               <label class="ff-label">Location</label>
@@ -366,7 +398,7 @@ onMounted(() => {
             </div>
             <div class="ff-field">
               <label class="ff-label">Gender</label>
-              <select v-model="profile.gender" class="form-select">
+              <select v-model="profile.gender" class="form-select ff-field-needs-update">
                 <option value="male">Male</option>
                 <option value="female">Female</option>
                 <option value="other">Other</option>
@@ -375,7 +407,7 @@ onMounted(() => {
             </div>
             <div class="ff-field">
               <label class="ff-label">Date of Birth</label>
-              <input v-model="profile.dateOfBirth" class="form-control" type="date" />
+              <input v-model="profile.dateOfBirth" class="form-control ff-field-needs-update" type="date" />
             </div>
             <div class="ff-field full-width">
               <label class="ff-label">Bio</label>
@@ -827,6 +859,25 @@ onMounted(() => {
 .sw-thumb { position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; border-radius: 50%; background: #fff; transition: transform .25s; }
 .ff-switch input:checked + .sw-track .sw-thumb { transform: translateX(20px); }
 
+/* Fields that need updating - lighter background */
+.ff-field-needs-update {
+  background-color: rgba(100, 116, 139, 0.08) !important;
+  border: 1.5px solid rgba(100, 116, 139, 0.18) !important;
+}
+.ff-field-needs-update:focus {
+  background-color: rgba(100, 116, 139, 0.12) !important;
+  border-color: rgba(100, 116, 139, 0.28) !important;
+}
+
+:global(body.light-theme) .ff-field-needs-update {
+  background-color: rgba(15, 23, 42, 0.06) !important;
+  border: 1.5px solid rgba(15, 23, 42, 0.18) !important;
+}
+:global(body.light-theme) .ff-field-needs-update:focus {
+  background-color: rgba(15, 23, 42, 0.12) !important;
+  border-color: rgba(15, 23, 42, 0.28) !important;
+}
+
 .danger-zone { border-radius: 12px; border: 1.5px solid rgba(239,68,68,.42); background: rgba(239,68,68,.07); padding: 20px 22px; }
 .danger-inner { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
 .danger-title { font-size: .92rem; font-weight: 700; color: #ef4444; margin: 0 0 4px; }
@@ -857,7 +908,7 @@ onMounted(() => {
 :global(body.light-theme) .settings-page .danger-desc,
 :global(body.light-theme) .settings-page a,
 :global(body.light-theme) .settings-page a:visited {
-  color: #111111 !important;
+  color: #797979 !important;
   opacity: 1;
 }
 
@@ -867,20 +918,27 @@ onMounted(() => {
 }
 
 :global(body.light-theme) .settings-page a:hover {
-  color: #000000 !important;
+  color: #797979 !important;
+}
+
+/* Override all sidebar-related colors in light theme */
+:global(body.light-theme) .sidebar-txt,
+:global(body.light-theme) .sidebar-link,
+:global(body.light-theme) .sidebar-link .sidebar-txt {
+  color: #797979 !important;
 }
 
 :global(body.light-theme) .settings-page .s-nav-item,
 :global(body.light-theme) .settings-page .s-nav-item span,
 :global(body.light-theme) .settings-page .s-nav-icon,
 :global(body.light-theme) .settings-page .s-nav-icon i {
-  color: #000000 !important;
+  color: #797979 !important;
   opacity: 1 !important;
 }
 
 :global(body.light-theme) .settings-page .s-nav-item:hover,
 :global(body.light-theme) .settings-page .s-nav-item.active {
-  color: #000000 !important;
+  color: #797979 !important;
   font-weight: 700;
 }
 
@@ -888,7 +946,7 @@ onMounted(() => {
 :global(body.light-theme) .settings-page .s-nav-item.active .s-nav-icon,
 :global(body.light-theme) .settings-page .s-nav-item:hover .s-nav-icon i,
 :global(body.light-theme) .settings-page .s-nav-item.active .s-nav-icon i {
-  color: #000000 !important;
+  color: #797979 !important;
 }
 
 :global(body.light-theme) .s-panel,

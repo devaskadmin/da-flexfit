@@ -1,5 +1,64 @@
 # Changelog
 
+## [0.68.6] - 2026-04-10
+
+### Added
+- **Admin Users delete flow with explicit confirmation** (`AdminUsers.vue`):
+  - Added delete action button in the Users table.
+  - Added delete action button inside Edit User modal.
+  - Added confirmation dialog with clear actions:
+    - **Yes, Delete** → proceeds with delete request.
+    - **No** → cancels and returns to the previous UI state.
+- **Admin Roles delete flow with system role protection** (`AdminRoles.vue`, `backend/api/admin.js`):
+  - Added `DELETE /api/admin/roles/:id` backend endpoint.
+  - Built-in system roles (`member`, `trainer`, `admin`) are fully protected — the backend rejects deletion with a `403` error.
+  - Protected roles show a 🔒 lock icon in the Action column instead of a delete button.
+  - Non-protected roles show a red trash delete button.
+  - Confirmation dialog (Yes, Delete / No) shown before any role is deleted.
+  - Deleting a role also removes all `user_roles` pivot assignments for that role.
+- **Personalized dashboard greeting** (`HomeDashboard.vue`):
+  - Added profile fetch on dashboard load.
+  - Header now renders `Welcome back, {firstName}!` when available.
+- **Trainer sidebar group** (`sidebarMenu.js`):
+  - Added new **Trainer** menu section.
+  - Moved **Chat with Trainer** from **Administrator** to **Trainer**.
+
+### Changed
+- **Settings profile data hydration** (`UserSettings.vue`, `backend/api/users.js`):
+  - Settings page now pulls `firstName`, `lastName`, `username`, and email-like value from backend profile payload.
+  - Username display is normalized to email local-part (text before `@`) on settings UI.
+- **Role protection hardening for edit operations** (`backend/api/admin.js`, `AdminRoles.vue`):
+  - Protected default roles (`member`, `trainer`, `admin`) can no longer be edited from UI.
+  - Backend `PUT /api/admin/roles/:id` now rejects protected role edits with `403`.
+- **Sidebar menu styling update** (`MainSidebarComponent.vue`, `sidebarMenu.js`, `UserSettings.vue`):
+  - Replaced legacy `admin-black` style hook with `admin-light-gray`.
+  - Updated sidebar link/text color treatment to light gray (`#797979`) in light theme.
+- **Auth UI consistency pass** (`Login.vue`, `register.vue`, `ForgotPassword.vue`, `TermsPolicy.vue`):
+  - Tightened spacing and input rhythm.
+  - Unified card sizing, button sizing, icon sizing, and footer/link rows.
+  - Improved visual consistency across all guest auth screens.
+- **Log Workout tabs UX modernization** (`Member/exercises.vue`):
+  - Replaced old tab header + triangle indicator with modern button tabs.
+  - Added clear active-state underline (orange) and improved hover/active transitions.
+  - Improved tab/content panel connection by removing spacing/border artifacts.
+- **Search + filter panel redesign** (`Member/exercises.vue`):
+  - Introduced unified `search-filter-card` layout with structured grid and aligned controls.
+  - Grouped search, filters, and actions into one cohesive control panel.
+- **Exercise results card redesign + responsive layout** (`Member/exercises.vue`):
+  - Added `Exercise Results` header row with count summary.
+  - Updated cards to cleaner image/content/action hierarchy.
+  - Improved mobile behavior: stacked cards, readable spacing, full-width action buttons.
+
+### Fixed
+- **Schema compatibility for user email field** (`backend/api/users.js`):
+  - Added backward-compatible fallback for environments where `users.Email` column does not exist.
+  - `GET /api/user-profile-settings` now gracefully falls back to `username` without throwing SQL `ER_BAD_FIELD_ERROR`.
+- **Exercises page tab parser/build errors** (`Member/exercises.vue`):
+  - Removed malformed nested CSS from earlier tab refactor.
+  - Resolved template/style mismatch that caused Vite Vue parser failures.
+- **Auth container spacing source correction** (`_main-content.scss`):
+  - Reduced inherited login bottom padding to remove excessive vertical whitespace.
+
 ## [0.68.5] - 2026-04-14
 
 ### Fixed

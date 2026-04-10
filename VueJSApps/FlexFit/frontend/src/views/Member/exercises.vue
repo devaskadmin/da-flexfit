@@ -927,86 +927,89 @@ const clearFilters = () => {
           <div class="row">
             <div class="col-xs-12 ">
 
-              <nav><!--Start of Nav container-->
-                <div class="nav nav-tabs nav-fill" id="nav-tab" role="tablist">
-    
-                <a class="nav-item nav-link" :class="{ active: activeTab === 'search-exercises' }" 
-                  @click.prevent="activeTab = 'search-exercises'">Search Exercise Libary</a>
+              <nav class="ex-tab-bar" role="tablist" aria-label="Log workout sections">
+                <button
+                  type="button"
+                  class="ex-tab"
+                  :class="{ 'ex-tab--active': activeTab === 'search-exercises' }"
+                  :aria-selected="activeTab === 'search-exercises'"
+                  role="tab"
+                  @click="activeTab = 'search-exercises'"
+                >
+                  <i class="fa-solid fa-magnifying-glass me-2"></i><span>Search Exercise Library</span>
+                </button>
+                <button
+                  type="button"
+                  class="ex-tab"
+                  :class="{ 'ex-tab--active': activeTab === 'log-exercise' }"
+                  :aria-selected="activeTab === 'log-exercise'"
+                  role="tab"
+                  @click="activeTab = 'log-exercise'"
+                >
+                  <i class="fa-solid fa-dumbbell me-2"></i><span>Log Exercise</span>
+                </button>
+              </nav>
 
-                <a class="nav-item nav-link" :class="{ active: activeTab === 'log-exercise' }" 
-                  @click.prevent="activeTab = 'log-exercise'">Log Exercise</a> 
-                </div><!--End  of Nav container-->
-                
-             </nav><!--Start of Nav container-->
-
-             <div class="tab-content py-3 px-3 px-sm-0" id="nav-tabContent">
+             <div class="tab-content px-0" id="nav-tabContent">
 
 
             <!-- Search Exercise Section -->
             <div v-if="activeTab === 'search-exercises'">
                 <!--Search Excerises CONTAINER -->
-            <div class="container mt-8 container-block">
-                <div class="panel">
+            <div class="container container-block">
+                <div class="panel search-filter-card">
                   <!--Start of panel-->
-                  <div class="panel-header">
-                      <!-- Panel Header-->
-                      
-                        <h4>Search Exercise Library</h4>
-                      <!--End of container-->
+                  <div class="panel-header search-filter-head">
+                    <h4><i class="fa-solid fa-magnifying-glass me-2"></i>Search Exercise Library</h4>
                   </div>
                   <!--end of panel header-->
-                  <div class="panel-body">
+                  <div class="panel-body search-filter-body">
                       <div v-if="exercisesLoadError" class="alert alert-warning">
                         {{ exercisesLoadError }}
                       </div>
-                      <!--Start of panel body-->
-                      <!--Start of Row-->
-                      <div class="row g-2">
-                        <!-- Search Exercise -->
-                        <div class="col-md-12">
-                            
-                            <input v-model="searchExercise" type="text" class="form-control" placeholder="Search exercise by name" />
+                      <div class="search-filter-grid">
+                        <div class="search-filter-field full-width">
+                          <label class="form-label">Search</label>
+                          <input v-model="searchExercise" type="text" class="form-control" placeholder="Search exercise by name" />
                         </div>
-                        <!--End of Select Excerise-->
-                        <!--Start of filter ROW-->
-                        <div class="row g-3">
-                            <h4>Filter</h4>
+
+                        <div class="search-filter-field">
+                          <label class="form-label">Workout Type</label>
+                          <select v-model="workoutType" class="form-select">
+                            <option value="All">All</option>
+                            <option value="Strength">Strength</option>
+                            <option value="Cardio">Cardio</option>
+                            <option value="Other">Other</option>
+                          </select>
                         </div>
-                        <!--End of Filter row-->
-                        <!--Start of row-->
-                        <div class="col-md-4">
-                            <!-- Workout Type -->
-                            <label class="form-label">Workout Type</label>
-                            <select v-model="workoutType" class="form-select">
-  <option value="All">All</option>
-  <option value="Strength">Strength</option>
-  <option value="Cardio">Cardio</option>
-  <option value="Other">Other</option>
-</select>
-                            <!-- Workout type-->
+
+                        <div class="search-filter-field">
+                          <label class="form-label">Muscle Group</label>
+                          <select v-model="selectedMuscleGroup" class="form-select">
+                            <option v-for="group in muscleGroups" :key="group" :value="group">
+                              {{ group }}
+                            </option>
+                          </select>
                         </div>
-                        <!-- Muscle Group Filter -->
-                        <div class="col-md-4">
-                            <label class="form-label">Muscle Group</label>
-                            <select v-model="selectedMuscleGroup" class="form-select">
-                              <option v-for="group in muscleGroups" :key="group" :value="group">
-                                  {{ group }}
-                              </option>
-                            </select>
+
+                        <div class="search-filter-field">
+                          <label class="form-label">Equipment</label>
+                          <select v-model="selectedEquipment" class="form-select">
+                            <option v-for="equip in equipmentList" :key="equip" :value="equip">
+                              {{ equip }}
+                            </option>
+                          </select>
                         </div>
-                        <!-- Muscle Group Filter -->
-                        <!-- Equipment Filter -->
-                        <div class="col-md-4">
-                            <label class="form-label">Equipment</label>
-                            <select v-model="selectedEquipment" class="form-select">
-                              <option v-for="equip in equipmentList" :key="equip" :value="equip">
-                                  {{ equip }}
-                              </option>
-                            </select>
-                        </div>
-                        <!-- Equiment Filter-->
                       </div>
-                      <!--End of Row-->
+
+                      <div class="search-filter-actions">
+                        <button class="btn btn-success add-exercise-centered" @click="showAddForm = !showAddForm">
+                          {{ showAddForm ? 'Cancel' : '➕ Add New Exercise' }}
+                        </button>
+                        <button class="btn btn-outline-secondary clear-filters-btn" @click="clearFilters" title="Reset filters">Clear Filters</button>
+                      </div>
+
+                      <div class="search-filter-divider"></div>
                   </div>
                 </div>
                 <!--End of Panel-->
@@ -1014,9 +1017,9 @@ const clearFilters = () => {
 
 
 
-           <!--Log Excerise container -->
+              <!-- Exercise Results container -->
         
-                  <div class="panel">
+                <div class="panel exercise-results-panel">
 
                     <!--edit Excerise-->
                     <div class="row g-3 mt-3">
@@ -1125,14 +1128,7 @@ const clearFilters = () => {
             
                     <div class="row g-3 mt-3">
 
-                      <div class="add-exercise-row">
-                        <button class="btn btn-success add-exercise-centered" @click="showAddForm = !showAddForm">
-                          {{ showAddForm ? 'Cancel' : '➕ Add New Exercise' }}
-                        </button>
-                        <button class="btn btn-outline-secondary clear-filters-btn" @click="clearFilters" title="Reset filters">Clear Filters</button>
-                      </div>
-
-                       <div v-if="showAddForm" class="panel mt-4">
+                       <div v-if="showAddForm" class="panel mt-2">
   <div class="panel-header">
     <h4>Add New Exercise</h4>
   </div>
@@ -1222,7 +1218,14 @@ const clearFilters = () => {
 
 
                       <!--LIST VIEW-->
-                      <div class="row g-3 mt-3">
+                      <div class="row g-3 mt-2">
+                        <div class="results-header-row">
+                          <div>
+                            <h5>Exercise Results</h5>
+                            <p>Showing {{ filteredExercises.length }} exercises</p>
+                          </div>
+                        </div>
+
                         <div class="exercise-list">
                             <div class="exercise-row" v-for="ex in pagedExercises" :key="ex.ExerciseID">
                               <div class="exercise-img">
@@ -1230,27 +1233,35 @@ const clearFilters = () => {
                                     :src="getFirstImage(ex.ImageGallery)"
                                     @click="selectExerciseFromList(ex)"
                                     class="clickable"
-                                    />
-                                    
+                                  />
                               </div>
-                              <div class="exercise-info">
-                                  <h5 class="exercise-title">Excerise: {{ ex.ExerciseTitle }}</h5>
-                                  <p>Workout Type: {{ ex.WorkoutType }}</p>
-                                  <p>Muscle Group: {{ ex.MuscleGroup }}</p>
-                                  <p>Equiment Used: {{ ex.Equipment }}</p>
-                                  <button class="btn btn-sm btn-outline-primary mt-2" @click="selectExerciseFromList(ex)">
-                                  Select Exercise
-                                  </button>
 
-                                  <button class="btn btn-sm btn-outline-secondary mt-2" @click="startEditing(ex)">Edit Exercise</button>
+                              <div class="exercise-info">
+                                  <h5 class="exercise-title">{{ ex.ExerciseTitle }}</h5>
+
+                                  <div class="exercise-meta">
+                                    <p><span>Workout Type:</span> {{ ex.WorkoutType }}</p>
+                                    <p><span>Muscle Group:</span> {{ ex.MuscleGroup }}</p>
+                                    <p><span>Equipment:</span> {{ ex.Equipment }}</p>
+                                  </div>
+
+                                  <div class="exercise-actions">
+                                    <button class="btn btn-sm btn-outline-primary" @click="selectExerciseFromList(ex)">
+                                      Select Exercise
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary" @click="startEditing(ex)">
+                                      Edit Exercise
+                                    </button>
+                                  </div>
                               </div>
                             </div>
+
                             <div class="text-center mt-3">
                               <button class="btn btn-outline-secondary me-2" @click="prevPage" :disabled="currentPage === 1">Prev</button>
                               <button class="btn btn-outline-dark" @click="nextPage"
                                   :disabled="currentPage * itemsPerPage >= filteredExercises.length">Next</button>
                             </div>
-                            <p class="text-center small mt-2">
+                            <p class="text-center small mt-2 mb-1">
                               Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to
                               {{
                               Math.min(currentPage * itemsPerPage, filteredExercises.length)
@@ -1302,7 +1313,7 @@ const clearFilters = () => {
 
 
   <!--Log Excerise container -->
-  <div class="container mt-8 container-block">
+  <div class="container container-block">
          <div class="panel">
             <!--Start of panel-->
 
@@ -1629,44 +1640,70 @@ Please Select an excerise
    .image-box {
    flex-shrink: 0;
    }
-   .exercise-list {
-   display: flex;
-   flex-direction: column;
-   gap: 20px;
-   }
-   .exercise-row {
-   display: flex;
-   border: 1px solid black;
-   border-color: rgba(0, 0, 0, 0.2) ;
-   padding: 10px;
-   border-radius: 22px;;
-   align-items: flex-start;
-   }
-   .exercise-img img {
-   width: 200px;
-   height: 200px;
-   object-fit: fill;
-   border-top-left-radius: 10%;
-   border-bottom-left-radius: 10%;
-   }
-   .exercise-img {
-   margin-right: 20px;
-   }
-   .exercise-info {
-   flex-grow: 1;
-   }
-   .exercise-title {
-   font-weight: bold;
-   border-bottom: 1px solid black;
-   padding: 4px 6px;
-   margin-bottom: 5px;
-   }
+  .exercise-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  }
+  .exercise-row {
+  display: grid;
+  grid-template-columns: 168px minmax(0, 1fr);
+  gap: 14px;
+  border: 1px solid #d8dde6;
+  background: #ffffff;
+  padding: 10px;
+  border-radius: 16px;
+  align-items: start;
+  }
+  .exercise-img img {
+  width: 100%;
+  height: 168px;
+  object-fit: cover;
+  border-radius: 12px;
+  }
+  .exercise-img {
+  width: 100%;
+  }
+  .exercise-info {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  }
+  .exercise-title {
+  font-weight: 700;
+  font-size: 1.06rem;
+  color: #1f2937;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  }
+  .exercise-meta {
+  display: grid;
+  gap: 4px;
+  }
+  .exercise-meta p {
+  margin: 0;
+  color: #4b5563;
+  font-size: 0.94rem;
+  line-height: 1.45;
+  }
+  .exercise-meta p span {
+  color: #334155;
+  font-weight: 600;
+  margin-right: 4px;
+  }
+  .exercise-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+  }
    .instructions{
    min-height: 250px;
    }
-   .container-block{
-    margin-top:10px;
-   }
+  .container-block{
+   margin-top:0;
+  }
   .container.container-block {
    max-width: 100% !important;
    width: 100% !important;
@@ -1720,100 +1757,217 @@ Please Select an excerise
 
 
 
-nav > .nav.nav-tabs{
-
-border: none;
-  color:#fff;
-  background:#272e38;
-  border-radius:0;
-
-}
-nav > div a.nav-item.nav-link,
-nav > div a.nav-item.nav-link.active
-{
-border: none;
-  padding: 18px 25px;
-  color:#fff;
-  background:#272e38;
-  border-radius:0;
-}
-
-nav > div a.nav-item.nav-link.active:after
-{
-content: "";
-position: relative;
-bottom: -60px;
-left: -20%;
-border: 15px solid transparent;
-border-top-color: #e74c3c ;
-}
-.tab-content{
-background: #fdfdfd;
-  line-height: 25px;
-  border: 1px solid #ddd;
-  border-top:5px solid #e74c3c;
-  border-bottom:5px solid #e74c3c;
-  padding:30px 25px;
-}
-
-nav > div a.nav-item.nav-link:hover,
-nav > div a.nav-item.nav-link:focus
-{
-border: none;
-  background: #e74c3c;
-  color:#fff;
-  border-radius:0;
-  transition:background 0.20s linear;
-}
-
-
-.tab {
-  overflow: hidden;
-  border-bottom: 1px solid #ccc;
-  background-color: #f1f1f1;
-}
-
-.tab .nav-link {
-  background-color: inherit;
-  float: left;
-  border: none;
-  padding: 14px 16px;
-  font-size: 17px;
-  cursor: pointer;
-}
-
-.tab .nav-link.active {
-  background-color: #ccc;
-}
-
-/* layout for add + clear buttons */
-.add-exercise-row {
+.ex-tab-bar {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-.clear-filters-btn {
-  min-width: 140px;
-}
-</style>
-<style scoped>
-.add-exercise-centered {
-  width: 50%;
-  margin-left: auto;
-  margin-right: auto;
+  align-items: stretch;
+  background: #1e2736;
+  border-radius: 12px 12px 0 0;
+  padding: 0 6px;
+  gap: 2px;
+  margin-bottom: 0;
 }
 
-/* Decrease padding and margin for workout log headers and cells */
-.row.font-weight-bold > div {
-  padding: 2px 6px !important;
-  margin: 0 !important;
-  font-size: 1rem;
+.ex-tab {
+  flex: 1;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.92rem;
+  font-weight: 600;
+  padding: 15px 20px 14px;
+  cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  white-space: nowrap;
 }
-.row.font-weight-bold {
-  margin-bottom: 4px !important;
+
+.ex-tab::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 999px;
+  background: #f97316;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.22s ease;
+  z-index: 2;
+}
+
+.ex-tab:hover {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.ex-tab--active {
+  color: #ffffff;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ex-tab--active::after {
+  transform: scaleX(1);
+}
+
+.ex-tab i {
+  color: inherit;
+}
+
+.ex-tab span {
+  color: inherit;
+}
+
+.search-filter-card {
+  border-radius: 12px;
+  border: 1px solid #d9dee7;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  padding: 0;
+}
+
+.search-filter-head {
+  padding: 14px 16px 8px;
+  border-bottom: 1px solid #eceff4;
+}
+
+.search-filter-head h4 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #2d3748;
+}
+
+.search-filter-body {
+  padding: 14px 16px 12px;
+}
+
+.search-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 14px;
+  align-items: end;
+}
+
+.search-filter-field.full-width {
+  grid-column: 1 / -1;
+}
+
+.search-filter-field .form-label {
+  margin-bottom: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #5b6472;
+}
+
+.search-filter-field .form-control,
+.search-filter-field .form-select {
+  min-height: 40px;
+}
+
+.search-filter-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.search-filter-divider {
+  margin-top: 12px;
+  border-top: 1px solid #e7ebf1;
+}
+
+.results-header-row {
+  border-top: 1px solid #e7ebf1;
+  padding-top: 12px;
+  margin-bottom: 4px;
+}
+
+.results-header-row h5 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.results-header-row p {
+  margin: 2px 0 0;
+  font-size: 0.84rem;
+  color: #64748b;
+}
+
+.tab-content {
+  background: #fdfdfd;
+  border: 1px solid #ddd;
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  margin-top: 0;
+  padding: 0;
+  line-height: 1.6;
+}
+
+.tab-content > div {
+  margin-top: 0;
+}
+
+.tab-content .container.container-block {
   margin-top: 0 !important;
+}
+
+.tab-content .panel {
+  margin-top: 0;
+  border-top: 0;
+  border-radius: 0 0 5px 5px;
+}
+
+.exercise-results-panel {
+  padding-top: 6px;
+}
+
+@media (max-width: 991px) {
+  .search-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .search-filter-actions {
+    width: 100%;
+  }
+
+  .search-filter-actions .btn {
+    flex: 1 1 calc(50% - 6px);
+    min-height: 38px;
+  }
+
+  .exercise-row {
+    grid-template-columns: 1fr;
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .exercise-img {
+    max-width: 100%;
+  }
+
+  .exercise-img img {
+    width: 100%;
+    height: auto;
+    max-height: 220px;
+    border-radius: 12px;
+  }
+
+  .exercise-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .exercise-actions .btn {
+    width: 100%;
+    min-height: 36px;
+  }
 }
 .list-group-item.d-flex.align-items-center > .flex-grow-1 > div.row > .col {
   padding: 2px 6px !important;
@@ -1833,7 +1987,7 @@ border: none;
   padding-bottom: 18px !important;
 }
 .panel-body {
-  margin-bottom: 32px;
+  margin-bottom: 0;
 }
 .list-group-item.d-flex.align-items-center {
   padding-top: 6px !important;

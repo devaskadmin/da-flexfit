@@ -17,6 +17,9 @@ const isFormOpen = ref(false)
 const isEditMode = ref(false)
 const editingUserId = ref(null)
 const promotingAdmin = ref(false)
+const deleting = ref(false)
+const confirmDeleteOpen = ref(false)
+const deleteTarget = ref(null)
 
 const canBootstrapAdmin = computed(() => /admin access required/i.test(errorMsg.value || ''))
 
@@ -189,6 +192,48 @@ async function grantCredit(member, days = 30) {
   }
 }
 
+function requestDelete(member) {
+  clearMessages()
+  deleteTarget.value = member
+  confirmDeleteOpen.value = true
+}
+
+function cancelDelete() {
+  confirmDeleteOpen.value = false
+  deleteTarget.value = null
+}
+
+async function confirmDeleteUser() {
+  const member = deleteTarget.value
+  if (!member?.id) {
+    cancelDelete()
+    return
+  }
+
+  deleting.value = true
+  clearMessages()
+
+  try {
+    await axios.delete(`${API_BASE}/api/admin/members/${member.id}`, {
+      withCredentials: true,
+    })
+
+    successMsg.value = `User ${member.FirstName || ''} ${member.LastName || ''} deleted successfully.`.trim()
+
+    if (isEditMode.value && Number(editingUserId.value) === Number(member.id)) {
+      isFormOpen.value = false
+      resetForm()
+    }
+
+    await loadMembers()
+    cancelDelete()
+  } catch (err) {
+    errorMsg.value = err.response?.data?.error || 'Failed to delete member.'
+  } finally {
+    deleting.value = false
+  }
+}
+
 async function promoteCurrentUserToAdmin() {
   promotingAdmin.value = true
   clearMessages()
@@ -313,6 +358,9 @@ onMounted(async () => {
                   <button class="btn btn-outline-success" @click="grantCredit(member, 30)">
                     +30d
                   </button>
+                  <button class="btn btn-outline-danger" @click="requestDelete(member)">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
                 </div>
               </td>
             </tr>
@@ -390,10 +438,37 @@ onMounted(async () => {
         </div>
 
         <div class="mt-4 d-flex justify-content-end gap-2">
+          <button
+            v-if="isEditMode"
+            class="btn btn-outline-danger me-auto"
+            :disabled="deleting"
+            @click="requestDelete({ id: editingUserId, FirstName: form.firstName, LastName: form.lastName })"
+          >
+            <i class="fa-solid fa-trash me-2"></i>
+            Delete User
+          </button>
           <button class="btn btn-outline-secondary" @click="isFormOpen = false">Cancel</button>
           <button class="btn btn-primary" :disabled="saving" @click="saveUser">
             <i v-if="saving" class="fa-solid fa-spinner fa-spin me-2"></i>
             {{ saving ? 'Saving...' : 'Save User' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="confirmDeleteOpen" class="users-form-overlay" @click.self="cancelDelete">
+      <div class="users-confirm-card panel-bg">
+        <h5 class="mb-2">Delete User</h5>
+        <p class="text-muted mb-3">
+          Are you sure you want to delete
+          <strong>{{ deleteTarget?.FirstName }} {{ deleteTarget?.LastName }}</strong>?
+          This action cannot be undone.
+        </p>
+        <div class="d-flex justify-content-end gap-2">
+          <button class="btn btn-outline-secondary" :disabled="deleting" @click="cancelDelete">No</button>
+          <button class="btn btn-danger" :disabled="deleting" @click="confirmDeleteUser">
+            <i v-if="deleting" class="fa-solid fa-spinner fa-spin me-2"></i>
+            {{ deleting ? 'Deleting...' : 'Yes, Delete' }}
           </button>
         </div>
       </div>
@@ -434,9 +509,17 @@ onMounted(async () => {
   padding: 18px;
 }
 
+.users-confirm-card {
+  width: min(460px, 94vw);
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  padding: 18px;
+}
+
 :global(body.dark-theme) .users-toolbar,
 :global(body.dark-theme) .users-table-wrap,
-:global(body.dark-theme) .users-form-card {
+:global(body.dark-theme) .users-form-card,
+:global(body.dark-theme) .users-confirm-card {
   border-color: rgba(255, 255, 255, 0.16);
 }
 
