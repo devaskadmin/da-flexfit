@@ -201,14 +201,28 @@ router.post('/logout', (req, res) => {
 
 //Get Session
 router.get('/session', (req, res) => {
+    const rawCookie = String(req.headers?.cookie || '');
+    const hasSessionCookie = /connect\.sid=/.test(rawCookie);
+
     if (req.session?.user) {
       return res.json({
         loggedIn: true,
         user: req.session.user,
         requiresPasswordReset: Boolean(req.session.mustResetPassword),
+        diagnostics: {
+          hasSessionCookie,
+        },
       });
     }
-    res.json({ loggedIn: false });
+    res.json({
+      loggedIn: false,
+      diagnostics: {
+        hasSessionCookie,
+        note: hasSessionCookie
+          ? 'Session cookie exists, but no authenticated session payload was found.'
+          : 'No session cookie was sent. Directly opening backend /api/session from another tab/domain can return loggedIn:false even if app login is active in a different context.',
+      },
+    });
   });
 
 // Forgot password - generate and email temporary password
