@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.68.1] - 2026-04-09
+
+### Fixed
+- **Front page infinite loading spinner** by auto-clearing startup preloader after initial render.
+
+### Changed
+- **Login page cleanup**:
+  - Removed duplicate lower `Forgot Password?` link (kept the inline link beside `Remember Me`).
+  - Removed login `Database status` panel from UI.
+  - Reverted footer info sections to single-column stacked layout for better mobile readability.
+- **Version bump**:
+  - App version now set to `0.68.1` via `frontend/.env` (`VITE_APP_VERSION`).
+  - Login fallback version updated to `0.68.1`.
+
+### Database
+- No schema changes in `0.68.1`.
+
+### Files Updated
+- `frontend/src/App.vue`
+- `frontend/src/views/Guest/Login.vue`
+- `frontend/.env`
+- `frontend/public/changelog.txt`
+
+---
+
 ## [0.68] - 2026-04-09
 
 ### Added
