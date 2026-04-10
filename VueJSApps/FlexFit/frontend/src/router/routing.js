@@ -18,6 +18,12 @@ const guestRoutes = [
         meta: { layout: 'GuestLayout' },
     },
     {
+        path: '/terms-policy',
+        component: () => import('@/views/Guest/TermsPolicy.vue'),
+        name: 'terms_policy',
+        meta: { layout: 'GuestLayout' },
+    },
+    {
         path: '/registration-2',
         component: () => import('@/views/template/pages/authentication/Registration-2.vue'),
         name: 'registration_2',
@@ -25,13 +31,13 @@ const guestRoutes = [
     },
     {
         path: '/reset-password',
-        component: () => import('@/views/template/pages/authentication/ResetPassword.vue'),
+        component: () => import('@/views/Guest/ForgotPassword.vue'),
         name: 'reset_password',
         meta: { layout: 'GuestLayout' },
     },
     {
         path: '/update-password',
-        component: () => import('@/views/template/pages/authentication/UpdatePassword.vue'),
+        component: () => import('@/views/Guest/UpdatePassword.vue'),
         name: 'update_password',
         meta: {layout: 'GuestLayout'}
     },

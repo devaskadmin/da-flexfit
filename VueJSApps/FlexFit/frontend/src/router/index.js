@@ -11,7 +11,7 @@ const router = createRouter({
 const DEBUG_NO_AUTH = import.meta.env.VITE_DEBUG_NO_AUTH === "true";
 const IS_LOCALHOST = typeof window !== 'undefined' && ["localhost", "127.0.0.1"].includes(window.location.hostname);
 
-const publicPages = ['login', 'register', 'reset_password'];
+const publicPages = ['login', 'register', 'reset_password', 'terms_policy'];
 const errorPages = ['error_400', 'error_403', 'error_404', 'error_408', 'error_500', 'error_503', 'error_504'];
 const alwaysAllowedPages = new Set([...publicPages, ...errorPages]);
 
@@ -32,19 +32,29 @@ router.beforeEach(async (to, from, next) => {
     ]);
 
     const isLoggedIn = sessionResult.status === 'fulfilled' && sessionResult.value?.data?.loggedIn === true;
+    const requiresPasswordReset = sessionResult.status === 'fulfilled' && sessionResult.value?.data?.requiresPasswordReset === true;
     const isDatabaseConnected = dbStatusResult.status === 'fulfilled' && dbStatusResult.value?.data?.connected === true;
-
-    // If backend/database cannot be validated, fail closed to 404.
-    if (!isDatabaseConnected) {
-      return next({ name: 'error_404' });
-    }
 
     // Enforce login-first UX for protected routes.
     if (!isLoggedIn) {
+      // If backend/database cannot be validated and user is not logged in, fail closed.
+      if (!isDatabaseConnected) {
+        return next({ name: 'error_404' });
+      }
       return next({ name: 'login' });
     }
 
-    next(); // Allow navigation
+    // Force reset-password flow for temporary-password sessions.
+    if (requiresPasswordReset && to.name !== 'update_password') {
+      return next({ name: 'update_password' });
+    }
+
+    // If reset is not required anymore, prevent navigating back to update screen.
+    if (!requiresPasswordReset && to.name === 'update_password') {
+      return next({ name: 'dashboard_index' });
+    }
+
+    next(); // Allow navigation for valid authenticated session
   } catch (error) {
     console.error("Session check error:", error);
     next({ name: 'error_404' });

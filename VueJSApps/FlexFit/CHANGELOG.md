@@ -1,5 +1,82 @@
 # Changelog
 
+## [0.68] - 2026-04-09
+
+### Added
+- **Remember Me session support** on login (`Remember Me` checkbox now extends session cookie lifespan up to 1 week).
+- **User profile dropdown menu** in header profile icon with:
+  - `Greetings <username>`
+  - `View Settings` (routes to user settings)
+  - `Logout`
+- **Login app version display** (`Version: APP_VERSION`) with fallback to `0.68`.
+- **Developer Change Log Notes** link on login page.
+- New public changelog pages/files:
+  - `frontend/public/changelog.html` (scrollable full-page viewer)
+  - `frontend/public/changelog.txt` (text source)
+
+### Changed
+- **Theming persistence improvements**:
+  - Right layout sidebar now supports saving advanced theme visibility per user.
+  - Theme settings and display settings now stay in sync across localStorage and DB profile settings.
+- **Profile settings merge logic** in backend now deep-merges nested settings to avoid overwriting sibling config objects.
+- **Page header styling consistency updates** across member pages:
+  - Account Settings header now uses themed gradient style.
+  - Dashboard and Workouts header border/radius alignment updated.
+  - Nutrition header date section labeling/alignment updated (`Selected date`).
+- **Log Workout page layout alignment** improved to match header/body width consistency.
+
+### Fixed
+- Prevented nested user settings from being unintentionally replaced during partial settings saves.
+- Improved consistency of theme sidebar hide behavior across startup and saved profile state.
+
+### Database
+- No schema changes in `0.68`.
+
+### Files Updated
+- `frontend/src/views/Guest/Login.vue`
+- `frontend/src/components/HeaderComponent.vue`
+- `frontend/src/components/RightSidebarComponent.vue`
+- `frontend/src/views/Member/UserSettings.vue`
+- `frontend/src/views/Member/HomeDashboard.vue`
+- `frontend/src/views/Member/LogWorkout.vue`
+- `frontend/src/views/Member/NutritionWorkspace.vue`
+- `frontend/src/views/Member/exercises.vue`
+- `frontend/public/changelog.html` (new)
+- `frontend/public/changelog.txt` (new)
+- `backend/api/auth.js`
+- `backend/api/users.js`
+
+---
+
+## [0.6.7] - 2026-04-09
+
+### Added
+- **Forgot Password Flow** — Implemented password reset request and reset form in frontend (`Guest/ForgotPassword.vue`, `Guest/ResetPassword.vue`).
+- Backend API endpoints for password reset email and token validation.
+- Email templates for password reset notifications.
+- New database fields for password reset tokens and expiry.
+- User feedback for password reset success/failure.
+
+### Changed
+- Improved error handling and user messages across login/register/forgot password flows.
+- Updated frontend and backend dependencies to latest minor versions.
+- Minor UI/UX tweaks to guest authentication pages.
+
+### Fixed
+- Resolved issues with email delivery for password reset (SMTP config, error logging).
+- Fixed edge case where expired tokens were not properly invalidated.
+
+### Database
+- Added `password_reset_token` and `password_reset_expires` columns to `users` table.
+
+### Files Updated
+- `frontend/src/views/Guest/ForgotPassword.vue`, `frontend/src/views/Guest/ResetPassword.vue`
+- `backend/api/auth.js`, `backend/email/templates/resetPassword.html`
+- `backend/models/user.js`, `backend/dbConfig.js`
+- `frontend/package.json`, `backend/package.json`
+
+---
+
 All notable changes to **FlexFit** are documented in this file.
 
 ---

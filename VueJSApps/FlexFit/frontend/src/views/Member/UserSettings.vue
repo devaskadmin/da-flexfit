@@ -1,5 +1,6 @@
 ﻿<script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { API_BASE } from '@/config/env';
 
 const activeTab = ref('profile')
 
@@ -41,6 +42,15 @@ const display = reactive({
   language: 'en',
   dashboardLayout: 'detailed',
   startPage: 'dashboard',
+  navPosition: 'vertical',
+  themeDirection: 'ltr',
+  primaryColor: 'blue-color',
+  themeColor: 'light-theme',
+  navbarSize: 'default',
+  sidebarBackground: '',
+  mainBackground: '',
+  preloaderEnabled: true,
+  hideThemeSidebar: false,
 })
 
 const security = reactive({
@@ -54,17 +64,46 @@ const saveStatus = ref('')
 const errorMsg = ref('')
 const successMsg = ref('')
 
-function save() {
+async function save() {
   errorMsg.value = ''
   successMsg.value = ''
   saveStatus.value = 'saving'
-  setTimeout(() => {
+  const settingsPayload = {
+    settings: {
+      display: {
+        theme: display.theme,
+        language: display.language,
+        dashboardLayout: display.dashboardLayout,
+        startPage: display.startPage,
+        hideThemeSidebar: display.hideThemeSidebar,
+      },
+      themeConfig: collectThemeConfig(),
+    },
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/api/user-profile-settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(settingsPayload),
+    })
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}))
+      throw new Error(err?.error || 'Failed to save settings.')
+    }
+
+    applyThemeConfigToLocalStorage()
     saveStatus.value = 'saved'
     successMsg.value = 'Settings saved successfully.'
-  }, 900)
-  setTimeout(() => {
+    setTimeout(() => {
+      saveStatus.value = ''
+    }, 3000)
+  } catch (err) {
     saveStatus.value = ''
-  }, 3000)
+    errorMsg.value = err?.message || 'Failed to save settings.'
+  }
 }
 
 const tabs = [
@@ -98,6 +137,150 @@ const themeOptions = [
   { value: 'light', label: 'Light',  icon: 'fa-solid fa-sun' },
   { value: 'auto',  label: 'System', icon: 'fa-solid fa-circle-half-stroke' },
 ]
+
+const navPositionOptions = [
+  { value: 'vertical', label: 'Vertical' },
+  { value: 'horizontal', label: 'Horizontal' },
+  { value: 'twoColumn', label: 'Two Column' },
+  { value: 'flushMenu', label: 'Flush' },
+]
+
+const themeDirectionOptions = [
+  { value: 'ltr', label: 'LTR' },
+  { value: 'rtl', label: 'RTL' },
+]
+
+const primaryColorOptions = [
+  'blue-color', 'orange-color', 'pink-color', 'eagle_green-color', 'purple-color',
+  'gold-color', 'green-color', 'deep_pink-color', 'tea_green-color', 'yellow_green-color'
+]
+
+const themeColorOptions = [
+  { value: 'light-theme', label: 'Light Theme' },
+  { value: 'dark-theme', label: 'Dark Theme' },
+  { value: 'blue-theme', label: 'Blue Theme' },
+]
+
+const navbarSizeOptions = [
+  { value: 'default', label: 'Default' },
+  { value: 'small', label: 'Small' },
+  { value: 'expand', label: 'Expand on Hover' },
+]
+
+const buildAssetUrl = (name) => new URL(`/src/assets/images/${name}`, import.meta.url).toString();
+
+const sidebarBackgroundOptions = [
+  { value: '', label: 'None' },
+  { value: buildAssetUrl('nav-bg-1.jpg'), label: 'Nav BG 1' },
+  { value: buildAssetUrl('nav-bg-2.jpg'), label: 'Nav BG 2' },
+  { value: buildAssetUrl('nav-bg-3.jpg'), label: 'Nav BG 3' },
+  { value: buildAssetUrl('nav-bg-4.jpg'), label: 'Nav BG 4' },
+]
+
+const mainBackgroundOptions = [
+  { value: '', label: 'None' },
+  { value: buildAssetUrl('main-bg-1.jpg'), label: 'Main BG 1' },
+  { value: buildAssetUrl('main-bg-2.jpg'), label: 'Main BG 2' },
+  { value: buildAssetUrl('main-bg-3.jpg'), label: 'Main BG 3' },
+  { value: buildAssetUrl('main-bg-4.jpg'), label: 'Main BG 4' },
+]
+
+const collectThemeConfig = () => ({
+  navPosition: display.navPosition,
+  themeDirection: display.themeDirection,
+  primaryColor: display.primaryColor,
+  themeColor: display.themeColor,
+  navbarSize: display.navbarSize,
+  sidebarBackground: display.sidebarBackground,
+  mainBackground: display.mainBackground,
+  preloaderEnabled: !!display.preloaderEnabled,
+  hideThemeSidebar: !!display.hideThemeSidebar,
+})
+
+const applyThemeConfigToLocalStorage = () => {
+  const cfg = collectThemeConfig();
+
+  localStorage.setItem('layoutPosition', cfg.navPosition);
+  localStorage.setItem('layoutDirection', cfg.themeDirection);
+  localStorage.setItem('selectedStyleSheet', cfg.primaryColor);
+  localStorage.setItem('currentActiveTheme', cfg.themeColor);
+  localStorage.setItem('preloaderEnabled', String(cfg.preloaderEnabled));
+  localStorage.setItem('hideThemeSidebar', String(cfg.hideThemeSidebar));
+
+  if (cfg.navbarSize === 'small') {
+    localStorage.setItem('sidebarSmall', 'enabled');
+    localStorage.removeItem('sidebarHover');
+  } else if (cfg.navbarSize === 'expand') {
+    localStorage.setItem('sidebarHover', 'enabled');
+    localStorage.removeItem('sidebarSmall');
+  } else {
+    localStorage.removeItem('sidebarHover');
+    localStorage.removeItem('sidebarSmall');
+  }
+
+  if (cfg.sidebarBackground) localStorage.setItem('navbackgroundImage', cfg.sidebarBackground);
+  else localStorage.removeItem('navbackgroundImage');
+
+  if (cfg.mainBackground) localStorage.setItem('mainBackgroundImage', cfg.mainBackground);
+  else localStorage.removeItem('mainBackgroundImage');
+
+  window.dispatchEvent(new CustomEvent('ff-theme-settings-updated', { detail: cfg }));
+}
+
+const loadDisplayFromLocalStorage = () => {
+  display.navPosition = localStorage.getItem('layoutPosition') || display.navPosition;
+  display.themeDirection = localStorage.getItem('layoutDirection') || display.themeDirection;
+  display.primaryColor = localStorage.getItem('selectedStyleSheet') || display.primaryColor;
+  display.themeColor = localStorage.getItem('currentActiveTheme') || display.themeColor;
+  display.navbarSize = localStorage.getItem('sidebarHover') ? 'expand' : localStorage.getItem('sidebarSmall') ? 'small' : 'default';
+  display.sidebarBackground = localStorage.getItem('navbackgroundImage') || '';
+  display.mainBackground = localStorage.getItem('mainBackgroundImage') || '';
+  display.preloaderEnabled = localStorage.getItem('preloaderEnabled') !== 'false';
+  display.hideThemeSidebar = localStorage.getItem('hideThemeSidebar') === 'true';
+}
+
+const loadUserSettings = async () => {
+  try {
+    const response = await fetch(`${API_BASE}/api/user-profile-settings`, { credentials: 'include' });
+    if (!response.ok) return;
+    const data = await response.json();
+    const settings = data?.settings || {};
+    const persistedDisplay = settings?.display || {};
+    const cfg = settings?.themeConfig || {};
+
+    display.theme = persistedDisplay.theme || display.theme;
+    display.language = persistedDisplay.language || display.language;
+    display.dashboardLayout = persistedDisplay.dashboardLayout || display.dashboardLayout;
+    display.startPage = persistedDisplay.startPage || display.startPage;
+
+    display.navPosition = cfg.navPosition || display.navPosition;
+    display.themeDirection = cfg.themeDirection || display.themeDirection;
+    display.primaryColor = cfg.primaryColor || display.primaryColor;
+    display.themeColor = cfg.themeColor || display.themeColor;
+    display.navbarSize = cfg.navbarSize || display.navbarSize;
+    display.sidebarBackground = cfg.sidebarBackground ?? display.sidebarBackground;
+    display.mainBackground = cfg.mainBackground ?? display.mainBackground;
+    display.preloaderEnabled = typeof cfg.preloaderEnabled === 'boolean' ? cfg.preloaderEnabled : display.preloaderEnabled;
+    if (typeof cfg.hideThemeSidebar === 'boolean') {
+      display.hideThemeSidebar = cfg.hideThemeSidebar;
+    } else if (typeof persistedDisplay.hideThemeSidebar === 'boolean') {
+      display.hideThemeSidebar = persistedDisplay.hideThemeSidebar;
+    }
+
+    applyThemeConfigToLocalStorage();
+  } catch (_) {
+    // keep local fallback
+  }
+}
+
+const saveThemeVisibility = async () => {
+  await save();
+}
+
+onMounted(() => {
+  loadDisplayFromLocalStorage();
+  loadUserSettings();
+})
 </script>
 
 <template>
@@ -347,6 +530,70 @@ const themeOptions = [
                 <option value="nutrition">Nutrition</option>
               </select>
             </div>
+
+            <div class="ff-field">
+              <label class="ff-label">Nav Position</label>
+              <select v-model="display.navPosition" class="form-select">
+                <option v-for="opt in navPositionOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+
+            <div class="ff-field">
+              <label class="ff-label">Theme Direction</label>
+              <select v-model="display.themeDirection" class="form-select">
+                <option v-for="opt in themeDirectionOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+
+            <div class="ff-field">
+              <label class="ff-label">Primary Color</label>
+              <select v-model="display.primaryColor" class="form-select">
+                <option v-for="opt in primaryColorOptions" :key="opt" :value="opt">{{ opt }}</option>
+              </select>
+            </div>
+
+            <div class="ff-field">
+              <label class="ff-label">Theme Color</label>
+              <select v-model="display.themeColor" class="form-select">
+                <option v-for="opt in themeColorOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+
+            <div class="ff-field">
+              <label class="ff-label">Navbar Size</label>
+              <select v-model="display.navbarSize" class="form-select">
+                <option v-for="opt in navbarSizeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+
+            <div class="ff-field">
+              <label class="ff-label">Sidebar Background</label>
+              <select v-model="display.sidebarBackground" class="form-select">
+                <option v-for="opt in sidebarBackgroundOptions" :key="opt.label" :value="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+
+            <div class="ff-field">
+              <label class="ff-label">Main Background</label>
+              <select v-model="display.mainBackground" class="form-select">
+                <option v-for="opt in mainBackgroundOptions" :key="opt.label" :value="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+
+            <div class="ff-field">
+              <label class="ff-label">Main Preloader</label>
+              <select v-model="display.preloaderEnabled" class="form-select">
+                <option :value="true">Enabled</option>
+                <option :value="false">Disabled</option>
+              </select>
+            </div>
+
+            <div class="ff-field full-width">
+              <label class="ff-check-row">
+                <input type="checkbox" v-model="display.hideThemeSidebar" @change="saveThemeVisibility" />
+                <span>Hide - Theming side menu advanced theming config</span>
+              </label>
+            </div>
           </div>
         </section>
 
@@ -408,9 +655,13 @@ const themeOptions = [
 .settings-header {
   display: flex; align-items: center; justify-content: space-between;
   flex-wrap: wrap; gap: 12px;
+  background: var(--ff-page-header-bg);
+  border: 1.5px solid var(--ff-border-strong);
+  border-radius: 14px;
+  padding: 12px 14px;
 }
-.settings-title { font-size: 1.45rem; font-weight: 700; margin: 0; color: var(--text-color); }
-.settings-subtitle { font-size: .83rem; opacity: .92; margin: 3px 0 0; color: var(--text-color-secondary); font-weight: 500; }
+.settings-title { font-size: 1.45rem; font-weight: 700; margin: 0; color: #ffffff !important; }
+.settings-subtitle { font-size: .83rem; opacity: .92; margin: 3px 0 0; color: #cbd5e1 !important; font-weight: 500; }
 
 .ff-btn-save {
   display: inline-flex; align-items: center; gap: 8px;
@@ -489,6 +740,19 @@ const themeOptions = [
 .ff-field  { display: flex; flex-direction: column; gap: 6px; }
 .ff-field.full-width { grid-column: 1 / -1; }
 .ff-label  { font-size: .73rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; opacity: 1; color: var(--text-color); }
+
+.ff-check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .86rem;
+  color: var(--text-color);
+}
+
+.ff-check-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
 
 .form-control, .form-select {
   background-color: rgba(255,255,255,.06) !important;
