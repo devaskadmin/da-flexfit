@@ -908,8 +908,7 @@ const clearFilters = () => {
   <div class="dashboard-breadcrumb ff-page-header mb-25">
       <h2>Log Workout</h2>
     <div class="dashboard-filter">
-      <span class="header-meta">SelectedDate: {{ selectedDate }}</span>
-      <DateDropDown v-model="selectedDateRaw" />
+      <DateDropDown v-model="selectedDateRaw" compact />
     </div>
    </div>
 

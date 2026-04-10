@@ -191,8 +191,18 @@ const applyThemeConfig = (themeConfig = {}) => {
   }
 
   if (typeof themeConfig.preloaderEnabled === 'boolean') {
-    preloader.value = themeConfig.preloaderEnabled;
     localStorage.setItem('preloaderEnabled', String(themeConfig.preloaderEnabled));
+
+    // Do not leave the global loader permanently visible.
+    // If enabled, briefly show it then auto-hide.
+    if (themeConfig.preloaderEnabled) {
+      preloader.value = true;
+      window.setTimeout(() => {
+        preloader.value = false;
+      }, 650);
+    } else {
+      preloader.value = false;
+    }
   }
 
   if (typeof themeConfig.hideThemeSidebar === 'boolean') {

@@ -12,7 +12,14 @@ const isPasswordShow = ref(false);
 const rememberMe = ref(false);
 const errorMsg = ref("");
 const isSubmitting = ref(false);
-const appVersion = import.meta.env.VITE_APP_VERSION || '0.68.1';
+const appVersion = import.meta.env.VITE_APP_VERSION || '0.68.3';
+const isDev = import.meta.env.DEV;
+
+const devLog = (...args) => {
+  if (isDev) {
+    console.debug('[auth/login]', ...args);
+  }
+};
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -39,6 +46,7 @@ const waitForSessionReady = async (maxAttempts = 5, waitMs = 250) => {
 };
 
 const goToDashboard = async () => {
+  devLog('Routing to dashboard');
   await router.replace({ name: "dashboard_index" });
 };
 
@@ -53,6 +61,8 @@ const login = async () => {
   const safePassword = String(password.value || "");
 
   try {
+    devLog('Submitting login request', { username: safeUsername, rememberMe: !!rememberMe.value });
+
     const response = await axios.post(
       `${API_BASE}/api/login`,
       {
@@ -64,6 +74,7 @@ const login = async () => {
     );
 
     if (response?.data?.requiresPasswordReset === true) {
+      devLog('Login requires password reset');
       const sessionReady = await waitForSessionReady();
       if (!sessionReady) {
         errorMsg.value = "Login succeeded, but session was not ready. Please tap Sign in again.";
@@ -74,6 +85,7 @@ const login = async () => {
     }
 
     if (response?.data?.message === "Login successful") {
+      devLog('Login successful response received');
       const sessionReady = await waitForSessionReady();
       if (!sessionReady) {
         errorMsg.value = "Login succeeded, but session was not ready. Please tap Sign in again.";
@@ -83,8 +95,14 @@ const login = async () => {
       return;
     }
 
+    devLog('Login rejected by API payload', response?.data || null);
     errorMsg.value = response?.data?.message || response?.data?.error || "Login failed. Try again.";
   } catch (error) {
+    devLog('Login request failed', {
+      status: error?.response?.status,
+      data: error?.response?.data,
+      message: error?.message,
+    });
     errorMsg.value =
       error?.response?.data?.message ||
       error?.response?.data?.error ||
@@ -104,6 +122,8 @@ const tempLoginBypass = async () => {
   errorMsg.value = "";
 
   try {
+    devLog('Submitting demo login request');
+
     const response = await axios.post(
       `${API_BASE}/api/tmp-login`,
       {
@@ -115,6 +135,7 @@ const tempLoginBypass = async () => {
     );
 
     if (response?.data?.requiresPasswordReset === true) {
+      devLog('Demo login requires password reset');
       const sessionReady = await waitForSessionReady();
       if (!sessionReady) {
         errorMsg.value = "Login succeeded, but session was not ready. Please try again.";
@@ -125,6 +146,7 @@ const tempLoginBypass = async () => {
     }
 
     if (response?.data?.message === "Login successful") {
+      devLog('Demo login successful response received');
       const sessionReady = await waitForSessionReady();
       if (!sessionReady) {
         errorMsg.value = "Login succeeded, but session was not ready. Please try again.";
@@ -134,8 +156,14 @@ const tempLoginBypass = async () => {
       return;
     }
 
+    devLog('Demo login rejected by API payload', response?.data || null);
     errorMsg.value = response?.data?.message || response?.data?.error || "Login failed. Try again.";
   } catch (error) {
+    devLog('Demo login request failed', {
+      status: error?.response?.status,
+      data: error?.response?.data,
+      message: error?.message,
+    });
     errorMsg.value =
       error?.response?.data?.message ||
       error?.response?.data?.error ||

@@ -1,5 +1,89 @@
 # Changelog
 
+## [0.68.3] - 2026-04-09
+
+### Changed
+- **Detailed page header gradient theming refactor** (main page banners only):
+  - Added shared theme variable `--ff-page-header-gradient` in all primary color stylesheets:
+    - `blue-color.css`
+    - `orange-color.css`
+    - `pink-color.css`
+    - `purple-color.css`
+    - `green-color.css`
+    - `gold-color.css`
+    - `eagle_green-color.css`
+    - `deep_pink-color.css`
+    - `tea_green-color.css`
+    - `yellow_green-color.css`
+  - Standardized shared page-header radius via `--ff-page-header-radius`.
+  - Shared page-header styling now resolves from theme CSS variables, so initial page load reflects the active theme immediately.
+  - Theme-color changes in layout settings now automatically update page-header gradients without per-page hardcoded colors.
+- **Header consistency updates** across major member pages:
+  - Dashboard
+  - Exercises
+  - Workouts (Log Workout)
+  - Workout Builder
+  - Nutrition
+  - Settings
+  - Other pages already using the shared top-banner pattern (`.ff-page-header`)
+- **Settings header alignment**:
+  - Preserved as the visual reference while now using the same shared theme-driven gradient variable architecture.
+- **Header date picker input styling polish**:
+  - Updated date-input typography inside page headers to match header UI scale and weight.
+  - Improved date-input contrast, padding, and rounded-corner treatment while preserving existing layout/position.
+  - Added responsive size tuning for mobile readability.
+- **Nutrition header date control simplification**:
+  - Removed duplicate top `Selected Date` label and bottom date text from Nutrition header.
+  - Kept a single right-aligned date input control using the same simplified pattern as other main pages.
+  - Preserved existing functionality and header layout.
+
+### Database
+- No schema changes in `0.68.3`.
+
+### Files Updated
+- `frontend/src/assets/css/style.css`
+- `frontend/src/assets/css/blue-color.css`
+- `frontend/src/assets/css/orange-color.css`
+- `frontend/src/assets/css/pink-color.css`
+- `frontend/src/assets/css/purple-color.css`
+- `frontend/src/assets/css/green-color.css`
+- `frontend/src/assets/css/gold-color.css`
+- `frontend/src/assets/css/eagle_green-color.css`
+- `frontend/src/assets/css/deep_pink-color.css`
+- `frontend/src/assets/css/tea_green-color.css`
+- `frontend/src/assets/css/yellow_green-color.css`
+- `frontend/src/views/Member/UserSettings.vue`
+- `frontend/src/views/Member/WorkoutBuilder.vue`
+- `frontend/.env`
+- `frontend/src/views/Guest/Login.vue`
+- `frontend/public/changelog.txt`
+- `Database Log file.txt`
+
+---
+
+## [0.68.2] - 2026-04-09
+
+### Fixed
+- **Mobile login/session reliability** improvements for Safari/Android/desktop by waiting for session readiness before route transition.
+- **Admin authorization mismatch** resolved with robust role checking (role mappings + fallback profile role support).
+- **Settings page loading blocker** resolved (startup preloader no longer persists unexpectedly).
+
+### Changed
+- **Password reset temp-login flow hardening**:
+  - pending reset login now validates reset-code path consistently;
+  - temporary reset code invalidated after successful temp-login handoff.
+- **Terms/registration/login UX polish** and defensive flow handling retained.
+- **Header/date UX refinements**:
+  - Exercises top selected-date label removed while keeping date input control.
+  - Nutrition selected-date labeling clarified.
+- **Profile greeting copy format** updated to `Greetings, <username>`.
+- **Settings header styling baseline** set to the target polished blue gradient used as the v0.68.3 reference.
+
+### Database
+- No schema changes in `0.68.2`.
+
+---
+
 ## [0.68.1] - 2026-04-09
 
 ### Fixed

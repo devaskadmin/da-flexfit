@@ -1703,7 +1703,9 @@ input[type=checkbox] {
   --bs-border-radius: 3px;
   --bs-border-color: rgba(255, 255, 255, 0.07);
   --bs-primary-bg-subtle: #23365e;
-  --ff-page-header-bg: linear-gradient(120deg, #020617 0%, #081a3a 56%, #0a1f4a 100%);
+  --ff-page-header-gradient: linear-gradient(135deg, #0b2f67 0%, #14458f 45%, #1d5fb8 100%);
+  --ff-page-header-bg: var(--ff-page-header-gradient);
+  --ff-page-header-radius: 14px;
 }
 :root .light-theme {
   --bs-border-color: rgba(0, 0, 0, 0.1);
@@ -5618,7 +5620,8 @@ pre .punctuation {
 .main-content .dashboard-breadcrumb.ff-page-header,
 .dark-theme .main-content .dashboard-breadcrumb.ff-page-header,
 .light-theme .main-content .dashboard-breadcrumb.ff-page-header {
-  background: var(--ff-page-header-bg);
+  background: var(--ff-page-header-gradient, var(--ff-page-header-bg));
+  border-radius: var(--ff-page-header-radius, 14px);
 }
 
 .main-content .dashboard-breadcrumb.ff-page-header h2,
@@ -5642,6 +5645,24 @@ pre .punctuation {
   color: #ffffff;
 }
 
+.main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .form-control,
+.dark-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .form-control,
+.light-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .form-control,
+.main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-input,
+.dark-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-input,
+.light-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-input {
+  font-family: "Lato", sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 10px;
+  min-height: 40px;
+  padding: 8px 12px;
+}
+
 .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-input,
 .dark-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-input,
 .light-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-input,
@@ -5651,7 +5672,7 @@ pre .punctuation {
 .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-icon-clear,
 .dark-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-icon-clear,
 .light-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-icon-clear {
-  color: #0f172a;
+  color: #1e293b;
 }
 
 .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-input::placeholder,
@@ -5659,6 +5680,20 @@ pre .punctuation {
 .light-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-input::placeholder {
   color: #475569;
 }
+
+@media only screen and (max-width: 767px) {
+  .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .form-control,
+  .dark-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .form-control,
+  .light-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .form-control,
+  .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-input,
+  .dark-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-input,
+  .light-theme .main-content .dashboard-breadcrumb.ff-page-header .dashboard-filter .mx-input {
+    font-size: 14px;
+    min-height: 38px;
+    padding: 7px 10px;
+  }
+}
+
 .main-content .dashboard-top-box {
   padding: 20px;
   display: -webkit-box;

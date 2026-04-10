@@ -12,17 +12,48 @@ const requireAdmin = async (req, res, next) => {
   }
 
   try {
-    // 2. Must have admin role
-    const [rows] = await pool.query(
-      `SELECT 1
-       FROM user_roles ur
-       JOIN roles r ON r.id = ur.role_id
-       WHERE ur.user_id = ? AND r.slug = 'admin' AND r.is_active = 1
-       LIMIT 1`,
-      [req.session.user.id]
-    );
+    const userId = req.session.user.id;
+    let isAdmin = false;
 
-    if (rows.length === 0) {
+    // 2a. Preferred source: user_roles -> roles
+    try {
+      const [rows] = await pool.query(
+        `SELECT 1
+         FROM user_roles ur
+         JOIN roles r ON r.id = ur.role_id
+         WHERE ur.user_id = ?
+           AND LOWER(TRIM(r.slug)) = 'admin'
+           AND r.is_active = 1
+         LIMIT 1`,
+        [userId]
+      );
+      isAdmin = rows.length > 0;
+    } catch (rolesErr) {
+      if (!['ER_NO_SUCH_TABLE', 'ER_BAD_FIELD_ERROR'].includes(rolesErr?.code)) {
+        throw rolesErr;
+      }
+    }
+
+    // 2b. Backward-compat fallback: user_profiles.user_role
+    if (!isAdmin) {
+      try {
+        const [profileRows] = await pool.query(
+          `SELECT 1
+           FROM user_profiles
+           WHERE user_id = ?
+             AND LOWER(TRIM(user_role)) = 'admin'
+           LIMIT 1`,
+          [userId]
+        );
+        isAdmin = profileRows.length > 0;
+      } catch (profileErr) {
+        if (!['ER_NO_SUCH_TABLE', 'ER_BAD_FIELD_ERROR'].includes(profileErr?.code)) {
+          throw profileErr;
+        }
+      }
+    }
+
+    if (!isAdmin) {
       return res.status(403).json({ error: 'Admin access required.' });
     }
 
