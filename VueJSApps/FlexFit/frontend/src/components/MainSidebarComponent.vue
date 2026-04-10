@@ -192,16 +192,18 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.sidebar-link.admin-black,
-.sidebar-link.admin-black .sidebar-txt,
-.sidebar-link.admin-black .nav-icon i {
-  color: #111111 !important;
+.sidebar-link.admin-light-gray,
+.sidebar-link.admin-light-gray .sidebar-txt,
+.sidebar-link.admin-light-gray .nav-icon i {
+  color: #797979 !important;
 }
 
-.sidebar-link.admin-black:hover,
-.sidebar-link.admin-black:hover .sidebar-txt,
-.sidebar-link.admin-black:hover .nav-icon i {
-  color: #000000 !important;
+.sidebar-link.admin-light-gray:hover,
+.sidebar-link.admin-light-gray:hover .sidebar-txt,
+.sidebar-link.admin-light-gray:hover .nav-icon i {
+  color: #797979 !important;
 }
+
+
 
 </style>

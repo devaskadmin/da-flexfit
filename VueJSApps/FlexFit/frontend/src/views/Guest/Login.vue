@@ -441,60 +441,62 @@ const tempLoginBypass = async () => {
 </script>
 
 <template>
-  <div class="container login-center-wrap">
+  <div class="container login-center-wrap auth-wrapper">
     <div class="d-flex justify-content-center align-items-center">
-      <div class="login-body">
-        <div class="top d-flex justify-content-between align-items-center">
-          <div class="logo">
+      <div class="login-body auth-card">
+        <div class="top d-flex justify-content-between align-items-center auth-header">
+          <div class="logo auth-logo-wrap">
             <img src="@/assets/images/flex-fitlogo-transparent.png" alt="Logo">
           </div>
           <router-link :to="{ name: 'dashboard_index' }"><i class="fa-duotone fa-house-chimney"></i></router-link>
         </div>
-        <div class="bottom">
-          <h3 class="panel-title panel-title-form">Login</h3>
-          <form @submit.prevent="login">
-            <div class="input-group mb-25 input-group-rounded">
-              <span class="input-group-text"><i class="fa-regular fa-user"></i></span>
-              <input v-model="username" type="text" class="form-control form-control-rounded" placeholder="Username or email address" required>
+
+        <div class="bottom auth-content auth-column">
+          <h3 class="panel-title panel-title-form auth-title">Login</h3>
+
+          <form @submit.prevent="login" class="auth-form">
+            <div class="input-group input-group-rounded auth-form-group">
+              <span class="input-group-text auth-input-icon"><i class="fa-regular fa-user"></i></span>
+              <input v-model="username" type="text" class="form-control form-control-rounded auth-input" placeholder="Username or email address" required>
             </div>
-            <div class="input-group mb-20 input-group-rounded">
-              <span class="input-group-text"><i class="fa-regular fa-lock"></i></span>
-              <input v-model="password" :type="[isPasswordShow ? 'text' : 'password']" class="form-control form-control-rounded" placeholder="Password" required>
-              <a role="button" class="password-show" @click="isPasswordShow = !isPasswordShow"><i class="fa-duotone" :class="[isPasswordShow ? 'fa-eye-slash':'fa-eye']"></i></a>
+
+            <div class="input-group input-group-rounded auth-form-group">
+              <span class="input-group-text auth-input-icon"><i class="fa-regular fa-lock"></i></span>
+              <input v-model="password" :type="[isPasswordShow ? 'text' : 'password']" class="form-control form-control-rounded auth-input" placeholder="Password" required>
+              <button type="button" class="password-show auth-password-toggle" @click="isPasswordShow = !isPasswordShow" :aria-label="isPasswordShow ? 'Hide password' : 'Show password'">
+                <i class="fa-duotone" :class="[isPasswordShow ? 'fa-eye-slash' : 'fa-eye']"></i>
+              </button>
             </div>
-            <div class="d-flex justify-content-between mb-25">
+
+            <div class="d-flex justify-content-between align-items-center auth-subtitle auth-checkbox-row">
               <div class="form-check">
                 <input v-model="rememberMe" class="form-check-input" type="checkbox" id="loginCheckbox">
-                <label class="form-check-label text-white" for="loginCheckbox">
-                  Remember Me
-                </label>
+                <label class="form-check-label text-white" for="loginCheckbox">Remember Me</label>
               </div>
               <router-link :to="{ name: 'reset_password' }" class="text-white fs-14">Forgot Password?</router-link>
-
-              
             </div>
-            <div v-if="errorMsg" class="alert alert-danger mb-3 login-error-alert-compact">
+
+            <div v-if="errorMsg" class="alert alert-danger login-error-alert-compact">
               <div class="fw-semibold">{{ errorMsg }}</div>
               <div class="small mt-1">Login diagnostics available.</div>
             </div>
+
             <button
               v-if="errorMsg"
               type="button"
-              class="btn btn-outline-light w-100 mb-3"
+              class="btn btn-outline-light w-100 auth-button auth-button-outline"
               @click="openDiagnosticsModal"
             >
               View Login Diagnostics
             </button>
 
-
-            <button class="btn btn-primary w-100 login-btn" :disabled="isSubmitting">
+            <button class="btn btn-primary w-100 login-btn auth-button" :disabled="isSubmitting">
               {{ isSubmitting ? 'Signing in...' : 'Sign in' }}
             </button>
-            <button type="button" class="btn btn-secondary w-100 mt-2" :disabled="isSubmitting" @click="tempLoginBypass">Temp Login Bypass (Demo)</button>
-
+            <button type="button" class="btn btn-secondary w-100 auth-button auth-button-secondary" :disabled="isSubmitting" @click="tempLoginBypass">Temp Login Bypass (Demo)</button>
           </form>
 
-          <div class="other-option">
+          <div class="other-option auth-social-row">
             <p>Or continue with</p>
             <div class="social-box d-flex justify-content-center gap-20">
               <a href="#"><i class="fa-brands fa-facebook-f"></i></a>
@@ -504,28 +506,13 @@ const tempLoginBypass = async () => {
             </div>
           </div>
 
-
-
-          <!-- Registration row -->
-          <div class="other-option mt-3">
-            <p class="mb-0 text-white">Don't have an account?</p>
-            <p class="mb-0">
-              <router-link to="/register" class="text-white text-decoration-underline">Click here to sign up.</router-link>
-            </p>
+          <div class="other-option auth-footer auth-footer-row">
+            <p class="mb-0 text-white">Don't have an account? <router-link to="/register" class="text-white text-decoration-underline">Click here to sign up.</router-link></p>
           </div>
 
-          <!-- Version row -->
-          <div class="other-option mt-2">
-            <p class="mb-0 text-white">Version: {{ appVersion }}</p>
-            <p class="mb-0">
-              <a href="/changelog.html" class="text-white text-decoration-underline" target="_blank" rel="noopener noreferrer">Developer Change Log Notes</a>
-            </p>
+          <div class="other-option auth-footer auth-footer-row">
+            <p class="mb-0 text-white">Version: {{ appVersion }} - <a href="/changelog.html" class="text-white text-decoration-underline" target="_blank" rel="noopener noreferrer">Change Log</a></p>
           </div>
-
-
-
-
-
         </div>
       </div>
 
@@ -560,16 +547,17 @@ const tempLoginBypass = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 16px 12px;
 }
 
 
 .login-body {
-  max-width: 480px;
+  max-width: 430px;
   width: 100%;
-  border: 12px solid rgba(0, 0, 0, 0.08) !important;
-  border-radius: 12px !important;
+  border: 8px solid rgba(0, 0, 0, 0.08) !important;
+  border-radius: 10px !important;
   background: rgba(255, 255, 255, 0.95) !important;
-  padding: 40px !important;   
+  padding: 20px !important;
 }
 
 .login-body {
@@ -579,9 +567,9 @@ const tempLoginBypass = async () => {
   /* OUTER soft shadow */
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.1),   /* thin outer border */
-    0 4px 10px rgba(0, 0, 0, 0.15); /* drop shadow */
+    0 3px 10px rgba(0, 0, 0, 0.12); /* drop shadow */
 
-  padding: 40px;
+  padding: 20px;
 }
 
 
@@ -593,15 +581,17 @@ const tempLoginBypass = async () => {
 .panel-title-form {
   color: #A9B4CC;
   font-weight: 600;
-  margin-bottom: 20px;
+  font-size: 1.22rem;
+  line-height: 1.25;
+  margin-bottom: 14px;
 }
 
 /* Input Group Rounded Borders */
 .input-group-rounded {
   display: flex;
   align-items: center;
-  border: 2px solid rgba(13, 153, 255, 0.5);
-  border-radius: 10px;
+  border: 1.5px solid rgba(13, 153, 255, 0.5);
+  border-radius: 9px;
   overflow: hidden;
   transition: all 0.3s ease;
   padding: 0;
@@ -617,7 +607,9 @@ const tempLoginBypass = async () => {
   border: none !important;
   border-radius: 0 !important;
   flex: 1;
-  padding: 12px 15px !important;
+  padding: 10px 12px !important;
+  min-height: 42px;
+  font-size: 0.92rem;
 }
 
 .input-group-rounded .input-group-text {
@@ -625,19 +617,21 @@ const tempLoginBypass = async () => {
   border-right: 1px solid rgba(13, 153, 255, 0.3) !important;
   background: transparent !important;
   border-radius: 0 !important;
-  padding: 0 12px !important;
+  padding: 0 10px !important;
   min-width: auto !important;
+  font-size: 0.9rem;
 }
 
 .password-show {
   border: none !important;
   border-left: 2px solid rgba(13, 153, 255, 0.2) !important;
   background: transparent !important;
-  padding: 0 10px;
+  padding: 0 9px;
   display: flex;
   align-items: center;
   cursor: pointer;
   color: #A9B4CC;
+  font-size: 0.9rem;
 }
 
 .password-show:hover {
@@ -646,6 +640,135 @@ const tempLoginBypass = async () => {
 
 .login-error-alert-compact {
   text-align: left !important;
+  font-size: 0.86rem;
+  padding: 8px 10px;
+}
+
+.auth-header {
+  margin-bottom: 4px;
+}
+
+.auth-logo-wrap img {
+  max-height: 38px;
+  width: auto;
+}
+
+.auth-title {
+  margin-top: 2px;
+  margin-bottom: 8px;
+}
+
+.auth-content.auth-column {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.auth-form,
+.auth-social-row,
+.auth-footer-row {
+  width: 100%;
+}
+
+.auth-form-group {
+  width: 100%;
+  margin: 0 0 8px;
+}
+
+.auth-subtitle,
+.auth-subtitle .form-check-label,
+.auth-subtitle a,
+.other-option p,
+.other-option a {
+  font-size: 0.85rem !important;
+}
+
+.auth-checkbox-row {
+  width: 100%;
+  margin: 0 0 10px;
+}
+
+.auth-checkbox-row .form-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding-left: 0;
+}
+
+.auth-checkbox-row .form-check-input {
+  margin: 0 !important;
+  float: none;
+}
+
+.auth-checkbox-row .form-check-label {
+  margin: 0;
+}
+
+.auth-social-row {
+  margin: 8px 0 0;
+}
+
+.auth-social-row p {
+  margin-bottom: 6px;
+}
+
+.auth-social-row .social-box {
+  width: 100%;
+  gap: 14px !important;
+}
+
+.auth-social-row .social-box a {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-social-row .social-box a i {
+  font-size: 1.02rem;
+}
+
+.auth-button {
+  width: 100%;
+  min-height: 40px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  font-size: 0.92rem;
+  border-radius: 8px;
+}
+
+.auth-form .auth-button + .auth-button {
+  margin-top: 8px;
+}
+
+.auth-button-outline {
+  margin-bottom: 10px;
+}
+
+.auth-button-secondary {
+  border-color: rgba(58, 79, 118, 0.85);
+  background-color: rgba(58, 79, 118, 0.9);
+}
+
+.auth-password-toggle {
+  appearance: none;
+}
+
+.auth-footer {
+  margin-top: 6px;
+}
+
+.auth-footer-row p {
+  width: 100%;
+  text-align: center;
+  line-height: 1.35;
+}
+
+.login-error-alert-compact {
+  margin-bottom: 10px;
 }
 
 .login-diagnostics-backdrop {

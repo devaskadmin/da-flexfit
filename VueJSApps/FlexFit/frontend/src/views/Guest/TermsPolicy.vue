@@ -14,23 +14,28 @@ const onTermsScroll = (event) => {
 const agreeAndReturn = async () => {
   await router.push({ name: 'register', query: { termsAccepted: '1' } });
 };
+
+const goBack = async () => {
+  await router.push({ name: 'register' });
+};
 </script>
 
 <template>
-  <div class="container login-center-wrap">
+  <div class="container login-center-wrap auth-wrapper">
     <div class="d-flex justify-content-center align-items-center">
-      <div class="login-body">
-        <div class="top d-flex justify-content-between align-items-center">
-          <div class="logo">
+      <div class="login-body auth-card">
+        <div class="top d-flex justify-content-between align-items-center auth-header">
+          <div class="logo auth-logo-wrap">
             <img src="@/assets/images/flex-fitlogo-transparent.png" alt="Logo">
           </div>
           <router-link :to="{ name: 'register' }"><i class="fa-duotone fa-house-chimney"></i></router-link>
         </div>
 
-        <div class="bottom">
-          <h3 class="panel-title panel-title-form">Terms and Service</h3>
+        <div class="bottom auth-content">
+          <h3 class="panel-title panel-title-form auth-title">Terms and Service</h3>
+          <p class="auth-subtitle">Please review the terms below. Scroll to the end to enable agreement.</p>
 
-          <div class="terms-scroll-box" @scroll="onTermsScroll">
+          <div class="terms-scroll-box terms-container" @scroll="onTermsScroll">
             <p>These are the terms and conditions.</p>
             <p>These are the terms and conditions.</p>
             <p>These are the terms and conditions.</p>
@@ -46,8 +51,9 @@ const agreeAndReturn = async () => {
             <p>These are the terms and conditions.</p>
           </div>
 
-          <div v-if="reachedBottom" class="agree-box mt-3">
-            <button type="button" class="btn btn-primary w-100" @click="agreeAndReturn">Agree</button>
+          <div class="d-flex gap-2 mt-2 auth-action-row">
+            <button type="button" class="btn btn-danger w-50 auth-button auth-button-danger" @click="goBack">Back</button>
+            <button type="button" class="btn btn-primary w-50 auth-button" :disabled="!reachedBottom" @click="agreeAndReturn">Agree</button>
           </div>
         </div>
       </div>
@@ -61,39 +67,78 @@ const agreeAndReturn = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 16px 12px;
 }
 
 .login-body {
   border: 8px solid rgba(0, 0, 0, 0.25) !important;
-  border-radius: 12px !important;
+  border-radius: 10px !important;
   background: rgba(255, 255, 255, 0.95) !important;
-  padding: 24px !important;
+  padding: 20px !important;
   width: 100%;
-  max-width: 620px;
+  max-width: 430px;
 }
 
 .panel-title-form {
   color: #000;
   font-weight: 600;
-  margin: 12px 0 16px;
+  font-size: 1.15rem;
+  margin: 8px 0 6px;
   text-align: center;
 }
 
-.terms-scroll-box {
-  border: 2px solid rgba(13, 153, 255, 0.5);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.85);
-  padding: 16px;
-  height: 260px;
-  overflow-y: auto;
-  color: rgba(0, 0, 0, 0.85);
-  line-height: 1.5;
+.auth-subtitle {
+  font-size: 0.84rem;
+  color: rgba(0, 0, 0, 0.66);
+  text-align: center;
+  margin-bottom: 10px;
 }
 
-.agree-box {
-  border: 2px solid rgba(13, 153, 255, 0.35);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.75);
-  padding: 10px;
+.terms-scroll-box {
+  border: 1.5px solid rgba(13, 153, 255, 0.5);
+  border-radius: 9px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(250, 252, 255, 0.9));
+  padding: 12px;
+  height: 220px;
+  overflow-y: auto;
+  color: rgba(0, 0, 0, 0.85);
+  line-height: 1.45;
+  font-size: 0.9rem;
+}
+
+.terms-container p {
+  margin-bottom: 0.55rem;
+}
+
+.auth-header {
+  margin-bottom: 8px;
+}
+
+.auth-logo-wrap img {
+  max-height: 32px;
+  width: auto;
+}
+
+.auth-button {
+  min-height: 40px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  font-size: 0.9rem;
+  border-radius: 8px;
+}
+
+.auth-button-danger {
+  background: #dc3545;
+  border-color: #dc3545;
+  color: #fff;
+}
+
+.auth-button-danger:hover {
+  background: #bf2f3d;
+  border-color: #bf2f3d;
+}
+
+.auth-action-row {
+  padding-top: 2px;
 }
 </style>

@@ -6301,11 +6301,11 @@ pre .punctuation {
   color: #F9F9F9;
 }
 .main-content .login-body .bottom {
-  padding: 50px;
+  padding: 20px;
 }
 .main-content .login-body .bottom .panel-title {
   text-align: center;
-  font-size: 24px;
+  font-size: 12px;
   line-height: 100%;
   font-weight: 400;
   color: #F9F9F9;

@@ -1,8 +1,23 @@
 <script setup>
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
+import { API_BASE } from '@/config/env'
 import DateRangePicker from '@/components/template/DateRangePicker.vue';
 import FitnessMetricCard from '@/components/fitness/FitnessMetricCard.vue';
 import ProgressChart from '@/components/Widgets/ProgressChart.vue';
 import NutritionLogChart from '@/components/Widgets/NutritionLogChart.vue';
+
+const firstName = ref('')
+
+onMounted(async () => {
+  try {
+    const res = await axios.get(`${API_BASE}/api/user-profile-settings`, { withCredentials: true })
+    const profile = res.data?.profile || {}
+    firstName.value = profile.firstName || ''
+  } catch {
+    // silently fail — greeting just shows without a name
+  }
+})
 
 const metrics = [
   {
@@ -45,7 +60,7 @@ const recentActivity = [
 
 <template>
   <div class="dashboard-breadcrumb ff-page-header mb-25">
-    <h2>Welcome back</h2>
+    <h2>Welcome back<template v-if="firstName">, {{ firstName }}</template>!</h2>
     <DateRangePicker />
   </div>
 

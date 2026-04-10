@@ -55,8 +55,36 @@ router.get('/user-profile-settings', async (req, res) => {
     }
 
     const [rows] = await pool.query('SELECT settings FROM user_profiles WHERE user_id = ? LIMIT 1', [userId]);
+
+    let userRows = [];
+    try {
+      // Preferred shape when Email column exists.
+      [userRows] = await pool.query(
+        'SELECT FirstName, LastName, username, Email FROM users WHERE id = ? LIMIT 1',
+        [userId]
+      );
+    } catch (err) {
+      // Backward-compatible fallback for schemas where only username exists.
+      if (err?.code === 'ER_BAD_FIELD_ERROR') {
+        [userRows] = await pool.query(
+          'SELECT FirstName, LastName, username FROM users WHERE id = ? LIMIT 1',
+          [userId]
+        );
+      } else {
+        throw err;
+      }
+    }
+
+    const user = userRows?.[0] || {};
+    const profile = {
+      firstName: user?.FirstName || '',
+      lastName: user?.LastName || '',
+      username: user?.username || '',
+      email: user?.Email || user?.email || user?.username || '',
+    };
+
     if (!rows.length) {
-      return res.json({ settings: {} });
+      return res.json({ settings: {}, profile });
     }
 
     let parsed = {};
@@ -71,7 +99,7 @@ router.get('/user-profile-settings', async (req, res) => {
       parsed = raw;
     }
 
-    return res.json({ settings: parsed || {} });
+    return res.json({ settings: parsed || {}, profile });
   } catch (err) {
     console.error('❌ Failed to get user profile settings:', err);
     return res.status(500).json({ error: 'Failed to load user profile settings' });
