@@ -20,6 +20,7 @@ const rememberMe = ref(false);
 const errorMsg = ref("");
 const loginDiagnostics = ref("");
 const diagnosticsCopied = ref(false);
+const showDiagnosticsModal = ref(false);
 const isSubmitting = ref(false);
 const appVersion = import.meta.env.VITE_APP_VERSION || '0.68.3';
 const isDev = import.meta.env.DEV;
@@ -82,6 +83,34 @@ const buildLoginDiagnostics = ({ reason, status, apiMessage, networkMessage } = 
   ].join('\n');
 };
 
+const buildCompactLoginMessage = ({ status, fallbackMessage } = {}) => {
+  if (status === 404) {
+    return 'Sign-in failed: endpoint not found (404).';
+  }
+
+  if (status === 401) {
+    return 'Sign-in failed: invalid username or password.';
+  }
+
+  if (status && status >= 500) {
+    return `Sign-in failed: server error (${status}).`;
+  }
+
+  if (!status) {
+    return 'Sign-in failed: network/session issue detected.';
+  }
+
+  return fallbackMessage || `Sign-in failed (${status}).`;
+};
+
+const openDiagnosticsModal = () => {
+  showDiagnosticsModal.value = true;
+};
+
+const closeDiagnosticsModal = () => {
+  showDiagnosticsModal.value = false;
+};
+
 const setLoginError = ({
   fallbackMessage,
   reason,
@@ -91,11 +120,14 @@ const setLoginError = ({
   safariDetailed = false,
 }) => {
   const isSafari = isSafariBrowser();
-  errorMsg.value = safariDetailed && isSafari
+  const compactMessage = buildCompactLoginMessage({ status, fallbackMessage });
+  const detailedMessage = safariDetailed && isSafari
     ? buildSafariLoginFailureMessage({ reason, status, apiMessage, networkMessage })
-    : fallbackMessage;
+    : (fallbackMessage || 'No additional details.');
 
-  loginDiagnostics.value = `${buildLoginDiagnostics({ reason, status, apiMessage, networkMessage })}\n\nVisible Error:\n${errorMsg.value}`;
+  errorMsg.value = compactMessage;
+  loginDiagnostics.value = `${buildLoginDiagnostics({ reason, status, apiMessage, networkMessage })}\n\nVisible Error:\n${compactMessage}\n\nDetailed Error:\n${detailedMessage}`;
+  showDiagnosticsModal.value = false;
 };
 
 const copyLoginDiagnostics = async () => {
@@ -153,6 +185,7 @@ const login = async () => {
   errorMsg.value = "";
   loginDiagnostics.value = "";
   diagnosticsCopied.value = false;
+  showDiagnosticsModal.value = false;
 
   const safeUsername = String(username.value || "").trim();
   const safePassword = String(password.value || "");
@@ -247,6 +280,7 @@ const tempLoginBypass = async () => {
   errorMsg.value = "";
   loginDiagnostics.value = "";
   diagnosticsCopied.value = false;
+  showDiagnosticsModal.value = false;
 
   try {
     devLog('Submitting demo login request');
@@ -370,16 +404,17 @@ const tempLoginBypass = async () => {
               Safari detected. If sign-in fails, FlexFit will show a detailed troubleshooting message and you can use <strong>Copy Login Diagnostics</strong> to share exact failure details.
             </div>
 
-            <div v-if="errorMsg" class="alert alert-danger text-center mb-3 login-error-alert">
-  {{ errorMsg }}
-</div>
+            <div v-if="errorMsg" class="alert alert-danger mb-3 login-error-alert-compact">
+              <div class="fw-semibold">{{ errorMsg }}</div>
+              <div class="small mt-1">Login diagnostics available.</div>
+            </div>
             <button
               v-if="errorMsg"
               type="button"
               class="btn btn-outline-light w-100 mb-3"
-              @click="copyLoginDiagnostics"
+              @click="openDiagnosticsModal"
             >
-              {{ diagnosticsCopied ? 'Diagnostics Copied' : 'Copy Login Diagnostics' }}
+              View Login Diagnostics
             </button>
 
 
@@ -431,6 +466,28 @@ const tempLoginBypass = async () => {
 
 
 
+        </div>
+      </div>
+
+      <div
+        v-if="showDiagnosticsModal"
+        class="login-diagnostics-backdrop"
+        @click.self="closeDiagnosticsModal"
+      >
+        <div class="login-diagnostics-modal" role="dialog" aria-modal="true" aria-label="Login diagnostics">
+          <div class="login-diagnostics-header">
+            <h5 class="mb-0">Login Diagnostics</h5>
+            <button type="button" class="btn-close btn-close-white" aria-label="Close" @click="closeDiagnosticsModal"></button>
+          </div>
+          <div class="login-diagnostics-body">
+            <pre class="login-diagnostics-pre">{{ loginDiagnostics }}</pre>
+          </div>
+          <div class="login-diagnostics-footer">
+            <button type="button" class="btn btn-outline-light btn-sm" @click="copyLoginDiagnostics">
+              {{ diagnosticsCopied ? 'Diagnostics Copied' : 'Copy Diagnostics' }}
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" @click="closeDiagnosticsModal">Close</button>
+          </div>
         </div>
       </div>
     </div>
@@ -527,8 +584,7 @@ const tempLoginBypass = async () => {
   color: #0D99FF;
 }
 
-.login-error-alert {
-  white-space: pre-line;
+.login-error-alert-compact {
   text-align: left !important;
 }
 
@@ -553,5 +609,51 @@ const tempLoginBypass = async () => {
   color: rgba(200, 220, 255, 0.8);
   margin-top: 4px;
   letter-spacing: 0.02em;
+}
+
+.login-diagnostics-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 23, 57, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 16px;
+}
+
+.login-diagnostics-modal {
+  width: min(92vw, 680px);
+  max-height: 82vh;
+  background: #0f1f45;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.login-diagnostics-header,
+.login-diagnostics-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.login-diagnostics-body {
+  padding: 12px 14px;
+  overflow: auto;
+}
+
+.login-diagnostics-pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.38;
+  color: #d7e4ff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 </style>

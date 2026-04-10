@@ -8,12 +8,18 @@ export const setRtl = () => {
     localStorage.setItem('layoutDirection', 'rtl');
 
     const rtlStyleLink = document.getElementById('rtlStyle');
-    rtlStyleLink.href = new URL('/src/assets/css/rtl-style.css', import.meta.url);
+    if (rtlStyleLink) {
+        rtlStyleLink.href = new URL('/src/assets/css/rtl-style.css', import.meta.url);
+    }
 };
 
 export const setLtr = () => {
     layoutDirection.value = 'ltr';
     localStorage.setItem('layoutDirection', 'ltr');
     const rtlStyleLink = document.getElementById('rtlStyle');
-    rtlStyleLink.href = '';
+    // Do not set href="" on a stylesheet link; browsers resolve it to the current
+    // route (e.g. /login) and log a strict MIME error for non-CSS HTML responses.
+    if (rtlStyleLink) {
+        rtlStyleLink.removeAttribute('href');
+    }
 };

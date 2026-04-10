@@ -14,6 +14,20 @@ Date: 2026-04-10
 	  🔍 Browser: Safari 17 (iOS)
 	- Minimal subtle styling; does not break layout.
 	- Marked TEMP DEBUG in code comments for easy removal.
+- [Change] Login diagnostics display refactor (Login.vue):
+	- Removed giant inline diagnostics/error text block from the login layout.
+	- Added compact warning state plus "View Login Diagnostics" button.
+	- Added scrollable diagnostics modal with full details and close action.
+	- Added in-modal "Copy Diagnostics" button.
+	- Login page remains centered and usable even with long diagnostic content.
+- [Fix] /login stylesheet MIME console error:
+	- In themeDirectionSetting.js, LTR mode now removes rtlStyle href instead of setting href="".
+	- Prevents browser from treating current route (/login) as a stylesheet URL.
+	- Removed placeholder href values from dynamic stylesheet links in frontend/index.html.
+- [Fix] Premature 401 protected API calls on login page:
+	- App.vue now guards theme/profile settings calls so they run only on protected pages.
+	- Protected shell components changed from v-show to v-if, preventing hidden mount-time API calls before auth.
+	- Stops pre-login 401 spam for endpoints like /api/user-profile-settings and /api/notifications/unread-count.
 
 ------------------------------------------------------------
 

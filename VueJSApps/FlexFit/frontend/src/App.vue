@@ -214,7 +214,13 @@ const applyThemeConfig = (themeConfig = {}) => {
   }
 };
 
+const isProtectedUiRoute = (routeLike = route) => {
+  return Boolean(routeLike?.meta?.isPartials);
+};
+
 const loadUserThemeSettings = async () => {
+  if (!isProtectedUiRoute()) return;
+
   try {
     const response = await fetch(`${API_BASE}/api/user-profile-settings`, {
       credentials: 'include',
@@ -262,7 +268,9 @@ onMounted(() => {
 
   document.addEventListener('click', onDocumentClick);
   isPartials.value = route.meta.isPartials
-  loadUserThemeSettings()
+  if (isProtectedUiRoute()) {
+    loadUserThemeSettings()
+  }
   // getCurrentTheme()
   activeTheme()
 
@@ -314,6 +322,10 @@ watch(currentActiveTheme, () => {
 router.afterEach((to) => {
   isPartials.value = to.meta.isPartials
   layout.value = layouts[to.meta.layout] || 'div'
+
+  if (isProtectedUiRoute(to)) {
+    loadUserThemeSettings()
+  }
 });
 
 provide('app:layout', layout.value)
@@ -339,7 +351,7 @@ provide('app:layout', layout.value)
     </transition>
     <!-- preloader end -->
       <!-- header start -->
-      <HeaderComponent v-show="isPartials"
+        <HeaderComponent v-if="isPartials"
           :onNavCloseClick="onNavCloseClick"
           :isExpanded="isExpanded"
           :toggleSidebar="toggleSidebar"
@@ -348,19 +360,19 @@ provide('app:layout', layout.value)
       <!-- header end -->
 
       <!-- profile right sidebar start -->
-      <ProfileRightSidebarComponent v-show="isPartials"
+      <ProfileRightSidebarComponent v-if="isPartials"
         :isActive="isActive"
         :profileToggleDropdown="profileToggleDropdown"
         :closeProfileSidebar="closeProfileSidebar"
       />
       <!-- profile right sidebar end -->
 
-      <div v-if="!hideThemeSidebar" class="right-sidebar-btn d-lg-block d-none">
+      <div v-if="isPartials && !hideThemeSidebar" class="right-sidebar-btn d-lg-block d-none">
         <button class="header-btn theme-settings-btn" @click="toggleSidebar"><i class="fa-light fa-gear"></i></button>
       </div>
 
       <!-- right sidebar start -->
-      <RightSidebarComponent v-show="isPartials && !hideThemeSidebar"
+      <RightSidebarComponent v-if="isPartials && !hideThemeSidebar"
         :isSidebarActive="isSidebarActive"
         :closeSidebar="closeSidebar"
         :isLightTheme="isLightTheme"
@@ -368,7 +380,7 @@ provide('app:layout', layout.value)
       <!-- right sidebar end -->
 
       <!-- main sidebar start -->
-      <MainSidebarComponent v-show="isPartials"
+        <MainSidebarComponent v-if="isPartials"
           :isCollapsed="isCollapsed"
           :isTwoColumnMenu="isTwoColumnMenu"
           :isSidebarMini="isSidebarMini"

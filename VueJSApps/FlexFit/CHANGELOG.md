@@ -16,6 +16,24 @@
   - Styled as subtle small monospace text; does not affect layout.
   - Clearly marked `TEMP DEBUG` in comments for easy removal later.
 
+### Changed
+- **Login diagnostics UX refactor** (`Login.vue`):
+  - Replaced large inline Safari diagnostics text block with a compact error/warning message.
+  - Added **View Login Diagnostics** action that opens a scrollable modal dialog.
+  - Modal now contains full diagnostics details (API base, HTTP status, server message, network message, troubleshooting notes).
+  - Added in-modal **Copy Diagnostics** action and close controls.
+  - Preserved page centering/spacing so login remains usable on desktop and mobile.
+
+### Fixed
+- **Stylesheet MIME error on `/login`**:
+  - Fixed `rtlStyle` handling in `themeDirectionSetting.js` by removing the stylesheet `href` in LTR mode instead of assigning an empty string.
+  - This prevents browsers from resolving an empty stylesheet URL to the current route (`/login`) and logging strict MIME parse errors.
+  - Removed placeholder `href` values from dynamic stylesheet link tags in `frontend/index.html`.
+- **Pre-auth 401 request spam on login page**:
+  - `App.vue` now skips `loadUserThemeSettings()` on non-protected/public routes.
+  - Protected shell components in `App.vue` were changed from `v-show` to `v-if`, preventing hidden component mount hooks from firing unauthenticated API calls on the login page.
+  - Stops premature requests to protected endpoints such as `/api/user-profile-settings` and `/api/notifications/unread-count` before session authentication.
+
 ## [0.68.4] - 2026-04-10
 
 ### Fixed
