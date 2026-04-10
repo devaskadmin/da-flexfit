@@ -28,6 +28,10 @@ Date: 2026-04-09
 	- improves visibility into session-cookie related sign-in failures.
 	- added "Copy Login Diagnostics" button to quickly share failure details during testing.
 	- added a Safari-only helper banner on the login page so users can see diagnostics support is active before submitting.
+	- added temporary Safari note under login version to explain why direct backend /api/session tabs can still show loggedIn:false.
+- Backend session diagnostics improved:
+	- /api/session now returns hasSessionCookie and a contextual note when not authenticated.
+	- makes Safari/cookie transport debugging easier without changing login behavior.
 
 Version: 0.68.2
 Date: 2026-04-09

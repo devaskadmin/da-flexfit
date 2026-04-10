@@ -400,6 +400,9 @@ const tempLoginBypass = async () => {
           <!-- Version row -->
           <div class="other-option mt-2">
             <p class="mb-0 text-white">Version: {{ appVersion }}</p>
+            <p v-if="safariDetected" class="mb-0 text-white login-safari-temp-note">
+              Safari Temp Note: If you are logged in but opening backend /api/session directly shows <strong>loggedIn:false</strong>, that can be normal due to cookie isolation/cross-site restrictions. Test session status from inside the app login flow and use Copy Login Diagnostics on failure.
+            </p>
             <p class="mb-0">
               <a href="/changelog.html" class="text-white text-decoration-underline" target="_blank" rel="noopener noreferrer">Developer Change Log Notes</a>
             </p>
@@ -512,5 +515,13 @@ const tempLoginBypass = async () => {
   text-align: left;
   font-size: 0.88rem;
   line-height: 1.35;
+}
+
+.login-safari-temp-note {
+  text-align: left;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  opacity: 0.95;
+  margin-top: 6px;
 }
 </style>

@@ -42,6 +42,11 @@
   - Included API/status/network detail context in the on-screen error for faster debugging.
   - Added `Copy Login Diagnostics` action so full failure details can be copied and shared during testing.
   - Added always-visible Safari hint banner on login so users can confirm diagnostics support is active before testing.
+  - Added temporary Safari text under login version clarifying that direct backend `/api/session` checks can report `loggedIn:false` due to cookie isolation.
+
+- **Session endpoint diagnostics**:
+  - `/api/session` now includes lightweight diagnostics (`hasSessionCookie` and a contextual note) when not authenticated.
+  - Helps distinguish cookie transport issues from true auth/session failures.
 
 ### Database
 - No schema changes in `0.68.3`.
