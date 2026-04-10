@@ -3,6 +3,13 @@ import { ref } from "vue";
 import axios from "axios";
 import { useRouter } from "vue-router";
 import { API_BASE } from '@/config/env';
+import { detectBrowser } from '@/utils/browserDetect';
+
+// ── Temp debug flag ──────────────────────────────────────────────────────────
+// Set to false (or tie to import.meta.env.DEV) to hide browser info in prod.
+const DEBUG_BROWSER = true;
+const browserInfo = detectBrowser();
+// ─────────────────────────────────────────────────────────────────────────────
 
 const router = useRouter();
 
@@ -153,8 +160,12 @@ const login = async () => {
   try {
     devLog('Submitting login request', { username: safeUsername, rememberMe: !!rememberMe.value });
 
+    const loginUrl = `${API_BASE}/api/login`;
+    console.log('[FlexFit Login] API_BASE:', API_BASE);
+    console.log('[FlexFit Login] URL:', loginUrl);
+
     const response = await axios.post(
-      `${API_BASE}/api/login`,
+      loginUrl,
       {
         username: safeUsername,
         password: safePassword,
@@ -240,8 +251,12 @@ const tempLoginBypass = async () => {
   try {
     devLog('Submitting demo login request');
 
+    const demoLoginUrl = `${API_BASE}/api/login`;
+    console.log('[FlexFit Demo Login] API_BASE:', API_BASE);
+    console.log('[FlexFit Demo Login] URL:', demoLoginUrl);
+
     const response = await axios.post(
-      `${API_BASE}/api/tmp-login`,
+      demoLoginUrl,
       {
         username: username.value,
         password: password.value,
@@ -400,6 +415,10 @@ const tempLoginBypass = async () => {
           <!-- Version row -->
           <div class="other-option mt-2">
             <p class="mb-0 text-white">Version: {{ appVersion }}</p>
+            <!-- TEMP DEBUG: browser info — remove or gate behind env flag before final prod release -->
+            <p v-if="DEBUG_BROWSER" class="mb-0 login-debug-browser">
+              🔍 Browser: {{ browserInfo.name }} {{ browserInfo.version }} ({{ browserInfo.platform }})
+            </p>
             <p v-if="safariDetected" class="mb-0 text-white login-safari-temp-note">
               Safari Temp Note: If you are logged in but opening backend /api/session directly shows <strong>loggedIn:false</strong>, that can be normal due to cookie isolation/cross-site restrictions. Test session status from inside the app login flow and use Copy Login Diagnostics on failure.
             </p>
@@ -428,6 +447,8 @@ const tempLoginBypass = async () => {
 
 
 .login-body {
+  max-width: 480px;
+  width: 100%;
   border: 12px solid rgba(0, 0, 0, 0.08) !important;
   border-radius: 12px !important;
   background: rgba(255, 255, 255, 0.95) !important;
@@ -523,5 +544,14 @@ const tempLoginBypass = async () => {
   line-height: 1.35;
   opacity: 0.95;
   margin-top: 6px;
+}
+
+/* TEMP DEBUG: browser detect info row */
+.login-debug-browser {
+  font-size: 0.75rem;
+  font-family: monospace;
+  color: rgba(200, 220, 255, 0.8);
+  margin-top: 4px;
+  letter-spacing: 0.02em;
 }
 </style>

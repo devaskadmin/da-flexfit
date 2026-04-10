@@ -45,4 +45,9 @@ export default defineConfig({
   server: {
     port: FRONTEND_PORT,
   },
+  build: {
+    // Raise limit above the largest existing chunks (index.js ~1.1 MB, TextEditor ~1.2 MB)
+    // so that pre-existing large bundles don't cause a non-zero exit code from Rollup warnings.
+    chunkSizeWarningLimit: 1500,
+  },
 });
