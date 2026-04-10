@@ -494,21 +494,6 @@ const tempLoginBypass = async () => {
 
           </form>
 
-          <div v-if="SHOW_BACKEND_TEST" class="login-debug-panel mt-3">
-            <div class="login-debug-panel-title">Temporary Debug: Backend Connectivity</div>
-            <div class="d-flex gap-2 flex-wrap">
-              <button type="button" class="btn btn-outline-light btn-sm" :disabled="backendTestLoading" @click="testBackendApi">
-                {{ backendTestLoading ? 'Testing...' : 'Test Backend API' }}
-              </button>
-              <button type="button" class="btn btn-outline-light btn-sm" :disabled="backendTestLoading" @click="testSessionApi">
-                Check Session API
-              </button>
-            </div>
-            <pre v-if="backendTestOutput" class="login-debug-output">{{ backendTestOutput }}</pre>
-          </div>
-          
-          
-          
           <div class="other-option">
             <p>Or continue with</p>
             <div class="social-box d-flex justify-content-center gap-20">
@@ -709,30 +694,4 @@ const tempLoginBypass = async () => {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
-.login-debug-panel {
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 10px;
-  padding: 10px;
-  background: rgba(0, 0, 0, 0.14);
-}
-
-.login-debug-panel-title {
-  font-size: 0.78rem;
-  color: rgba(215, 228, 255, 0.9);
-  margin-bottom: 8px;
-}
-
-.login-debug-output {
-  margin: 10px 0 0;
-  max-height: 180px;
-  overflow: auto;
-  padding: 10px;
-  border-radius: 8px;
-  background: rgba(7, 23, 57, 0.65);
-  color: #d7e4ff;
-  font-size: 0.72rem;
-  line-height: 1.35;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
 </style>
