@@ -27,6 +27,7 @@ Date: 2026-04-09
 	- includes step-by-step Safari cookie/tracking troubleshooting guidance.
 	- improves visibility into session-cookie related sign-in failures.
 	- added "Copy Login Diagnostics" button to quickly share failure details during testing.
+	- added a Safari-only helper banner on the login page so users can see diagnostics support is active before submitting.
 
 Version: 0.68.2
 Date: 2026-04-09
