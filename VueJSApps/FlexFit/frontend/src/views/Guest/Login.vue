@@ -4,11 +4,6 @@ import axios from "axios";
 import { useRouter } from "vue-router";
 import { API_BASE } from '@/config/env';
 
-// ── Temp debug flag ──────────────────────────────────────────────────────────
-// Set to false (or tie to import.meta.env.DEV) to hide browser info in prod.
-const SHOW_BACKEND_TEST = String(import.meta.env.VITE_DEBUG || 'true').toLowerCase() === 'true';
-// ─────────────────────────────────────────────────────────────────────────────
-
 const router = useRouter();
 
 const username = ref("");
@@ -19,8 +14,6 @@ const errorMsg = ref("");
 const loginDiagnostics = ref("");
 const diagnosticsCopied = ref(false);
 const showDiagnosticsModal = ref(false);
-const backendTestOutput = ref('');
-const backendTestLoading = ref(false);
 const isSubmitting = ref(false);
 const appVersion = import.meta.env.VITE_APP_VERSION || '0.68.3';
 const isDev = import.meta.env.DEV;
@@ -124,114 +117,6 @@ const openDiagnosticsModal = () => {
 
 const closeDiagnosticsModal = () => {
   showDiagnosticsModal.value = false;
-};
-
-const formatBackendTestOutput = ({ requestUrl, status, ok, responseBody, error }) => {
-  const responseText = responseBody === null || responseBody === undefined
-    ? 'none'
-    : typeof responseBody === 'string'
-      ? responseBody
-      : JSON.stringify(responseBody, null, 2);
-
-  return [
-    `Request URL:\n${requestUrl}`,
-    '',
-    `HTTP Status:\n${status ?? 'none'}`,
-    '',
-    `Success:\n${ok ? 'true' : 'false'}`,
-    '',
-    'Response:',
-    responseText,
-    '',
-    `Error:\n${error || 'none'}`,
-  ].join('\n');
-};
-
-const runBackendRequest = async ({ url, includeCredentials = false }) => {
-  const timeoutMs = 10000;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      credentials: includeCredentials ? 'include' : 'same-origin',
-      headers: { 'Cache-Control': 'no-cache' },
-      signal: controller.signal,
-    });
-
-    const rawText = await response.text();
-    let parsedBody = rawText;
-    try {
-      parsedBody = rawText ? JSON.parse(rawText) : {};
-    } catch {
-      // Keep raw text when body is not valid JSON.
-    }
-
-    return {
-      ok: response.ok,
-      status: response.status,
-      responseBody: parsedBody,
-      error: null,
-    };
-  } catch (err) {
-    const isAbort = err?.name === 'AbortError';
-    return {
-      ok: false,
-      status: null,
-      responseBody: null,
-      error: isAbort ? `Request timed out after ${timeoutMs}ms` : (err?.message || 'Network request failed'),
-    };
-  } finally {
-    clearTimeout(timeout);
-  }
-};
-
-const testBackendApi = async () => {
-  if (backendTestLoading.value) return;
-  backendTestLoading.value = true;
-
-  const requestUrl = `${API_BASE}/api/debug/ping`;
-  console.log('[FlexFit Backend Test] URL:', requestUrl);
-
-  const result = await runBackendRequest({
-    url: requestUrl,
-    includeCredentials: false,
-  });
-
-  backendTestOutput.value = formatBackendTestOutput({
-    requestUrl,
-    status: result.status,
-    ok: result.ok,
-    responseBody: result.responseBody,
-    error: result.error,
-  });
-
-  backendTestLoading.value = false;
-};
-
-const testSessionApi = async () => {
-  if (backendTestLoading.value) return;
-  backendTestLoading.value = true;
-
-  const requestUrl = `${API_BASE}/api/session`;
-  console.log('[FlexFit Session Test] URL:', requestUrl);
-  console.log('[FlexFit Session Test] credentials:', 'include');
-
-  const result = await runBackendRequest({
-    url: requestUrl,
-    includeCredentials: true,
-  });
-
-  backendTestOutput.value = formatBackendTestOutput({
-    requestUrl,
-    status: result.status,
-    ok: result.ok,
-    responseBody: result.responseBody,
-    error: result.error,
-  });
-
-  backendTestLoading.value = false;
 };
 
 const setLoginError = ({
