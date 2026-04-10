@@ -1,6 +1,19 @@
 FlexFit Developer Change Log
 ============================
 
+Version: 0.68.5
+Date: 2026-04-14
+
+- [Fix] Mobile login confirmed working on iOS Safari and Android Chrome.
+	- Session persistence fix from 0.68.3e fully verified.
+- [Remove] Browser detection debug UI from login page (Login.vue):
+	- Removed detectBrowser import and related refs: DEBUG_BROWSER, browserInfo, safariDetected.
+	- Removed yellow Safari/browser warning alert box from template.
+	- Removed browser/version debug display line under version number.
+	- Removed temporary Safari note text below version row.
+	- Removed scoped CSS: .safari-login-hint, .login-safari-temp-note, .login-debug-browser.
+	- browserDetect.js utility kept in src/utils/ (not imported; available for future use).
+
 Version: 0.68.3e
 Date: 2026-04-10
 
