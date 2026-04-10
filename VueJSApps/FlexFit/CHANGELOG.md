@@ -36,6 +36,11 @@
   - Removed duplicate top `Selected Date` label and bottom date text from Nutrition header.
   - Kept a single right-aligned date input control using the same simplified pattern as other main pages.
   - Preserved existing functionality and header layout.
+- **Safari login failure diagnostics**:
+  - Added Safari-targeted detailed error messaging on login failure.
+  - Added explicit troubleshooting steps for Safari cookie/session restrictions.
+  - Included API/status/network detail context in the on-screen error for faster debugging.
+  - Added `Copy Login Diagnostics` action so full failure details can be copied and shared during testing.
 
 ### Database
 - No schema changes in `0.68.3`.

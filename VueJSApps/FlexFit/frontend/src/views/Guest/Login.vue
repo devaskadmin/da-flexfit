@@ -11,9 +11,94 @@ const password = ref("");
 const isPasswordShow = ref(false);
 const rememberMe = ref(false);
 const errorMsg = ref("");
+const loginDiagnostics = ref("");
+const diagnosticsCopied = ref(false);
 const isSubmitting = ref(false);
 const appVersion = import.meta.env.VITE_APP_VERSION || '0.68.3';
 const isDev = import.meta.env.DEV;
+
+const isSafariBrowser = () => {
+  const ua = navigator.userAgent || '';
+  const isSafari = /Safari/i.test(ua);
+  const isOtherBrowser = /(Chrome|CriOS|FxiOS|EdgiOS|Edg|OPR|Opera|SamsungBrowser|Android)/i.test(ua);
+  return isSafari && !isOtherBrowser;
+};
+
+const buildSafariLoginFailureMessage = ({
+  reason = 'Login did not complete.',
+  status,
+  apiMessage,
+  networkMessage,
+} = {}) => {
+  const detailLines = [
+    `Safari sign-in issue detected. ${reason}`,
+    '',
+    'Details:',
+    `- API Base: ${API_BASE}`,
+    `- HTTP Status: ${status ?? 'none'}`,
+    `- Server Message: ${apiMessage || 'none'}`,
+    `- Network Message: ${networkMessage || 'none'}`,
+    '',
+    'Safari troubleshooting steps:',
+    '1) iPhone/iPad: Settings > Safari',
+    '2) Turn OFF "Prevent Cross-Site Tracking"',
+    '3) Confirm cookies are allowed (not blocked)',
+    '4) Tap "Clear History and Website Data"',
+    '5) Close Safari completely, reopen, and sign in again',
+    '',
+    'If this still fails, test the same account in Chrome/Edge on the same device to confirm Safari cookie restrictions.',
+  ];
+
+  return detailLines.join('\n');
+};
+
+const buildLoginDiagnostics = ({ reason, status, apiMessage, networkMessage } = {}) => {
+  const userAgent = navigator.userAgent || 'unknown';
+  const origin = window.location.origin || 'unknown';
+  const now = new Date().toISOString();
+
+  return [
+    'FlexFit Login Diagnostics',
+    `- Timestamp: ${now}`,
+    `- Browser: ${userAgent}`,
+    `- Is Safari: ${isSafariBrowser()}`,
+    `- Cookies Enabled: ${navigator.cookieEnabled}`,
+    `- App Origin: ${origin}`,
+    `- API Base: ${API_BASE}`,
+    `- HTTP Status: ${status ?? 'none'}`,
+    `- Reason: ${reason || 'none'}`,
+    `- Server Message: ${apiMessage || 'none'}`,
+    `- Network Message: ${networkMessage || 'none'}`,
+  ].join('\n');
+};
+
+const setLoginError = ({
+  fallbackMessage,
+  reason,
+  status,
+  apiMessage,
+  networkMessage,
+  safariDetailed = false,
+}) => {
+  const isSafari = isSafariBrowser();
+  errorMsg.value = safariDetailed && isSafari
+    ? buildSafariLoginFailureMessage({ reason, status, apiMessage, networkMessage })
+    : fallbackMessage;
+
+  loginDiagnostics.value = `${buildLoginDiagnostics({ reason, status, apiMessage, networkMessage })}\n\nVisible Error:\n${errorMsg.value}`;
+};
+
+const copyLoginDiagnostics = async () => {
+  try {
+    await navigator.clipboard.writeText(loginDiagnostics.value || errorMsg.value || 'No diagnostics available.');
+    diagnosticsCopied.value = true;
+    setTimeout(() => {
+      diagnosticsCopied.value = false;
+    }, 2500);
+  } catch {
+    diagnosticsCopied.value = false;
+  }
+};
 
 const devLog = (...args) => {
   if (isDev) {
@@ -56,6 +141,8 @@ const login = async () => {
 
   isSubmitting.value = true;
   errorMsg.value = "";
+  loginDiagnostics.value = "";
+  diagnosticsCopied.value = false;
 
   const safeUsername = String(username.value || "").trim();
   const safePassword = String(password.value || "");
@@ -77,7 +164,12 @@ const login = async () => {
       devLog('Login requires password reset');
       const sessionReady = await waitForSessionReady();
       if (!sessionReady) {
-        errorMsg.value = "Login succeeded, but session was not ready. Please tap Sign in again.";
+        setLoginError({
+          fallbackMessage: "Login succeeded, but session was not ready. Please tap Sign in again.",
+          reason: 'Login succeeded, but session cookie was not available yet.',
+          apiMessage: 'Login successful, session not ready',
+          safariDetailed: true,
+        });
         return;
       }
       await router.replace({ name: 'update_password' });
@@ -88,7 +180,12 @@ const login = async () => {
       devLog('Login successful response received');
       const sessionReady = await waitForSessionReady();
       if (!sessionReady) {
-        errorMsg.value = "Login succeeded, but session was not ready. Please tap Sign in again.";
+        setLoginError({
+          fallbackMessage: "Login succeeded, but session was not ready. Please tap Sign in again.",
+          reason: 'Login succeeded, but session cookie was not available yet.',
+          apiMessage: response?.data?.message,
+          safariDetailed: true,
+        });
         return;
       }
       await goToDashboard();
@@ -96,17 +193,31 @@ const login = async () => {
     }
 
     devLog('Login rejected by API payload', response?.data || null);
-    errorMsg.value = response?.data?.message || response?.data?.error || "Login failed. Try again.";
+    const payloadMessage = response?.data?.message || response?.data?.error || "Login failed. Try again.";
+    setLoginError({
+      fallbackMessage: payloadMessage,
+      reason: 'The server rejected this sign-in request.',
+      apiMessage: payloadMessage,
+      safariDetailed: true,
+    });
   } catch (error) {
     devLog('Login request failed', {
       status: error?.response?.status,
       data: error?.response?.data,
       message: error?.message,
     });
-    errorMsg.value =
+    const apiMessage =
       error?.response?.data?.message ||
       error?.response?.data?.error ||
       "Error: incorrect username and/or password.";
+    setLoginError({
+      fallbackMessage: apiMessage,
+      reason: 'Browser could not complete sign-in request.',
+      status: error?.response?.status,
+      apiMessage,
+      networkMessage: error?.message,
+      safariDetailed: true,
+    });
   } finally {
     isSubmitting.value = false;
   }
@@ -120,6 +231,8 @@ const tempLoginBypass = async () => {
   password.value = "demo";
   isSubmitting.value = true;
   errorMsg.value = "";
+  loginDiagnostics.value = "";
+  diagnosticsCopied.value = false;
 
   try {
     devLog('Submitting demo login request');
@@ -138,7 +251,12 @@ const tempLoginBypass = async () => {
       devLog('Demo login requires password reset');
       const sessionReady = await waitForSessionReady();
       if (!sessionReady) {
-        errorMsg.value = "Login succeeded, but session was not ready. Please try again.";
+        setLoginError({
+          fallbackMessage: "Login succeeded, but session was not ready. Please try again.",
+          reason: 'Demo login succeeded, but session cookie was not available yet.',
+          apiMessage: 'Login successful, session not ready',
+          safariDetailed: true,
+        });
         return;
       }
       await router.replace({ name: 'update_password' });
@@ -149,7 +267,12 @@ const tempLoginBypass = async () => {
       devLog('Demo login successful response received');
       const sessionReady = await waitForSessionReady();
       if (!sessionReady) {
-        errorMsg.value = "Login succeeded, but session was not ready. Please try again.";
+        setLoginError({
+          fallbackMessage: "Login succeeded, but session was not ready. Please try again.",
+          reason: 'Demo login succeeded, but session cookie was not available yet.',
+          apiMessage: response?.data?.message,
+          safariDetailed: true,
+        });
         return;
       }
       await goToDashboard();
@@ -157,17 +280,31 @@ const tempLoginBypass = async () => {
     }
 
     devLog('Demo login rejected by API payload', response?.data || null);
-    errorMsg.value = response?.data?.message || response?.data?.error || "Login failed. Try again.";
+    const payloadMessage = response?.data?.message || response?.data?.error || "Login failed. Try again.";
+    setLoginError({
+      fallbackMessage: payloadMessage,
+      reason: 'The server rejected this demo sign-in request.',
+      apiMessage: payloadMessage,
+      safariDetailed: true,
+    });
   } catch (error) {
     devLog('Demo login request failed', {
       status: error?.response?.status,
       data: error?.response?.data,
       message: error?.message,
     });
-    errorMsg.value =
+    const apiMessage =
       error?.response?.data?.message ||
       error?.response?.data?.error ||
       "Error: incorrect username and/or password.";
+    setLoginError({
+      fallbackMessage: apiMessage,
+      reason: 'Browser could not complete demo sign-in request.',
+      status: error?.response?.status,
+      apiMessage,
+      networkMessage: error?.message,
+      safariDetailed: true,
+    });
   } finally {
     isSubmitting.value = false;
   }
@@ -211,9 +348,17 @@ const tempLoginBypass = async () => {
 
 
 
-            <div v-if="errorMsg" class="alert alert-danger text-center mb-3">
+            <div v-if="errorMsg" class="alert alert-danger text-center mb-3 login-error-alert">
   {{ errorMsg }}
 </div>
+            <button
+              v-if="errorMsg"
+              type="button"
+              class="btn btn-outline-light w-100 mb-3"
+              @click="copyLoginDiagnostics"
+            >
+              {{ diagnosticsCopied ? 'Diagnostics Copied' : 'Copy Login Diagnostics' }}
+            </button>
 
 
             <button class="btn btn-primary w-100 login-btn" :disabled="isSubmitting">
@@ -349,5 +494,10 @@ const tempLoginBypass = async () => {
 
 .password-show:hover {
   color: #0D99FF;
+}
+
+.login-error-alert {
+  white-space: pre-line;
+  text-align: left !important;
 }
 </style>

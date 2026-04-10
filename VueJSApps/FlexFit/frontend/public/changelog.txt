@@ -22,6 +22,11 @@ Date: 2026-04-09
 	- removed top "Selected Date" label row.
 	- removed bottom duplicate date text row.
 	- retained one right-aligned date input control only (no functional changes).
+- Safari login failures now show a detailed diagnostics message:
+	- includes API/status/network context.
+	- includes step-by-step Safari cookie/tracking troubleshooting guidance.
+	- improves visibility into session-cookie related sign-in failures.
+	- added "Copy Login Diagnostics" button to quickly share failure details during testing.
 
 Version: 0.68.2
 Date: 2026-04-09
