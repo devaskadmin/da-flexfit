@@ -33,6 +33,26 @@
   - `App.vue` now skips `loadUserThemeSettings()` on non-protected/public routes.
   - Protected shell components in `App.vue` were changed from `v-show` to `v-if`, preventing hidden component mount hooks from firing unauthenticated API calls on the login page.
   - Stops premature requests to protected endpoints such as `/api/user-profile-settings` and `/api/notifications/unread-count` before session authentication.
+- **Cross-site session persistence diagnostics and classification**:
+  - Login flow now differentiates credential failures (`401`) from post-login session persistence failures.
+  - Added explicit diagnostics fields in frontend login diagnostics:
+    - `loginSucceeded`
+    - `sessionCookiePersisted`
+    - `sessionVerificationPassed`
+  - When login succeeds but follow-up `/api/session` fails due to missing cookie, UI now reports:
+    - `Login succeeded, but the session cookie was not available for follow-up requests.`
+  - Removed misleading fallback text that implied bad credentials for cookie/session isolation failures.
+
+### Backend
+- **Session middleware hardening for browser-test/Safari environments** (`backend/server.js`, `backend/api/auth.js`):
+  - Added explicit `proxy: true` behavior when secure cookies are enabled behind Render proxy.
+  - Kept production cookie policy aligned with cross-origin requirements (`secure: true`, `sameSite: 'none'`).
+  - Added temporary debug logging (gated by `DEBUG=true`) for origin, session id, cookie presence, and login/session diagnostics.
+  - Added `/api/session` diagnostics fields:
+    - `loginSucceeded`
+    - `sessionCookiePersisted`
+    - `sessionVerificationPassed`
+  - Updated `/api/session` note text to clearly call out cookie persistence/isolation failures common in Safari and cloud-browser environments.
 
 ## [0.68.4] - 2026-04-10
 

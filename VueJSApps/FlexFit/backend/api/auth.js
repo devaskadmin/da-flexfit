@@ -11,6 +11,7 @@ const pool = require('../db.js');
 
 const DEFAULT_SESSION_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
 const REMEMBER_ME_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
+const isDebugEnabled = ['true', '1', 'yes'].includes(String(process.env.DEBUG || '').toLowerCase());
 
 const hasAllRequiredCharClasses = (value = '') => {
   return /[A-Z]/.test(value) && /[a-z]/.test(value) && /\d/.test(value) && /[!@#$%^&*()\-_=+{}[\]|:;,.?/~]/.test(value);
@@ -126,6 +127,22 @@ router.post('/login', async (req, res) => {
   const { username, password, rememberMe } = req.body;
     const identifier = sanitizeText(username, 100);
     console.log("Login attempt:", identifier);
+    if (isDebugEnabled) {
+      console.log('🧪 [auth/login] request diagnostics:', {
+        origin: req.headers.origin || null,
+        hasCookieHeader: Boolean(req.headers.cookie),
+        rememberMe: Boolean(rememberMe),
+      });
+      res.on('finish', () => {
+        const setCookieHeader = res.getHeader('Set-Cookie') || res.getHeader('set-cookie');
+        console.log('🧪 [auth/login] response diagnostics:', {
+          statusCode: res.statusCode,
+          sessionId: req.sessionID || null,
+          hasUserSession: Boolean(req.session?.user),
+          setCookieHeaderPresent: Boolean(setCookieHeader),
+        });
+      });
+    }
     if (!identifier || !password) {
         return res.status(400).json({ error: "Username and password are required" });
       }
@@ -178,10 +195,34 @@ router.post('/login', async (req, res) => {
       req.session.mustResetPassword = isPendingReset;
       req.session.cookie.maxAge = rememberMe ? REMEMBER_ME_MAX_AGE_MS : DEFAULT_SESSION_MAX_AGE_MS;
       console.log("✅ Session created:", req.session.user);
-      res.json({
-        message: isPendingReset ? "Temporary password accepted. Password reset required." : "Login successful",
-        user: req.session.user,
-        requiresPasswordReset: isPendingReset,
+
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          console.error('❌ Session save error:', saveErr);
+          return res.status(500).json({ error: 'Login succeeded, but session could not be persisted.' });
+        }
+
+        if (isDebugEnabled) {
+          console.log('🧪 [auth/login] session persisted:', {
+            sessionId: req.sessionID || null,
+            cookie: {
+              secure: Boolean(req.session?.cookie?.secure),
+              sameSite: req.session?.cookie?.sameSite || null,
+              httpOnly: Boolean(req.session?.cookie?.httpOnly),
+              maxAge: req.session?.cookie?.maxAge ?? null,
+            },
+          });
+        }
+
+        return res.json({
+          message: isPendingReset ? "Temporary password accepted. Password reset required." : "Login successful",
+          user: req.session.user,
+          requiresPasswordReset: isPendingReset,
+          diagnostics: {
+            loginSucceeded: true,
+            sessionVerificationPassed: true,
+          },
+        });
       });
       
     } catch (err) {
@@ -203,6 +244,16 @@ router.post('/logout', (req, res) => {
 router.get('/session', (req, res) => {
     const rawCookie = String(req.headers?.cookie || '');
     const hasSessionCookie = /connect\.sid=/.test(rawCookie);
+    const hasUserSession = Boolean(req.session?.user);
+
+    if (isDebugEnabled) {
+      console.log('🧪 [auth/session] diagnostics:', {
+        origin: req.headers.origin || null,
+        hasSessionCookie,
+        hasUserSession,
+        sessionId: req.sessionID || null,
+      });
+    }
 
     if (req.session?.user) {
       return res.json({
@@ -211,6 +262,9 @@ router.get('/session', (req, res) => {
         requiresPasswordReset: Boolean(req.session.mustResetPassword),
         diagnostics: {
           hasSessionCookie,
+          loginSucceeded: true,
+          sessionCookiePersisted: hasSessionCookie,
+          sessionVerificationPassed: true,
         },
       });
     }
@@ -218,9 +272,12 @@ router.get('/session', (req, res) => {
       loggedIn: false,
       diagnostics: {
         hasSessionCookie,
+        loginSucceeded: false,
+        sessionCookiePersisted: hasSessionCookie,
+        sessionVerificationPassed: false,
         note: hasSessionCookie
           ? 'Session cookie exists, but no authenticated session payload was found.'
-          : 'No session cookie was sent. Directly opening backend /api/session from another tab/domain can return loggedIn:false even if app login is active in a different context.',
+          : 'No session cookie was sent. Login may have succeeded, but the browser did not persist/send the cookie for follow-up requests (common in Safari/cloud-browser isolation).',
       },
     });
   });

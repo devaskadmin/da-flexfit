@@ -63,7 +63,15 @@ const buildSafariLoginFailureMessage = ({
   return detailLines.join('\n');
 };
 
-const buildLoginDiagnostics = ({ reason, status, apiMessage, networkMessage } = {}) => {
+const buildLoginDiagnostics = ({
+  reason,
+  status,
+  apiMessage,
+  networkMessage,
+  loginSucceeded = false,
+  sessionCookiePersisted = null,
+  sessionVerificationPassed = false,
+} = {}) => {
   const userAgent = navigator.userAgent || 'unknown';
   const origin = window.location.origin || 'unknown';
   const now = new Date().toISOString();
@@ -77,6 +85,9 @@ const buildLoginDiagnostics = ({ reason, status, apiMessage, networkMessage } = 
     `- App Origin: ${origin}`,
     `- API Base: ${API_BASE}`,
     `- HTTP Status: ${status ?? 'none'}`,
+    `- loginSucceeded: ${loginSucceeded}`,
+    `- sessionCookiePersisted: ${sessionCookiePersisted === null ? 'unknown' : sessionCookiePersisted}`,
+    `- sessionVerificationPassed: ${sessionVerificationPassed}`,
     `- Reason: ${reason || 'none'}`,
     `- Server Message: ${apiMessage || 'none'}`,
     `- Network Message: ${networkMessage || 'none'}`,
@@ -84,6 +95,13 @@ const buildLoginDiagnostics = ({ reason, status, apiMessage, networkMessage } = 
 };
 
 const buildCompactLoginMessage = ({ status, fallbackMessage } = {}) => {
+  if (fallbackMessage) {
+    const lowerFallback = String(fallbackMessage).toLowerCase();
+    if (lowerFallback.includes('login succeeded') || lowerFallback.includes('session cookie')) {
+      return fallbackMessage;
+    }
+  }
+
   if (status === 404) {
     return 'Sign-in failed: endpoint not found (404).';
   }
@@ -97,7 +115,7 @@ const buildCompactLoginMessage = ({ status, fallbackMessage } = {}) => {
   }
 
   if (!status) {
-    return 'Sign-in failed: network/session issue detected.';
+    return fallbackMessage || 'Sign-in failed: network/session issue detected.';
   }
 
   return fallbackMessage || `Sign-in failed (${status}).`;
@@ -117,6 +135,9 @@ const setLoginError = ({
   status,
   apiMessage,
   networkMessage,
+  loginSucceeded = false,
+  sessionCookiePersisted = null,
+  sessionVerificationPassed = false,
   safariDetailed = false,
 }) => {
   const isSafari = isSafariBrowser();
@@ -126,7 +147,15 @@ const setLoginError = ({
     : (fallbackMessage || 'No additional details.');
 
   errorMsg.value = compactMessage;
-  loginDiagnostics.value = `${buildLoginDiagnostics({ reason, status, apiMessage, networkMessage })}\n\nVisible Error:\n${compactMessage}\n\nDetailed Error:\n${detailedMessage}`;
+  loginDiagnostics.value = `${buildLoginDiagnostics({
+    reason,
+    status,
+    apiMessage,
+    networkMessage,
+    loginSucceeded,
+    sessionCookiePersisted,
+    sessionVerificationPassed,
+  })}\n\nVisible Error:\n${compactMessage}\n\nDetailed Error:\n${detailedMessage}`;
   showDiagnosticsModal.value = false;
 };
 
@@ -152,16 +181,44 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Helps mobile/Safari where session cookie can be visible a moment after /login response.
 const waitForSessionReady = async (maxAttempts = 5, waitMs = 250) => {
+  const sessionUrl = `${API_BASE}/api/session`;
+  let lastStatus = null;
+  let lastNote = '';
+  let lastHasSessionCookie = null;
+
+  console.log('[FlexFit Session Verify] URL:', sessionUrl);
+  console.log('[FlexFit Session Verify] withCredentials:', true);
+
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      const sessionRes = await axios.get(`${API_BASE}/api/session`, {
+      devLog('Session verification request', {
+        url: sessionUrl,
+        withCredentials: true,
+        attempt,
+      });
+
+      const sessionRes = await axios.get(sessionUrl, {
         withCredentials: true,
         headers: { 'Cache-Control': 'no-cache' },
       });
+
+      lastStatus = sessionRes?.status ?? null;
+      lastHasSessionCookie = sessionRes?.data?.diagnostics?.hasSessionCookie ?? null;
+      lastNote = sessionRes?.data?.diagnostics?.note || '';
+
       if (sessionRes?.data?.loggedIn === true) {
-        return true;
+        return {
+          passed: true,
+          status: sessionRes?.status ?? null,
+          hasSessionCookie: sessionRes?.data?.diagnostics?.hasSessionCookie ?? true,
+          note: sessionRes?.data?.diagnostics?.note || 'Session verification succeeded.',
+        };
       }
-    } catch (_) {
+    } catch (err) {
+      lastStatus = err?.response?.status ?? null;
+      lastHasSessionCookie = err?.response?.data?.diagnostics?.hasSessionCookie ?? lastHasSessionCookie;
+      lastNote = err?.response?.data?.diagnostics?.note || err?.message || lastNote;
+
       // Retry until attempts are exhausted.
     }
 
@@ -169,7 +226,12 @@ const waitForSessionReady = async (maxAttempts = 5, waitMs = 250) => {
       await sleep(waitMs);
     }
   }
-  return false;
+  return {
+    passed: false,
+    status: lastStatus,
+    hasSessionCookie: lastHasSessionCookie,
+    note: lastNote || 'Session verification did not pass after login.',
+  };
 };
 
 const goToDashboard = async () => {
@@ -196,6 +258,7 @@ const login = async () => {
     const loginUrl = `${API_BASE}/api/login`;
     console.log('[FlexFit Login] API_BASE:', API_BASE);
     console.log('[FlexFit Login] URL:', loginUrl);
+    console.log('[FlexFit Login] withCredentials:', true);
 
     const response = await axios.post(
       loginUrl,
@@ -209,12 +272,16 @@ const login = async () => {
 
     if (response?.data?.requiresPasswordReset === true) {
       devLog('Login requires password reset');
-      const sessionReady = await waitForSessionReady();
-      if (!sessionReady) {
+      const sessionState = await waitForSessionReady();
+      if (!sessionState?.passed) {
         setLoginError({
-          fallbackMessage: "Login succeeded, but session was not ready. Please tap Sign in again.",
-          reason: 'Login succeeded, but session cookie was not available yet.',
-          apiMessage: 'Login successful, session not ready',
+          fallbackMessage: 'Login succeeded, but the session cookie was not available for follow-up requests.',
+          reason: 'Session persistence issue after successful authentication.',
+          status: sessionState?.status,
+          apiMessage: sessionState?.note || 'Login successful, but session verification failed.',
+          loginSucceeded: true,
+          sessionCookiePersisted: sessionState?.hasSessionCookie,
+          sessionVerificationPassed: false,
           safariDetailed: true,
         });
         return;
@@ -225,12 +292,16 @@ const login = async () => {
 
     if (response?.data?.message === "Login successful") {
       devLog('Login successful response received');
-      const sessionReady = await waitForSessionReady();
-      if (!sessionReady) {
+      const sessionState = await waitForSessionReady();
+      if (!sessionState?.passed) {
         setLoginError({
-          fallbackMessage: "Login succeeded, but session was not ready. Please tap Sign in again.",
-          reason: 'Login succeeded, but session cookie was not available yet.',
-          apiMessage: response?.data?.message,
+          fallbackMessage: 'Login succeeded, but the session cookie was not available for follow-up requests.',
+          reason: 'Session persistence issue after successful authentication.',
+          status: sessionState?.status,
+          apiMessage: sessionState?.note || response?.data?.message,
+          loginSucceeded: true,
+          sessionCookiePersisted: sessionState?.hasSessionCookie,
+          sessionVerificationPassed: false,
           safariDetailed: true,
         });
         return;
@@ -256,13 +327,16 @@ const login = async () => {
     const apiMessage =
       error?.response?.data?.message ||
       error?.response?.data?.error ||
-      "Error: incorrect username and/or password.";
+      'Sign-in request failed before authentication could complete.';
     setLoginError({
       fallbackMessage: apiMessage,
       reason: 'Browser could not complete sign-in request.',
       status: error?.response?.status,
       apiMessage,
       networkMessage: error?.message,
+      loginSucceeded: false,
+      sessionCookiePersisted: null,
+      sessionVerificationPassed: false,
       safariDetailed: true,
     });
   } finally {
@@ -288,6 +362,7 @@ const tempLoginBypass = async () => {
     const demoLoginUrl = `${API_BASE}/api/login`;
     console.log('[FlexFit Demo Login] API_BASE:', API_BASE);
     console.log('[FlexFit Demo Login] URL:', demoLoginUrl);
+    console.log('[FlexFit Demo Login] withCredentials:', true);
 
     const response = await axios.post(
       demoLoginUrl,
@@ -301,12 +376,16 @@ const tempLoginBypass = async () => {
 
     if (response?.data?.requiresPasswordReset === true) {
       devLog('Demo login requires password reset');
-      const sessionReady = await waitForSessionReady();
-      if (!sessionReady) {
+      const sessionState = await waitForSessionReady();
+      if (!sessionState?.passed) {
         setLoginError({
-          fallbackMessage: "Login succeeded, but session was not ready. Please try again.",
-          reason: 'Demo login succeeded, but session cookie was not available yet.',
-          apiMessage: 'Login successful, session not ready',
+          fallbackMessage: 'Login succeeded, but the session cookie was not available for follow-up requests.',
+          reason: 'Session persistence issue after successful demo authentication.',
+          status: sessionState?.status,
+          apiMessage: sessionState?.note || 'Login successful, but session verification failed.',
+          loginSucceeded: true,
+          sessionCookiePersisted: sessionState?.hasSessionCookie,
+          sessionVerificationPassed: false,
           safariDetailed: true,
         });
         return;
@@ -317,12 +396,16 @@ const tempLoginBypass = async () => {
 
     if (response?.data?.message === "Login successful") {
       devLog('Demo login successful response received');
-      const sessionReady = await waitForSessionReady();
-      if (!sessionReady) {
+      const sessionState = await waitForSessionReady();
+      if (!sessionState?.passed) {
         setLoginError({
-          fallbackMessage: "Login succeeded, but session was not ready. Please try again.",
-          reason: 'Demo login succeeded, but session cookie was not available yet.',
-          apiMessage: response?.data?.message,
+          fallbackMessage: 'Login succeeded, but the session cookie was not available for follow-up requests.',
+          reason: 'Session persistence issue after successful demo authentication.',
+          status: sessionState?.status,
+          apiMessage: sessionState?.note || response?.data?.message,
+          loginSucceeded: true,
+          sessionCookiePersisted: sessionState?.hasSessionCookie,
+          sessionVerificationPassed: false,
           safariDetailed: true,
         });
         return;
@@ -348,13 +431,16 @@ const tempLoginBypass = async () => {
     const apiMessage =
       error?.response?.data?.message ||
       error?.response?.data?.error ||
-      "Error: incorrect username and/or password.";
+      'Demo sign-in request failed before authentication could complete.';
     setLoginError({
       fallbackMessage: apiMessage,
       reason: 'Browser could not complete demo sign-in request.',
       status: error?.response?.status,
       apiMessage,
       networkMessage: error?.message,
+      loginSucceeded: false,
+      sessionCookiePersisted: null,
+      sessionVerificationPassed: false,
       safariDetailed: true,
     });
   } finally {
