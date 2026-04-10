@@ -151,14 +151,27 @@ router.post('/login', async (req, res) => {
       const isPendingReset = String(user.USER_PASSWORD_RESET || '').toUpperCase() === 'PENDING';
       const resetCode = user.USER_PASSWORD_RESET_CODE ? String(user.USER_PASSWORD_RESET_CODE) : '';
 
-      let isMatch = await bcrypt.compare(password, user.Password);
-      if (!isMatch && isPendingReset && resetCode) {
-        // Fallback compatibility in case reset code is used directly.
-        isMatch = password === resetCode;
+      let isMatch = false;
+      if (isPendingReset) {
+        // Pending reset sessions use the temporary reset code as the login secret.
+        // This allows one-time use and keeps room for a future reset-expiry check.
+        isMatch = Boolean(resetCode) && String(password) === resetCode;
+      } else {
+        isMatch = await bcrypt.compare(password, user.Password);
       }
       
       if (!isMatch) {
         return res.status(401).json({ error: "Invalid password" });
+      }
+
+      if (isPendingReset) {
+        // One-time reset token invalidation after successful authentication.
+        await pool.query(
+          `UPDATE users
+           SET USER_PASSWORD_RESET_CODE = NULL
+           WHERE id = ?`,
+          [user.id]
+        );
       }
       
       req.session.user = { id: user.id, username: user.username, mustResetPassword: isPendingReset };

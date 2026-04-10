@@ -261,7 +261,7 @@ onUnmounted(() => {
             <ul class="dropdown-menu profile-dropdown-menu">
               <li>
                 <div class="dropdown-txt">
-                  <p class="mb-0"><strong>Greetings</strong> {{ currentUsername }}</p>
+                  <p class="mb-0"><strong>Greetings, {{ currentUsername }}</strong></p>
                 </div>
               </li>
               <li><hr class="dropdown-divider"></li>

@@ -194,7 +194,7 @@ onMounted(async () => {
 
 <template>
   <div class="workout-builder-page">
-    <section class="builder-hero">
+    <section class="builder-hero ff-page-header">
       <div>
         <h2>Workout Builder</h2>
         <p>Build sessions quickly with an athlete-first workflow.</p>
@@ -278,9 +278,9 @@ onMounted(async () => {
 }
 
 .builder-hero {
-  border-radius: 18px;
+  border-radius: var(--ff-page-header-radius, 14px);
   padding: 20px;
-  background: linear-gradient(120deg, #020617 0%, #081a3a 56%, #0a1f4a 100%);
+  background: var(--ff-page-header-gradient, var(--ff-page-header-bg));
   color: #fff;
   display: flex;
   justify-content: space-between;

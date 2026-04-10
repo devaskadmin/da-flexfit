@@ -1,4 +1,9 @@
 /* Global Styles */
+:root {
+  --ff-page-header-gradient: linear-gradient(135deg, #8b0f5b 0%, #c41476 45%, #ff1493 100%);
+  --ff-page-header-bg: var(--ff-page-header-gradient);
+}
+
 @-webkit-keyframes loader {
   0% {
     background: #a9b4cc;

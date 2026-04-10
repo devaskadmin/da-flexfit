@@ -1,7 +1,7 @@
 FlexFit Database Log file
 Generated from:
  - Baseline: FlexFit - Database Backups/0.6 Release/0.6 Release.sql
-Current Working Version: 0.68
+Current Working Version: 0.68.3
 Database: flexfit12825
 
 Purpose
@@ -15,8 +15,11 @@ Version Changelog Index (Schema Only)
 - 0.6.4: No schema changes
 - 0.6.5: No schema changes
 
-- 0.6.7: Forgot password flow, password reset token fields, improved error handling, dependency updates
+- 0.6.7: Forgot password flow, password reset token fields
 - 0.68: No schema changes
+- 0.68.1: No schema changes
+- 0.68.2: No schema changes
+- 0.68.3: No schema changes
 
 IMPORTANT
 - Run on a backup/staging DB first.

@@ -287,7 +287,7 @@ onMounted(() => {
   <div class="settings-page">
 
     <!-- Header -->
-    <div class="settings-header mb-25">
+    <div class="settings-header ff-page-header mb-25">
       <div>
         <h2 class="settings-title">Account Settings</h2>
         <p class="settings-subtitle">Manage your profile, fitness data and preferences</p>
@@ -655,9 +655,9 @@ onMounted(() => {
 .settings-header {
   display: flex; align-items: center; justify-content: space-between;
   flex-wrap: wrap; gap: 12px;
-  background: var(--ff-page-header-bg);
+  background: var(--ff-page-header-gradient, var(--ff-page-header-bg));
   border: 1.5px solid var(--ff-border-strong);
-  border-radius: 14px;
+  border-radius: var(--ff-page-header-radius, 14px);
   padding: 12px 14px;
 }
 .settings-title { font-size: 1.45rem; font-weight: 700; margin: 0; color: #ffffff !important; }

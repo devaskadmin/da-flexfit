@@ -9,6 +9,7 @@ const session = require('express-session');
 
 const app = express();
 app.use(express.json());
+const isProduction = process.env.NODE_ENV === 'production';
 const FRONTEND_URL = process.env.FRONTEND_URL;
 const CORS_ORIGINS = String(process.env.CORS_ORIGINS || '')
   .split(',')
@@ -16,6 +17,27 @@ const CORS_ORIGINS = String(process.env.CORS_ORIGINS || '')
   .filter(Boolean);
 
 const allowedOrigins = new Set([FRONTEND_URL, ...CORS_ORIGINS].filter(Boolean));
+
+const isPrivateDevOrigin = (origin) => {
+  if (!origin || isProduction) return false;
+
+  try {
+    const { hostname } = new URL(origin);
+    if (['localhost', '127.0.0.1', '::1'].includes(hostname)) return true;
+    if (/^10\./.test(hostname)) return true;
+    if (/^192\.168\./.test(hostname)) return true;
+
+    const match172 = hostname.match(/^172\.(\d{1,3})\./);
+    if (match172) {
+      const block = Number(match172[1]);
+      if (block >= 16 && block <= 31) return true;
+    }
+  } catch (_) {
+    return false;
+  }
+
+  return false;
+};
 
 console.log(`🚀 FRONTEND_URL=${FRONTEND_URL || '(not set)'}`);
 
@@ -29,13 +51,17 @@ app.use(cors({
       return callback(null, true);
     }
 
+    // Dev fallback for LAN/mobile testing when frontend runs on local network IP.
+    if (isPrivateDevOrigin(origin)) {
+      return callback(null, true);
+    }
+
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true
 }));
 
 // ✅ Configure session (only once)
-const isProduction = process.env.NODE_ENV === 'production';
 const sessionCookieSecure = String(process.env.SESSION_COOKIE_SECURE || '').toLowerCase() === 'true' || isProduction;
 
 if (sessionCookieSecure) {

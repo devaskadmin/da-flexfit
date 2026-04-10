@@ -26,8 +26,6 @@ const selectedDateISO = computed(() => {
   return `${d.getFullYear()}-${month}-${day}`;
 });
 
-const selectedDateLabel = computed(() => new Date(selectedDateISO.value).toLocaleDateString());
-
 const foodSearchQuery = ref('');
 const selectedCategory = ref('All');
 const selectedBrand = ref('All');
@@ -277,9 +275,7 @@ onMounted(async () => {
         <p>Search, review, and log foods in one workflow.</p>
       </div>
       <div class="workspace-date dashboard-filter">
-        <label>Date</label>
-        <DateDropDown v-model="selectedDateRaw" />
-        <span class="workspace-selected-date">Selected date: {{ selectedDateLabel }}</span>
+        <DateDropDown v-model="selectedDateRaw" compact />
       </div>
     </section>
 
@@ -425,10 +421,7 @@ onMounted(async () => {
 .workspace-hero { border: 1.5px solid var(--ff-border-strong); border-radius: 16px; padding: 18px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
 .workspace-hero h2 { margin: 0; color: #ffffff; }
 .workspace-hero p { margin: 4px 0 0; color: #cbd5e1; }
-.workspace-date { display: grid; align-content: start; justify-items: start; gap: 4px; text-align: left; }
-.workspace-date label { color: #e2e8f0; font-size: 0.8rem; }
-.workspace-date span { color: #e2e8f0; font-size: 0.84rem; }
-.workspace-selected-date { font-weight: 600; }
+.workspace-date { display: flex; align-items: center; justify-content: flex-end; }
 .workspace-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; }
 .workspace-main { border: 1.5px solid var(--ff-border-strong); border-radius: 16px; padding: 14px; }
 .workspace-tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1.5px solid var(--ff-border-soft); padding-bottom: 10px; }

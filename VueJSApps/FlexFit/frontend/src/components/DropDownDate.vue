@@ -3,7 +3,16 @@ import { defineProps, defineEmits, computed } from 'vue';
 import DatePicker from "vue-datepicker-next";
 
 // Props and emit
-const props = defineProps(['modelValue']);
+const props = defineProps({
+  modelValue: {
+    type: [Date, String, Number, Object],
+    default: null,
+  },
+  compact: {
+    type: Boolean,
+    default: false,
+  },
+});
 const emit = defineEmits(['update:modelValue']);
 
 // 2-way computed binding to sync with parent
@@ -11,6 +20,29 @@ const date = computed({
   get: () => props.modelValue,
   set: (val) => emit('update:modelValue', val)
 });
+
+const compactDateValue = computed(() => {
+  const raw = props.modelValue;
+  if (!raw) return '';
+  const d = raw instanceof Date ? raw : new Date(raw);
+  if (Number.isNaN(d.getTime())) return '';
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+});
+
+const onCompactInput = (event) => {
+  const value = event?.target?.value;
+  if (!value) {
+    emit('update:modelValue', null);
+    return;
+  }
+
+  const [year, month, day] = value.split('-').map(Number);
+  const nextDate = new Date(year, month - 1, day);
+  emit('update:modelValue', nextDate);
+};
 
 // Shortcuts
 const shortcuts = [
@@ -59,7 +91,15 @@ const formatter = {
 
 <template>
   <div class="input-group dashboard-filter justify-content-end">
+    <input
+      v-if="compact"
+      type="date"
+      class="form-control full-datepicker"
+      :value="compactDateValue"
+      @input="onCompactInput"
+    />
     <DatePicker
+      v-else
       v-model:value="date"
       :shortcuts="shortcuts"
       :formatter="formatter"

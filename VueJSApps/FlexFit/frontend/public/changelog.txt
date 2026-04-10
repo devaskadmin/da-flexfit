@@ -1,6 +1,59 @@
 FlexFit Developer Change Log
 ============================
 
+Version: 0.68.3
+Date: 2026-04-09
+
+- Page Header Gradient Theming Refactor (main banner headers only):
+	- introduced shared theme variable `--ff-page-header-gradient` in all primary color stylesheets.
+	- standardized shared page header radius with `--ff-page-header-radius`.
+	- shared header class now reads gradient from theme CSS, enabling immediate correct styling on page load.
+	- theme switching from layout settings now updates page headers automatically without page-specific hardcoding.
+- Applied unified header banner behavior to major member pages:
+	- Dashboard, Exercises, Workouts (Log Workout), Workout Builder, Nutrition, Settings,
+	  plus other pages already using the shared header banner pattern.
+- Settings header remains the visual reference while now using the shared theme-driven header variable.
+- Removed remaining header-level hardcoded gradient dependency from Workout Builder in favor of shared variable usage.
+- Date picker input styling inside page headers refined for typography consistency:
+	- increased font size/weight and aligned font family with app typography.
+	- improved readable contrast, subtle border, rounded corners, and mobile responsiveness.
+	- no functionality or layout position changes.
+- Nutrition page header date area simplified to match main-page pattern:
+	- removed top "Selected Date" label row.
+	- removed bottom duplicate date text row.
+	- retained one right-aligned date input control only (no functional changes).
+
+Version: 0.68.2
+Date: 2026-04-09
+
+- Mobile login flow hardening for iPhone Safari, Android Chrome, and desktop:
+	- redirect now only occurs after confirmed backend success and session readiness.
+	- improved defensive error handling and development-safe route/API debug logging.
+- Registration screen refinements:
+	- login-style visual alignment retained, black registration text confirmed.
+	- terms gating enforced before submit; last name remains optional.
+- Terms and Service flow improvements:
+	- agreement requires scrolling to the bottom before Agree is enabled.
+	- Agree returns to registration and auto-checks acceptance.
+- Password reset lifecycle completed and enforced:
+	- forgot-password endpoint verifies account, issues 12-char mixed temporary password,
+		sets reset flags, and sends reset email.
+	- temporary-password sessions are forced into update-password flow.
+	- reset completion clears USER_PASSWORD_RESET and USER_PASSWORD_RESET_CODE.
+- Theming persistence and visibility controls:
+	- right-side theming menu includes persistent save behavior.
+	- Display settings and side menu remain synchronized through user profile settings.
+	- "Hide - Theming side menu advanced theming config" persisted and honored.
+- Page header consistency updates across dashboard/workout/nutrition/settings surfaces.
+- Remember Me session handling verified:
+	- 1-week persistent cookie when selected; standard session behavior otherwise.
+- Log Workout page alignment adjustments for header/content width consistency.
+- Profile menu flow verified to include greeting, View Settings, and Logout paths.
+- Login footer enhancements:
+	- dynamic app version display and changelog link retained.
+- Fixed persistent loader edge-case on settings navigation:
+	- preloader setting no longer leaves app blocked behind spinner overlay.
+
 Version: 0.68.1
 Date: 2026-04-09
 
