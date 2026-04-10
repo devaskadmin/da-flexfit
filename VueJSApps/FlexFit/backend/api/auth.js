@@ -121,6 +121,18 @@ router.get('/db-status', async (req, res) => {
   }
 });
 
+// Temporary public ping endpoint for login-page connectivity diagnostics.
+router.get('/debug/ping', (req, res) => {
+  return res.json({
+    ok: true,
+    message: 'Backend reachable',
+    service: 'FlexFit Backend',
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV || 'unknown',
+    origin: req.headers.origin || null,
+  });
+});
+
 // POST /api/login
 router.post('/login', async (req, res) => {
     try {

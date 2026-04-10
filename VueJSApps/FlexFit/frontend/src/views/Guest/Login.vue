@@ -3,12 +3,10 @@ import { ref } from "vue";
 import axios from "axios";
 import { useRouter } from "vue-router";
 import { API_BASE } from '@/config/env';
-import { detectBrowser } from '@/utils/browserDetect';
 
 // ── Temp debug flag ──────────────────────────────────────────────────────────
 // Set to false (or tie to import.meta.env.DEV) to hide browser info in prod.
-const DEBUG_BROWSER = true;
-const browserInfo = detectBrowser();
+const SHOW_BACKEND_TEST = String(import.meta.env.VITE_DEBUG || 'true').toLowerCase() === 'true';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const router = useRouter();
@@ -21,10 +19,11 @@ const errorMsg = ref("");
 const loginDiagnostics = ref("");
 const diagnosticsCopied = ref(false);
 const showDiagnosticsModal = ref(false);
+const backendTestOutput = ref('');
+const backendTestLoading = ref(false);
 const isSubmitting = ref(false);
 const appVersion = import.meta.env.VITE_APP_VERSION || '0.68.3';
 const isDev = import.meta.env.DEV;
-const safariDetected = ref(false);
 
 const isSafariBrowser = () => {
   const ua = navigator.userAgent || '';
@@ -32,8 +31,6 @@ const isSafariBrowser = () => {
   const isOtherBrowser = /(Chrome|CriOS|FxiOS|EdgiOS|Edg|OPR|Opera|SamsungBrowser|Android)/i.test(ua);
   return isSafari && !isOtherBrowser;
 };
-
-safariDetected.value = isSafariBrowser();
 
 const buildSafariLoginFailureMessage = ({
   reason = 'Login did not complete.',
@@ -127,6 +124,114 @@ const openDiagnosticsModal = () => {
 
 const closeDiagnosticsModal = () => {
   showDiagnosticsModal.value = false;
+};
+
+const formatBackendTestOutput = ({ requestUrl, status, ok, responseBody, error }) => {
+  const responseText = responseBody === null || responseBody === undefined
+    ? 'none'
+    : typeof responseBody === 'string'
+      ? responseBody
+      : JSON.stringify(responseBody, null, 2);
+
+  return [
+    `Request URL:\n${requestUrl}`,
+    '',
+    `HTTP Status:\n${status ?? 'none'}`,
+    '',
+    `Success:\n${ok ? 'true' : 'false'}`,
+    '',
+    'Response:',
+    responseText,
+    '',
+    `Error:\n${error || 'none'}`,
+  ].join('\n');
+};
+
+const runBackendRequest = async ({ url, includeCredentials = false }) => {
+  const timeoutMs = 10000;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      credentials: includeCredentials ? 'include' : 'same-origin',
+      headers: { 'Cache-Control': 'no-cache' },
+      signal: controller.signal,
+    });
+
+    const rawText = await response.text();
+    let parsedBody = rawText;
+    try {
+      parsedBody = rawText ? JSON.parse(rawText) : {};
+    } catch {
+      // Keep raw text when body is not valid JSON.
+    }
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      responseBody: parsedBody,
+      error: null,
+    };
+  } catch (err) {
+    const isAbort = err?.name === 'AbortError';
+    return {
+      ok: false,
+      status: null,
+      responseBody: null,
+      error: isAbort ? `Request timed out after ${timeoutMs}ms` : (err?.message || 'Network request failed'),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+const testBackendApi = async () => {
+  if (backendTestLoading.value) return;
+  backendTestLoading.value = true;
+
+  const requestUrl = `${API_BASE}/api/debug/ping`;
+  console.log('[FlexFit Backend Test] URL:', requestUrl);
+
+  const result = await runBackendRequest({
+    url: requestUrl,
+    includeCredentials: false,
+  });
+
+  backendTestOutput.value = formatBackendTestOutput({
+    requestUrl,
+    status: result.status,
+    ok: result.ok,
+    responseBody: result.responseBody,
+    error: result.error,
+  });
+
+  backendTestLoading.value = false;
+};
+
+const testSessionApi = async () => {
+  if (backendTestLoading.value) return;
+  backendTestLoading.value = true;
+
+  const requestUrl = `${API_BASE}/api/session`;
+  console.log('[FlexFit Session Test] URL:', requestUrl);
+  console.log('[FlexFit Session Test] credentials:', 'include');
+
+  const result = await runBackendRequest({
+    url: requestUrl,
+    includeCredentials: true,
+  });
+
+  backendTestOutput.value = formatBackendTestOutput({
+    requestUrl,
+    status: result.status,
+    ok: result.ok,
+    responseBody: result.responseBody,
+    error: result.error,
+  });
+
+  backendTestLoading.value = false;
 };
 
 const setLoginError = ({
@@ -483,13 +588,6 @@ const tempLoginBypass = async () => {
 
               
             </div>
-
-
-
-            <div v-if="safariDetected" class="alert alert-warning mb-3 safari-login-hint">
-              Safari detected. If sign-in fails, FlexFit will show a detailed troubleshooting message and you can use <strong>Copy Login Diagnostics</strong> to share exact failure details.
-            </div>
-
             <div v-if="errorMsg" class="alert alert-danger mb-3 login-error-alert-compact">
               <div class="fw-semibold">{{ errorMsg }}</div>
               <div class="small mt-1">Login diagnostics available.</div>
@@ -510,6 +608,19 @@ const tempLoginBypass = async () => {
             <button type="button" class="btn btn-secondary w-100 mt-2" :disabled="isSubmitting" @click="tempLoginBypass">Temp Login Bypass (Demo)</button>
 
           </form>
+
+          <div v-if="SHOW_BACKEND_TEST" class="login-debug-panel mt-3">
+            <div class="login-debug-panel-title">Temporary Debug: Backend Connectivity</div>
+            <div class="d-flex gap-2 flex-wrap">
+              <button type="button" class="btn btn-outline-light btn-sm" :disabled="backendTestLoading" @click="testBackendApi">
+                {{ backendTestLoading ? 'Testing...' : 'Test Backend API' }}
+              </button>
+              <button type="button" class="btn btn-outline-light btn-sm" :disabled="backendTestLoading" @click="testSessionApi">
+                Check Session API
+              </button>
+            </div>
+            <pre v-if="backendTestOutput" class="login-debug-output">{{ backendTestOutput }}</pre>
+          </div>
           
           
           
@@ -536,13 +647,6 @@ const tempLoginBypass = async () => {
           <!-- Version row -->
           <div class="other-option mt-2">
             <p class="mb-0 text-white">Version: {{ appVersion }}</p>
-            <!-- TEMP DEBUG: browser info — remove or gate behind env flag before final prod release -->
-            <p v-if="DEBUG_BROWSER" class="mb-0 login-debug-browser">
-              🔍 Browser: {{ browserInfo.name }} {{ browserInfo.version }} ({{ browserInfo.platform }})
-            </p>
-            <p v-if="safariDetected" class="mb-0 text-white login-safari-temp-note">
-              Safari Temp Note: If you are logged in but opening backend /api/session directly shows <strong>loggedIn:false</strong>, that can be normal due to cookie isolation/cross-site restrictions. Test session status from inside the app login flow and use Copy Login Diagnostics on failure.
-            </p>
             <p class="mb-0">
               <a href="/changelog.html" class="text-white text-decoration-underline" target="_blank" rel="noopener noreferrer">Developer Change Log Notes</a>
             </p>
@@ -674,29 +778,6 @@ const tempLoginBypass = async () => {
   text-align: left !important;
 }
 
-.safari-login-hint {
-  text-align: left;
-  font-size: 0.88rem;
-  line-height: 1.35;
-}
-
-.login-safari-temp-note {
-  text-align: left;
-  font-size: 0.8rem;
-  line-height: 1.35;
-  opacity: 0.95;
-  margin-top: 6px;
-}
-
-/* TEMP DEBUG: browser detect info row */
-.login-debug-browser {
-  font-size: 0.75rem;
-  font-family: monospace;
-  color: rgba(200, 220, 255, 0.8);
-  margin-top: 4px;
-  letter-spacing: 0.02em;
-}
-
 .login-diagnostics-backdrop {
   position: fixed;
   inset: 0;
@@ -741,5 +822,32 @@ const tempLoginBypass = async () => {
   line-height: 1.38;
   color: #d7e4ff;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.login-debug-panel {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.login-debug-panel-title {
+  font-size: 0.78rem;
+  color: rgba(215, 228, 255, 0.9);
+  margin-bottom: 8px;
+}
+
+.login-debug-output {
+  margin: 10px 0 0;
+  max-height: 180px;
+  overflow: auto;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(7, 23, 57, 0.65);
+  color: #d7e4ff;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 </style>

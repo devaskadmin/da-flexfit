@@ -54,6 +54,17 @@
     - `sessionVerificationPassed`
   - Updated `/api/session` note text to clearly call out cookie persistence/isolation failures common in Safari and cloud-browser environments.
 
+### Added
+- **Temporary backend connectivity tester on login page** (`Login.vue`):
+  - Added compact debug panel gated by `SHOW_BACKEND_TEST` flag.
+  - Added **Test Backend API** button that calls `${VITE_API_BASE}/api/debug/ping`.
+  - Added **Check Session API** button that calls `${VITE_API_BASE}/api/session` with credentials.
+  - Output box now shows request URL, HTTP status, success/failure, parsed response (or raw text), and network/timeout errors.
+  - Output area is scrollable and compact to avoid layout takeover.
+- **Temporary public diagnostics endpoint** (`backend/api/auth.js`):
+  - Added `GET /api/debug/ping` (no auth required) returning safe, non-sensitive connectivity info:
+    - `ok`, `message`, `service`, `timestamp`, `env`, `origin`.
+
 ## [0.68.4] - 2026-04-10
 
 ### Fixed
