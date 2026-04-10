@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.68.5] - 2026-04-14
+
+### Fixed
+- **Mobile login now confirmed working** — session persistence fix from 0.68.3e is fully verified on iOS Safari and Android Chrome.
+
+### Removed
+- **Browser detection debug UI** (`Login.vue`):
+  - Removed `import { detectBrowser }` and all browser detection refs (`DEBUG_BROWSER`, `browserInfo`, `safariDetected`).
+  - Removed visible yellow Safari/browser warning box (`v-if="safariDetected"` alert).
+  - Removed debug browser/version display line shown under the version number.
+  - Removed temporary Safari note text below the version row.
+  - Removed scoped CSS classes: `.safari-login-hint`, `.login-safari-temp-note`, `.login-debug-browser`.
+  - `browserDetect.js` utility remains in `src/utils/` for potential future use but is no longer imported by any component.
+
 ## [0.68.3e] - 2026-04-10
 
 ### Added
@@ -65,7 +79,7 @@
   - Added `GET /api/debug/ping` (no auth required) returning safe, non-sensitive connectivity info:
     - `ok`, `message`, `service`, `timestamp`, `env`, `origin`.
 
-## [0.68.4] - 2026-04-10
+## [0.68.3a] - 2026-04-10
 
 ### Fixed
 - **Login 404 — wrong API endpoint for demo login**:
