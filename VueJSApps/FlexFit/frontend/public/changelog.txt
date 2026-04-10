@@ -40,6 +40,15 @@ Date: 2026-04-10
 	- Preserved production cookie policy for cross-origin requests (secure + sameSite none).
 	- Added DEBUG-gated backend logs for login/session origin, session id, cookie header presence, and Set-Cookie diagnostics.
 	- Updated /api/session diagnostic note for Safari/cloud browser cookie isolation scenarios.
+- [Add] Temporary login-page backend connectivity debug tool:
+	- Added compact debug panel with:
+	  - "Test Backend API" button (calls /api/debug/ping)
+	  - "Check Session API" button (calls /api/session with credentials)
+	- Output now includes request URL, HTTP status, success/failure, response body, and network/timeout/CORS-style errors.
+	- Output box is scrollable and compact; does not take over login layout.
+- [Add] Temporary backend endpoint:
+	- Added unauthenticated GET /api/debug/ping returning safe diagnostics:
+	  ok, message, service, timestamp, env, origin.
 
 ------------------------------------------------------------
 
