@@ -244,6 +244,12 @@ onMounted(() => {
     OverlayScrollbars(element, {});
   });
 
+  // Ensure the startup preloader always clears after initial render.
+  // (Users can still manually re-enable it from theme settings.)
+  window.setTimeout(() => {
+    preloader.value = false;
+  }, 600);
+
   document.addEventListener('click', onDocumentClick);
   isPartials.value = route.meta.isPartials
   loadUserThemeSettings()

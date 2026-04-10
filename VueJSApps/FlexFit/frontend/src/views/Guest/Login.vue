@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from "vue";
+import { ref } from "vue";
 import axios from "axios";
 import { useRouter } from "vue-router";
 import { API_BASE } from '@/config/env';
@@ -11,18 +11,8 @@ const password = ref("");
 const isPasswordShow = ref(false);
 const rememberMe = ref(false);
 const errorMsg = ref("");
-const dbStatus = ref("checking");
 const isSubmitting = ref(false);
-const appVersion = import.meta.env.VITE_APP_VERSION || '0.68';
-
-const checkDatabaseStatus = async () => {
-  try {
-    const response = await axios.get(`${API_BASE}/api/db-status`, { withCredentials: true });
-    dbStatus.value = response?.data?.connected ? "connected" : "disconnected";
-  } catch (error) {
-    dbStatus.value = "disconnected";
-  }
-};
+const appVersion = import.meta.env.VITE_APP_VERSION || '0.68.1';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -155,10 +145,6 @@ const tempLoginBypass = async () => {
   }
 };
 
-onMounted(() => {
-  checkDatabaseStatus();
-});
-
 </script>
 
 <template>
@@ -207,11 +193,6 @@ onMounted(() => {
             </button>
             <button type="button" class="btn btn-secondary w-100 mt-2" :disabled="isSubmitting" @click="tempLoginBypass">Temp Login Bypass (Demo)</button>
 
-            <div class="db-status mt-3 p-2 text-center rounded"
-                 :class="dbStatus === 'connected' ? 'db-ok' : dbStatus === 'disconnected' ? 'db-down' : 'db-checking'">
-              Database status:
-              <strong>{{ dbStatus === 'checking' ? 'checking...' : dbStatus }}</strong>
-            </div>
           </form>
           
           
@@ -228,26 +209,21 @@ onMounted(() => {
 
 
 
-          <!-- Forgot password link (requested placement) -->
+          <!-- Registration row -->
           <div class="other-option mt-3">
-            <p class="mb-0 text-white">
-              <router-link :to="{ name: 'reset_password' }" class="text-white text-decoration-underline">Forgot Password?</router-link>
+            <p class="mb-0 text-white">Don't have an account?</p>
+            <p class="mb-0">
+              <router-link to="/register" class="text-white text-decoration-underline">Click here to sign up.</router-link>
             </p>
           </div>
 
-          <!-- Registration link -->
-<div class="other-option mt-3">
-        <p class="mb-0 text-white">Don't have an account? 
-          <router-link to="/register" class="text-white text-decoration-underline">Click here to sign up.</router-link>
-        </p>
-      </div>
-
-      <div class="other-option mt-2">
-        <p class="mb-0 text-white version-row">
-          <span>Version: {{ appVersion }}</span>
-          <a href="/changelog.html" class="text-white text-decoration-underline" target="_blank" rel="noopener noreferrer">Developer Change Log Notes</a>
-        </p>
-      </div>
+          <!-- Version row -->
+          <div class="other-option mt-2">
+            <p class="mb-0 text-white">Version: {{ appVersion }}</p>
+            <p class="mb-0">
+              <a href="/changelog.html" class="text-white text-decoration-underline" target="_blank" rel="noopener noreferrer">Developer Change Log Notes</a>
+            </p>
+          </div>
 
 
 
@@ -343,37 +319,7 @@ onMounted(() => {
   color: #A9B4CC;
 }
 
-.version-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
 .password-show:hover {
   color: #0D99FF;
-}
-
-.db-status {
-  font-size: 0.9rem;
-}
-
-.db-ok {
-  background: rgba(25, 135, 84, 0.15);
-  border: 1px solid rgba(25, 135, 84, 0.45);
-  color: #198754;
-}
-
-.db-down {
-  background: rgba(220, 53, 69, 0.15);
-  border: 1px solid rgba(220, 53, 69, 0.45);
-  color: #dc3545;
-}
-
-.db-checking {
-  background: rgba(108, 117, 125, 0.15);
-  border: 1px solid rgba(108, 117, 125, 0.45);
-  color: #6c757d;
 }
 </style>

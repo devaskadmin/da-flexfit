@@ -1,6 +1,15 @@
 FlexFit Developer Change Log
 ============================
 
+Version: 0.68.1
+Date: 2026-04-09
+
+- Fixed frontpage spinner loop by auto-hiding startup preloader after initial render.
+- Removed duplicate lower "Forgot Password?" link from login page.
+- Removed "Database status" box from login page.
+- Reverted login footer info to single-column stacked layout.
+- Bumped app version display to 0.68.1.
+
 Version: 0.68
 Date: 2026-04-09
 
