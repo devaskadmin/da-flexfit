@@ -1,21 +1,26 @@
 FlexFit Database Log file
 Generated from:
-- Baseline: FlexFit - Database Backups/0.6 Release/0.6 Release.sql
-- Current Working Version: 0.6.5
+ - Baseline: FlexFit - Database Backups/0.6 Release/0.6 Release.sql
+Current Working Version: 0.68
 Database: flexfit12825
 
 Purpose
-- Keep this as a local version-based database changelog.
-- Track schema changes by release version.
+- Keep this as a local version-based database schema changelog.
+- Track schema changes only (tables, columns, indexes, constraints) by release version.
+- Do NOT include app/UI/API notes in this file.
 
-Version Changelog Index
+Version Changelog Index (Schema Only)
 - 0.6.2: Membership tiers, roles, profiles, memberships, user_roles
 - 0.6.3: In-app notifications + notification preferences
-- 0.6.4: Render.com deployment (backend public mode, CORS, secure cookies)
-- 0.6.5: Environment refactor — .env / .env.local split, removed hardcoded URLs
+- 0.6.4: No schema changes
+- 0.6.5: No schema changes
+
+- 0.6.7: Forgot password flow, password reset token fields, improved error handling, dependency updates
+- 0.68: No schema changes
 
 IMPORTANT
 - Run on a backup/staging DB first.
+- This file is local-only and must never be committed to GitHub.
 - This file is intentionally git-ignored.
 
 ------------------------------------------------------------
@@ -499,3 +504,32 @@ Render env vars to set in dashboard (backend service):
   SESSION_COOKIE_SECURE=true
   SESSION_SECRET=<strong random string>
   NODE_ENV=production
+
+============================================================
+== 0.6.7 — Forgot Password Flow, Token Columns, Error Handling ==
+============================================================
+-- Date: April 9, 2026
+-- Adds password reset support and related schema changes.
+
+Changes:
+- Added password reset request and reset form to frontend (ForgotPassword.vue, ResetPassword.vue)
+- Backend API endpoints for password reset email/token
+- Email templates for password reset
+- Improved error handling and user feedback in auth flows
+- Updated dependencies (frontend/backend)
+
+Schema Changes:
+ALTER TABLE `users`
+  ADD COLUMN `password_reset_token` VARCHAR(128) DEFAULT NULL,
+  ADD COLUMN `password_reset_expires` DATETIME DEFAULT NULL;
+
+-- Used for password reset flow in v0.6.7
+
+============================================================
+== 0.68 — Theming, Profile Menu, Login Version & Changelog ==
+============================================================
+-- Date: April 9, 2026
+-- No database schema changes in this version.
+
+Schema Changes:
+- None

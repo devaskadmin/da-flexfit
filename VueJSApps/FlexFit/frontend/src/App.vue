@@ -1,5 +1,5 @@
 <script setup>
-import {computed, onMounted, provide, ref, shallowRef, watch} from "vue";
+import {computed, onMounted, onUnmounted, provide, ref, shallowRef, watch} from "vue";
 import {RouterView, useRoute} from 'vue-router';
 import {OverlayScrollbars} from "overlayscrollbars";
 import {currentActiveTheme} from "@/composable/manageThemeSetting.js";
@@ -7,8 +7,9 @@ import {layoutDirection, setRtl, setLtr} from "@/composable/themeDirectionSettin
 import {selectedStyleSheet, setStyleSheet} from "@/composable/primaryColorChangeSetting";
 import {useMainContentCurrentBG} from "@/composable/mainContentBackgroundSetting";
 import {preloader} from "@/composable/disableEnablePreloaderSetting";
-import {hoverableMenu} from "@/composable/navbarSizeSetting";
-import {layoutPosition} from "@/composable/navPositionSetting";
+import {hoverableMenu, currentNavbarSize, handleNavbarSize, sidebarHoverClick, sidebarSmallClick} from "@/composable/navbarSizeSetting";
+import {layoutPosition, handleNavPositionClick} from "@/composable/navPositionSetting";
+import { API_BASE } from '@/config/env';
 
 import FooterComponent from "@/components/FooterComponent.vue";
 import MainSidebarComponent from "@/components/MainSidebarComponent.vue";
@@ -39,6 +40,7 @@ const isTwoColumnMenu = ref(false);
 
 const isSidebarActive = ref(false);
 const isBodyOverflowHidden = ref(false);
+const hideThemeSidebar = ref(localStorage.getItem('hideThemeSidebar') === 'true');
 
 const isActive = ref(false);
 const profileBtnId = ref('');
@@ -141,6 +143,87 @@ const closeSidebar = () => {
   isBodyOverflowHidden.value = false;
 };
 
+const applyThemeConfig = (themeConfig = {}) => {
+  if (!themeConfig || typeof themeConfig !== 'object') return;
+
+  if (themeConfig.themeColor) {
+    localStorage.setItem('currentActiveTheme', themeConfig.themeColor);
+    currentActiveTheme.value = themeConfig.themeColor;
+  }
+
+  if (themeConfig.themeDirection === 'rtl') {
+    setRtl();
+  } else if (themeConfig.themeDirection === 'ltr') {
+    setLtr();
+  }
+
+  if (themeConfig.primaryColor) {
+    setStyleSheet(themeConfig.primaryColor);
+  }
+
+  if (themeConfig.navPosition) {
+    handleNavPositionClick(themeConfig.navPosition);
+  }
+
+  if (themeConfig.navbarSize === 'small') {
+    sidebarSmallClick({ preventDefault: () => {}, stopPropagation: () => {} });
+  } else if (themeConfig.navbarSize === 'expand') {
+    sidebarHoverClick();
+  } else {
+    handleNavbarSize();
+  }
+
+  if (typeof themeConfig.sidebarBackground === 'string') {
+    if (themeConfig.sidebarBackground) {
+      localStorage.setItem('navbackgroundImage', themeConfig.sidebarBackground);
+    } else {
+      localStorage.removeItem('navbackgroundImage');
+    }
+  }
+
+  if (typeof themeConfig.mainBackground === 'string') {
+    if (themeConfig.mainBackground) {
+      localStorage.setItem('mainBackgroundImage', themeConfig.mainBackground);
+    } else {
+      localStorage.removeItem('mainBackgroundImage');
+    }
+    useMainContentCurrentBG();
+  }
+
+  if (typeof themeConfig.preloaderEnabled === 'boolean') {
+    preloader.value = themeConfig.preloaderEnabled;
+    localStorage.setItem('preloaderEnabled', String(themeConfig.preloaderEnabled));
+  }
+
+  if (typeof themeConfig.hideThemeSidebar === 'boolean') {
+    hideThemeSidebar.value = themeConfig.hideThemeSidebar;
+    localStorage.setItem('hideThemeSidebar', String(themeConfig.hideThemeSidebar));
+    if (themeConfig.hideThemeSidebar) {
+      closeSidebar();
+    }
+  }
+};
+
+const loadUserThemeSettings = async () => {
+  try {
+    const response = await fetch(`${API_BASE}/api/user-profile-settings`, {
+      credentials: 'include',
+    });
+    if (!response.ok) return;
+
+    const data = await response.json();
+    const settings = data?.settings || {};
+    const themeConfig = settings.themeConfig || {};
+    applyThemeConfig(themeConfig);
+  } catch (e) {
+    // Non-blocking: app still works with localStorage defaults.
+  }
+};
+
+const onThemeSettingsUpdated = (event) => {
+  applyThemeConfig(event?.detail || {});
+};
+
 const activeTheme = (() => {
   let element = document.body
   if(currentActiveTheme.value === 'light-theme') {
@@ -163,6 +246,7 @@ onMounted(() => {
 
   document.addEventListener('click', onDocumentClick);
   isPartials.value = route.meta.isPartials
+  loadUserThemeSettings()
   // getCurrentTheme()
   activeTheme()
 
@@ -176,8 +260,13 @@ onMounted(() => {
       setStyleSheet(selectedStyleSheet.value);
     }
   useMainContentCurrentBG()
+  window.addEventListener('ff-theme-settings-updated', onThemeSettingsUpdated)
   // useDisableEnablePreloader()
 });
+
+onUnmounted(() => {
+  window.removeEventListener('ff-theme-settings-updated', onThemeSettingsUpdated)
+})
 
 watch(layoutDirection, () => {
   let element = document.documentElement
@@ -250,12 +339,12 @@ provide('app:layout', layout.value)
       />
       <!-- profile right sidebar end -->
 
-      <div class="right-sidebar-btn d-lg-block d-none">
+      <div v-if="!hideThemeSidebar" class="right-sidebar-btn d-lg-block d-none">
         <button class="header-btn theme-settings-btn" @click="toggleSidebar"><i class="fa-light fa-gear"></i></button>
       </div>
 
       <!-- right sidebar start -->
-      <RightSidebarComponent v-show="isPartials"
+      <RightSidebarComponent v-show="isPartials && !hideThemeSidebar"
         :isSidebarActive="isSidebarActive"
         :closeSidebar="closeSidebar"
         :isLightTheme="isLightTheme"

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FlexFit Developer Change Log</title>
+    <style>
+      :root {
+        --bg: #f1f5f9;
+        --panel: #ffffff;
+        --border: #cbd5e1;
+        --text: #0f172a;
+        --subtext: #475569;
+        --accent: #2563eb;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        color: var(--text);
+        background: var(--bg);
+      }
+      .page {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        padding: 14px;
+        gap: 10px;
+      }
+      .top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.1rem;
+      }
+      .sub {
+        margin: 2px 0 0;
+        color: var(--subtext);
+        font-size: 0.85rem;
+      }
+      .btn {
+        border: none;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        padding: 10px 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .log-wrap {
+        flex: 1;
+        min-height: 0;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--panel);
+        padding: 10px;
+      }
+      .log-box {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: auto;
+        white-space: pre-wrap;
+        font-family: Consolas, 'Courier New', monospace;
+        font-size: 0.9rem;
+        line-height: 1.45;
+        color: #0b1324;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="top">
+        <div>
+          <h1>FlexFit Developer Change Log Notes</h1>
+          <p class="sub">Scrollable release notes (latest first)</p>
+        </div>
+        <button class="btn" id="backBtn">Back to App</button>
+      </div>
+
+      <section class="log-wrap">
+        <pre class="log-box" id="logBox">Loading changelog.txt...</pre>
+      </section>
+    </div>
+
+    <script>
+      (async function loadChangelog() {
+        const box = document.getElementById('logBox');
+        try {
+          const res = await fetch('/changelog.txt', { cache: 'no-store' });
+          if (!res.ok) throw new Error('Failed to load changelog.txt');
+          box.textContent = await res.text();
+        } catch (err) {
+          box.textContent = 'Unable to load changelog.txt\n\n' + (err?.message || err);
+        }
+      })();
+
+      document.getElementById('backBtn').addEventListener('click', function () {
+        if (window.history.length > 1) {
+          window.history.back();
+        } else {
+          window.location.href = '/login';
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -126,6 +126,11 @@ const startBuilder = () => {
 </template>
 
 <style scoped>
+.dashboard-breadcrumb.ff-page-header {
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+}
+
 .workout-hero {
   border: 1px solid var(--border-color);
   border-radius: 14px;

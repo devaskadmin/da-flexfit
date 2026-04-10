@@ -1,11 +1,12 @@
 <script setup>
-import { ref, watch, computed } from "vue";
+import { ref, watch, computed, onMounted } from "vue";
 import axios from "axios";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { API_BASE } from '@/config/env';
 
 
 const router = useRouter();
+const route = useRoute();
 
 const firstName = ref("");
 const lastName = ref("");
@@ -13,6 +14,7 @@ const username = ref("");
 const password = ref("");
 const confirmPassword = ref("");
 const agreed = ref(false);
+const hasReadTerms = ref(false);
 
 const errorMsg = ref("");
 const successMsg = ref("");
@@ -58,6 +60,12 @@ const register = async () => {
   errorMsg.value = "";
   successMsg.value = "";
   loading.value = true;
+
+  if (!hasReadTerms.value) {
+    errorMsg.value = "You must read the Terms & Policy before registering.";
+    loading.value = false;
+    return;
+  }
 
   if (!agreed.value) {
     errorMsg.value = "You must agree to the Terms & Policy.";
@@ -107,14 +115,25 @@ if (!isStrongPassword(password.value)) {
   }
 };
 
+const goToTerms = () => {
+  router.push({ name: 'terms_policy' });
+};
+
+onMounted(() => {
+  if (route.query.termsAccepted === '1') {
+    hasReadTerms.value = true;
+    agreed.value = true;
+    router.replace({ name: 'register' });
+  }
+});
+
 
 
 
 </script>
 
 <template>
-  <h3 class="panel-title">User Registration</h3>
-  <div class="login-body login-body-2">
+  <div class="login-body">
     <div class="top d-flex justify-content-between align-items-center">
       <div class="logo">
         <img src="@/assets/images/flex-fitlogo-transparent.png" alt="Logo">
@@ -123,25 +142,26 @@ if (!isStrongPassword(password.value)) {
     </div>
 
     <div class="bottom">
+      <h3 class="panel-title panel-title-form">User Registration</h3>
       <form @submit.prevent="register">
-        <div class="input-group mb-25">
-          <input v-model="firstName" type="text" class="form-control" placeholder="First Name" required>
+        <div class="input-group mb-25 input-group-rounded">
+          <input v-model="firstName" type="text" class="form-control form-control-rounded" placeholder="First Name" required>
           <span class="input-group-text"><i class="fa-regular fa-user"></i></span>
         </div>
-        <div class="input-group mb-25">
-          <input v-model="lastName" type="text" class="form-control" placeholder="Last Name" required>
+        <div class="input-group mb-25 input-group-rounded">
+          <input v-model="lastName" type="text" class="form-control form-control-rounded" placeholder="Last Name">
           <span class="input-group-text"><i class="fa-regular fa-user"></i></span>
         </div>
-        <div class="input-group mb-25">
-          <input v-model="username" type="email" class="form-control" placeholder="Email" required>
+        <div class="input-group mb-25 input-group-rounded">
+          <input v-model="username" type="email" class="form-control form-control-rounded" placeholder="Email" required>
           <span class="input-group-text"><i class="fa-regular fa-envelope"></i></span>
         </div>
-        <div class="input-group mb-25">
-          <input v-model="password" type="password" class="form-control" placeholder="Password" required>
+        <div class="input-group mb-25 input-group-rounded">
+          <input v-model="password" type="password" class="form-control form-control-rounded" placeholder="Password" required>
           <span class="input-group-text"><i class="fa-regular fa-lock"></i></span>
         </div>
-        <div class="input-group mb-20">
-          <input v-model="confirmPassword" type="password" class="form-control" placeholder="Confirm Password" required>
+        <div class="input-group mb-20 input-group-rounded">
+          <input v-model="confirmPassword" type="password" class="form-control form-control-rounded" placeholder="Confirm Password" required>
           <span class="input-group-text"><i class="fa-regular fa-lock"></i></span>
         </div>
 
@@ -159,13 +179,14 @@ if (!isStrongPassword(password.value)) {
 
         <div class="d-flex justify-content-end mb-25">
           <div class="form-check">
-            <input class="form-check-input" type="checkbox" v-model="agreed" id="agreeCheckbox">
-            <label class="form-check-label text-white" for="agreeCheckbox">
-              I agree <a href="#" class="text-white text-decoration-underline">Terms & Policy</a>
+            <input class="form-check-input" type="checkbox" v-model="agreed" id="agreeCheckbox" :disabled="!hasReadTerms" required>
+            <label class="form-check-label terms-label" for="agreeCheckbox">
+              I agree
+              <button type="button" class="terms-link" @click.stop="goToTerms">Terms & Policy</button>
             </label>
           </div>
         </div>
-        <button class="btn btn-primary w-100 login-btn" :disabled="loading">
+        <button class="btn btn-primary w-100 login-btn" :disabled="loading || !hasReadTerms || !agreed">
   {{ loading ? 'Registering...' : 'Sign Up' }}
 
 
@@ -180,8 +201,8 @@ if (!isStrongPassword(password.value)) {
       </form>
 
       <div class="other-option mt-3">
-        <p class="mb-0 text-white">Already have an account? 
-          <router-link to="/login" class="text-white text-decoration-underline">Login</router-link>
+        <p class="mb-0 auth-text">Already have an account? 
+          <router-link to="/login" class="auth-link">Login</router-link>
         </p>
       </div>
 
@@ -196,15 +217,81 @@ if (!isStrongPassword(password.value)) {
     background: rgba(255, 255, 255, 1);
     border: 1px solid black;
 }
+
+.login-body {
+  border: 8px solid rgba(0, 0, 0, 0.25) !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  padding: 40px !important;
+}
 .panel-title {
   color: white;
 }
 
-.login-body-2 {
-  background-image: url('/src/assets/images/login-background.jpg');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+.panel-title-form {
+  color: #000000;
+  font-weight: 600;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* Input Group Rounded Borders */
+.input-group-rounded {
+  display: flex;
+  align-items: center;
+  border: 2px solid rgba(13, 153, 255, 0.5);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  padding: 0;
+  background: transparent;
+}
+
+.input-group-rounded:focus-within {
+  border-color: #0D99FF;
+  box-shadow: 0 0 0 4px rgba(13, 153, 255, 0.25);
+}
+
+.form-control-rounded {
+  border: none !important;
+  border-radius: 0 !important;
+  flex: 1;
+  padding: 12px 15px !important;
+}
+
+.input-group-rounded .input-group-text {
+  border: none !important;
+  border-right: 1px solid rgba(13, 153, 255, 0.3) !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  padding: 0 12px !important;
+  min-width: auto !important;
+}
+
+.terms-label {
+  color: rgba(0, 0, 0, 0.8) !important;
+}
+
+.terms-link {
+  border: 0;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.8);
+  text-decoration: underline;
+  padding: 0;
+  margin-left: 4px;
+}
+
+.terms-link:hover {
+  color: #000;
+}
+
+.auth-text {
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.auth-link {
+  color: rgba(0, 0, 0, 0.85);
+  text-decoration: underline;
 }
 
 </style>

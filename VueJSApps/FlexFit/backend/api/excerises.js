@@ -1,19 +1,39 @@
 //Varibles
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
 const { sanitizeText, parseNumber } = require('../utils/sanitize.js');
 const ImageUpload = require('../Components/ImageUpload/ImageUpload');
-
-
-
-
 
 // ✅ DB Connect
 const pool = require('../db');
 
+const normalizeFallbackExercises = (rawList = []) => {
+  if (!Array.isArray(rawList)) return [];
 
-// ✅ Fetch exercises
+  return rawList.map((item, index) => ({
+    ExerciseID: index + 1,
+    ExerciseTitle: item?.name || 'Exercise',
+    MuscleGroup: Array.isArray(item?.primaryMuscles) && item.primaryMuscles.length ? item.primaryMuscles[0] : 'General',
+    Equipment: item?.equipment || 'body only',
+    WorkoutType: item?.category || 'general',
+    RecordingType: item?.category === 'cardio' ? 'Cardio' : 'Strength',
+    Instructions: Array.isArray(item?.instructions) ? item.instructions.join(' ') : '',
+    ImageGallery: JSON.stringify(item?.images || []),
+    ImageURL: Array.isArray(item?.images) && item.images[0]
+      ? `/assets/Excerises/${item.images[0]}`
+      : '/assets/Excerises/default/default.jpg',
+  }));
+};
+
+const readFallbackExercises = () => {
+  const fallbackPath = path.resolve(__dirname, '..', 'data', 'exercises.json');
+  const content = fs.readFileSync(fallbackPath, 'utf8');
+  const parsed = JSON.parse(content);
+  return normalizeFallbackExercises(parsed);
+};
+
 // PUT update exercise with image support
 router.put('/get-exercise/:id', (req, res) => {
   ImageUpload.upload(req, res, async function (err) {
@@ -21,7 +41,6 @@ router.put('/get-exercise/:id', (req, res) => {
 
     try {
       const id = req.params.id;
-      // Parse fields
       const {
         ExerciseTitle = '',
         MuscleGroup = '',
@@ -36,32 +55,23 @@ router.put('/get-exercise/:id', (req, res) => {
         'Laps-Rep': LapsRep = null
       } = req.body;
 
-      // Parse existing images and images to delete
       let existingImages = [];
       let imagesToDelete = [];
-      try {
-        existingImages = JSON.parse(req.body.existingImages || '[]');
-      } catch {}
-      try {
-        imagesToDelete = JSON.parse(req.body.imagesToDelete || '[]');
-      } catch {}
+      try { existingImages = JSON.parse(req.body.existingImages || '[]'); } catch {}
+      try { imagesToDelete = JSON.parse(req.body.imagesToDelete || '[]'); } catch {}
 
-      // Remove deleted images from disk
       if (imagesToDelete.length > 0) {
         ImageUpload.deleteImagesFromDisk(ExerciseTitle, imagesToDelete);
       }
 
-      // Handle new uploads
       const folderName = ExerciseTitle.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
-      let newImages = (req.files && req.files.length > 0)
+      const newImages = (req.files && req.files.length > 0)
         ? req.files.map(f => `${folderName}/${f.filename}`)
         : [];
 
-      // Final gallery: existing (not deleted) + new
       const imageGallery = [...existingImages, ...newImages].slice(0, 2);
       const ImageURL = `/assets/Excerises/${imageGallery[0] || 'default/default.jpg'}`;
 
-      // Sanitize all fields
       const clean = {
         ExerciseTitle: sanitizeText(ExerciseTitle, 100),
         MuscleGroup: sanitizeText(MuscleGroup, 50),
@@ -78,21 +88,20 @@ router.put('/get-exercise/:id', (req, res) => {
         LapsReps: parseNumber(LapsRep)
       };
 
-      // Update DB
       await pool.query(
-        `UPDATE Exercises SET 
-          ExerciseTitle = ?, 
-          MuscleGroup = ?, 
-          Equipment = ?, 
-          WorkoutType = ?, 
-          RecordingType = ?, 
-          ImageURL = ?, 
-          Instructions = ?, 
-          ImageGallery = ?, 
-          Duration = ?, 
-          Calories = ?, 
-          Distance = ?, 
-          Speed = ?, 
+        `UPDATE Exercises SET
+          ExerciseTitle = ?,
+          MuscleGroup = ?,
+          Equipment = ?,
+          WorkoutType = ?,
+          RecordingType = ?,
+          ImageURL = ?,
+          Instructions = ?,
+          ImageGallery = ?,
+          Duration = ?,
+          Calories = ?,
+          Distance = ?,
+          Speed = ?,
           \`Laps-Rep\` = ?
          WHERE ExerciseID = ?`,
         [
@@ -113,15 +122,15 @@ router.put('/get-exercise/:id', (req, res) => {
         ]
       );
 
-      res.status(200).json({ message: "Exercise updated successfully" });
-    } catch (err) {
-      console.error("❌ Update error:", err);
-      res.status(500).json({ error: "Update failed" });
+      res.status(200).json({ message: 'Exercise updated successfully' });
+    } catch (updateErr) {
+      console.error('❌ Update error:', updateErr);
+      res.status(500).json({ error: 'Update failed' });
     }
   });
 });
 
-// POST new exercise with image (use multer middleware correctly)
+// POST new exercise with image
 router.post('/save-exercises', ImageUpload.upload, async (req, res) => {
   try {
     const {
@@ -129,12 +138,12 @@ router.post('/save-exercises', ImageUpload.upload, async (req, res) => {
     } = req.body;
 
     if (!ExerciseTitle || !MuscleGroup || !Equipment || !WorkoutType || !RecordingType) {
-      return res.status(400).json({ error: "Missing required fields" });
+      return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const [existing] = await pool.query("SELECT ExerciseID FROM Exercises WHERE ExerciseTitle = ?", [ExerciseTitle]);
+    const [existing] = await pool.query('SELECT ExerciseID FROM Exercises WHERE ExerciseTitle = ?', [ExerciseTitle]);
     if (existing.length > 0) {
-      return res.status(400).json({ error: "Exercise title already exists" });
+      return res.status(400).json({ error: 'Exercise title already exists' });
     }
 
     const folderName = ExerciseTitle.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
@@ -144,42 +153,52 @@ router.post('/save-exercises', ImageUpload.upload, async (req, res) => {
 
     const ImageURL = `/assets/Excerises/${imageGallery[0]}`;
 
-    await pool.query(`
-      INSERT INTO Exercises 
+    await pool.query(
+      `INSERT INTO Exercises
       (ExerciseTitle, MuscleGroup, Equipment, WorkoutType, RecordingType, ImageURL, Instructions, ImageGallery)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, [
-      ExerciseTitle,
-      MuscleGroup,
-      Equipment,
-      WorkoutType,
-      RecordingType,
-      ImageURL,
-      Instructions || "",
-      JSON.stringify(imageGallery)
-    ]);
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        ExerciseTitle,
+        MuscleGroup,
+        Equipment,
+        WorkoutType,
+        RecordingType,
+        ImageURL,
+        Instructions || '',
+        JSON.stringify(imageGallery)
+      ]
+    );
 
-    res.status(201).json({ message: "Exercise created successfully" });
-  } catch (err) {
-    console.error("❌ Insert failed:", err);
-    res.status(500).json({ error: "Server error" });
+    res.status(201).json({ message: 'Exercise created successfully' });
+  } catch (insertErr) {
+    console.error('❌ Insert failed:', insertErr);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
-
-// ✅ Fetch exercises
+// ✅ Fetch exercises with fallback
 router.get('/get-exercises', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM Exercises');
-    res.status(200).json(rows);
+    if (Array.isArray(rows) && rows.length > 0) {
+      return res.status(200).json(rows);
+    }
+
+    const fallbackRows = readFallbackExercises();
+    return res.status(200).json(fallbackRows);
   } catch (err) {
-    console.error("❌ Failed to fetch exercises:", err);
-    res.status(500).json({ error: 'Failed to fetch exercises' });
+    console.error('❌ Failed to fetch exercises from DB. Falling back to JSON:', err?.message || err);
+    try {
+      const fallbackRows = readFallbackExercises();
+      return res.status(200).json(fallbackRows);
+    } catch (fallbackErr) {
+      console.error('❌ Fallback exercise load failed:', fallbackErr?.message || fallbackErr);
+      return res.status(500).json({ error: 'Failed to fetch exercises' });
+    }
   }
 });
 
-
-
-//Check exercises
+// Check exercises
 router.get('/check-exercises', async (req, res) => {
   const { userId, exerciseId, date } = req.query;
   const [rows] = await pool.query(
@@ -188,37 +207,8 @@ router.get('/check-exercises', async (req, res) => {
   );
   res.json({ exists: rows.length > 0, data: rows[0] });
 });
-//End of Check exercises
-
-
-//Delete Workout Log
-
-
-
-
-
 
 module.exports = router;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

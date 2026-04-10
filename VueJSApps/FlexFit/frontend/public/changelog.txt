@@ -1,0 +1,41 @@
+FlexFit Developer Change Log
+============================
+
+Version: 0.68
+Date: 2026-04-09
+
+- Added login page app version display.
+- Added Developer Change Log Notes link on login page.
+- Added public changelog page with full-height scrollable text area.
+- Added Back to App button on changelog page.
+
+Version: 0.67
+Date: 2026-04-09
+
+- Theming settings persistence improvements.
+- Added Save Layout Settings support in right-side theme panel.
+- Added per-user option to hide advanced theming side menu.
+- Synced Display settings with persisted theme configuration.
+- Added/updated settings deep merge behavior in backend profile settings API.
+
+Version: 0.66
+Date: 2026-04-09
+
+- Updated Dashboard, Workouts, and Nutrition page header styling consistency.
+- Aligned border radius between page header and adjacent hero/cards.
+- Improved Nutrition header date section text and alignment.
+
+Version: 0.65
+Date: 2026-04-09
+
+- Added Remember Me session behavior on login.
+- Session cookie now supports up to 1 week when Remember Me is selected.
+
+Version: 0.64 and prior
+Date: 2026-04-01 and earlier
+
+- Environment refactor for frontend/backend (.env + .env.local strategy).
+- Notifications improvements and role-based admin enhancements.
+- Multiple UI refinements across member views.
+
+(End of changelog)

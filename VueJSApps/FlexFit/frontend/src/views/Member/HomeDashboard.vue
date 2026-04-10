@@ -100,6 +100,11 @@ const recentActivity = [
 </template>
 
 <style scoped>
+.dashboard-breadcrumb.ff-page-header {
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+}
+
 .dashboard-hero {
   border: 1px solid var(--border-color);
   border-radius: 14px;

@@ -77,6 +77,7 @@ const isLightTheme = computed(() => {
 const unreadCount = ref(0)
 const unreadBadge = computed(() => (unreadCount.value > 9 ? '9+' : String(unreadCount.value)))
 let unreadPollTimer = null
+const currentUsername = ref('User')
 
 const loadUnreadCount = async () => {
   try {
@@ -96,6 +97,25 @@ const openNotifications = () => {
   router.push({ name: 'notifications' })
 }
 
+const loadCurrentUser = async () => {
+  try {
+    const response = await fetch(`${API_BASE}/api/session`, {
+      credentials: 'include',
+      headers: { 'Cache-Control': 'no-cache' },
+    })
+
+    if (!response.ok) return
+
+    const data = await response.json()
+    const username = data?.user?.username
+    if (username && String(username).trim()) {
+      currentUsername.value = String(username).trim()
+    }
+  } catch (_) {
+    // keep default fallback label
+  }
+}
+
 watchEffect(() => {
   window.addEventListener('resize', checkScreenSize());
   checkScreenSize();
@@ -107,6 +127,7 @@ onMounted(() => {
 
   window.addEventListener('resize', handleResize)
   loadUnreadCount()
+  loadCurrentUser()
   unreadPollTimer = setInterval(loadUnreadCount, 60000)
 })
 
@@ -239,23 +260,12 @@ onUnmounted(() => {
             </button>
             <ul class="dropdown-menu profile-dropdown-menu">
               <li>
-                <div class="dropdown-txt text-center">
-                  <p class="mb-0">Shaikh Abu Dardah</p>
-                  <span class="d-block">Web Developer</span>
-                  <div class="d-flex justify-content-center">
-                    <div class="form-check pt-3">
-                      <input class="form-check-input" type="checkbox" id="seeProfileAsSidebar" @change="profileToggleSidebar">
-                      <label class="form-check-label" for="seeProfileAsSidebar">See as sidebar</label>
-                    </div>
-                  </div>
+                <div class="dropdown-txt">
+                  <p class="mb-0"><strong>Greetings</strong> {{ currentUsername }}</p>
                 </div>
               </li>
-              <li><router-link class="dropdown-item" :to="{ name: 'view_profile' }"><span class="dropdown-icon"><i class="fa-regular fa-circle-user"></i></span> Profile</router-link></li>
-              <li><router-link class="dropdown-item" :to="{ name: 'chat' }"><span class="dropdown-icon"><i class="fa-regular fa-message-lines"></i></span> Message</router-link></li>
-              <li><router-link class="dropdown-item" :to="{ name: 'crm_task' }"><span class="dropdown-icon"><i class="fa-regular fa-calendar-check"></i></span> Taskboard</router-link></li>
-              <li><a class="dropdown-item" href="#"><span class="dropdown-icon"><i class="fa-regular fa-circle-question"></i></span> Help</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><router-link class="dropdown-item" :to="{ name: 'edit_profile' }"><span class="dropdown-icon"><i class="fa-regular fa-gear"></i></span> Settings</router-link></li>
+              <li><router-link class="dropdown-item" :to="{ name: 'user_settings' }"><span class="dropdown-icon"><i class="fa-regular fa-gear"></i></span> View Settings</router-link></li>
               <li><router-link class="dropdown-item" :to="{ name: 'logout' }"><span class="dropdown-icon"><i class="fa-regular fa-arrow-right-from-bracket"></i></span> Logout</router-link></li>
             </ul>
           </div>

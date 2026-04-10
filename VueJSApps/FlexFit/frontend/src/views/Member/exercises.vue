@@ -15,6 +15,7 @@
    const workoutList = ref([]);
    const activeTab = ref('search-exercises'); // default tab
    const existingLogs = ref([]);
+  const exercisesLoadError = ref("");
    
    
    
@@ -374,11 +375,30 @@ const loadWorkoutLogs = async () => {
 });
    
 
+const loadExercisesLibrary = async () => {
+  exercisesLoadError.value = "";
+  try {
+    const res = await fetch(`${API_BASE}/api/get-exercises`, {
+      credentials: 'include'
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to load exercises (${res.status})`);
+    }
+
+    const data = await res.json();
+    allExercises.value = Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error('❌ Failed to load exercises:', err);
+    allExercises.value = [];
+    exercisesLoadError.value = 'Could not load exercises right now.';
+  }
+};
+
 //Async function to pass data from front end to backend
 onMounted(async () => {
   //Get All exercises
-  const res = await fetch(`${API_BASE}/api/get-exercises`);
-  allExercises.value = await res.json();
+  await loadExercisesLibrary();
 
   //Get user ID
   try {
@@ -937,6 +957,9 @@ const clearFilters = () => {
                   </div>
                   <!--end of panel header-->
                   <div class="panel-body">
+                      <div v-if="exercisesLoadError" class="alert alert-warning">
+                        {{ exercisesLoadError }}
+                      </div>
                       <!--Start of panel body-->
                       <!--Start of Row-->
                       <div class="row g-2">
@@ -1645,6 +1668,12 @@ Please Select an excerise
    .container-block{
     margin-top:10px;
    }
+  .container.container-block {
+   max-width: 100% !important;
+   width: 100% !important;
+   padding-left: 0 !important;
+   padding-right: 0 !important;
+  }
    .workout-log-img{
     height: 200px;
     width:350px;
