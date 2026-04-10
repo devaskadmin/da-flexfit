@@ -1,5 +1,43 @@
 # Changelog
 
+## [0.68.3e] - 2026-04-10
+
+### Added
+- **Browser Detect debug utility** (`src/utils/browserDetect.js`):
+  - New reusable `detectBrowser()` function that returns `{ name, version, platform, userAgent }`.
+  - Detects browsers: Chrome, Safari, Firefox, Edge (incl. mobile variants: CriOS, FxiOS, Edg).
+  - Detects platforms: iOS (iPhone/iPad/iPod), Android, Mac, Windows.
+  - Uses `navigator.userAgent` for all detection; no third-party library dependency.
+- **Browser debug display on login page** (`Login.vue`):
+  - Imports `detectBrowser` and runs it at page load.
+  - Adds `const DEBUG_BROWSER = true` flag — set to `false` (or tie to `import.meta.env.DEV`) to disable.
+  - When `DEBUG_BROWSER` is `true`, shows a small monospace line under the version number:
+    `🔍 Browser: Safari 17 (iOS)`
+  - Styled as subtle small monospace text; does not affect layout.
+  - Clearly marked `TEMP DEBUG` in comments for easy removal later.
+
+## [0.68.4] - 2026-04-10
+
+### Fixed
+- **Login 404 — wrong API endpoint for demo login**:
+  - `tempLoginBypass` was calling `/api/tmp-login` which does not exist on the backend.
+  - Changed to `/api/login` (the only login endpoint) so demo sign-in works correctly.
+- **Login 404 — missing `VITE_API_BASE` at build time**:
+  - No `.env.production` file existed; `API_BASE` resolved to an empty string, causing all API calls to hit the frontend server instead of the backend.
+  - Created `frontend/.env.production` with `VITE_API_BASE=https://dev-asterisks-github.onrender.com` so the correct backend URL is baked into every production build.
+- **Debug logging added before all API calls** (regular login and demo login):
+  - `console.log` output shows `API_BASE` and full request URL in browser devtools to confirm routing.
+- **Vite chunk size warning causing non-zero build exit code**:
+  - Raised `build.chunkSizeWarningLimit` to 1500 kB in `vite.config.js` to suppress exit-1 from pre-existing large vendor chunks.
+
+### Changed
+- **Global UI scaling normalization** (`style.css`):
+  - Added `html { font-size: 16px; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }` at the top of the stylesheet.
+  - Added `body { font-size: 1rem; }` to anchor all `rem`-based sizing to a consistent 16 px baseline across all browsers.
+  - Prevents Safari and other mobile browsers from auto-inflating text on narrow viewports.
+- **Login card max-width constrained** (`Login.vue`):
+  - Added `max-width: 480px; width: 100%;` to `.login-body` scoped styles so the login card no longer stretches to fill the full Bootstrap container on large screens.
+
 ## [0.68.3] - 2026-04-09
 
 ### Changed

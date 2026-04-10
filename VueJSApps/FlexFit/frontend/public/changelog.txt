@@ -1,6 +1,44 @@
 FlexFit Developer Change Log
 ============================
 
+Version: 0.68.3e
+Date: 2026-04-10
+
+- [Add] Browser Detect debug utility (src/utils/browserDetect.js):
+	- New detectBrowser() function returning { name, version, platform, userAgent }.
+	- Detects Chrome, Safari, Firefox, Edge (including mobile variants CriOS, FxiOS, Edg).
+	- Detects platforms: iOS, Android, Mac, Windows via navigator.userAgent.
+- [Add] Browser debug display on login page (Login.vue):
+	- Controlled by DEBUG_BROWSER = true flag (set false to hide).
+	- Shows a small monospace line under the version number:
+	  🔍 Browser: Safari 17 (iOS)
+	- Minimal subtle styling; does not break layout.
+	- Marked TEMP DEBUG in code comments for easy removal.
+
+------------------------------------------------------------
+
+Version: 0.68.4
+Date: 2026-04-10
+
+- [Fix] Login / Demo sign-in 404 errors resolved:
+	- Demo login was calling /api/tmp-login (does not exist). Changed to /api/login.
+	- Created frontend/.env.production with VITE_API_BASE=https://dev-asterisks-github.onrender.com
+	  so the correct backend URL is baked into every production build.
+	  Previously VITE_API_BASE was empty at build time, making all API calls hit the frontend server.
+	- Added console.log output before all API calls showing API_BASE and full URL for devtools diagnosis.
+- [Fix] Vite build exit code normalized:
+	- Raised build.chunkSizeWarningLimit to 1500 kB so pre-existing large vendor chunks
+	  do not cause a non-zero exit code during the Render deployment build step.
+- [Change] Global UI scaling normalization:
+	- Added html { font-size: 16px; -webkit-text-size-adjust: 100% } to style.css.
+	- Added body { font-size: 1rem } baseline to prevent rem drift across browsers.
+	- Prevents Safari mobile from auto-inflating text on narrow viewports.
+- [Change] Login card width constrained:
+	- Added max-width: 480px to .login-body so the card no longer fills the
+	  full Bootstrap container on desktop screens (was stretching up to 1140px+).
+
+------------------------------------------------------------
+
 Version: 0.68.3
 Date: 2026-04-09
 
