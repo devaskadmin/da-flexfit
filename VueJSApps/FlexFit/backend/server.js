@@ -10,6 +10,7 @@ const session = require('express-session');
 const app = express();
 app.use(express.json());
 const isProduction = process.env.NODE_ENV === 'production';
+const isDebugEnabled = ['true', '1', 'yes'].includes(String(process.env.DEBUG || '').toLowerCase());
 const FRONTEND_URL = process.env.FRONTEND_URL;
 const CORS_ORIGINS = String(process.env.CORS_ORIGINS || '')
   .split(',')
@@ -63,26 +64,48 @@ app.use(cors({
 
 // ✅ Configure session (only once)
 const sessionCookieSecure = String(process.env.SESSION_COOKIE_SECURE || '').toLowerCase() === 'true' || isProduction;
+const sessionCookieSameSite = sessionCookieSecure ? 'none' : 'lax';
 
 if (sessionCookieSecure) {
   app.set('trust proxy', 1);
 }
 
+if (isDebugEnabled) {
+  console.log('🧪 Session/CORS debug:', {
+    nodeEnv: process.env.NODE_ENV,
+    frontendUrl: FRONTEND_URL || null,
+    corsOrigins: [...allowedOrigins],
+    sessionCookieSecure,
+    sessionCookieSameSite,
+  });
+}
+
 app.use(session({
+  name: 'connect.sid',
   secret: process.env.SESSION_SECRET || 'dev-only-session-secret',
   resave: false,
   saveUninitialized: false,
+  proxy: sessionCookieSecure,
   cookie: {
     httpOnly: true,
     secure: sessionCookieSecure,
-    sameSite: sessionCookieSecure ? 'none' : 'lax',
+    sameSite: sessionCookieSameSite,
     maxAge: 1800000 // 30 min
   }
 }));
 
 // ✅ Debug session logging
 app.use((req, res, next) => {
-  console.log("🧠 Session:", req.session);
+  if (isDebugEnabled) {
+    console.log('🧠 Session inbound:', {
+      method: req.method,
+      path: req.path,
+      origin: req.headers.origin || null,
+      hasCookieHeader: Boolean(req.headers.cookie),
+      sessionId: req.sessionID || null,
+      hasUserSession: Boolean(req.session?.user),
+    });
+  }
   next();
 });
 

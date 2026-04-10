@@ -28,6 +28,18 @@ Date: 2026-04-10
 	- App.vue now guards theme/profile settings calls so they run only on protected pages.
 	- Protected shell components changed from v-show to v-if, preventing hidden mount-time API calls before auth.
 	- Stops pre-login 401 spam for endpoints like /api/user-profile-settings and /api/notifications/unread-count.
+- [Fix] Cross-site session persistence diagnostics and messaging:
+	- Login flow now separates credential failures from post-login cookie/session persistence failures.
+	- If login succeeds but follow-up /api/session has no cookie, UI now shows:
+	  "Login succeeded, but the session cookie was not available for follow-up requests."
+	- Added explicit diagnostics fields:
+	  loginSucceeded, sessionCookiePersisted, sessionVerificationPassed.
+	- Removed misleading fallback text that looked like bad credentials when session persistence failed.
+- [Backend] Session/cookie flow hardening and debug telemetry:
+	- Added proxy-aware session middleware behavior for secure cookies behind Render proxy.
+	- Preserved production cookie policy for cross-origin requests (secure + sameSite none).
+	- Added DEBUG-gated backend logs for login/session origin, session id, cookie header presence, and Set-Cookie diagnostics.
+	- Updated /api/session diagnostic note for Safari/cloud browser cookie isolation scenarios.
 
 ------------------------------------------------------------
 
