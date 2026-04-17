@@ -24,55 +24,72 @@ defineProps({
 
 <style scoped>
 .metric-card {
-  border: 1px solid var(--border-color);
+  border: 1px solid rgba(0, 0, 0, 0.04);
   border-radius: 14px;
-  padding: 16px;
+  padding: 17px;
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  min-height: 112px;
+  align-items: flex-start;
+  gap: 14px;
+  min-height: 116px;
+  background: var(--panel-bg, #fff);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.09);
 }
 
 .metric-card__left {
   display: grid;
-  gap: 5px;
+  gap: 6px;
 }
 
 .metric-card__title {
-  font-size: 0.82rem;
-  color: var(--text-color-secondary);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--text-color-secondary) 88%, #475569 12%);
+  text-transform: none;
 }
 
 .metric-card__value {
-  font-size: 1.65rem;
-  line-height: 1;
+  font-size: clamp(1.58rem, 1.35rem + 0.65vw, 1.86rem);
+  line-height: 1.08;
+  letter-spacing: -0.018em;
+  font-weight: 800;
   color: var(--text-color);
 }
 
 .metric-card__subtitle {
-  font-size: 0.78rem;
-  color: var(--text-color-secondary);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--text-color-secondary) 92%, #64748b 8%);
 }
 
 .metric-card__right {
   display: grid;
   justify-items: end;
   align-content: space-between;
+  gap: 10px;
 }
 
 .metric-card__trend {
   color: #4ade80;
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: 0.76rem;
+  line-height: 1.2;
+  font-weight: 700;
 }
 
 .metric-card__right i {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
-  border-radius: 10px;
-  background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
+  border-radius: 11px;
+  background: rgba(59, 130, 246, 0.14);
+  color: #4f8ff3;
 }
 </style>

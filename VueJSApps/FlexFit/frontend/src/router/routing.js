@@ -242,6 +242,12 @@ export const pagesRoutes = [
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {
+        path: '/help',
+        component: () => import('@/views/Member/Help.vue'),
+        name: 'help',
+        meta: { layout: 'AppLayout', isPartials: true },
+    },
+    {
         path: '/admin/users',
         component: () => import('@/views/Member/AdminUsers.vue'),
         name: 'admin_users',

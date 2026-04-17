@@ -12,12 +12,20 @@ import {currentNavbarSize, hoverableMenu, hoverableSidebar, hoverableOutSidebar}
 
 import {layoutPosition} from "@/composable/navPositionSetting";
 import { useI18n } from 'vue-i18n'
+import { userHasWorkouts, checkUserWorkoutStatus } from '@/composable/workoutStatusManager'
+
 const { t } = useI18n()
 const route = useRoute();
 const currentRoute = ref('');
 const isSubmenus = ref(false);
 
 const openedMenu = ref(null);
+const hasSavedWorkoutPlan = userHasWorkouts;
+
+const shouldRenderMenuItem = (menu) => {
+  if (!menu?.requiresWorkoutLists && !menu?.requiresUnlock) return true
+  return hasSavedWorkoutPlan.value
+}
 
 const findMenuByName = ((name) => {
   if (layoutPosition.value === 'twoColumn') {
@@ -84,6 +92,7 @@ watchEffect(() => {
 
 onMounted(() => {
   useSidebarCurrentBG();
+  checkUserWorkoutStatus(); // Check workout status from global composable
 })
 </script>
 
@@ -105,19 +114,20 @@ onMounted(() => {
       <div class="scrollable sidebar-menu" :id="horizontalMenuEnabled ? 'accordionExample' : 'testAccordionExample'">
           <li v-for="(sidebar, index) in sidebarMenus" class="sidebar-item" :class="[horizontalMenuEnabled ? 'dropdown': '']">
             <template v-if="horizontalMenuEnabled">
-              <a role="button" class="sidebar-link-group-title has-sub" :id="'parentDropdownMenu'+index" :data-bs-toggle="[horizontalMenuEnabled ? 'dropdown' : '']" data-bs-auto-close="outside" aria-expanded="false">
+              <a role="button" :class="['sidebar-link-group-title', 'has-sub', !horizontalMenuEnabled && 'sidebar-section-header', !horizontalMenuEnabled && 'app-header-gradient']" :id="'parentDropdownMenu'+index" :data-bs-toggle="[horizontalMenuEnabled ? 'dropdown' : '']" data-bs-auto-close="outside" aria-expanded="false">
                 {{ $t(sidebar.menu_name) }}
               </a>
             </template>
             <template v-else>
-              <a role="button" class="sidebar-link-group-title has-sub" data-bs-toggle="collapse" :href="`#collapseExample-${index}`" aria-expanded="false" :aria-controls="'collapseExample-'+index">
+              <a role="button" :class="['sidebar-link-group-title', 'has-sub', !horizontalMenuEnabled && 'sidebar-section-header', !horizontalMenuEnabled && 'app-header-gradient']" data-bs-toggle="collapse" :href="`#collapseExample-${index}`" aria-expanded="false" :aria-controls="'collapseExample-'+index">
                 {{ $t(sidebar.menu_name) }}
               </a>
             </template>
 
             <template v-if="sidebar.menus">
               <ul class="sidebar-link-group" :class="[horizontalMenuEnabled ? 'dropdown-menu' : 'show']" :aria-labelledby="[horizontalMenuEnabled ? 'parentDropdownMenu'+index  : '']" :id="[horizontalMenuEnabled ? 'AppDropDownId'+index : `collapseExample-${index}`]" data-bs-parent="#testAccordionExample">
-                <li v-for="(menu, mIndex) in sidebar.menus" class="sidebar-dropdown-item">
+                <template v-for="(menu, mIndex) in sidebar.menus" :key="`${index}-${mIndex}-${menu.name}`">
+                <li v-if="shouldRenderMenuItem(menu)" class="sidebar-dropdown-item">
                   <template v-if="menu.link_name">
                     <router-link
                       :to="{ name: `${menu.link_name}` }"
@@ -178,10 +188,11 @@ onMounted(() => {
                     </li>
                   </ul>
                 </li>
+                </template>
               </ul>
             </template>
           </li>
-          <li class="help-center">
+          <li class="help-center sidebar-highlight-card app-header-gradient">
             <h3>Help Center</h3>
             <p>We're an award-winning, forward thinking</p>
             <a href="#" class="btn btn-sm btn-light">Go to Help Center</a>
@@ -203,7 +214,4 @@ onMounted(() => {
 .sidebar-link.admin-light-gray:hover .nav-icon i {
   color: #797979 !important;
 }
-
-
-
 </style>

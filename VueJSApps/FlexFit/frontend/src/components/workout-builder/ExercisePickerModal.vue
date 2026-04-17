@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { DEFAULT_EXERCISE_IMAGE, getExerciseImage } from '@/utils/exerciseImage';
 
 const props = defineProps({
   isOpen: {
@@ -55,29 +56,12 @@ const filteredExercises = computed(() => {
   });
 });
 
-const getPrimaryImage = (exercise) => {
-  if (exercise.ImageURL) {
-    if (exercise.ImageURL.startsWith('http')) {
-      return exercise.ImageURL;
-    }
-    return `${import.meta.env.VITE_API_BASE}${exercise.ImageURL}`;
+const getPrimaryImage = (exercise) => getExerciseImage(exercise);
+
+const onImageError = (event) => {
+  if (event?.target && event.target.src !== DEFAULT_EXERCISE_IMAGE) {
+    event.target.src = DEFAULT_EXERCISE_IMAGE;
   }
-
-  if (exercise.ImageGallery) {
-    try {
-      const parsed = typeof exercise.ImageGallery === 'string'
-        ? JSON.parse(exercise.ImageGallery)
-        : exercise.ImageGallery;
-
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return `${import.meta.env.VITE_API_BASE}/assets/Excerises/${parsed[0]}`;
-      }
-    } catch {
-      return '';
-    }
-  }
-
-  return '';
 };
 
 const quickAdd = (exercise) => {
@@ -130,9 +114,9 @@ const quickAdd = (exercise) => {
           class="picker-card"
         >
           <img
-            v-if="getPrimaryImage(exercise)"
             :src="getPrimaryImage(exercise)"
             :alt="exercise.ExerciseTitle"
+            @error="onImageError"
           />
           <div class="picker-card__meta">
             <h4>{{ exercise.ExerciseTitle }}</h4>

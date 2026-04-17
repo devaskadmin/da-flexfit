@@ -157,4 +157,73 @@ router.delete('/delete-workout-log/:id', async (req, res) => {
   }
 });
 
+// ✅ GET: Check if user has any workouts (for sidebar unlock logic)
+router.get('/has-workouts', async (req, res) => {
+  try {
+    if (!req.session || !req.session.user || !req.session.user.id) {
+      return res.status(401).json({ error: "Unauthorized. Please log in." });
+    }
+
+    const userID = req.session.user.id;
+
+    // Primary unlock rule: saved workout planner exercise list in user profile settings
+    const [profileRows] = await pool.query(
+      `SELECT settings FROM user_profiles WHERE user_id = ? LIMIT 1`,
+      [userID]
+    );
+
+    let hasSavedWorkoutExerciseList = false;
+    if (profileRows.length > 0) {
+      const rawSettings = profileRows[0]?.settings;
+      let parsedSettings = {};
+
+      if (typeof rawSettings === 'string' && rawSettings.trim()) {
+        try {
+          parsedSettings = JSON.parse(rawSettings) || {};
+        } catch (_) {
+          parsedSettings = {};
+        }
+      } else if (rawSettings && typeof rawSettings === 'object') {
+        parsedSettings = rawSettings;
+      }
+
+      const currentPlanExercises = Array.isArray(parsedSettings?.workoutPlanner?.currentPlan?.exercises)
+        ? parsedSettings.workoutPlanner.currentPlan.exercises
+        : [];
+      const plans = Array.isArray(parsedSettings?.workoutPlanner?.plans)
+        ? parsedSettings.workoutPlanner.plans
+        : [];
+
+      hasSavedWorkoutExerciseList =
+        currentPlanExercises.length > 0 ||
+        plans.some((plan) => Array.isArray(plan?.exercises) && plan.exercises.length > 0);
+    }
+
+    if (hasSavedWorkoutExerciseList) {
+      return res.status(200).json({
+        hasWorkouts: true,
+        hasSavedWorkoutExerciseList: true,
+        message: 'User has saved workout planner exercises',
+      });
+    }
+
+    // Backward-compatible fallback: check if user has at least one workout log entry
+    const [rows] = await pool.query(
+      `SELECT 1 FROM workout_log WHERE UserID = ? LIMIT 1`,
+      [userID]
+    );
+
+    const hasWorkouts = rows.length > 0;
+
+    res.status(200).json({ 
+      hasWorkouts: hasWorkouts,
+      hasSavedWorkoutExerciseList: hasWorkouts,
+      message: hasWorkouts ? 'User has workouts' : 'User has no workouts'
+    });
+  } catch (err) {
+    console.error("❌ Error checking user workouts:", err);
+    res.status(500).json({ error: 'Failed to check workouts.' });
+  }
+});
+
 module.exports = router;

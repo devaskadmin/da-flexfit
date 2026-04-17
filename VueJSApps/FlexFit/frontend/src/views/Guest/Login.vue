@@ -15,7 +15,7 @@ const loginDiagnostics = ref("");
 const diagnosticsCopied = ref(false);
 const showDiagnosticsModal = ref(false);
 const isSubmitting = ref(false);
-const appVersion = import.meta.env.VITE_APP_VERSION || '0.68.3';
+const appVersion = import.meta.env.VITE_APP_VERSION || '0.69.0';
 const isDev = import.meta.env.DEV;
 
 const isSafariBrowser = () => {

@@ -7,6 +7,7 @@ import Tr from "@/i18n/translation"
 import {toggleTheme, currentActiveTheme} from "@/composable/manageThemeSetting.js"
 import {layoutPosition} from "@/composable/navPositionSetting";
 import { API_BASE } from '@/config/env'
+import ProfileDropdown from '@/components/ProfileDropdown.vue'
 
 const router = useRouter()
 
@@ -255,19 +256,10 @@ onUnmounted(() => {
           <button class="header-btn header-collapse-group-btn d-lg-none" @click="toggleHeader"><i class="fa-light fa-ellipsis-vertical"></i></button>
           <button class="header-btn theme-settings-btn d-lg-none" @click="toggleSidebar"><i class="fa-light fa-gear"></i></button>
           <div class="header-btn-box profile-btn-box">
-            <button class="profile-btn" data-bs-toggle="dropdown" aria-expanded="false">
-              <img src="@/assets/images/admin.png" alt="image">
-            </button>
-            <ul class="dropdown-menu profile-dropdown-menu">
-              <li>
-                <div class="dropdown-txt">
-                  <p class="mb-0"><strong>Greetings, {{ currentUsername }}</strong></p>
-                </div>
-              </li>
-              <li><hr class="dropdown-divider"></li>
-              <li><router-link class="dropdown-item" :to="{ name: 'user_settings' }"><span class="dropdown-icon"><i class="fa-regular fa-gear"></i></span> View Settings</router-link></li>
-              <li><router-link class="dropdown-item" :to="{ name: 'logout' }"><span class="dropdown-icon"><i class="fa-regular fa-arrow-right-from-bracket"></i></span> Logout</router-link></li>
-            </ul>
+            <ProfileDropdown 
+              :username="currentUsername" 
+              avatar-src="@/assets/images/admin.png"
+            />
           </div>
         </div>
       </div>

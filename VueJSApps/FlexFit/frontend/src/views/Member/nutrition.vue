@@ -624,19 +624,20 @@ const goToFavoritesTab = () => {
 </script>
 
 <template>
+  <div class="app-page-shell">
+    <div class="app-page-canvas">
+
+  <!--End of BreadCrumb-->
+      <div class="dashboard-breadcrumb ff-page-header app-header-gradient mb-0">
+        <h2>Nutrition Log</h2>
+        <div class="dashboard-filter">
+            <span class="header-meta">SelectedDate: {{ selectedDate }}</span>
+            <DateDropDown v-model="selectedDateRaw" />
+        </div>
+      </div>
 
 
-<!--End of BreadCrumb-->
-  <div class="dashboard-breadcrumb ff-page-header mb-25">
-    <h2>Nutrition Log</h2>
-    <div class="dashboard-filter">
-        <span class="header-meta">SelectedDate: {{ selectedDate }}</span>
-        <DateDropDown v-model="selectedDateRaw" />
-    </div>
-  </div>
-
-
-  <div class="container mt-8">
+      <div class="container mt-0 nutrition-page-card app-section-card">
     <div class="panel">
       <div class="panel-header d-flex align-items-center gap-3 flex-wrap">
         <h4 class="mb-0">Nutrition Log</h4>        
@@ -970,10 +971,24 @@ const goToFavoritesTab = () => {
         </CTabs>
       </div>
     </div>
+    </div>
+  </div>
   </div>
 </template>
 
 <style scoped>
+.nutrition-page-card {
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.nutrition-page-card .panel {
+  border: 0;
+  box-shadow: none;
+  border-radius: 16px;
+}
+
 .header-meta {
   color: #ffffff;
   font-weight: 600;

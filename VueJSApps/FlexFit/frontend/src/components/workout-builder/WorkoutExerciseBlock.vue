@@ -12,6 +12,14 @@ const props = defineProps({
     type: Number,
     required: true,
   },
+  scheduleGroups: {
+    type: Array,
+    default: () => [],
+  },
+  scheduleMode: {
+    type: String,
+    default: 'day',
+  },
 });
 
 const emit = defineEmits(['update-field', 'remove', 'move-up', 'move-down']);
@@ -26,7 +34,7 @@ const updateField = (field, value, isNumeric = false) => {
 </script>
 
 <template>
-  <article class="exercise-block">
+  <article class="exercise-block planner-card">
     <header class="exercise-block__head">
       <div class="exercise-block__identity">
         <img
@@ -35,19 +43,36 @@ const updateField = (field, value, isNumeric = false) => {
           :alt="exercise.name"
         />
         <div>
+          <span class="exercise-block__badge">Block {{ index + 1 }}</span>
           <h4>{{ exercise.name }}</h4>
           <p>{{ exercise.muscleGroup || 'N/A' }} • {{ exercise.equipment || 'Bodyweight' }}</p>
         </div>
       </div>
 
       <div class="exercise-block__actions">
-        <button type="button" :disabled="index === 0" @click="emit('move-up', exercise.id)">↑</button>
-        <button type="button" :disabled="index === total - 1" @click="emit('move-down', exercise.id)">↓</button>
+        <button type="button" :disabled="index === 0" @click="emit('move-up', exercise.id)">Move Up</button>
+        <button type="button" :disabled="index === total - 1" @click="emit('move-down', exercise.id)">Move Down</button>
         <button type="button" class="btn-remove" @click="emit('remove', exercise.id)">Remove</button>
       </div>
     </header>
 
     <div class="exercise-block__fields">
+      <label>
+        <span>{{ scheduleMode === 'week' ? 'Week Group' : 'Day Group' }}</span>
+        <select
+          :value="exercise.scheduleGroup"
+          @change="updateField('scheduleGroup', $event.target.value)"
+        >
+          <option
+            v-for="group in scheduleGroups"
+            :key="group"
+            :value="group"
+          >
+            {{ group }}
+          </option>
+        </select>
+      </label>
+
       <label>
         <span>Sets</span>
         <input
@@ -123,26 +148,45 @@ const updateField = (field, value, isNumeric = false) => {
   margin-top: 12px;
 }
 
+.planner-card {
+  border-radius: 16px;
+  border: 1px solid #d6e0ee;
+  background: linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+}
+
 .exercise-block__head {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   margin-bottom: 12px;
 }
 
 .exercise-block__identity {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
 
 .exercise-block__identity img {
-  width: 68px;
-  height: 68px;
+  width: 72px;
+  height: 72px;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: 12px;
   background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}
+
+.exercise-block__badge {
+  display: inline-flex;
+  margin-bottom: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #1e3a8a;
+  font-weight: 700;
+  font-size: 0.72rem;
 }
 
 .exercise-block__identity h4 {
@@ -161,17 +205,20 @@ const updateField = (field, value, isNumeric = false) => {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .exercise-block__actions button {
   border: 1px solid #cbd5e1;
   background: #fff;
-  border-radius: 8px;
-  height: 32px;
-  padding: 0 10px;
+  border-radius: 10px;
+  min-height: 40px;
+  padding: 0 12px;
   color: #1f2937;
   cursor: pointer;
   font-weight: 600;
+  font-size: 0.84rem;
 }
 
 .exercise-block__actions button:disabled {
@@ -187,7 +234,7 @@ const updateField = (field, value, isNumeric = false) => {
 
 .exercise-block__fields {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 10px;
 }
 
@@ -197,23 +244,42 @@ const updateField = (field, value, isNumeric = false) => {
 }
 
 .exercise-block__fields span {
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: #475569;
 }
 
 .exercise-block__fields input {
-  border: 1px solid #d1d5db;
+  border: 1px solid #d6dee9;
   background: #f8fafc;
   border-radius: 10px;
-  padding: 8px 10px;
+  padding: 10px 11px;
+  min-height: 42px;
+}
+
+.exercise-block__fields select {
+  border: 1px solid #d6dee9;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 10px 11px;
+  min-height: 42px;
 }
 
 .field-notes {
-  grid-column: span 2;
+  grid-column: span 1;
 }
 
-@media (max-width: 1200px) {
+@media (min-width: 700px) {
+  .exercise-block__fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .field-notes {
+    grid-column: span 2;
+  }
+}
+
+@media (min-width: 1024px) {
   .exercise-block__fields {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -229,12 +295,13 @@ const updateField = (field, value, isNumeric = false) => {
     align-items: flex-start;
   }
 
-  .exercise-block__fields {
-    grid-template-columns: 1fr 1fr;
+  .exercise-block__actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 
-  .field-notes {
-    grid-column: span 2;
+  .exercise-block__actions button {
+    flex: 1 1 30%;
   }
 }
 </style>

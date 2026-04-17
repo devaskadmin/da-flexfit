@@ -40,3 +40,6 @@ sync_config.jsonc
 # Set all values in Render dashboard (backend) and Render build env (frontend)
 backend/.env
 frontend/.env
+
+# Database backups and sensitive documents
+Documents/
