@@ -1,6 +1,37 @@
 FlexFit Developer Change Log
 ============================
 
+Version: 0.69.0
+Date: 2026-04-16
+
+- [Add] Shared member-page layout system:
+	- Added reusable wrappers: app-page-shell, app-page-canvas, app-inner-shell.
+	- Added shared inner content surface styling (soft background, radius, subtle elevation).
+	- Standardized centered inner-width behavior across main member pages.
+- [Add] Sidebar visual system upgrade:
+	- Sidebar section headers now use the shared FlexFit blue gradient style family.
+	- Help Center card updated to gradient-highlight variant with improved hover/focus states.
+- [Change] Header consistency across member pages:
+	- Unified page headers to ff-page-header + app-header-gradient pattern.
+	- Removed mixed legacy header wrappers on affected pages.
+- [Change] Vertical spacing/rhythm normalization:
+	- Tightened header-to-first-section and section-to-section spacing via shared layout rules.
+	- Reduced duplicated per-page gap overrides to align with the shared spacing system.
+- [Change] Account Settings visual hierarchy polish:
+	- Secondary settings nav typography/icon/background weight reduced so primary navigation remains dominant.
+- [Change] View Profile modernization:
+	- Refactored to shared shell/canvas/card architecture.
+	- Replaced legacy mixed panel/grid wrappers.
+	- Namespaced internal classes to avoid style collisions and normalized typography.
+- [Fix] Nutrition active page header consistency:
+	- Active Nutrition workspace header now matches shared member-page header structure.
+- [UI Polish] Dashboard widget cards only:
+	- Added very light border: rgba(0,0,0,0.04).
+	- Added soft shadow elevation and consistent 14px radius.
+	- Standardized internal card padding (~17px).
+	- Improved typography hierarchy (title, value, subtext, trend).
+	- Added subtle hover lift and enforced even full-cell alignment.
+
 Version: 0.68.5
 Date: 2026-04-14
 

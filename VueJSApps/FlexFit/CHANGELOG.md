@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.69.0] - 2026-04-16
+
+### Added
+- **Shared member-page layout system** (`style.css`, member views):
+  - Added reusable page wrappers (`app-page-shell`, `app-page-canvas`, `app-inner-shell`) for consistent centering and max-width behavior.
+  - Added shared inner content surface treatment (soft background, radius, subtle elevation) for a cleaner app canvas.
+- **Sidebar visual system upgrade** (`MainSidebarComponent.vue`, `style.css`):
+  - Added shared gradient treatment to sidebar section headers.
+  - Added upgraded Help Center gradient card variant and improved focus/hover accessibility states.
+
+### Changed
+- **Header standardization across member pages** (`HomeDashboard.vue`, `WorkoutBuilder.vue`, `NutritionWorkspace.vue`, `UserSettings.vue`, `ViewProfile.vue`, `style.css`):
+  - Unified top header treatment using `ff-page-header` + `app-header-gradient`.
+  - Removed mixed legacy wrappers and aligned header visual language.
+- **Inner width and rhythm normalization** (shared + page-level):
+  - Standardized container width behavior across Dashboard, Workout Builder, Nutrition, Log Workout, Exercises, Settings, and View Profile.
+  - Tightened vertical rhythm between page header, first content section, and stacked sections using shared spacing tokens.
+- **Account Settings hierarchy polish** (`UserSettings.vue`):
+  - Reduced secondary nav visual weight (typography/icon/background states) so primary navigation remains dominant.
+- **View Profile full layout modernization** (`ViewProfile.vue`):
+  - Rebuilt page into shared shell/canvas/card system.
+  - Replaced legacy mixed panel/grid patterns with responsive two-column + stacked card structure.
+  - Namespaced internal styles to avoid legacy CSS collisions and normalized typography hierarchy.
+- **Dashboard widget card polish** (`FitnessMetricCard.vue`, `HomeDashboard.vue`):
+  - Added very light border (`rgba(0,0,0,0.04)`), soft elevation, 14px radius, and standardized internal padding.
+  - Improved title/value/subtext/trend typography hierarchy and icon treatment.
+  - Added subtle hover lift effect and ensured consistent full-cell card alignment.
+
+### Fixed
+- **Nutrition active page consistency** (`NutritionWorkspace.vue`):
+  - Corrected active page header structure to match the shared member-page header system.
+- **Layout drift across key member routes**:
+  - Removed remaining width/spacing inconsistencies introduced by mixed legacy wrappers.
+
 ## [0.68.6] - 2026-04-10
 
 ### Added

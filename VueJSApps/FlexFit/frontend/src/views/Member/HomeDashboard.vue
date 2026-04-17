@@ -59,107 +59,230 @@ const recentActivity = [
 </script>
 
 <template>
-  <div class="dashboard-breadcrumb ff-page-header mb-25">
-    <h2>Welcome back<template v-if="firstName">, {{ firstName }}</template>!</h2>
-    <DateRangePicker />
-  </div>
-
-  <section class="dashboard-hero panel-bg">
-    <h3>Today’s focus: progressive overload + nutrition consistency</h3>
-    <p>Prioritize one quality strength session and hit your protein target.</p>
-  </section>
-
-  <section class="row g-3">
-    <div class="col-lg-3 col-md-6" v-for="metric in metrics" :key="metric.title">
-      <FitnessMetricCard
-        :title="metric.title"
-        :value="metric.value"
-        :subtitle="metric.subtitle"
-        :trend="metric.trend"
-        :icon="metric.icon"
-      />
-    </div>
-  </section>
-
-  <section class="row g-3 mt-1">
-    <div class="col-lg-8">
-      <div class="panel panel-bg dashboard-panel">
-        <div class="panel-header"><h5>Training Progress</h5></div>
-        <div class="panel-body"><ProgressChart /></div>
-      </div>
-    </div>
-    <div class="col-lg-4">
-      <div class="panel panel-bg dashboard-panel">
-        <div class="panel-header"><h5>Activity Feed</h5></div>
-        <div class="panel-body activity-feed">
-          <article v-for="item in recentActivity" :key="item.time + item.action" class="activity-row">
-            <span class="time">{{ item.time }}</span>
-            <div>
-              <strong>{{ item.action }}</strong>
-              <p>{{ item.detail }}</p>
-            </div>
-          </article>
+  <div class="app-page-shell dashboard-container">
+    <div class="app-page-canvas app-inner-shell dashboard-canvas">
+      <!-- Welcome Header Card -->
+      <section class="dashboard-header ff-page-header app-header-gradient">
+        <div class="header-content">
+          <div>
+            <h2>Welcome back<template v-if="firstName">, {{ firstName }}</template>!</h2>
+          </div>
+          <div class="header-picker">
+            <DateRangePicker />
+          </div>
         </div>
-      </div>
-    </div>
-  </section>
+      </section>
 
-  <section class="row g-3 mt-1">
-    <div class="col-12">
-      <div class="panel panel-bg dashboard-panel">
-        <div class="panel-header"><h5>Nutrition Trend</h5></div>
-        <div class="panel-body"><NutritionLogChart /></div>
-      </div>
+      <!-- Focus Card -->
+      <section class="dashboard-focus-card">
+        <h3>Today's focus: progressive overload + nutrition consistency</h3>
+        <p>Prioritize one quality strength session and hit your protein target.</p>
+      </section>
+
+      <!-- Stats Cards Section -->
+      <section class="dashboard-stats">
+        <div v-for="metric in metrics" :key="metric.title" class="stat-card">
+          <FitnessMetricCard
+            :title="metric.title"
+            :value="metric.value"
+            :subtitle="metric.subtitle"
+            :trend="metric.trend"
+            :icon="metric.icon"
+          />
+        </div>
+      </section>
+
+      <!-- Training Progress + Activity Feed -->
+      <section class="dashboard-main-row">
+        <div class="training-progress-section">
+          <div class="panel panel-bg dashboard-panel">
+            <div class="panel-header"><h5>Training Progress</h5></div>
+            <div class="panel-body"><ProgressChart /></div>
+          </div>
+        </div>
+        <div class="activity-feed-section">
+          <div class="panel panel-bg dashboard-panel">
+            <div class="panel-header"><h5>Activity Feed</h5></div>
+            <div class="panel-body activity-feed">
+              <article v-for="item in recentActivity" :key="item.time + item.action" class="activity-row">
+                <span class="time">{{ item.time }}</span>
+                <div>
+                  <strong>{{ item.action }}</strong>
+                  <p>{{ item.detail }}</p>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Nutrition Trend -->
+      <section class="dashboard-nutrition">
+        <div class="panel panel-bg dashboard-panel">
+          <div class="panel-header"><h5>Nutrition Trend</h5></div>
+          <div class="panel-body"><NutritionLogChart /></div>
+        </div>
+      </section>
     </div>
-  </section>
+  </div>
 </template>
 
 <style scoped>
-.dashboard-breadcrumb.ff-page-header {
-  border: 1px solid var(--border-color);
-  border-radius: 14px;
+/* ─────────────────────────────────────────────────────────────────── */
+/* MOBILE-FIRST CONSTRAINED DASHBOARD LAYOUT                          */
+/* ─────────────────────────────────────────────────────────────────── */
+
+.dashboard-container {
+  display: block;
 }
 
-.dashboard-hero {
-  border: 1px solid var(--border-color);
-  border-radius: 14px;
-  padding: 16px;
-  margin-bottom: 14px;
+.dashboard-canvas {
+  display: grid;
+  gap: 16px;
 }
 
-.dashboard-hero h3 {
+/* ─────────────────────────────────────────────────────────────────── */
+/* HEADER WELCOME CARD                                                 */
+/* ─────────────────────────────────────────────────────────────────── */
+
+.dashboard-header {
+  border: 1px solid var(--border-color);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dashboard-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+
+.header-picker {
+  margin-top: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────────── */
+/* FOCUS GUIDANCE CARD                                                 */
+/* ─────────────────────────────────────────────────────────────────── */
+
+.dashboard-focus-card {
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 18px 20px;
+  background: var(--panel-bg, #fff);
+}
+
+.dashboard-focus-card h3 {
   margin: 0;
   color: var(--text-color);
-  font-size: 1.1rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.012em;
 }
 
-.dashboard-hero p {
-  margin: 5px 0 0;
+.dashboard-focus-card p {
+  margin: 8px 0 0;
   color: var(--text-color-secondary);
+  font-size: 0.93rem;
 }
+
+/* ─────────────────────────────────────────────────────────────────── */
+/* STATS CARDS: MOBILE-FIRST STACKING                                  */
+/* ─────────────────────────────────────────────────────────────────── */
+
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.stat-card {
+  width: 100%;
+  display: flex;
+}
+
+.stat-card :deep(.metric-card) {
+  width: 100%;
+  height: 100%;
+}
+
+/* ─────────────────────────────────────────────────────────────────── */
+/* MAIN ROW: TRAINING + ACTIVITY (stacked mobile, side-by-side desktop) */
+/* ─────────────────────────────────────────────────────────────────── */
+
+.dashboard-main-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.training-progress-section,
+.activity-feed-section {
+  width: 100%;
+}
+
+/* ─────────────────────────────────────────────────────────────────── */
+/* NUTRITION SECTION                                                   */
+/* ─────────────────────────────────────────────────────────────────── */
+
+.dashboard-nutrition {
+  width: 100%;
+}
+
+/* ─────────────────────────────────────────────────────────────────── */
+/* CARD STYLES                                                         */
+/* ─────────────────────────────────────────────────────────────────── */
 
 .dashboard-panel {
   border: 1px solid var(--border-color);
-  border-radius: 14px;
+  border-radius: 16px;
+  background: var(--panel-bg, #fff);
 }
+
+.panel-header {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.panel-header h5 {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.panel-body {
+  padding: 16px 18px;
+}
+
+/* ─────────────────────────────────────────────────────────────────── */
+/* ACTIVITY FEED                                                       */
+/* ─────────────────────────────────────────────────────────────────── */
 
 .activity-feed {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .activity-row {
   border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 9px;
+  border-radius: 12px;
+  padding: 12px 14px;
   display: flex;
-  gap: 10px;
+  gap: 12px;
 }
 
 .activity-row .time {
   color: #a5b4fc;
   min-width: 70px;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-weight: 700;
 }
 
@@ -171,6 +294,85 @@ const recentActivity = [
 .activity-row p {
   margin: 4px 0 0;
   color: var(--text-color-secondary);
-  font-size: 0.79rem;
+  font-size: 0.82rem;
+}
+
+/* ─────────────────────────────────────────────────────────────────── */
+/* TABLET BREAKPOINT (768px+)                                          */
+/* ─────────────────────────────────────────────────────────────────── */
+
+@media (min-width: 768px) {
+  .dashboard-canvas {
+    gap: 16px;
+    padding: 0;
+  }
+
+  .dashboard-header {
+    padding: 20px;
+  }
+
+  .dashboard-focus-card,
+  .panel-body {
+    padding: 20px;
+  }
+
+  .panel-header {
+    padding: 16px 20px;
+  }
+
+  .dashboard-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+
+  .dashboard-main-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────── */
+/* DESKTOP BREAKPOINT (1024px+)                                        */
+/* ─────────────────────────────────────────────────────────────────── */
+
+@media (min-width: 1024px) {
+  .dashboard-canvas {
+    gap: 16px;
+    padding: 0;
+  }
+
+  .dashboard-header {
+    padding: 22px;
+  }
+
+  .dashboard-focus-card {
+    padding: 22px;
+  }
+
+  .dashboard-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+  }
+
+  .dashboard-main-row {
+    grid-template-columns: 1.5fr 1fr;
+    gap: 28px;
+  }
+
+  .panel-body {
+    padding: 24px;
+  }
+
+  .panel-header {
+    padding: 18px 24px;
+  }
+
+  .activity-feed {
+    gap: 14px;
+  }
+
+  .activity-row {
+    padding: 14px 16px;
+  }
 }
 </style>

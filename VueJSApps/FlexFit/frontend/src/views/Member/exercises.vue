@@ -3,6 +3,7 @@
    import { ref, reactive, computed, onMounted, watch, nextTick } from "vue";
    import DateDropDown from "@/components/DropDownDate.vue"; // not template folder
   import { API_BASE } from '@/config/env';
+  import { DEFAULT_EXERCISE_IMAGE, getExerciseImage, getExerciseImageFromGallery } from '@/utils/exerciseImage';
    import '@fortawesome/fontawesome-free/css/all.min.css';
    
    // ---- VARIABLES ----
@@ -457,16 +458,7 @@ function autoSwitchTabToLogOrLibrary() {
    const currentPage = ref(1); // start from 1
    
    
-   const getFirstImage = (gallery) => {
-  try {
-    const images = typeof gallery === 'string' ? JSON.parse(gallery) : gallery;
-    return images?.length > 0
-      ? `/assets/Excerises/${images[0]}`
-      : '/assets/Excerises/default/default.jpg';
-  } catch {
-    return '/assets/Excerises/default/default.jpg';
-  }
-};
+   const getFirstImage = (gallery) => getExerciseImageFromGallery(gallery);
 
    
    const loadMore = () => {
@@ -515,22 +507,11 @@ function autoSwitchTabToLogOrLibrary() {
 //Selected excerise Image handeling
 const selectedImage = computed(() => {
   if (!selectedExercise.value) {
-    return '/assets/Excerises/default/default.jpg';
+    return DEFAULT_EXERCISE_IMAGE;
   }
 
   const match = allExercises.value.find(ex => ex.ExerciseTitle === selectedExercise.value);
-  if (!match || !match.ImageGallery) {
-    return '/assets/Excerises/default/default.jpg';
-  }
-
-  try {
-    const gallery = JSON.parse(match.ImageGallery);
-    return gallery.length > 0
-      ? `/assets/Excerises/${gallery[0]}` // ✅ Remove folder prefixing
-      : '/assets/Excerises/default/default.jpg';
-  } catch {
-    return '/assets/Excerises/default/default.jpg';
-  }
+  return getExerciseImage(match);
 });
 //End of Selected Excerise image
    
@@ -904,8 +885,10 @@ const clearFilters = () => {
 </script>
 
 <template>
+  <div class="app-page-shell">
+  <div class="app-page-canvas app-inner-shell">
 
-  <div class="dashboard-breadcrumb ff-page-header mb-25">
+  <div class="dashboard-breadcrumb ff-page-header app-header-gradient mb-0">
       <h2>Log Workout</h2>
     <div class="dashboard-filter">
       <DateDropDown v-model="selectedDateRaw" compact />
@@ -913,19 +896,8 @@ const clearFilters = () => {
    </div>
 
 
-   <!--DEBUG PAGE CONTAINER -->
-   <div class="container mt-8 container-block">
-
-      <div class="panel">
-         <!--Start of panel-->
-         <div class="panel-header">
-            <!-- Panel Header-->
-              <h4>Excerise</h4>
-          </div>
-   
-     
-          <div class="row">
-            <div class="col-xs-12 ">
+   <!-- Exercise Tab Section -->
+  <div class="ex-page-body app-section-card">
 
               <nav class="ex-tab-bar" role="tablist" aria-label="Log workout sections">
                 <button
@@ -936,7 +908,7 @@ const clearFilters = () => {
                   role="tab"
                   @click="activeTab = 'search-exercises'"
                 >
-                  <i class="fa-solid fa-magnifying-glass me-2"></i><span>Search Exercise Library</span>
+                  <i class="fa-solid fa-magnifying-glass me-2"></i><span>Search Exercises </span>
                 </button>
                 <button
                   type="button"
@@ -960,7 +932,7 @@ const clearFilters = () => {
                 <div class="panel search-filter-card">
                   <!--Start of panel-->
                   <div class="panel-header search-filter-head">
-                    <h4><i class="fa-solid fa-magnifying-glass me-2"></i>Search Exercise Library</h4>
+                    <h4><i class="fa-solid fa-magnifying-glass me-2"></i>Search Exercises</h4>
                   </div>
                   <!--end of panel header-->
                   <div class="panel-body search-filter-body">
@@ -1282,30 +1254,12 @@ const clearFilters = () => {
 
               
           </div>
-          <!--End of Log Excerise container-->
+          <!--End of Exercise Tab Section-->
 
 
 
 
 
-
-                
-            </div>
-            <!--End of SEARCH excerises-->
-
-          <!--Excerise Libary-->
-
-
-          <!--End of Excerise Libary-->
-
-
-
-
-
-
-
-            </div>
-            <!-- End of Search Exercise Section -->
 
 
   <!-- Log Exercise Section -->
@@ -1603,25 +1557,18 @@ Please Select an excerise
 
 
 
-
   </div><!--end ofLog Exercise Section-->
 </div>
 </div>
-</div></div>
-
-
-
-
-
-
-
-
-  </div><!-- End of Exercise Section -->
+</div><!-- End of tab-content -->
+</div><!-- End of ex-page-body: Exercise Section -->
+  </div>
+  </div>
 </template>
 <style scoped>
-   .dashboard-breadcrumb {
-   margin-bottom: 20px;
-   }
+  .dashboard-breadcrumb {
+  margin-bottom: 0;
+  }
   .header-meta {
   color: #ffffff;
   font-weight: 600;
@@ -1756,6 +1703,12 @@ Please Select an excerise
 
 
 
+
+.ex-page-body {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+}
 
 .ex-tab-bar {
   display: flex;

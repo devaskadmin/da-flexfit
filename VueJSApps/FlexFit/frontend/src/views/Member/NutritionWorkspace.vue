@@ -268,13 +268,15 @@ onMounted(async () => {
 </script>
 
 <template>
+  <div class="app-page-shell">
+  <div class="app-page-canvas app-inner-shell">
   <div class="nutrition-workspace">
-    <section class="workspace-hero dashboard-breadcrumb ff-page-header panel-bg">
-      <div>
+    <section class="builder-hero ff-page-header app-header-gradient">
+      <div class="builder-hero__content">
         <h2>Nutrition Workspace</h2>
         <p>Search, review, and log foods in one workflow.</p>
       </div>
-      <div class="workspace-date dashboard-filter">
+      <div class="builder-hero__meta">
         <DateDropDown v-model="selectedDateRaw" compact />
       </div>
     </section>
@@ -409,6 +411,8 @@ onMounted(async () => {
       </article>
     </div>
   </div>
+  </div>
+  </div>
 </template>
 
 <style scoped>
@@ -418,10 +422,10 @@ onMounted(async () => {
   display: grid;
   gap: 14px;
 }
-.workspace-hero { border: 1.5px solid var(--ff-border-strong); border-radius: 16px; padding: 18px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-.workspace-hero h2 { margin: 0; color: #ffffff; }
-.workspace-hero p { margin: 4px 0 0; color: #cbd5e1; }
-.workspace-date { display: flex; align-items: center; justify-content: flex-end; }
+.builder-hero { border: 1.5px solid var(--ff-border-strong); border-radius: 16px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+.builder-hero h2 { margin: 0; color: #ffffff; }
+.builder-hero p { margin: 4px 0 0; color: #cbd5e1; }
+.builder-hero__meta { display: flex; align-items: center; justify-content: flex-end; }
 .workspace-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; }
 .workspace-main { border: 1.5px solid var(--ff-border-strong); border-radius: 16px; padding: 14px; }
 .workspace-tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1.5px solid var(--ff-border-soft); padding-bottom: 10px; }
@@ -460,5 +464,8 @@ onMounted(async () => {
   --ff-border-soft: rgba(15, 23, 42, 0.22);
 }
 @media (max-width: 1100px) { .workspace-layout { grid-template-columns: 1fr; } .workspace-side { order: -1; } }
-@media (max-width: 768px) { .search-controls, .add-edit-grid, .form-grid { grid-template-columns: 1fr; } }
+@media (max-width: 768px) {
+  .search-controls, .add-edit-grid, .form-grid { grid-template-columns: 1fr; }
+  .builder-hero__meta { width: 100%; justify-content: flex-start; }
+}
 </style>

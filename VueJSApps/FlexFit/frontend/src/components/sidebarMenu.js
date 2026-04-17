@@ -10,19 +10,15 @@ export const sidebarMenus = ref([
                 icon: 'fa-solid fa-house'              
             },
             {
-                name: 'Exercises',
-                link_name: 'exercises',
-                icon: 'fa-solid fa-person-walking'              
-            },
-            {
-                name: 'Workouts',
-                link_name: 'workouts',
-                icon: 'fa-solid fa-list-check'
-            },
-            {
                 name: 'Workout Builder',
                 link_name: 'workout_builder',
                 icon: 'fa-solid fa-dumbbell'
+            },
+            {
+                name: 'Workout Log',
+                link_name: 'workouts',
+                icon: 'fa-solid fa-list-check',
+                requiresWorkoutLists: true
             },
             {
                 name: 'Nutrition',

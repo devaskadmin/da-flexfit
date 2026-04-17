@@ -316,10 +316,12 @@ watch(
 </script>
 
 <template>
+  <div class="app-page-shell">
+  <div class="app-page-canvas app-inner-shell settings-canvas">
   <div class="settings-page">
 
     <!-- Header -->
-    <div class="settings-header ff-page-header mb-25">
+    <div class="settings-header ff-page-header app-header-gradient mb-25">
       <div>
         <h2 class="settings-title">Account Settings</h2>
         <p class="settings-subtitle">Manage your profile, fitness data and preferences</p>
@@ -674,23 +676,22 @@ watch(
       </div>
     </div>
   </div>
+  </div>
+  </div>
 </template>
 
 <style scoped>
 .settings-page {
   --ff-border-strong: rgba(148, 163, 184, 0.44);
   --ff-border-soft: rgba(148, 163, 184, 0.32);
-  padding: 0 2px;
+  padding: 0;
   color: var(--text-color);
 }
 
 .settings-header {
   display: flex; align-items: center; justify-content: space-between;
   flex-wrap: wrap; gap: 12px;
-  background: var(--ff-page-header-gradient, var(--ff-page-header-bg));
   border: 1.5px solid var(--ff-border-strong);
-  border-radius: var(--ff-page-header-radius, 14px);
-  padding: 12px 14px;
 }
 .settings-title { font-size: 1.45rem; font-weight: 700; margin: 0; color: #ffffff !important; }
 .settings-subtitle { font-size: .83rem; opacity: .92; margin: 3px 0 0; color: #cbd5e1 !important; font-weight: 500; }
@@ -717,24 +718,32 @@ watch(
 .s-nav-item {
   display: flex; align-items: center; gap: 11px;
   padding: 10px 13px; border-radius: 8px; border: none;
-  background: transparent; color: #000000;
-  font-size: .87rem; font-weight: 600; cursor: pointer;
+  background: transparent; color: var(--text-color);
+  font-size: .85rem; font-weight: 500; cursor: pointer;
   text-align: left; width: 100%;
-  transition: background .15s, color .15s;
+  transition: background .15s, color .15s, border-color .15s;
 }
 .s-nav-item span,
-.s-nav-item i { color: #000000 !important; }
+.s-nav-item i { color: var(--text-color) !important; }
 .s-nav-icon {
   width: 30px; height: 30px; border-radius: 7px;
   display: flex; align-items: center; justify-content: center;
-  background: rgba(0,0,0,.08); font-size: .82rem;
-  color: #000000;
+  background: rgba(148,163,184,.15); font-size: .8rem;
+  color: var(--text-color-secondary);
   flex-shrink: 0; transition: background .15s;
 }
 .s-nav-item:hover .s-nav-icon,
-.s-nav-item.active .s-nav-icon { background: rgba(0,0,0,.14); color: #000000; }
-.s-nav-item:hover  { color: #000000; }
-.s-nav-item.active { color: #000000; font-weight: 700; }
+.s-nav-item.active .s-nav-icon { background: rgba(37,99,235,.18); color: #2563eb; }
+.s-nav-item:hover  {
+  color: var(--text-color);
+  background: rgba(148,163,184,.12);
+}
+.s-nav-item.active {
+  color: var(--text-color);
+  font-weight: 600;
+  background: rgba(37,99,235,.12);
+  box-shadow: inset 0 0 0 1px rgba(37,99,235,.22);
+}
 
 .settings-content { flex: 1; min-width: 0; }
 .s-panel { border-radius: 14px; padding: 26px 28px; border: 1.5px solid var(--ff-border-strong); }
