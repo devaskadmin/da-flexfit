@@ -1,28 +1,31 @@
 # FlexFit
 
-This template should help get you started developing with Vue 3 in Vite.
+**Version:** 0.7 beta
 
-## Recommended IDE Setup
+FlexFit is a full-stack fitness platform with:
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+- Vue 3 + Vite frontend
+- Express + MySQL backend
+- Relational workout schedule templates
+- Session-based workout logging (performed history)
 
-## Customize configuration
+## Core docs
 
-See [Vite Configuration Reference](https://vitejs.dev/config/).
+- [CHANGELOG.md](CHANGELOG.md)
+- [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md)
 
-## Project Setup
+## Development
+
+From `frontend`:
 
 ```sh
 npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
 npm run dev
 ```
 
-### Compile and Minify for Production
+`npm run dev` starts the frontend and backend concurrently (per frontend scripts).
+
+## Build
 
 ```sh
 npm run build

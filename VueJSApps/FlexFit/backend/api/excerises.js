@@ -89,7 +89,7 @@ router.put('/get-exercise/:id', (req, res) => {
       };
 
       await pool.query(
-        `UPDATE Exercises SET
+        `UPDATE exercises SET
           ExerciseTitle = ?,
           MuscleGroup = ?,
           Equipment = ?,
@@ -141,7 +141,7 @@ router.post('/save-exercises', ImageUpload.upload, async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const [existing] = await pool.query('SELECT ExerciseID FROM Exercises WHERE ExerciseTitle = ?', [ExerciseTitle]);
+    const [existing] = await pool.query('SELECT ExerciseID FROM exercises WHERE ExerciseTitle = ?', [ExerciseTitle]);
     if (existing.length > 0) {
       return res.status(400).json({ error: 'Exercise title already exists' });
     }
@@ -154,7 +154,7 @@ router.post('/save-exercises', ImageUpload.upload, async (req, res) => {
     const ImageURL = `/assets/Excerises/${imageGallery[0]}`;
 
     await pool.query(
-      `INSERT INTO Exercises
+      `INSERT INTO exercises
       (ExerciseTitle, MuscleGroup, Equipment, WorkoutType, RecordingType, ImageURL, Instructions, ImageGallery)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
@@ -179,7 +179,7 @@ router.post('/save-exercises', ImageUpload.upload, async (req, res) => {
 // ✅ Fetch exercises with fallback
 router.get('/get-exercises', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM Exercises');
+    const [rows] = await pool.query('SELECT * FROM exercises');
     if (Array.isArray(rows) && rows.length > 0) {
       return res.status(200).json(rows);
     }
@@ -207,9 +207,5 @@ router.get('/check-exercises', async (req, res) => {
   );
   res.json({ exists: rows.length > 0, data: rows[0] });
 });
-
-module.exports = router;
-
-
 
 module.exports = router;

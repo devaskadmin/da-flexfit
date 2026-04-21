@@ -1,4 +1,6 @@
 <script setup>
+import { API_BASE } from '@/config/env';
+
 const props = defineProps({
   exercise: {
     type: Object,
@@ -24,6 +26,28 @@ const props = defineProps({
 
 const emit = defineEmits(['update-field', 'remove', 'move-up', 'move-down']);
 
+const FALLBACK_EXERCISE_IMAGE = '/assets/Excerises/default/default.jpg';
+
+const resolveImageSrc = (value) => {
+  const raw = String(value || '').trim();
+  const source = raw || FALLBACK_EXERCISE_IMAGE;
+
+  if (/^https?:\/\//i.test(source) || source.startsWith('data:')) {
+    return source;
+  }
+
+  if (source.startsWith('/')) {
+    return `${API_BASE}${source}`;
+  }
+
+  return source;
+};
+
+const handleImageError = (event) => {
+  if (!event?.target) return;
+  event.target.src = resolveImageSrc(FALLBACK_EXERCISE_IMAGE);
+};
+
 const updateField = (field, value, isNumeric = false) => {
   emit('update-field', {
     id: props.exercise.id,
@@ -38,9 +62,13 @@ const updateField = (field, value, isNumeric = false) => {
     <header class="exercise-block__head">
       <div class="exercise-block__identity">
         <img
-          v-if="exercise.image"
-          :src="exercise.image"
+          :src="resolveImageSrc(exercise.image)"
           :alt="exercise.name"
+          width="72"
+          height="72"
+          loading="lazy"
+          decoding="async"
+          @error="handleImageError"
         />
         <div>
           <span class="exercise-block__badge">Block {{ index + 1 }}</span>

@@ -1,9 +1,10 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import WorkoutMetadataForm from '@/components/workout-builder/WorkoutMetadataForm.vue';
 import ExercisePickerModal from '@/components/workout-builder/ExercisePickerModal.vue';
 import WorkoutExerciseBlock from '@/components/workout-builder/WorkoutExerciseBlock.vue';
+import WorkoutScheduleListItem from '@/components/workout-builder/WorkoutScheduleListItem.vue';
 import { API_BASE } from '@/config/env';
 import { refreshWorkoutStatus, setUserWorkoutStatus } from '@/composable/workoutStatusManager';
 
@@ -24,17 +25,35 @@ const saveMessage = ref('');
 const plannerMessage = ref('');
 const userId = ref(null);
 const currentPlanId = ref('');
+const selectedWorkoutId = ref('');
+const workoutSchedules = ref([]);
+const isCreatingWorkout = ref(false);
+const hasSavedWorkoutDetails = ref(false);
+const deletingWorkoutId = ref('');
 const hasSavedWorkoutExerciseList = ref(false);
 const isWorkoutDetailsOpen = ref(true);
 const isSchedulePlannerOpen = ref(true);
 const route = useRoute();
+const router = useRouter();
 
 const scheduleMode = ref('day'); // day | week
 const dayGroups = ref(['Any Day']);
 const weekGroups = ref(['Week 1']);
 const newScheduleGroupName = ref('');
+const editingScheduleGroupOriginalName = ref('');
 
 const activeGroups = computed(() => (scheduleMode.value === 'week' ? weekGroups.value : dayGroups.value));
+
+const hasWorkoutSchedules = computed(() => workoutSchedules.value.length > 0);
+const canShowWorkoutDetails = computed(() => isCreatingWorkout.value || Boolean(selectedWorkoutId.value));
+const canShowSchedulePlanner = computed(() => canShowWorkoutDetails.value && hasSavedWorkoutDetails.value);
+const primarySaveLabel = computed(() => {
+  if (saving.value) {
+    return hasSavedWorkoutDetails.value ? 'Saving...' : 'Saving Details...';
+  }
+  return hasSavedWorkoutDetails.value ? 'Save Workout' : 'Save Workout Details';
+});
+const isEditingScheduleGroup = computed(() => Boolean(String(editingScheduleGroupOriginalName.value || '').trim()));
 
 const plannerGroupsWithExercises = computed(() => {
   const groups = activeGroups.value.length > 0
@@ -63,12 +82,163 @@ const completedVolume = computed(() => {
   }, 0);
 });
 
+const formatUpdatedAt = (value) => {
+  if (!value) return '—';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '—';
+  return parsed.toLocaleDateString();
+};
+
+const syncWorkoutSchedules = (incomingLists = []) => {
+  workoutSchedules.value = (Array.isArray(incomingLists) ? incomingLists : []).map((plan) => ({
+    ...plan,
+    updatedAtLabel: formatUpdatedAt(plan.updatedAt),
+  }));
+};
+
+const resetPlannerDraft = () => {
+  metadata.value = {
+    name: '',
+    description: '',
+    type: 'Strength',
+    estimatedDuration: 45,
+  };
+  currentPlanId.value = '';
+  workoutExercises.value = [];
+  scheduleMode.value = 'day';
+  dayGroups.value = ['Any Day'];
+  weekGroups.value = ['Week 1'];
+  newScheduleGroupName.value = '';
+  editingScheduleGroupOriginalName.value = '';
+  plannerMessage.value = '';
+  saveMessage.value = '';
+  isWorkoutDetailsOpen.value = true;
+  isSchedulePlannerOpen.value = true;
+};
+
+const hydratePlanner = (planner = {}, { markSaved = true } = {}) => {
+  currentPlanId.value = String(planner?.planId || '').trim();
+
+  metadata.value = {
+    name: planner?.metadata?.name || '',
+    description: planner?.metadata?.description || '',
+    type: planner?.metadata?.type || 'Strength',
+    estimatedDuration: Number(planner?.metadata?.estimatedDuration || 45),
+  };
+
+  scheduleMode.value = planner?.scheduleMode === 'week' ? 'week' : 'day';
+  dayGroups.value = Array.isArray(planner?.dayGroups) && planner.dayGroups.length > 0
+    ? planner.dayGroups
+    : ['Any Day'];
+  weekGroups.value = Array.isArray(planner?.weekGroups) && planner.weekGroups.length > 0
+    ? planner.weekGroups
+    : ['Week 1'];
+
+  workoutExercises.value = Array.isArray(planner?.exercises)
+    ? planner.exercises.map((exercise) => ({
+        ...exercise,
+        scheduleGroup: exercise?.scheduleGroup || (scheduleMode.value === 'week' ? weekGroups.value[0] : dayGroups.value[0]),
+      }))
+    : [];
+
+  const assignedGroups = Array.from(
+    new Set(workoutExercises.value.map((exercise) => String(exercise.scheduleGroup || '').trim()).filter(Boolean))
+  );
+
+  if (scheduleMode.value === 'week') {
+    weekGroups.value = Array.from(new Set([...weekGroups.value, ...assignedGroups]));
+  } else {
+    dayGroups.value = Array.from(new Set([...dayGroups.value, ...assignedGroups]));
+  }
+
+  hasSavedWorkoutDetails.value = markSaved;
+  editingScheduleGroupOriginalName.value = '';
+  newScheduleGroupName.value = '';
+  isWorkoutDetailsOpen.value = true;
+  isSchedulePlannerOpen.value = markSaved;
+};
+
+const clearSelection = async () => {
+  selectedWorkoutId.value = '';
+  isCreatingWorkout.value = false;
+  hasSavedWorkoutDetails.value = false;
+  resetPlannerDraft();
+  await router.replace({ query: { ...route.query, planId: undefined } });
+};
+
 const openPicker = () => {
   pickerOpen.value = true;
 };
 
 const closePicker = () => {
   pickerOpen.value = false;
+};
+
+const createWorkoutPlan = async () => {
+  saveMessage.value = '';
+  if (!userId.value) {
+    saveMessage.value = 'Unable to resolve user session. Please login again.';
+    return;
+  }
+
+  loadingPlanner.value = true;
+  try {
+    const response = await fetch(`${API_BASE}/api/workout-schedules`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scheduleMode: 'day' }),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData?.error || 'Failed to create workout plan.');
+    }
+
+    const data = await response.json();
+    const planner = data?.planner || {};
+    const createdPlanId = String(planner?.planId || '').trim();
+
+    if (!createdPlanId) {
+      throw new Error('Workout plan was created but no plan ID was returned.');
+    }
+
+    syncWorkoutSchedules(data?.workoutLists);
+    selectedWorkoutId.value = createdPlanId;
+    currentPlanId.value = createdPlanId;
+    isCreatingWorkout.value = true;
+    hasSavedWorkoutDetails.value = false;
+
+    metadata.value = {
+      name: '',
+      description: '',
+      type: planner?.metadata?.type || 'Strength',
+      estimatedDuration: Number(planner?.metadata?.estimatedDuration || 45),
+    };
+
+    scheduleMode.value = planner?.scheduleMode === 'week' ? 'week' : 'day';
+    dayGroups.value = Array.isArray(planner?.dayGroups) && planner.dayGroups.length > 0
+      ? planner.dayGroups
+      : ['Any Day'];
+    weekGroups.value = Array.isArray(planner?.weekGroups) && planner.weekGroups.length > 0
+      ? planner.weekGroups
+      : ['Week 1'];
+    workoutExercises.value = [];
+    plannerMessage.value = '';
+    isWorkoutDetailsOpen.value = true;
+    isSchedulePlannerOpen.value = false;
+
+    await router.replace({ query: { ...route.query, planId: createdPlanId } });
+    saveMessage.value = 'Draft workout plan created. Add details and save to continue.';
+  } catch (error) {
+    saveMessage.value = error.message || 'Failed to create workout plan.';
+  } finally {
+    loadingPlanner.value = false;
+  }
+};
+
+const showAiSuggestionPlaceholder = () => {
+  saveMessage.value = 'Suggest with AI is coming soon.';
 };
 
 const ensureActiveGroups = () => {
@@ -91,6 +261,22 @@ const buildDefaultGroupName = () => {
   return `${prefix} ${index}`;
 };
 
+const getFallbackGroupName = () => (scheduleMode.value === 'week' ? 'Week 1' : 'Any Day');
+
+const clearScheduleGroupEdit = () => {
+  editingScheduleGroupOriginalName.value = '';
+  newScheduleGroupName.value = '';
+};
+
+const canRemoveScheduleGroup = (groupName) => {
+  const target = scheduleMode.value === 'week' ? weekGroups.value : dayGroups.value;
+  if (target.length <= 1) {
+    return false;
+  }
+  const normalized = String(groupName || '').trim().toLowerCase();
+  return target.some((group) => String(group || '').trim().toLowerCase() === normalized);
+};
+
 const addScheduleGroup = () => {
   const name = (newScheduleGroupName.value || '').trim() || buildDefaultGroupName();
   const target = scheduleMode.value === 'week' ? weekGroups : dayGroups;
@@ -106,29 +292,88 @@ const addScheduleGroup = () => {
   plannerMessage.value = '';
 };
 
-const removeScheduleGroup = (groupName) => {
-  const isWeek = scheduleMode.value === 'week';
-  const target = isWeek ? weekGroups : dayGroups;
-  const fallback = isWeek ? 'Week 1' : 'Any Day';
-
-  if (groupName === fallback) {
+const startEditScheduleGroup = (groupName) => {
+  const name = String(groupName || '').trim();
+  if (!name) {
     return;
   }
 
-  const nextGroups = target.value.filter((group) => group !== groupName);
+  editingScheduleGroupOriginalName.value = name;
+  newScheduleGroupName.value = name;
+  plannerMessage.value = '';
+};
+
+const saveEditedScheduleGroup = () => {
+  const target = scheduleMode.value === 'week' ? weekGroups : dayGroups;
+  const oldName = String(editingScheduleGroupOriginalName.value || '').trim();
+  if (!oldName) {
+    return;
+  }
+
+  const suggestedName = String(newScheduleGroupName.value || '').trim();
+
+  if (!suggestedName || suggestedName === oldName) {
+    clearScheduleGroupEdit();
+    return;
+  }
+
+  const normalizedNew = suggestedName.toLowerCase();
+  const normalizedOld = oldName.toLowerCase();
+  if (target.value.some((group) => String(group || '').trim().toLowerCase() === normalizedNew)) {
+    plannerMessage.value = `${suggestedName} already exists.`;
+    return;
+  }
+
+  target.value = target.value.map((group) => (
+    String(group || '').trim().toLowerCase() === normalizedOld ? suggestedName : group
+  ));
+
+  workoutExercises.value = workoutExercises.value.map((exercise) => {
+    if (String(exercise.scheduleGroup || '').trim().toLowerCase() === normalizedOld) {
+      return { ...exercise, scheduleGroup: suggestedName };
+    }
+    return exercise;
+  });
+
+  clearScheduleGroupEdit();
+  plannerMessage.value = '';
+};
+
+const removeScheduleGroup = (groupName) => {
+  if (!canRemoveScheduleGroup(groupName)) {
+    plannerMessage.value = `At least one ${scheduleMode.value === 'week' ? 'week' : 'day'} group is required.`;
+    return;
+  }
+
+  const isWeek = scheduleMode.value === 'week';
+  const target = isWeek ? weekGroups : dayGroups;
+  const fallback = getFallbackGroupName();
+  const normalizedRemovedName = String(groupName || '').trim().toLowerCase();
+
+  const nextGroups = target.value.filter(
+    (group) => String(group || '').trim().toLowerCase() !== normalizedRemovedName
+  );
   target.value = nextGroups.length > 0 ? nextGroups : [fallback];
 
   const nextFallback = target.value[0] || fallback;
+
+  if (String(editingScheduleGroupOriginalName.value || '').trim().toLowerCase() === normalizedRemovedName) {
+    clearScheduleGroupEdit();
+  }
+
   workoutExercises.value = workoutExercises.value.map((exercise) => {
-    if (exercise.scheduleGroup === groupName) {
+    if (String(exercise.scheduleGroup || '').trim().toLowerCase() === normalizedRemovedName) {
       return { ...exercise, scheduleGroup: nextFallback };
     }
     return exercise;
   });
+
+  plannerMessage.value = '';
 };
 
 const changeScheduleMode = (mode) => {
   scheduleMode.value = mode === 'week' ? 'week' : 'day';
+  clearScheduleGroupEdit();
   ensureActiveGroups();
   plannerMessage.value = '';
   const fallback = activeGroups.value[0];
@@ -153,7 +398,7 @@ const createBlock = (exercise) => ({
   id: `${exercise.ExerciseID}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
   exerciseId: exercise.ExerciseID,
   name: exercise.ExerciseTitle,
-  image: exercise.image || '',
+  image: exercise.ImageURL || exercise.image || '',
   workoutType: exercise.WorkoutType || metadata.value.type,
   muscleGroup: exercise.MuscleGroup || '',
   equipment: exercise.Equipment || '',
@@ -219,16 +464,11 @@ const plannerPayload = computed(() => ({
   exercises: workoutExercises.value,
 }));
 
-const saveWorkout = async () => {
+const persistWorkout = async ({ detailsOnly = false } = {}) => {
   saveMessage.value = '';
 
   if (!metadata.value.name.trim()) {
     saveMessage.value = 'Please enter a workout name.';
-    return;
-  }
-
-  if (workoutExercises.value.length === 0) {
-    saveMessage.value = 'Please add at least one exercise.';
     return;
   }
 
@@ -253,15 +493,40 @@ const saveWorkout = async () => {
 
     const data = await response.json();
     currentPlanId.value = String(data?.planner?.planId || currentPlanId.value || '').trim();
+    selectedWorkoutId.value = currentPlanId.value;
+    isCreatingWorkout.value = false;
+    hasSavedWorkoutDetails.value = true;
+    isSchedulePlannerOpen.value = true;
+    syncWorkoutSchedules(data?.workoutLists);
     hasSavedWorkoutExerciseList.value = Boolean(data?.hasSavedWorkoutExerciseList);
     setUserWorkoutStatus(hasSavedWorkoutExerciseList.value);
     await refreshWorkoutStatus();
-    saveMessage.value = 'Workout schedule saved successfully.';
+    saveMessage.value = detailsOnly
+      ? 'Workout details saved. You can now build your schedule.'
+      : 'Workout schedule saved successfully.';
+    await router.replace({ query: { ...route.query, planId: currentPlanId.value } });
   } catch (error) {
     saveMessage.value = error.message || 'Failed to save workout planner.';
   } finally {
     saving.value = false;
   }
+};
+
+const saveWorkoutDetails = async () => {
+  await persistWorkout({ detailsOnly: true });
+};
+
+const saveWorkout = async () => {
+  await persistWorkout({ detailsOnly: false });
+};
+
+const handlePrimarySave = async () => {
+  if (!hasSavedWorkoutDetails.value) {
+    await saveWorkoutDetails();
+    return;
+  }
+
+  await saveWorkout();
 };
 
 const loadExercises = async () => {
@@ -305,47 +570,86 @@ const loadWorkoutPlanner = async (requestedPlanId = '') => {
     }
 
     const data = await response.json();
-    const planner = data?.planner || {};
-    currentPlanId.value = String(planner?.planId || '').trim();
-
-    metadata.value = {
-      name: planner?.metadata?.name || '',
-      description: planner?.metadata?.description || '',
-      type: planner?.metadata?.type || 'Strength',
-      estimatedDuration: Number(planner?.metadata?.estimatedDuration || 45),
-    };
-
-    scheduleMode.value = planner?.scheduleMode === 'week' ? 'week' : 'day';
-    dayGroups.value = Array.isArray(planner?.dayGroups) && planner.dayGroups.length > 0
-      ? planner.dayGroups
-      : ['Any Day'];
-    weekGroups.value = Array.isArray(planner?.weekGroups) && planner.weekGroups.length > 0
-      ? planner.weekGroups
-      : ['Week 1'];
-
-    workoutExercises.value = Array.isArray(planner?.exercises)
-      ? planner.exercises.map((exercise) => ({
-          ...exercise,
-          scheduleGroup: exercise?.scheduleGroup || (scheduleMode.value === 'week' ? weekGroups.value[0] : dayGroups.value[0]),
-        }))
-      : [];
-
-    const assignedGroups = Array.from(
-      new Set(workoutExercises.value.map((exercise) => String(exercise.scheduleGroup || '').trim()).filter(Boolean))
-    );
-
-    if (scheduleMode.value === 'week') {
-      weekGroups.value = Array.from(new Set([...weekGroups.value, ...assignedGroups]));
-    } else {
-      dayGroups.value = Array.from(new Set([...dayGroups.value, ...assignedGroups]));
-    }
+    syncWorkoutSchedules(data?.workoutLists);
 
     hasSavedWorkoutExerciseList.value = Boolean(data?.hasSavedWorkoutExerciseList);
     setUserWorkoutStatus(hasSavedWorkoutExerciseList.value);
+
+    if (requestedPlanId) {
+      const planner = data?.planner || {};
+      selectedWorkoutId.value = String(planner?.planId || requestedPlanId).trim();
+      isCreatingWorkout.value = false;
+      const isPlannerReady = String(planner?.status || '').toLowerCase() !== 'draft';
+      hydratePlanner(planner, { markSaved: isPlannerReady });
+      return;
+    }
+
+    if (!workoutSchedules.value.length && !isCreatingWorkout.value) {
+      selectedWorkoutId.value = '';
+      hasSavedWorkoutDetails.value = false;
+      resetPlannerDraft();
+    }
   } catch (err) {
     console.error('Failed to load workout planner:', err);
   } finally {
     loadingPlanner.value = false;
+  }
+};
+
+const selectWorkoutSchedule = async (schedule) => {
+  const planId = String(schedule?.planId || '').trim();
+  if (!planId) {
+    return;
+  }
+
+  await router.replace({ query: { ...route.query, planId } });
+  await loadWorkoutPlanner(planId);
+};
+
+const editWorkoutSchedule = async (schedule) => {
+  await selectWorkoutSchedule(schedule);
+  isWorkoutDetailsOpen.value = true;
+};
+
+const deleteWorkoutSchedule = async (schedule) => {
+  const planId = String(schedule?.planId || '').trim();
+  if (!planId) {
+    return;
+  }
+
+  const planName = String(schedule?.name || 'this workout').trim();
+  const confirmed = window.confirm(`Delete ${planName}? This will remove the saved workout schedule.`);
+  if (!confirmed) {
+    return;
+  }
+
+  deletingWorkoutId.value = planId;
+  try {
+    const response = await fetch(`${API_BASE}/api/workout-schedules/${encodeURIComponent(planId)}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData?.error || 'Failed to delete workout plan.');
+    }
+
+    const data = await response.json();
+    syncWorkoutSchedules(data?.workoutLists);
+    hasSavedWorkoutExerciseList.value = Boolean(data?.hasSavedWorkoutExerciseList);
+    setUserWorkoutStatus(hasSavedWorkoutExerciseList.value);
+    await refreshWorkoutStatus();
+
+    if (selectedWorkoutId.value === planId) {
+      await clearSelection();
+    }
+
+    saveMessage.value = 'Workout schedule deleted.';
+  } catch (error) {
+    saveMessage.value = error.message || 'Failed to delete workout schedule.';
+  } finally {
+    deletingWorkoutId.value = '';
   }
 };
 
@@ -360,7 +664,18 @@ watch(
     if (String(nextPlanId || '').trim() === String(prevPlanId || '').trim()) {
       return;
     }
-    await loadWorkoutPlanner(String(nextPlanId || '').trim());
+    const normalizedNextPlanId = String(nextPlanId || '').trim();
+    if (!normalizedNextPlanId) {
+      if (!isCreatingWorkout.value) {
+        selectedWorkoutId.value = '';
+        hasSavedWorkoutDetails.value = false;
+        resetPlannerDraft();
+        await loadWorkoutPlanner('');
+      }
+      return;
+    }
+
+    await loadWorkoutPlanner(normalizedNextPlanId);
   }
 );
 </script>
@@ -389,7 +704,58 @@ watch(
         </div>
       </section>
 
-      <section class="builder-section collapsible-panel">
+      <section class="builder-section schedule-hub-section">
+        <div class="builder-section__head builder-section__head--inline schedule-hub-head">
+          <div>
+            <h3>My Workout Schedules</h3>
+            <p>Choose an existing plan or create a new workout schedule to continue.</p>
+          </div>
+
+          <div class="schedule-hub-head__actions">
+            <button type="button" class="btn-ai-suggest" @click="showAiSuggestionPlaceholder">
+              Suggest with AI
+            </button>
+            <button type="button" class="btn-create-plan" @click="createWorkoutPlan">
+              Create Workout Plan
+            </button>
+          </div>
+        </div>
+
+        <div v-if="loadingPlanner" class="builder-empty planner-empty planner-empty--loading" aria-live="polite">
+          <div class="planner-empty__icon">📋</div>
+          <h4>Loading workout schedules</h4>
+          <p>Fetching saved workout plans for your account.</p>
+        </div>
+
+        <div v-else-if="!hasWorkoutSchedules && !isCreatingWorkout" class="builder-empty schedule-hub-empty" aria-live="polite">
+          <div class="planner-empty__icon">🗂️</div>
+          <h4>No workout schedules yet.</h4>
+          <p>Create your first workout plan to start building a guided schedule.</p>
+          <div class="schedule-hub-empty__actions">
+            <button type="button" class="btn-create-plan" @click="createWorkoutPlan">
+              Create Workout Plan
+            </button>
+            <button type="button" class="btn-ai-suggest" @click="showAiSuggestionPlaceholder">
+              Suggest with AI
+            </button>
+          </div>
+        </div>
+
+        <div v-else class="schedule-hub-list">
+          <WorkoutScheduleListItem
+            v-for="schedule in workoutSchedules"
+            :key="schedule.planId"
+            :schedule="schedule"
+            :selected="selectedWorkoutId === schedule.planId"
+            :deleting="deletingWorkoutId === schedule.planId"
+            @open="selectWorkoutSchedule"
+            @edit="editWorkoutSchedule"
+            @delete="deleteWorkoutSchedule"
+          />
+        </div>
+      </section>
+
+      <section v-if="canShowWorkoutDetails" class="builder-section collapsible-panel">
         <button
           type="button"
           class="collapsible-header"
@@ -415,7 +781,7 @@ watch(
         </transition>
       </section>
 
-      <section class="builder-section planner-section">
+      <section v-if="canShowSchedulePlanner" class="builder-section planner-section">
         <div
           class="builder-section__head builder-section__head--inline planner-panel-head"
           role="button"
@@ -439,11 +805,6 @@ watch(
 
         <transition name="panel-collapse">
           <div v-show="isSchedulePlannerOpen" class="collapsible-panel__body">
-            <div v-if="!hasSavedWorkoutExerciseList" class="planner-unlock-hint" role="status" aria-live="polite">
-              <strong>Create and save a workout plan to unlock your exercise list.</strong>
-              <span>Assign exercises by day or week to build your workout schedule.</span>
-            </div>
-
             <div class="planner-tools">
               <div class="planner-mode-toggle" role="tablist" aria-label="Schedule grouping mode">
                 <button
@@ -468,9 +829,57 @@ watch(
                 <input
                   v-model="newScheduleGroupName"
                   type="text"
-                  :placeholder="scheduleMode === 'week' ? 'Add Week (e.g. Week 2)' : 'Add Day (e.g. Day 1)'"
+                  :placeholder="
+                    isEditingScheduleGroup
+                      ? (scheduleMode === 'week' ? 'Edit week name' : 'Edit day name')
+                      : (scheduleMode === 'week' ? 'Add Week (e.g. Week 2)' : 'Add Day (e.g. Day 1)')
+                  "
                 />
-                <button type="button" class="planner-group-add" @click="addScheduleGroup">Add {{ scheduleMode === 'week' ? 'Week' : 'Day' }}</button>
+                <button
+                  v-if="!isEditingScheduleGroup"
+                  type="button"
+                  class="planner-group-add"
+                  @click="addScheduleGroup"
+                >
+                  Add {{ scheduleMode === 'week' ? 'Week' : 'Day' }}
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  class="planner-group-save"
+                  @click="saveEditedScheduleGroup"
+                >
+                  Save {{ scheduleMode === 'week' ? 'Week' : 'Day' }}
+                </button>
+              </div>
+
+              <div class="planner-group-chips" role="list" aria-label="Schedule groups">
+                <div
+                  v-for="group in activeGroups"
+                  :key="group"
+                  class="planner-group-chip"
+                  role="listitem"
+                >
+                  <span class="planner-group-chip__name">{{ group }}</span>
+                  <div class="planner-group-chip__actions">
+                    <button
+                      type="button"
+                      class="planner-group-chip__btn planner-group-chip__btn--edit"
+                      @click="startEditScheduleGroup(group)"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      class="planner-group-chip__btn planner-group-chip__btn--remove"
+                      :disabled="!canRemoveScheduleGroup(group)"
+                      :title="canRemoveScheduleGroup(group) ? 'Remove group' : 'At least one group is required'"
+                      @click="removeScheduleGroup(group)"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <p v-if="plannerMessage" class="planner-feedback planner-feedback--error">
@@ -519,9 +928,9 @@ watch(
                     <p>{{ group.exercises.length }} exercise{{ group.exercises.length === 1 ? '' : 's' }}</p>
                   </div>
                   <button
-                    v-if="group.name !== (scheduleMode === 'week' ? 'Week 1' : 'Any Day')"
                     type="button"
                     class="planner-remove-group"
+                    :disabled="!canRemoveScheduleGroup(group.name)"
                     @click="removeScheduleGroup(group.name)"
                   >
                     Remove {{ scheduleMode === 'week' ? 'Week' : 'Day' }}
@@ -551,12 +960,18 @@ watch(
         </transition>
       </section>
 
-      <footer class="builder-footer">
-        <p v-if="saveMessage" :class="['save-message', saveMessage.includes('success') ? 'ok' : 'err']">
+      <footer v-if="canShowWorkoutDetails" class="builder-footer">
+        <p
+          v-if="saveMessage"
+          :class="[
+            'save-message',
+            /failed|please|unable/i.test(saveMessage) ? 'err' : 'ok',
+          ]"
+        >
           {{ saveMessage }}
         </p>
-        <button type="button" class="btn-save" :disabled="saving" @click="saveWorkout">
-          {{ saving ? 'Saving...' : 'Save Workout' }}
+        <button type="button" class="btn-save" :disabled="saving" @click="handlePrimarySave">
+          {{ primarySaveLabel }}
         </button>
       </footer>
     </div>
@@ -638,6 +1053,65 @@ watch(
 
 .collapsible-panel {
   padding: 16px;
+}
+
+.schedule-hub-head__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.schedule-hub-list {
+  display: grid;
+  gap: 12px;
+}
+
+.schedule-hub-empty {
+  border-style: solid;
+  background: linear-gradient(180deg, #fbfdff 0%, #f8fafc 100%);
+  gap: 12px;
+}
+
+.schedule-hub-empty__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btn-create-plan,
+.btn-ai-suggest {
+  border-radius: 12px;
+  min-height: 46px;
+  padding: 0 16px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.btn-create-plan {
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
+}
+
+.btn-create-plan:hover {
+  transform: translateY(-1px);
+  background: #1d4ed8;
+}
+
+.btn-ai-suggest {
+  border: 1px solid #dc2626;
+  background: #dc2626;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(220, 38, 38, 0.18);
+}
+
+.btn-ai-suggest:hover {
+  transform: translateY(-1px);
+  background: #b91c1c;
 }
 
 .collapsible-header {
@@ -755,25 +1229,6 @@ watch(
   font-size: 0.85rem;
 }
 
-.planner-unlock-hint {
-  margin-bottom: 16px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid #fde68a;
-  background: #fffbe6;
-  color: #854d0e;
-  display: grid;
-  gap: 4px;
-}
-
-.planner-unlock-hint strong {
-  font-size: 0.88rem;
-}
-
-.planner-unlock-hint span {
-  font-size: 0.8rem;
-}
-
 .planner-tools {
   display: grid;
   gap: 12px;
@@ -839,6 +1294,70 @@ watch(
   background: #2563eb;
   color: #fff;
   font-weight: 700;
+}
+
+.planner-group-save {
+  border: 1px solid #059669;
+  border-radius: 12px;
+  min-height: 46px;
+  padding: 0 14px;
+  background: #059669;
+  color: #fff;
+  font-weight: 700;
+}
+
+.planner-group-chips {
+  display: grid;
+  gap: 8px;
+}
+
+.planner-group-chip {
+  border: 1px solid #dbe4ef;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.planner-group-chip__name {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.planner-group-chip__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.planner-group-chip__btn {
+  border-radius: 8px;
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.planner-group-chip__btn--edit {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.planner-group-chip__btn--remove {
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #b91c1c;
+}
+
+.planner-group-chip__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .planner-primary-actions {
@@ -989,6 +1508,11 @@ watch(
   font-weight: 600;
 }
 
+.planner-remove-group:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .planner-group-empty {
   border: 1px dashed #cbd5e1;
   border-radius: 10px;
@@ -1054,6 +1578,10 @@ watch(
     grid-template-columns: 1fr auto;
   }
 
+  .schedule-hub-head__actions {
+    justify-content: flex-end;
+  }
+
   .planner-group-add {
     min-width: 132px;
   }
@@ -1094,6 +1622,19 @@ watch(
 
   .planner-content {
     gap: 16px;
+  }
+}
+
+@media (max-width: 639px) {
+  .schedule-hub-head__actions,
+  .schedule-hub-empty__actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .btn-create-plan,
+  .btn-ai-suggest {
+    width: 100%;
   }
 }
 </style>

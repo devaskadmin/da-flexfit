@@ -941,21 +941,75 @@ watch(
 :global(body.light-theme) .settings-page .s-nav-item span,
 :global(body.light-theme) .settings-page .s-nav-icon,
 :global(body.light-theme) .settings-page .s-nav-icon i {
-  color: #797979 !important;
+  color: #334155 !important;
   opacity: 1 !important;
 }
 
 :global(body.light-theme) .settings-page .s-nav-item:hover,
 :global(body.light-theme) .settings-page .s-nav-item.active {
-  color: #797979 !important;
-  font-weight: 700;
+  color: #1e3a8a !important;
 }
 
 :global(body.light-theme) .settings-page .s-nav-item:hover .s-nav-icon,
 :global(body.light-theme) .settings-page .s-nav-item.active .s-nav-icon,
 :global(body.light-theme) .settings-page .s-nav-item:hover .s-nav-icon i,
 :global(body.light-theme) .settings-page .s-nav-item.active .s-nav-icon i {
-  color: #797979 !important;
+  color: #1e3a8a !important;
+}
+
+/* Account Settings submenu contrast improvements */
+:global(body.light-theme) .settings-page .settings-nav .s-nav-item {
+  color: #334155 !important;
+  font-weight: 500;
+  background: transparent;
+}
+
+:global(body.light-theme) .settings-page .settings-nav .s-nav-item span,
+:global(body.light-theme) .settings-page .settings-nav .s-nav-item i {
+  color: #334155 !important;
+  font-weight: 500;
+}
+
+:global(body.light-theme) .settings-page .settings-nav .s-nav-icon {
+  background: rgba(148, 163, 184, .24);
+  color: #475569 !important;
+}
+
+:global(body.light-theme) .settings-page .settings-nav .s-nav-icon i {
+  color: #475569 !important;
+}
+
+:global(body.light-theme) .settings-page .settings-nav .s-nav-item:hover {
+  background: rgba(37, 99, 235, .08);
+  color: #1e3a8a !important;
+}
+
+:global(body.light-theme) .settings-page .settings-nav .s-nav-item:hover span,
+:global(body.light-theme) .settings-page .settings-nav .s-nav-item:hover i {
+  color: #1e3a8a !important;
+}
+
+:global(body.light-theme) .settings-page .settings-nav .s-nav-item:hover .s-nav-icon {
+  background: rgba(37, 99, 235, .14);
+  color: #1e3a8a !important;
+}
+
+:global(body.light-theme) .settings-page .settings-nav .s-nav-item.active {
+  background: rgba(37, 99, 235, .14);
+  color: #1d4ed8 !important;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, .28);
+}
+
+:global(body.light-theme) .settings-page .settings-nav .s-nav-item.active span,
+:global(body.light-theme) .settings-page .settings-nav .s-nav-item.active i {
+  color: #1d4ed8 !important;
+  font-weight: 600;
+}
+
+:global(body.light-theme) .settings-page .settings-nav .s-nav-item.active .s-nav-icon {
+  background: rgba(37, 99, 235, .2);
+  color: #1d4ed8 !important;
 }
 
 :global(body.light-theme) .s-panel,
