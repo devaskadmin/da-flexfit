@@ -230,6 +230,12 @@ export const pagesRoutes = [
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {
+        path: '/workouts/:planId',
+        component: () => import('@/views/Member/WorkoutDetail.vue'),
+        name: 'workout_detail',
+        meta: { layout: 'AppLayout', isPartials: true },
+    },
+    {
         path: '/settings',
         component: () => import('@/views/Member/UserSettings.vue'),
         name: 'user_settings',

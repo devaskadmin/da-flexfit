@@ -184,7 +184,8 @@ const deleteLog = async (workoutLogId) => {
   if (!confirm('Are you sure you want to delete this workout log?')) return;
   try {
     const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/workout-log/delete-workout-log/${workoutLogId}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      credentials: 'include'
     });
     if (!res.ok) throw new Error('Failed to delete workout log');
     await loadWorkoutLogs();
@@ -258,7 +259,8 @@ const saveWorkout = async () => {
       const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/workout-log/add-workout-log`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        credentials: 'include'
       });
       if (!res.ok) {
         const errData = await res.json();
@@ -319,7 +321,9 @@ const loadWorkoutLogs = async () => {
   const formattedDate = toMySQLDate(selectedDate.value);
 
   try {
-    const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/workout-log/get-workout-log?userId=${userId.value}&date=${formattedDate}`);
+    const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/workout-log/get-workout-log?userId=${userId.value}&date=${formattedDate}`, {
+      credentials: 'include'
+    });
     const data = await res.json();
     existingLogs.value = Array.isArray(data)
       ? data.map(log => ({
@@ -664,7 +668,8 @@ const updateLog = async (log, idx) => {
     const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/workout-log/update-workout-log`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      credentials: 'include'
     });
     if (!res.ok) throw new Error('Failed to update log');
     // Disable edit mode for this row

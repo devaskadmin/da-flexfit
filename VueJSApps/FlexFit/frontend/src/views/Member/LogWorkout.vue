@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import DateRangePicker from '@/components/template/DateRangePicker.vue';
+import WorkoutCard from '@/components/workout-log/WorkoutCard.vue';
 import { API_BASE } from '@/config/env';
 
 const router = useRouter();
@@ -77,6 +78,12 @@ const openInBuilder = (plan) => {
   });
 };
 
+const openSession = (plan) => {
+  const planId = String(plan?.planId || '').trim();
+  if (!planId) return;
+  router.push({ name: 'workout_detail', params: { planId } });
+};
+
 const startBuilder = () => {
   router.push({ name: 'workout_builder' });
 };
@@ -142,31 +149,13 @@ onMounted(loadWorkoutLists);
         </div>
 
         <div v-else class="panel-body workout-log-grid">
-          <article
+          <WorkoutCard
             v-for="plan in workoutLists"
             :key="plan.planId"
-            class="workout-log-item"
-            role="button"
-            tabindex="0"
-            @click="openInBuilder(plan)"
-            @keydown.enter.prevent="openInBuilder(plan)"
-            @keydown.space.prevent="openInBuilder(plan)"
-          >
-            <div class="workout-log-item__title-row">
-              <h6>{{ plan.name }}</h6>
-              <span class="type-chip">{{ plan.type }}</span>
-            </div>
-
-            <div class="workout-log-item__meta">
-              <span><strong>Duration:</strong> {{ Number(plan.estimatedDuration || 0) }} min</span>
-              <span><strong>Exercises:</strong> {{ Number(plan.exerciseCount || 0) }}</span>
-              <span><strong>Last Updated:</strong> {{ plan.updatedAtLabel }}</span>
-            </div>
-
-            <button type="button" class="open-plan-btn" @click.stop="openInBuilder(plan)">
-              Open / Edit
-            </button>
-          </article>
+            :plan="plan"
+            @open-session="openSession"
+            @open-builder="openInBuilder"
+          />
         </div>
       </section>
     </div>
@@ -246,71 +235,5 @@ onMounted(loadWorkoutLists);
             .workout-log-grid {
               display: grid;
               gap: 12px;
-            }
-
-            .workout-log-item {
-              border: 1px solid var(--border-color);
-              border-radius: 12px;
-              background: #fff;
-              padding: 12px;
-              display: grid;
-              gap: 10px;
-              cursor: pointer;
-              transition: border-color 0.18s ease, box-shadow 0.18s ease;
-            }
-
-            .workout-log-item:hover,
-            .workout-log-item:focus-visible {
-              border-color: #3b82f6;
-              box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-              outline: none;
-            }
-
-            .workout-log-item__title-row {
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              gap: 8px;
-              flex-wrap: wrap;
-            }
-
-            .workout-log-item__title-row h6 {
-              margin: 0;
-              color: var(--text-color);
-              font-size: 1rem;
-            }
-
-            .type-chip {
-              border-radius: 999px;
-              background: rgba(59, 130, 246, 0.14);
-              color: #1d4ed8;
-              padding: 2px 10px;
-              font-size: 0.75rem;
-              font-weight: 700;
-            }
-
-            .workout-log-item__meta {
-              display: grid;
-              grid-template-columns: 1fr;
-              gap: 6px;
-              color: var(--text-color-secondary);
-              font-size: 0.85rem;
-            }
-
-            .open-plan-btn {
-              justify-self: start;
-              border: 1px solid #3b82f6;
-              color: #1d4ed8;
-              background: transparent;
-              border-radius: 8px;
-              padding: 6px 10px;
-              font-size: 0.78rem;
-              font-weight: 700;
-            }
-
-            @media (min-width: 900px) {
-              .workout-log-item__meta {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-              }
             }
             </style>

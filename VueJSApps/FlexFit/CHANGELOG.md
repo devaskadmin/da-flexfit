@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.7.0-beta] - 2026-04-20
+
+### Added
+- **Relational workout scheduling model** (`backend/sql/workout_schedule_schema.sql`, `backend/api/users.js`):
+  - Added `workout_schedules`, `workout_schedule_groups`, and `workout_schedule_exercises` as the primary planner storage.
+  - Added draft-first schedule creation so users can create/save schedule metadata before adding exercises.
+- **Performed session data model** (`backend/sql/workout_schedule_schema.sql`, `backend/api/workout-log.js`):
+  - Added `workout_log_sessions` and `workout_log_sets`.
+  - Added source linkage fields on `workout_log` to connect performed history back to schedule templates.
+- **Workout execution flow UI** (`frontend/src/views/Member/WorkoutDetail.vue`, `frontend/src/components/workout-session/ExerciseSessionCard.vue`):
+  - Added workout session page with set-by-set tracking and progress save.
+
+### Changed
+- **Workout planner APIs migrated to relational backend** (`backend/api/users.js`):
+  - Existing `/api/workout-planner` compatibility endpoints now read/write relational schedule data.
+  - Added schedule CRUD endpoints for groups and exercises.
+- **Workout Builder guided UX** (`frontend/src/views/Member/WorkoutBuilder.vue`, `frontend/src/components/workout-builder/WorkoutScheduleListItem.vue`):
+  - Added “My Workout Schedules” section with create/select/edit/delete flow.
+  - Added planner mode grouping by day/week with inline group management.
+  - Replaced rename popup flow with inline input editing and `Save Day/Week` action.
+- **Workout log cards and route flow** (`frontend/src/views/Member/LogWorkout.vue`, `frontend/src/components/workout-log/WorkoutCard.vue`, `frontend/src/router/routing.js`):
+  - Added reusable workout cards and direct “Start Workout” route into session execution.
+- **Exercise imagery handling** (`frontend/src/components/workout-builder/WorkoutExerciseBlock.vue`, `frontend/src/components/workout-log/WorkoutCard.vue`):
+  - Added normalized API-relative image loading with lazy loading and fallback behavior.
+
+### Fixed
+- **Case-sensitive DB table mismatches** (`backend/api/excerises.js`, `backend/api/workout-log.js`):
+  - Standardized exercise queries to use lowercase `exercises` table name to avoid production DB lookup failures.
+- **Workout log endpoint ownership and session safety** (`backend/api/workout-log.js`, `frontend/src/views/Member/exercises.vue`):
+  - Enforced authenticated user ownership on add/get/update/delete log endpoints.
+  - Updated frontend log requests to include credentials for authenticated routes.
+
 ## [0.69.0] - 2026-04-16
 
 ### Added
