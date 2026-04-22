@@ -146,7 +146,8 @@ const recentActivity = [
 /* ─────────────────────────────────────────────────────────────────── */
 
 .dashboard-header {
-  border: 1px solid var(--border-color);
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .header-content {
@@ -173,10 +174,11 @@ const recentActivity = [
 /* ─────────────────────────────────────────────────────────────────── */
 
 .dashboard-focus-card {
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
   padding: 18px 20px;
-  background: var(--panel-bg, #fff);
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .dashboard-focus-card h3 {
@@ -241,14 +243,16 @@ const recentActivity = [
 /* ─────────────────────────────────────────────────────────────────── */
 
 .dashboard-panel {
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  background: var(--panel-bg, #fff);
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .panel-header {
   padding: 16px 18px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid #f1f5f9;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.03);
 }
 
 .panel-header h5 {
@@ -272,11 +276,13 @@ const recentActivity = [
 }
 
 .activity-row {
-  border: 1px solid var(--border-color);
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 12px 14px;
   display: flex;
   gap: 12px;
+  background: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.03);
 }
 
 .activity-row .time {

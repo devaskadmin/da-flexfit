@@ -1,5 +1,43 @@
 # Changelog
 
+## [0.7.1] - 2026-04-22
+
+### Added
+- **Exercises Database user views + favorites APIs** (`backend/api/excerises.js`):
+  - Added authenticated exercise list views for:
+    - all exercises
+    - current user's exercises
+    - current user's favorite exercises
+  - Added favorite toggle endpoints:
+    - `POST /api/exercises/:id/favorite`
+    - `DELETE /api/exercises/:id/favorite`
+- **Exercises schema migration** (`backend/sql/exercises_schema.sql`):
+  - Added `exercises.CreatedByUserID` for ownership tracking.
+  - Added `user_favorite_exercises` mapping table for per-user favorites.
+
+### Changed
+- **Exercise library UI filtering** (`frontend/src/views/Member/exercises.vue`):
+  - Added view selector (`All Exercises`, `My Exercises`, `Favorite Exercises`).
+  - Added inline favorite action per exercise row.
+  - Updated exercise library fetch flow to use authenticated filtered endpoint.
+- **Exercises page header + tabs** (`frontend/src/views/Member/exercises.vue`):
+  - Updated page title to `Exercises Database`.
+  - Removed top date selector from the exercises page header.
+  - Renamed secondary tab label from `Log Exercise` to `My Custom Exercises`.
+- **Sidebar navigation** (`frontend/src/components/sidebarMenu.js`):
+  - Added `Exercises Database` link directly under `Workout Log`.
+- **Dashboard visual refresh** (`frontend/src/views/Member/HomeDashboard.vue`, `frontend/src/components/fitness/FitnessMetricCard.vue`):
+  - Applied modern light card/panel treatment with subtle borders (`#e5e7eb`), 12px radius, white surfaces, and soft elevation.
+  - Added soft inner separators using light top/bottom separators and inset shadow accents.
+
+### Fixed
+- **Legacy exercise delete route compatibility** (`backend/api/excerises.js`):
+  - Added missing `DELETE /api/delete-exercise/:id` endpoint used by existing exercises UI.
+- **Exercise mutation session alignment** (`frontend/src/views/Member/exercises.vue`):
+  - Added credentialed requests for add/edit/delete exercise actions to match session-based auth.
+- **Exercises library empty-state regression** (`backend/api/excerises.js`):
+  - Restored fallback JSON exercise loading for `/api/exercises` `view=all` when DB rows are empty or query fails, ensuring exercises always render.
+
 ## [0.7.0-beta] - 2026-04-20
 
 ### Added
