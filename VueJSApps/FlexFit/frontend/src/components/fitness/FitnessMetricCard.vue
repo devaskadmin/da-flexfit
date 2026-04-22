@@ -24,22 +24,22 @@ defineProps({
 
 <style scoped>
 .metric-card {
-  border: 1px solid rgba(0, 0, 0, 0.04);
-  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
   padding: 17px;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 14px;
   min-height: 116px;
-  background: var(--panel-bg, #fff);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .metric-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.09);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .metric-card__left {

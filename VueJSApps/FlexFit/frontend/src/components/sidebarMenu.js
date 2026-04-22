@@ -21,6 +21,11 @@ export const sidebarMenus = ref([
                 requiresWorkoutLists: true
             },
             {
+                name: 'Exercises Database',
+                link_name: 'exercises',
+                icon: 'fa-solid fa-database'
+            },
+            {
                 name: 'Nutrition',
                 link_name: 'Nutrition',
                 icon: 'fa-solid fa-utensils'

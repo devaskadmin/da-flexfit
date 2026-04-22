@@ -17,6 +17,8 @@
    const activeTab = ref('search-exercises'); // default tab
    const existingLogs = ref([]);
   const exercisesLoadError = ref("");
+  const exerciseView = ref('all');
+  const favoriteExerciseIds = ref(new Set());
    
    
    
@@ -382,8 +384,9 @@ const loadWorkoutLogs = async () => {
 
 const loadExercisesLibrary = async () => {
   exercisesLoadError.value = "";
+
   try {
-    const res = await fetch(`${API_BASE}/api/get-exercises`, {
+    const res = await fetch(`${API_BASE}/api/exercises?view=${encodeURIComponent(exerciseView.value)}`, {
       credentials: 'include'
     });
 
@@ -393,10 +396,59 @@ const loadExercisesLibrary = async () => {
 
     const data = await res.json();
     allExercises.value = Array.isArray(data) ? data : [];
+
+    const nextFavoriteIds = new Set();
+    allExercises.value.forEach((ex) => {
+      if (Number(ex?.IsFavorite || 0) === 1) {
+        nextFavoriteIds.add(Number(ex.ExerciseID));
+      }
+    });
+    favoriteExerciseIds.value = nextFavoriteIds;
   } catch (err) {
     console.error('❌ Failed to load exercises:', err);
     allExercises.value = [];
+    favoriteExerciseIds.value = new Set();
     exercisesLoadError.value = 'Could not load exercises right now.';
+  }
+};
+
+const isFavoriteExercise = (exerciseId) => {
+  return favoriteExerciseIds.value.has(Number(exerciseId));
+};
+
+const toggleFavoriteExercise = async (exercise) => {
+  const exerciseId = Number(exercise?.ExerciseID || 0);
+  if (!exerciseId) return;
+
+  try {
+    const shouldAddFavorite = !isFavoriteExercise(exerciseId);
+    const method = shouldAddFavorite ? 'POST' : 'DELETE';
+
+    const res = await fetch(`${API_BASE}/api/exercises/${exerciseId}/favorite`, {
+      method,
+      credentials: 'include'
+    });
+
+    if (!res.ok) {
+      throw new Error(`Favorite update failed (${res.status})`);
+    }
+
+    const next = new Set(favoriteExerciseIds.value);
+    if (shouldAddFavorite) {
+      next.add(exerciseId);
+      exercise.IsFavorite = 1;
+    } else {
+      next.delete(exerciseId);
+      exercise.IsFavorite = 0;
+    }
+    favoriteExerciseIds.value = next;
+
+    if (exerciseView.value === 'favorites') {
+      await loadExercisesLibrary();
+    }
+  } catch (err) {
+    console.error('❌ Failed to update favorite exercise:', err);
+    alert('Could not update favorite right now.');
   }
 };
 
@@ -436,6 +488,11 @@ watch(selectedDateRaw, async () => {
 // Watch for changes in saved logs (existingLogs)
 watch(existingLogs, () => {
   autoSwitchTabToLogOrLibrary();
+});
+
+watch(exerciseView, async () => {
+  currentPage.value = 1;
+  await loadExercisesLibrary();
 });
 
 // Helper: Switch to log-exercise if there are logs, else to search-exercises
@@ -571,13 +628,13 @@ const selectedImage = computed(() => {
        const method = isUpdate ? 'PUT' : 'POST';
        const response = await fetch(url, {
          method,
-         body: formData
+         body: formData,
+         credentials: 'include'
        });
        const result = await response.json();
        if (!response.ok) throw new Error(result.error || (isUpdate ? 'Update failed' : 'Insert failed'));
        // Refresh exercise list
-      const res = await fetch(`${API_BASE}/api/get-exercises`);
-       allExercises.value = await res.json();
+      await loadExercisesLibrary();
        alert(isUpdate ? '✅ Exercise updated successfully!' : '✅ Exercise added successfully!');
        showEditForm.value = false;
        selectedImages.value = [];
@@ -715,13 +772,13 @@ const AddWorkout = async () => {
   try {
     const res = await fetch(import.meta.env.VITE_API_BASE + '/api/save-exercises', {
       method: 'POST',
-      body: formData
+      body: formData,
+      credentials: 'include'
     });
     const result = await res.json();
     if (!res.ok) throw new Error(result.error || 'Failed to add exercise');
     // Refresh the list
-    const fetchRes = await fetch(import.meta.env.VITE_API_BASE + '/api/get-exercises');
-    allExercises.value = await fetchRes.json();
+    await loadExercisesLibrary();
     alert('✅ New exercise added!');
     showAddForm.value = false;
     // Reset form and images
@@ -863,11 +920,13 @@ const deleteExercise = async (exercise) => {
   if (!confirm('Are you sure you want to delete this exercise? This cannot be undone.')) return;
   try {
     const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/delete-exercise/${exercise.ExerciseID}`,
-      { method: 'DELETE' });
+      {
+        method: 'DELETE',
+        credentials: 'include'
+      });
     if (!res.ok) throw new Error('Failed to delete exercise');
     // Refresh exercise list
-    const fetchRes = await fetch(`${API_BASE}/api/get-exercises`);
-    allExercises.value = await fetchRes.json();
+    await loadExercisesLibrary();
     alert('✅ Exercise deleted!');
     showEditForm.value = false;
   } catch (err) {
@@ -877,6 +936,7 @@ const deleteExercise = async (exercise) => {
 
 // add this function near other handlers (e.g. after AddWorkout or near pagination handlers)
 const clearFilters = () => {
+  exerciseView.value = 'all';
   workoutType.value = 'All';
   selectedMuscleGroup.value = 'All';
   selectedEquipment.value = 'All';
@@ -894,10 +954,7 @@ const clearFilters = () => {
   <div class="app-page-canvas app-inner-shell">
 
   <div class="dashboard-breadcrumb ff-page-header app-header-gradient mb-0">
-      <h2>Log Workout</h2>
-    <div class="dashboard-filter">
-      <DateDropDown v-model="selectedDateRaw" compact />
-    </div>
+      <h2>Exercises Database</h2>
    </div>
 
 
@@ -923,7 +980,7 @@ const clearFilters = () => {
                   role="tab"
                   @click="activeTab = 'log-exercise'"
                 >
-                  <i class="fa-solid fa-dumbbell me-2"></i><span>Log Exercise</span>
+                  <i class="fa-solid fa-dumbbell me-2"></i><span>My Custom Exercises</span>
                 </button>
               </nav>
 
@@ -948,6 +1005,15 @@ const clearFilters = () => {
                         <div class="search-filter-field full-width">
                           <label class="form-label">Search</label>
                           <input v-model="searchExercise" type="text" class="form-control" placeholder="Search exercise by name" />
+                        </div>
+
+                        <div class="search-filter-field">
+                          <label class="form-label">View</label>
+                          <select v-model="exerciseView" class="form-select">
+                            <option value="all">All Exercises</option>
+                            <option value="mine">My Exercises</option>
+                            <option value="favorites">Favorite Exercises</option>
+                          </select>
                         </div>
 
                         <div class="search-filter-field">
@@ -1225,6 +1291,9 @@ const clearFilters = () => {
                                   <div class="exercise-actions">
                                     <button class="btn btn-sm btn-outline-primary" @click="selectExerciseFromList(ex)">
                                       Select Exercise
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-warning" @click="toggleFavoriteExercise(ex)">
+                                      {{ isFavoriteExercise(ex.ExerciseID) ? '★ Favorited' : '☆ Favorite' }}
                                     </button>
                                     <button class="btn btn-sm btn-outline-secondary" @click="startEditing(ex)">
                                       Edit Exercise
