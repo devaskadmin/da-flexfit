@@ -1,4 +1,5 @@
 <script setup>
+import axios from 'axios'
 import {sidebarDropdownManage} from "@/composable/manageSidebarMenu";
 
 const props = defineProps(['isCollapsed','isTwoColumnMenu','isSidebarMini','isSubMenuCollapsed', 'closeMainLeftSidebar'])
@@ -11,16 +12,60 @@ import {sidebarMenus} from "@/components/sidebarMenu"
 import {currentNavbarSize, hoverableMenu, hoverableSidebar, hoverableOutSidebar} from "@/composable/navbarSizeSetting"
 
 import {layoutPosition} from "@/composable/navPositionSetting";
-import { useI18n } from 'vue-i18n'
+import { API_BASE } from '@/config/env'
 import { userHasWorkouts, checkUserWorkoutStatus } from '@/composable/workoutStatusManager'
 
-const { t } = useI18n()
 const route = useRoute();
 const currentRoute = ref('');
 const isSubmenus = ref(false);
 
 const openedMenu = ref(null);
 const hasSavedWorkoutPlan = userHasWorkouts;
+const userRoleSlug = ref('user')
+
+const normalizeRole = (candidate) => {
+  const value = String(candidate || '').trim().toLowerCase()
+
+  if (value === 'admin' || value === 'administrator') {
+    return { role: 'Admin', roleSlug: 'admin' }
+  }
+
+  if (value === 'trainer') {
+    return { role: 'Trainer', roleSlug: 'trainer' }
+  }
+
+  return { role: 'User', roleSlug: 'user' }
+}
+
+const isAdmin = computed(() => userRoleSlug.value === 'admin')
+const isTrainer = computed(() => userRoleSlug.value === 'trainer')
+const canViewTrainerMenu = computed(() => isAdmin.value || isTrainer.value)
+const canViewAdminMenu = computed(() => isAdmin.value)
+
+const visibleSidebarMenus = computed(() => {
+  return sidebarMenus.value.filter((section) => {
+    if (section.menu_name === 'Trainer') {
+      return canViewTrainerMenu.value
+    }
+
+    if (section.menu_name === 'Administrator') {
+      return canViewAdminMenu.value
+    }
+
+    return true
+  })
+})
+
+const fetchSessionRole = async () => {
+  try {
+    const { data } = await axios.get(`${API_BASE}/api/session`, { withCredentials: true })
+    const sessionUser = data?.loggedIn ? data?.user : null
+    const resolved = normalizeRole(sessionUser?.roleSlug || sessionUser?.role || sessionUser?.membershipType)
+    userRoleSlug.value = resolved.roleSlug
+  } catch (error) {
+    userRoleSlug.value = 'user'
+  }
+}
 
 const shouldRenderMenuItem = (menu) => {
   if (!menu?.requiresWorkoutLists && !menu?.requiresUnlock) return true
@@ -35,8 +80,8 @@ const findMenuByName = ((name) => {
     });
   } else {
     openedMenu.value = null
-    for (let i = 0; i < sidebarMenus.value.length; i++) {
-      let menu = sidebarMenus.value[i];
+    for (let i = 0; i < visibleSidebarMenus.value.length; i++) {
+      let menu = visibleSidebarMenus.value[i];
       for (let j = 0; j < menu.menus.length; j++) {
         let subMenu = menu.menus[j];
         if (subMenu.name === name && subMenu.sub_menus) {
@@ -93,6 +138,7 @@ watchEffect(() => {
 onMounted(() => {
   useSidebarCurrentBG();
   checkUserWorkoutStatus(); // Check workout status from global composable
+  fetchSessionRole();
 })
 </script>
 
@@ -112,7 +158,7 @@ onMounted(() => {
   >
     <div v-click-outside="closeMainLeftSidebar" class="main-menu">
       <div class="scrollable sidebar-menu" :id="horizontalMenuEnabled ? 'accordionExample' : 'testAccordionExample'">
-          <li v-for="(sidebar, index) in sidebarMenus" class="sidebar-item" :class="[horizontalMenuEnabled ? 'dropdown': '']">
+          <li v-for="(sidebar, index) in visibleSidebarMenus" :key="`section-${index}-${sidebar.menu_name}`" class="sidebar-item" :class="[horizontalMenuEnabled ? 'dropdown': '']">
             <template v-if="horizontalMenuEnabled">
               <a role="button" :class="['sidebar-link-group-title', 'has-sub', !horizontalMenuEnabled && 'sidebar-section-header', !horizontalMenuEnabled && 'app-header-gradient']" :id="'parentDropdownMenu'+index" :data-bs-toggle="[horizontalMenuEnabled ? 'dropdown' : '']" data-bs-auto-close="outside" aria-expanded="false">
                 {{ $t(sidebar.menu_name) }}

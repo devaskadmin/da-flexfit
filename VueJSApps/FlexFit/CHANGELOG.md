@@ -1,6 +1,59 @@
 # Changelog
 
-## [0.7.1] - 2026-04-22
+## [0.75.1] - 2026-04-23
+
+### Added
+- **Demo operating mode** (`frontend/src/config/appConfig.js`, `frontend/.env`):
+  - Added `VITE_OPERATING_MODE` environment variable (current value: `demo`).
+  - Created `appConfig.js` helper exposing `operatingMode` and `isDemoMode` for use across components.
+- **Demo login buttons** (`frontend/src/views/Guest/Login.vue`):
+  - When `VITE_OPERATING_MODE=demo`, the login page displays role-specific demo buttons for **User**, **Trainer**, and **Admin**.
+  - Demo login actions prefill credentials, enable Remember Me, and reuse the existing sign-in flow.
+- **Step-based registration wizard** (`frontend/src/views/Guest/register.vue`):
+  - Added a three-step onboarding flow: **Account Type** → **Subscription Type** → **Account Info + Terms**.
+  - Replaced the account type dropdown with selectable cards for **User**, **Trainer**, and demo-only **Admin**.
+  - Added smooth step transitions, inline validation, and draft persistence for all registration inputs.
+- **Subscription type step** (`frontend/src/views/Guest/register.vue`, `backend/api/auth.js`):
+  - Inserted a dedicated **Subscription Type** step between account type and account info.
+  - Registration now loads active tiers for guest signup and saves the selected tier during account creation.
+  - Added modern subscription carousel to registration wizard.
+  - Improved onboarding flow with slider-based plan selection.
+  - Added persistent subscription selection between steps.
+- **Horizontal stepper navigation** (`frontend/src/views/Guest/register.vue`):
+  - Added horizontal stepper navigation to the registration wizard.
+  - Improved onboarding flow clarity and visual progress tracking with active, completed, and locked step states.
+- **Modal Terms & Policy agreement** (`frontend/src/views/Guest/register.vue`):
+  - Replaced route-based Terms navigation with an in-page modal popup.
+  - Added scroll-to-bottom gating before agreement can be confirmed.
+  - Agreeing in the modal automatically checks the registration consent box.
+
+### Changed
+- **Registration onboarding UX** (`frontend/src/views/Guest/register.vue`):
+  - Improved onboarding flow and usability with a modern wizard layout.
+  - Eliminated form data loss issues by keeping all state within the registration experience and preserving draft data.
+  - Expanded the wizard to **Account Type** → **Subscription Type** → **Account Info** without changing the visual design system.
+- **Release note consolidation**:
+  - All active registration/auth updates in this cycle are now tracked under **v0.75.1**.
+- **Backend registration route** (`backend/api/auth.js`):
+  - `POST /api/register` now accepts and validates `membershipType` (`User`, `Trainer`, `Admin`; defaults to `User`).
+  - Role slug, membership tier, and billing cycle are now derived from the selected type instead of always defaulting to admin.
+- **Role-aware session payload + sidebar visibility** (`backend/api/auth.js`, `frontend/src/components/MainSidebarComponent.vue`):
+  - Session responses now include normalized role metadata (`role`, `roleSlug`) derived from role mappings/profile fallback.
+  - Sidebar sections are now filtered by role:
+    - **Admin**: sees **Trainer** + **Administrator**
+    - **Trainer**: sees **Trainer** only
+    - **User**: sees neither **Trainer** nor **Administrator**
+- **App version** bumped to `0.75.1`.
+
+### Fixed
+- **Role enforcement consistency** (`backend/api/admin.js`, `backend/middleware/requireAdmin.js`):
+  - Admin API surface remains protected by server-side middleware checks against role mapping/profile/user fallbacks.
+  - Session role metadata now aligns frontend visibility behavior with backend authorization decisions.
+
+### Database
+- `ALTER TABLE users ADD COLUMN membershipType VARCHAR(20) NOT NULL DEFAULT 'User';` required.
+
+
 
 ### Added
 - **Exercises Database user views + favorites APIs** (`backend/api/excerises.js`):
