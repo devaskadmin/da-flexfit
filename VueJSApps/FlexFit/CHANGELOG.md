@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.75.2] - 2026-04-23
+
+### Changed
+- **RBAC role-source enforcement for menu visibility** (`backend/api/auth.js`, `frontend/src/components/MainSidebarComponent.vue`):
+  - Sidebar visibility now consistently follows the resolved session role from `user_roles`/`roles`.
+  - Membership/profile tier fields (`membershipType`) remain in registration/profile flow but are not used for runtime menu permissions.
+
+### Fixed
+- **Role-based sidebar visibility regressions** (`frontend/src/components/MainSidebarComponent.vue`):
+  - `member/user` now sees only Dashboard + standard links + Help Center.
+  - `trainer` now sees Trainer section and does not see Administrator section.
+  - `administrator/admin` continues to see all sections.
+- **Incorrect role mappings in demo RBAC data** (`user_roles`, `roles`):
+  - Removed unintended admin assignments from non-admin demo users that caused Administrator menu overexposure.
+
+### Notes
+- **Release version** updated to `0.75.2`.
+
 ## [0.75.1] - 2026-04-23
 
 ### Added

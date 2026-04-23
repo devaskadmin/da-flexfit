@@ -6,40 +6,28 @@ import { useRouter } from 'vue-router';
 /** Raw session user object from /api/session */
 const user = ref(null);
 
-/**
- * Normalize any role value coming from the API into one of three canonical slugs:
- *   'admin' | 'trainer' | 'user'
- *
- * API may return:
- *   roleSlug: 'admin' | 'trainer' | 'member' | 'user'
- *   role:     'Admin' | 'Trainer' | 'User'
- *   membershipType: 'Admin' | 'Trainer' | 'User'
- */
-const normalizeRoleSlug = (candidate) => {
+/** Normalize role value to one of: 'user' | 'trainer' | 'administrator' */
+const normalizeRole = (candidate) => {
   const v = String(candidate || '').trim().toLowerCase();
-  if (v === 'admin' || v === 'administrator') return 'admin';
+  if (v === 'admin' || v === 'administrator') return 'administrator';
   if (v === 'trainer') return 'trainer';
-  return 'user'; // covers 'member', 'user', ''
+  return 'user';
 };
 
-/**
- * Derived role slug — always one of 'admin' | 'trainer' | 'user'.
- * Reads from the most-specific field first (roleSlug > role > membershipType).
- */
-const roleSlug = computed(() => {
+/** Derived canonical role for the authenticated user. */
+const role = computed(() => {
   const u = user.value;
   if (!u) return 'user';
-  return normalizeRoleSlug(u.roleSlug || u.role || u.membershipType);
+  return normalizeRole(u.role || u.roleSlug);
 });
 
 /** Convenience booleans for template/composable consumers */
-const isAdmin   = computed(() => roleSlug.value === 'admin');
-const isTrainer = computed(() => roleSlug.value === 'trainer');
-const isUser    = computed(() => roleSlug.value === 'user');
+const isTrainer = computed(() => role.value === 'trainer' || role.value === 'administrator');
+const isAdministrator = computed(() => role.value === 'administrator');
 
 /** Sidebar visibility helpers */
-const canViewTrainerMenu       = computed(() => isAdmin.value || isTrainer.value);
-const canViewAdministratorMenu = computed(() => isAdmin.value);
+const canViewTrainerMenu = computed(() => isTrainer.value);
+const canViewAdministratorMenu = computed(() => isAdministrator.value);
 
 export function useAuth() {
   const router = useRouter();
@@ -67,11 +55,10 @@ export function useAuth() {
   return {
     // State
     user,
-    roleSlug,
+    role,
     // Role booleans
-    isAdmin,
     isTrainer,
-    isUser,
+    isAdministrator,
     // Sidebar helpers
     canViewTrainerMenu,
     canViewAdministratorMenu,

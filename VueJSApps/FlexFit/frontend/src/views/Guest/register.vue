@@ -27,6 +27,7 @@ const touched = reactive({
   confirmPassword: false,
 });
 
+// membershipType = membership/billing/profile tier (not used for menu access control)
 const form = reactive({
   membershipType: '',
   subscriptionPlanKey: '',

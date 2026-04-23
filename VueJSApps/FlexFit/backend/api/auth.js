@@ -17,87 +17,44 @@ const normalizeRoleValue = (rawValue = '') => {
   const value = String(rawValue || '').trim().toLowerCase();
 
   if (['admin', 'administrator'].includes(value)) {
-    return { role: 'Admin', roleSlug: 'admin' };
+    return { role: 'administrator', roleSlug: 'administrator' };
   }
 
   if (value === 'trainer') {
-    return { role: 'Trainer', roleSlug: 'trainer' };
+    return { role: 'trainer', roleSlug: 'trainer' };
   }
 
-  if (['member', 'user'].includes(value)) {
-    return { role: 'User', roleSlug: 'user' };
-  }
-
-  return { role: 'User', roleSlug: 'user' };
+  return { role: 'user', roleSlug: 'user' };
 };
 
 const resolveSessionRole = async (userId) => {
   if (!userId) {
-    return { role: 'User', roleSlug: 'user' };
+    return { role: 'user', roleSlug: 'user' };
   }
 
-  try {
-    const [rows] = await pool.query(
-      `SELECT LOWER(TRIM(r.slug)) AS roleSlug
-       FROM user_roles ur
-       JOIN roles r ON r.id = ur.role_id
-       WHERE ur.user_id = ?
-         AND r.is_active = 1
-       ORDER BY CASE
-         WHEN LOWER(TRIM(r.slug)) IN ('admin', 'administrator') THEN 1
-         WHEN LOWER(TRIM(r.slug)) = 'trainer' THEN 2
-         ELSE 3
-       END
-       LIMIT 1`,
-      [userId]
-    );
+  const [rows] = await pool.query(
+    `SELECT
+       LOWER(TRIM(COALESCE(NULLIF(r.slug, ''), r.name))) AS roleValue
+     FROM user_roles ur
+     JOIN roles r ON r.id = ur.role_id
+     WHERE ur.user_id = ?
+       AND r.is_active = 1
+     ORDER BY CASE
+       WHEN LOWER(TRIM(COALESCE(NULLIF(r.slug, ''), r.name))) IN ('admin', 'administrator') THEN 1
+       WHEN LOWER(TRIM(COALESCE(NULLIF(r.slug, ''), r.name))) = 'trainer' THEN 2
+       ELSE 3
+     END,
+     ur.assigned_at DESC,
+     ur.id DESC
+     LIMIT 1`,
+    [userId]
+  );
 
-    if (rows?.length) {
-      return normalizeRoleValue(rows[0].roleSlug);
-    }
-  } catch (rolesErr) {
-    if (!['ER_NO_SUCH_TABLE', 'ER_BAD_FIELD_ERROR'].includes(rolesErr?.code)) {
-      throw rolesErr;
-    }
+  if (rows?.length && rows[0]?.roleValue) {
+    return normalizeRoleValue(rows[0].roleValue);
   }
 
-  try {
-    const [rows] = await pool.query(
-      `SELECT LOWER(TRIM(user_role)) AS roleValue
-       FROM user_profiles
-       WHERE user_id = ?
-       LIMIT 1`,
-      [userId]
-    );
-
-    if (rows?.length && rows[0]?.roleValue) {
-      return normalizeRoleValue(rows[0].roleValue);
-    }
-  } catch (profileErr) {
-    if (!['ER_NO_SUCH_TABLE', 'ER_BAD_FIELD_ERROR'].includes(profileErr?.code)) {
-      throw profileErr;
-    }
-  }
-
-  try {
-    const [rows] = await pool.query(
-      `SELECT LOWER(TRIM(membershipType)) AS roleValue
-       FROM users
-       WHERE id = ?
-       LIMIT 1`,
-      [userId]
-    );
-
-    if (rows?.length && rows[0]?.roleValue) {
-      return normalizeRoleValue(rows[0].roleValue);
-    }
-  } catch (userErr) {
-    if (!['ER_NO_SUCH_TABLE', 'ER_BAD_FIELD_ERROR'].includes(userErr?.code)) {
-      throw userErr;
-    }
-  }
-
-  return { role: 'User', roleSlug: 'user' };
+  return { role: 'user', roleSlug: 'user' };
 };
 
 const hasAllRequiredCharClasses = (value = '') => {
@@ -363,11 +320,9 @@ router.get('/session', async (req, res) => {
 
     if (req.session?.user) {
       try {
-        if (!req.session.user.role || !req.session.user.roleSlug) {
-          const roleContext = await resolveSessionRole(req.session.user.id);
-          req.session.user.role = roleContext.role;
-          req.session.user.roleSlug = roleContext.roleSlug;
-        }
+        const roleContext = await resolveSessionRole(req.session.user.id);
+        req.session.user.role = roleContext.role;
+        req.session.user.roleSlug = roleContext.roleSlug;
       } catch (roleErr) {
         console.error('⚠️ Failed to resolve session role:', roleErr?.message || roleErr);
       }
@@ -560,14 +515,14 @@ router.post('/bootstrap/promote-self-admin', async (req, res) => {
     await conn.commit();
 
     if (req.session?.user) {
-      req.session.user.role = 'Admin';
-      req.session.user.roleSlug = 'admin';
+      req.session.user.role = 'administrator';
+      req.session.user.roleSlug = 'administrator';
     }
 
     return res.json({
       message: 'User promoted to admin successfully.',
       userId,
-      role: 'admin',
+      role: 'administrator',
     });
   } catch (err) {
     await conn.rollback();
@@ -616,6 +571,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: "First name, email, and password are required" });
     }
 
+    // membershipType = membership/billing/profile tier (not used for access control)
     // Validate membershipType — default to 'User' if not provided
     const ALLOWED_TYPES = ['User', 'Trainer', 'Admin'];
     const safeType = ALLOWED_TYPES.includes(membershipType) ? membershipType : 'User';
@@ -625,7 +581,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'A valid subscription type is required.' });
     }
 
-    // Map membershipType → role slug, tier, billing cycle
+    // Map membershipType (profile tier) → role slug (RBAC), tier, billing cycle
     const TYPE_MAP = {
       User:    { roleSlug: 'member' },
       Trainer: { roleSlug: 'trainer' },
@@ -661,6 +617,7 @@ router.post('/register', async (req, res) => {
       await conn.beginTransaction();
 
       // 1. Create the core user row (with membershipType column)
+      // membershipType is for billing/profile tier only. Role is assigned separately for RBAC.
       const [userResult] = await conn.query(
         "INSERT INTO users (FirstName, LastName, username, Password, membershipType) VALUES (?, ?, ?, ?, ?)",
         [safeFirst, safeLast, safeUser, hashedPassword, safeType]
