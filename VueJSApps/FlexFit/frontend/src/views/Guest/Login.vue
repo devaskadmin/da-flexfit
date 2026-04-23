@@ -3,6 +3,7 @@ import { ref } from "vue";
 import axios from "axios";
 import { useRouter } from "vue-router";
 import { API_BASE } from '@/config/env';
+import { isDemoMode } from '@/config/appConfig';
 
 const router = useRouter();
 
@@ -334,108 +335,20 @@ const login = async () => {
   }
 };
 
-// 🔹 Temp Login Bypass Function
-const tempLoginBypass = async () => {
-  if (isSubmitting.value) return;
+// 🔹 Demo Login — prefill credentials and reuse existing login()
+const DEMO_ACCOUNTS = {
+  user:    { email: 'user@demo.com',    password: '-^LtH1kqJrDn' },
+  trainer: { email: 'trainer@demo.com', password: '-^LtH1kqJrDn' },
+  admin:   { email: 'admin@demo.com',   password: '-^LtH1kqJrDn' },
+};
 
-  username.value = "demo@demo.com";
-  password.value = "demo";
-  isSubmitting.value = true;
-  errorMsg.value = "";
-  loginDiagnostics.value = "";
-  diagnosticsCopied.value = false;
-  showDiagnosticsModal.value = false;
-
-  try {
-    devLog('Submitting demo login request');
-
-    const demoLoginUrl = `${API_BASE}/api/login`;
-    console.log('[FlexFit Demo Login] API_BASE:', API_BASE);
-    console.log('[FlexFit Demo Login] URL:', demoLoginUrl);
-    console.log('[FlexFit Demo Login] withCredentials:', true);
-
-    const response = await axios.post(
-      demoLoginUrl,
-      {
-        username: username.value,
-        password: password.value,
-        rememberMe: !!rememberMe.value,
-      },
-      { withCredentials: true }
-    );
-
-    if (response?.data?.requiresPasswordReset === true) {
-      devLog('Demo login requires password reset');
-      const sessionState = await waitForSessionReady();
-      if (!sessionState?.passed) {
-        setLoginError({
-          fallbackMessage: 'Login succeeded, but the session cookie was not available for follow-up requests.',
-          reason: 'Session persistence issue after successful demo authentication.',
-          status: sessionState?.status,
-          apiMessage: sessionState?.note || 'Login successful, but session verification failed.',
-          loginSucceeded: true,
-          sessionCookiePersisted: sessionState?.hasSessionCookie,
-          sessionVerificationPassed: false,
-          safariDetailed: true,
-        });
-        return;
-      }
-      await router.replace({ name: 'update_password' });
-      return;
-    }
-
-    if (response?.data?.message === "Login successful") {
-      devLog('Demo login successful response received');
-      const sessionState = await waitForSessionReady();
-      if (!sessionState?.passed) {
-        setLoginError({
-          fallbackMessage: 'Login succeeded, but the session cookie was not available for follow-up requests.',
-          reason: 'Session persistence issue after successful demo authentication.',
-          status: sessionState?.status,
-          apiMessage: sessionState?.note || response?.data?.message,
-          loginSucceeded: true,
-          sessionCookiePersisted: sessionState?.hasSessionCookie,
-          sessionVerificationPassed: false,
-          safariDetailed: true,
-        });
-        return;
-      }
-      await goToDashboard();
-      return;
-    }
-
-    devLog('Demo login rejected by API payload', response?.data || null);
-    const payloadMessage = response?.data?.message || response?.data?.error || "Login failed. Try again.";
-    setLoginError({
-      fallbackMessage: payloadMessage,
-      reason: 'The server rejected this demo sign-in request.',
-      apiMessage: payloadMessage,
-      safariDetailed: true,
-    });
-  } catch (error) {
-    devLog('Demo login request failed', {
-      status: error?.response?.status,
-      data: error?.response?.data,
-      message: error?.message,
-    });
-    const apiMessage =
-      error?.response?.data?.message ||
-      error?.response?.data?.error ||
-      'Demo sign-in request failed before authentication could complete.';
-    setLoginError({
-      fallbackMessage: apiMessage,
-      reason: 'Browser could not complete demo sign-in request.',
-      status: error?.response?.status,
-      apiMessage,
-      networkMessage: error?.message,
-      loginSucceeded: false,
-      sessionCookiePersisted: null,
-      sessionVerificationPassed: false,
-      safariDetailed: true,
-    });
-  } finally {
-    isSubmitting.value = false;
-  }
+const demoLogin = async (role) => {
+  const account = DEMO_ACCOUNTS[role];
+  if (!account) return;
+  username.value  = account.email;
+  password.value  = account.password;
+  rememberMe.value = true;
+  await login();
 };
 
 </script>
@@ -493,7 +406,18 @@ const tempLoginBypass = async () => {
             <button class="btn btn-primary w-100 login-btn auth-button" :disabled="isSubmitting">
               {{ isSubmitting ? 'Signing in...' : 'Sign in' }}
             </button>
-            <button type="button" class="btn btn-secondary w-100 auth-button auth-button-secondary" :disabled="isSubmitting" @click="tempLoginBypass">Temp Login Bypass (Demo)</button>
+
+            <!-- Demo mode buttons — only visible when VITE_OPERATING_MODE=demo -->
+            <template v-if="isDemoMode">
+              <div class="demo-divider">
+                <span>Demo Accounts</span>
+              </div>
+              <div class="demo-buttons-row">
+                <button type="button" class="btn demo-btn demo-btn-user" :disabled="isSubmitting" @click="demoLogin('user')">User Login</button>
+                <button type="button" class="btn demo-btn demo-btn-trainer" :disabled="isSubmitting" @click="demoLogin('trainer')">Trainer Login</button>
+                <button type="button" class="btn demo-btn demo-btn-admin" :disabled="isSubmitting" @click="demoLogin('admin')">Admin Login</button>
+              </div>
+            </template>
           </form>
 
           <div class="other-option auth-social-row">
@@ -756,6 +680,65 @@ const tempLoginBypass = async () => {
 .auth-password-toggle {
   appearance: none;
 }
+
+/* ── Demo mode buttons ─────────────────────────────────────── */
+.demo-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 6px;
+  font-size: 0.75rem;
+  color: #A9B4CC;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.demo-divider::before,
+.demo-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(169, 180, 204, 0.35);
+}
+
+.demo-buttons-row {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+}
+
+.demo-btn {
+  flex: 1;
+  min-height: 36px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 5px 4px;
+  letter-spacing: 0.01em;
+  transition: opacity 0.2s, transform 0.1s;
+}
+.demo-btn:active { transform: scale(0.97); }
+.demo-btn:disabled { opacity: 0.55; }
+
+.demo-btn-user {
+  background: rgba(13, 153, 255, 0.15);
+  border: 1.5px solid rgba(13, 153, 255, 0.55);
+  color: #0D99FF;
+}
+.demo-btn-user:hover { background: rgba(13, 153, 255, 0.25); }
+
+.demo-btn-trainer {
+  background: rgba(32, 201, 151, 0.12);
+  border: 1.5px solid rgba(32, 201, 151, 0.55);
+  color: #20c997;
+}
+.demo-btn-trainer:hover { background: rgba(32, 201, 151, 0.22); }
+
+.demo-btn-admin {
+  background: rgba(253, 126, 20, 0.12);
+  border: 1.5px solid rgba(253, 126, 20, 0.55);
+  color: #fd7e14;
+}
+.demo-btn-admin:hover { background: rgba(253, 126, 20, 0.22); }
 
 .auth-footer {
   margin-top: 6px;
