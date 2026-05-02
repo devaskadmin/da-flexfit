@@ -11,7 +11,7 @@ const pool = require('../db.js');
 
 const DEFAULT_SESSION_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
 const REMEMBER_ME_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
-const isDebugEnabled = ['true', '1', 'yes'].includes(String(process.env.DEBUG || '').toLowerCase());
+const isDebugEnabled = ['true', '1', 'yes'].includes(String(process.env.DEBUG || process.env.VITE_DEBUG || '').toLowerCase());
 
 const normalizeRoleValue = (rawValue = '') => {
   const value = String(rawValue || '').trim().toLowerCase();
@@ -120,7 +120,8 @@ const sendResetPasswordEmail = async ({ to, temporaryPassword }) => {
   }
 
   const from = process.env.SMTP_FROM || process.env.SMTP_USER;
-  const resetUrl = process.env.RESET_PASSWORD_URL || `${process.env.FRONTEND_URL || ''}/update-password`;
+  const frontendUrl = process.env.FRONTEND_URL || process.env.FRONTEND_ORIGIN || '';
+  const resetUrl = process.env.RESET_PASSWORD_URL || `${frontendUrl}/update-password`;
 
   await transporter.sendMail({
     from,
@@ -143,7 +144,7 @@ router.get('/db-status', async (req, res) => {
     return res.json({ connected: true });
   } catch (err) {
     console.error('❌ DB status check failed:', err?.message || err);
-    const isDebugEnabled = ['true', '1', 'yes'].includes(String(process.env.DEBUG || '').toLowerCase());
+    const isDebugEnabled = ['true', '1', 'yes'].includes(String(process.env.DEBUG || process.env.VITE_DEBUG || '').toLowerCase());
 
     return res.status(500).json({
       connected: false,
@@ -248,12 +249,19 @@ router.post('/login', async (req, res) => {
       }
 
       const roleContext = await resolveSessionRole(user.id);
+      
+      // Apply default avatar if none exists
+      const avatarPath = user.avatarPath || '/images/avatar/default.png';
+      const avatarName = user.avatarName || 'default.png';
+      
       req.session.user = {
         id: user.id,
         username: user.username,
         mustResetPassword: isPendingReset,
         role: roleContext.role,
         roleSlug: roleContext.roleSlug,
+        avatarPath: avatarPath,
+        avatarName: avatarName,
       };
       req.session.mustResetPassword = isPendingReset;
       req.session.cookie.maxAge = rememberMe ? REMEMBER_ME_MAX_AGE_MS : DEFAULT_SESSION_MAX_AGE_MS;
@@ -323,6 +331,17 @@ router.get('/session', async (req, res) => {
         const roleContext = await resolveSessionRole(req.session.user.id);
         req.session.user.role = roleContext.role;
         req.session.user.roleSlug = roleContext.roleSlug;
+        
+        // Fetch user avatar data if not in session
+        if (!req.session.user.avatarPath || !req.session.user.avatarName) {
+          const [userRows] = await pool.query(
+            'SELECT avatarPath, avatarName FROM users WHERE id = ? LIMIT 1',
+            [req.session.user.id]
+          );
+          const user = userRows?.[0];
+          req.session.user.avatarPath = user?.avatarPath || '/images/avatar/default.png';
+          req.session.user.avatarName = user?.avatarName || 'default.png';
+        }
       } catch (roleErr) {
         console.error('⚠️ Failed to resolve session role:', roleErr?.message || roleErr);
       }
@@ -469,7 +488,7 @@ router.post('/bootstrap/promote-self-admin', async (req, res) => {
   }
 
   const debugNoAuth = String(process.env.DEBUG_NO_AUTH || '').toLowerCase();
-  const debugFlag = String(process.env.DEBUG || '').toLowerCase();
+  const debugFlag = String(process.env.DEBUG || process.env.VITE_DEBUG || '').toLowerCase();
   const isDebugEnabled = ['true', '1', 'yes'].includes(debugNoAuth) || ['true', '1', 'yes'].includes(debugFlag);
 
   if (!isDebugEnabled) {
@@ -616,11 +635,11 @@ router.post('/register', async (req, res) => {
     try {
       await conn.beginTransaction();
 
-      // 1. Create the core user row (with membershipType column)
+      // 1. Create the core user row (with membershipType column and default avatar)
       // membershipType is for billing/profile tier only. Role is assigned separately for RBAC.
       const [userResult] = await conn.query(
-        "INSERT INTO users (FirstName, LastName, username, Password, membershipType) VALUES (?, ?, ?, ?, ?)",
-        [safeFirst, safeLast, safeUser, hashedPassword, safeType]
+        "INSERT INTO users (FirstName, LastName, username, Password, membershipType, avatarName, avatarPath) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [safeFirst, safeLast, safeUser, hashedPassword, safeType, 'default.png', '/images/avatar/default.png']
       );
       const newUserId = userResult.insertId;
 

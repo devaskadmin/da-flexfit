@@ -270,8 +270,22 @@ onMounted(async () => {
 <template>
   <div class="app-page-shell">
   <div class="app-page-canvas app-inner-shell">
+
+
+
+
+
+
   <div class="nutrition-workspace">
+
+
+
+
+
+    
     <section class="builder-hero ff-page-header app-header-gradient">
+
+
       <div class="builder-hero__content">
         <h2>Nutrition Workspace</h2>
         <p>Search, review, and log foods in one workflow.</p>

@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { API_BASE } from '@/config/env'
+import { useAuth } from '@/composable/useAuth'
 
 const props = defineProps({
   username: {
@@ -14,10 +15,20 @@ const props = defineProps({
   }
 })
 
+const { logout: authLogout, logoutInProgress } = useAuth()
 const router = useRouter()
 const isOpen = ref(false)
 const dropdownRef = ref(null)
 const buttonRef = ref(null)
+
+// Computed avatar URL with default fallback
+const avatarUrl = computed(() => {
+  if (props.avatarSrc && !props.avatarSrc.includes('admin.png')) {
+    return props.avatarSrc
+  }
+  // Default avatar fallback
+  return `${API_BASE}/images/avatar/default.png`
+})
 
 // Toggle dropdown open/close
 const toggleDropdown = () => {
@@ -66,21 +77,8 @@ const handleHelp = () => {
 
 const handleSignOut = async () => {
   closeDropdown()
-  try {
-    // Call logout endpoint
-    const response = await fetch(`${API_BASE}/api/auth/logout`, {
-      method: 'POST',
-      credentials: 'include',
-    })
-    if (response.ok) {
-      // Redirect to login
-      router.push({ name: 'login' })
-    }
-  } catch (error) {
-    console.error('Logout failed:', error)
-    // Fallback to logout route
-    router.push({ name: 'logout' })
-  }
+  // Use shared logout function from useAuth
+  await authLogout()
 }
 
 // Setup and cleanup event listeners
@@ -118,7 +116,7 @@ onUnmounted(() => {
       :aria-expanded="isOpen"
       aria-label="Open profile menu"
     >
-      <img :src="avatarSrc" :alt="`${username}'s avatar`" class="profile-avatar">
+      <img :src="avatarUrl" :alt="`${username}'s avatar`" class="profile-avatar">
     </button>
 
     <!-- Dropdown Menu -->
@@ -133,7 +131,7 @@ onUnmounted(() => {
         <!-- User Info Section -->
         <div class="dropdown-user-info">
           <div class="user-avatar-large">
-            <img :src="avatarSrc" :alt="`${username}'s avatar`">
+            <img :src="avatarUrl" :alt="`${username}'s avatar`">
           </div>
           <div class="user-info-text">
             <p class="user-display-name">{{ username }}</p>
@@ -191,12 +189,14 @@ onUnmounted(() => {
           <button
             class="dropdown-item dropdown-item-danger"
             @click="handleSignOut"
+            :disabled="logoutInProgress"
             role="menuitem"
           >
             <span class="dropdown-icon">
               <i class="fa-regular fa-arrow-right-from-bracket"></i>
             </span>
-            <span class="dropdown-label">Sign Out</span>
+            <span class="dropdown-label" v-if="logoutInProgress">Signing out...</span>
+            <span class="dropdown-label" v-else>Sign Out</span>
           </button>
         </div>
       </div>

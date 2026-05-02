@@ -28,24 +28,78 @@ const emit = defineEmits(['update-field', 'remove', 'move-up', 'move-down']);
 
 const FALLBACK_EXERCISE_IMAGE = '/assets/Excerises/default/default.jpg';
 
-const resolveImageSrc = (value) => {
+const getFirstImageFromGallery = (gallery) => {
+  if (!gallery) return null;
+
+  try {
+    const parsed = typeof gallery === 'string' ? JSON.parse(gallery) : gallery;
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed[0];
+    }
+  } catch (err) {
+    console.warn('[IMAGE GALLERY PARSE ERROR]', err);
+  }
+
+  return null;
+};
+
+const getExerciseImageSrc = (exercise) => {
+  // Try multiple possible field names for the image
+  const raw =
+    exercise.ImageURL ||
+    exercise.imageURL ||
+    exercise.imageUrl ||
+    exercise.image ||
+    exercise.imagePath ||
+    getFirstImageFromGallery(exercise.ImageGallery || exercise.imageGallery);
+
+  // Debug logging to help diagnose image issues
+  console.log('[EXERCISE IMAGE DEBUG]', {
+    exerciseName: exercise.name || exercise.ExerciseTitle,
+    ImageURL: exercise.ImageURL,
+    imageURL: exercise.imageURL,
+    imageUrl: exercise.imageUrl,
+    image: exercise.image,
+    imagePath: exercise.imagePath,
+    ImageGallery: exercise.ImageGallery,
+    imageGallery: exercise.imageGallery,
+    raw,
+    apiBase: API_BASE,
+  });
+
+  if (!raw) {
+    console.warn('[EXERCISE IMAGE] No image found, using fallback');
+    return resolveImagePath(FALLBACK_EXERCISE_IMAGE);
+  }
+
+  return resolveImagePath(raw);
+};
+
+const resolveImagePath = (value) => {
   const raw = String(value || '').trim();
-  const source = raw || FALLBACK_EXERCISE_IMAGE;
 
-  if (/^https?:\/\//i.test(source) || source.startsWith('data:')) {
-    return source;
+  if (!raw) {
+    return resolveImagePath(FALLBACK_EXERCISE_IMAGE);
   }
 
-  if (source.startsWith('/')) {
-    return `${API_BASE}${source}`;
+  // Already absolute URL (http/https or data URI)
+  if (/^https?:\/\//i.test(raw) || raw.startsWith('data:')) {
+    return raw;
   }
 
-  return source;
+  // Absolute path from root
+  if (raw.startsWith('/')) {
+    return `${API_BASE}${raw}`;
+  }
+
+  // Relative path - prepend API base and slash
+  return `${API_BASE}/${raw}`;
 };
 
 const handleImageError = (event) => {
   if (!event?.target) return;
-  event.target.src = resolveImageSrc(FALLBACK_EXERCISE_IMAGE);
+  console.error('[EXERCISE IMAGE ERROR] Failed to load image:', event.target.src);
+  event.target.src = resolveImagePath(FALLBACK_EXERCISE_IMAGE);
 };
 
 const updateField = (field, value, isNumeric = false) => {
@@ -62,8 +116,8 @@ const updateField = (field, value, isNumeric = false) => {
     <header class="exercise-block__head">
       <div class="exercise-block__identity">
         <img
-          :src="resolveImageSrc(exercise.image)"
-          :alt="exercise.name"
+          :src="getExerciseImageSrc(exercise)"
+          :alt="exercise.name || exercise.ExerciseTitle || 'Exercise image'"
           width="72"
           height="72"
           loading="lazy"

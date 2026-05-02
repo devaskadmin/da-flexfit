@@ -10,8 +10,9 @@ const session = require('express-session');
 const app = express();
 app.use(express.json());
 const isProduction = process.env.NODE_ENV === 'production';
-const isDebugEnabled = ['true', '1', 'yes'].includes(String(process.env.DEBUG || '').toLowerCase());
-const FRONTEND_URL = process.env.FRONTEND_URL;
+const debugFlag = String(process.env.DEBUG || process.env.VITE_DEBUG || '').toLowerCase();
+const isDebugEnabled = ['true', '1', 'yes'].includes(debugFlag);
+const FRONTEND_URL = process.env.FRONTEND_URL || process.env.FRONTEND_ORIGIN;
 const CORS_ORIGINS = String(process.env.CORS_ORIGINS || '')
   .split(',')
   .map((origin) => origin.trim())
@@ -112,9 +113,16 @@ app.use((req, res, next) => {
 // ✅ DB Connect
 const pool = require('./db.js');
 
+// ✅ Serve static avatar images
+app.use('/images/avatar', express.static(path.join(__dirname, 'src/images/avatar')));
+
+// ✅ Serve static exercise images
+app.use('/assets/Excerises', express.static(path.join(__dirname, 'free-exercise-db-main/exercises')));
+
 //Define Workout Routes - Loads workout log API
 const workoutLogRoutes = require('./api/workout-log'); // ✅ correct path
 const openFoodFactsRoutes = require('./api/OpenFoodFactsAPI/main-api.js');
+const avatarRoutes = require('./src/routes/avatar.js');
 
 // Import routes
 app.use('/api', require('./api/auth.js'));
@@ -123,6 +131,7 @@ app.use('/api', require('./api/excerises.js'));
 app.use('/api', require('./api/notifications.js'));
 app.use('/api/workout-log', workoutLogRoutes);
 app.use('/api', openFoodFactsRoutes);
+app.use('/api/avatar', avatarRoutes);
 app.use('/api/admin', require('./api/admin.js')); // 🔒 Admin-only routes
 
 const PORT = process.env.PORT || 5000;

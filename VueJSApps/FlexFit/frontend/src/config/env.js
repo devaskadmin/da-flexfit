@@ -1,4 +1,11 @@
-const rawApiBase = import.meta.env.VITE_API_BASE || '';
+const envTarget = String(import.meta.env.VITE_ENV_TARGET || '').trim().toLowerCase();
+const forceDevMode = ['development', 'dev', 'local'].includes(envTarget);
+const forceProdMode = ['production', 'prod', 'render', 'remote'].includes(envTarget);
+const isDevMode = forceProdMode ? false : forceDevMode ? true : Boolean(import.meta.env.DEV);
+const defaultApiBase = isDevMode
+  ? 'http://localhost:5000'
+  : 'https://dev-asterisks-github.onrender.com';
+const rawApiBase = import.meta.env.VITE_API_BASE || defaultApiBase;
 
 const normalizeApiBase = (value) => {
   const trimmed = String(value || '').trim();

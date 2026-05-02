@@ -31,22 +31,33 @@ const sidebarUser = computed(() => authStore.user?.value || authStore.user || nu
 // role = RBAC/access control
 // membershipType = membership/billing/profile tier
 const normalizedRole = computed(() =>
-  String(sidebarUser.value?.role || sidebarUser.value?.Role || sidebarUser.value?.memberRole || '').trim().toLowerCase()
+  String(
+    sidebarUser.value?.role ||
+    sidebarUser.value?.Role ||
+    localStorage.getItem('role') ||
+    ''
+  ).trim().toLowerCase()
 )
 
+const isAdmin = computed(() => ['admin', 'administrator'].includes(normalizedRole.value))
+const isTrainer = computed(() => normalizedRole.value === 'trainer')
+const isUser = computed(() => normalizedRole.value === 'user')
+
 const canViewTrainerMenu = computed(() =>
-  normalizedRole.value === 'trainer' || normalizedRole.value === 'administrator' || normalizedRole.value === 'admin'
+  isAdmin.value || isTrainer.value
 )
 
 const canViewAdminMenu = computed(() =>
-  normalizedRole.value === 'administrator' || normalizedRole.value === 'admin'
+  isAdmin.value
 )
 
 watchEffect(() => {
-  console.log('[SIDEBAR ROLE DEBUG]', {
-    user: sidebarUser.value,
-    role: sidebarUser.value?.role,
-    normalizedRole: normalizedRole.value
+  console.log('Sidebar role debug:', {
+    rawUser: authStore.user,
+    normalizedRole: normalizedRole.value,
+    isAdmin: isAdmin.value,
+    isTrainer: isTrainer.value,
+    isUser: isUser.value
   })
 })
 

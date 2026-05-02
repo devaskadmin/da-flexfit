@@ -39,10 +39,26 @@ const router = useRouter();
 const scheduleMode = ref('day'); // day | week
 const dayGroups = ref(['Any Day']);
 const weekGroups = ref(['Week 1']);
+const selectedScheduleGroup = ref(null);
 const newScheduleGroupName = ref('');
 const editingScheduleGroupOriginalName = ref('');
+const showDeleteModal = ref(false);
+const dayToDelete = ref(null);
 
 const activeGroups = computed(() => (scheduleMode.value === 'week' ? weekGroups.value : dayGroups.value));
+
+const workoutDaysWithExercises = computed(() => {
+  return activeGroups.value.map((groupName) => {
+    const exercises = workoutExercises.value.filter(
+      (ex) => (ex.scheduleGroup || activeGroups.value[0]) === groupName
+    );
+    return {
+      name: groupName,
+      exercises,
+      exerciseCount: exercises.length,
+    };
+  });
+});
 
 const hasWorkoutSchedules = computed(() => workoutSchedules.value.length > 0);
 const canShowWorkoutDetails = computed(() => isCreatingWorkout.value || Boolean(selectedWorkoutId.value));
@@ -150,6 +166,9 @@ const hydratePlanner = (planner = {}, { markSaved = true } = {}) => {
   } else {
     dayGroups.value = Array.from(new Set([...dayGroups.value, ...assignedGroups]));
   }
+  
+  // Auto-select first group when loading workout
+  selectedScheduleGroup.value = (scheduleMode.value === 'week' ? weekGroups.value[0] : dayGroups.value[0]) || null;
 
   hasSavedWorkoutDetails.value = markSaved;
   editingScheduleGroupOriginalName.value = '';
@@ -223,6 +242,10 @@ const createWorkoutPlan = async () => {
     weekGroups.value = Array.isArray(planner?.weekGroups) && planner.weekGroups.length > 0
       ? planner.weekGroups
       : ['Week 1'];
+    
+    // Auto-select first group
+    selectedScheduleGroup.value = (scheduleMode.value === 'week' ? weekGroups.value[0] : dayGroups.value[0]) || null;
+    
     workoutExercises.value = [];
     plannerMessage.value = '';
     isWorkoutDetailsOpen.value = true;
@@ -288,7 +311,18 @@ const addScheduleGroup = () => {
   }
 
   target.value = [...target.value, name];
+  
+  // Auto-select first day if none is selected
+  if (!selectedScheduleGroup.value) {
+    selectedScheduleGroup.value = name;
+  }
+  
   newScheduleGroupName.value = '';
+  plannerMessage.value = '';
+};
+
+const setActiveDay = (groupName) => {
+  selectedScheduleGroup.value = groupName;
   plannerMessage.value = '';
 };
 
@@ -367,6 +401,11 @@ const removeScheduleGroup = (groupName) => {
     }
     return exercise;
   });
+  
+  // Clear selection if the selected group was removed
+  if (selectedScheduleGroup.value && String(selectedScheduleGroup.value).trim().toLowerCase() === normalizedRemovedName) {
+    selectedScheduleGroup.value = nextFallback;
+  }
 
   plannerMessage.value = '';
 };
@@ -377,6 +416,9 @@ const changeScheduleMode = (mode) => {
   ensureActiveGroups();
   plannerMessage.value = '';
   const fallback = activeGroups.value[0];
+  
+  // Auto-select first group in new mode
+  selectedScheduleGroup.value = fallback || null;
 
   workoutExercises.value = workoutExercises.value.map((exercise) => ({
     ...exercise,
@@ -394,14 +436,58 @@ const toggleSchedulePlanner = () => {
   isSchedulePlannerOpen.value = !isSchedulePlannerOpen.value;
 };
 
+// Helper function to normalize exercise title to folder name format
+const normalizeExerciseFolderName = (title) => {
+  return String(title || '')
+    .trim()
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+};
+
+// Helper function to resolve exercise image path
+const resolveExerciseImage = (exercise) => {
+  // 1. Try ImageURL field directly
+  if (exercise.ImageURL) {
+    return exercise.ImageURL;
+  }
+  
+  // 2. Try ImageGallery array (parse JSON if string)
+  if (exercise.ImageGallery) {
+    try {
+      const gallery = typeof exercise.ImageGallery === 'string' 
+        ? JSON.parse(exercise.ImageGallery) 
+        : exercise.ImageGallery;
+      if (Array.isArray(gallery) && gallery.length > 0) {
+        return gallery[0];
+      }
+    } catch (e) {
+      console.warn('Failed to parse ImageGallery:', e);
+    }
+  }
+  
+  // 3. Generate fallback path based on ExerciseTitle
+  if (exercise.ExerciseTitle) {
+    const folderName = normalizeExerciseFolderName(exercise.ExerciseTitle);
+    if (folderName) {
+      return `/assets/Excerises/${folderName}/0.jpg`;
+    }
+  }
+  
+  // 4. Final fallback only if all else fails
+  return '/assets/Excerises/default/default.jpg';
+};
+
 const createBlock = (exercise) => ({
   id: `${exercise.ExerciseID}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
   exerciseId: exercise.ExerciseID,
   name: exercise.ExerciseTitle,
-  image: exercise.ImageURL || exercise.image || '',
+  image: resolveExerciseImage(exercise),
+  ImageURL: exercise.ImageURL || '',
+  ImageGallery: exercise.ImageGallery || '',
   workoutType: exercise.WorkoutType || metadata.value.type,
   muscleGroup: exercise.MuscleGroup || '',
   equipment: exercise.Equipment || '',
+  recordingType: exercise.RecordingType || '',
   sets: metadata.value.type === 'Cardio' ? 0 : 3,
   reps: metadata.value.type === 'Cardio' ? 0 : 10,
   weight: 0,
@@ -413,7 +499,25 @@ const createBlock = (exercise) => ({
 
 const addExerciseToWorkout = (exercise) => {
   ensureActiveGroups();
-  workoutExercises.value.push(createBlock(exercise));
+  
+  // Validate that a day/week is selected
+  if (!selectedScheduleGroup.value) {
+    plannerMessage.value = 'Select a workout day before adding exercises.';
+    return;
+  }
+  
+  // Verify the selected group still exists
+  if (!activeGroups.value.includes(selectedScheduleGroup.value)) {
+    plannerMessage.value = 'Selected workout day was not found.';
+    selectedScheduleGroup.value = null;
+    return;
+  }
+  
+  // Create exercise block with selected schedule group
+  const block = createBlock(exercise);
+  block.scheduleGroup = selectedScheduleGroup.value;
+  workoutExercises.value.push(block);
+  
   saveMessage.value = '';
   plannerMessage.value = '';
 };
@@ -712,11 +816,11 @@ watch(
           </div>
 
           <div class="schedule-hub-head__actions">
-            <button type="button" class="btn-ai-suggest" @click="showAiSuggestionPlaceholder">
-              Suggest with AI
-            </button>
             <button type="button" class="btn-create-plan" @click="createWorkoutPlan">
               Create Workout Plan
+            </button>
+            <button type="button" class="btn-ai-suggest" @click="showAiSuggestionPlaceholder">
+              Suggest with AI
             </button>
           </div>
         </div>
@@ -853,32 +957,87 @@ watch(
                 </button>
               </div>
 
-              <div class="planner-group-chips" role="list" aria-label="Schedule groups">
+              <div class="workout-day-accordion" role="list" aria-label="Workout days">
                 <div
-                  v-for="group in activeGroups"
-                  :key="group"
-                  class="planner-group-chip"
+                  v-for="day in workoutDaysWithExercises"
+                  :key="day.name"
+                  :class="['workout-day-card', { active: selectedScheduleGroup === day.name }]"
                   role="listitem"
                 >
-                  <span class="planner-group-chip__name">{{ group }}</span>
-                  <div class="planner-group-chip__actions">
-                    <button
-                      type="button"
-                      class="planner-group-chip__btn planner-group-chip__btn--edit"
-                      @click="startEditScheduleGroup(group)"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      class="planner-group-chip__btn planner-group-chip__btn--remove"
-                      :disabled="!canRemoveScheduleGroup(group)"
-                      :title="canRemoveScheduleGroup(group) ? 'Remove group' : 'At least one group is required'"
-                      @click="removeScheduleGroup(group)"
-                    >
-                      Delete
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    class="workout-day-header"
+                    @click="setActiveDay(day.name)"
+                  >
+                    <div class="day-title-group">
+                      <strong>{{ day.name }}</strong>
+                      <span v-if="selectedScheduleGroup === day.name" class="selected-badge">Selected</span>
+                      <span class="exercise-count">{{ day.exerciseCount }} exercise{{ day.exerciseCount === 1 ? '' : 's' }}</span>
+                    </div>
+
+                    <div class="day-actions" @click.stop>
+                      <button
+                        type="button"
+                        :class="['day-action-btn', selectedScheduleGroup === day.name ? 'day-action-btn--selected' : 'day-action-btn--select']"
+                        @click="setActiveDay(day.name)"
+                      >
+                        {{ selectedScheduleGroup === day.name ? 'Selected' : 'Select' }}
+                      </button>
+                      <button
+                        type="button"
+                        class="day-action-btn day-action-btn--edit"
+                        @click="startEditScheduleGroup(day.name)"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        class="day-action-btn day-action-btn--delete"
+                        :disabled="!canRemoveScheduleGroup(day.name)"
+                        @click="requestDeleteDay(day.name)"
+                      >
+                        Delete
+                      </button>
+                      <button
+                        type="button"
+                        class="chevron-btn"
+                        @click="setActiveDay(day.name)"
+                      >
+                        <i :class="selectedScheduleGroup === day.name ? 'fa fa-chevron-up' : 'fa fa-chevron-down'"></i>
+                      </button>
+                    </div>
+                  </button>
+
+                  <transition name="accordion-slide">
+                    <div v-if="selectedScheduleGroup === day.name" class="workout-day-panel">
+                      <div v-if="day.exercises.length > 0" class="day-exercises-list">
+                        <WorkoutExerciseBlock
+                          v-for="(exercise, idx) in day.exercises"
+                          :key="exercise.id"
+                          :exercise="exercise"
+                          :index="workoutExercises.findIndex(ex => ex.id === exercise.id)"
+                          :total="workoutExercises.length"
+                          :schedule-groups="activeGroups"
+                          :schedule-mode="scheduleMode"
+                          @update-field="updateExerciseField"
+                          @remove="removeExercise"
+                          @move-up="moveExerciseUp"
+                          @move-down="moveExerciseDown"
+                        />
+                      </div>
+
+                      <div v-else class="empty-day-state">
+                        <p>No exercises added to {{ day.name }} yet.</p>
+                      </div>
+
+                      <div class="day-panel-actions">
+                        <button type="button" class="btn-add-exercise-day" @click="openPicker">
+                          <span class="btn-add-exercise__icon">＋</span>
+                          <span>Add Exercise</span>
+                        </button>
+                      </div>
+                    </div>
+                  </transition>
                 </div>
               </div>
 
@@ -886,11 +1045,9 @@ watch(
                 {{ plannerMessage }}
               </p>
 
-              <div class="planner-primary-actions">
-                <button type="button" class="btn-add-exercise" @click="openPicker">
-                  <span class="btn-add-exercise__icon">＋</span>
-                  <span>Add Exercise</span>
-                </button>
+              <div v-if="!selectedScheduleGroup" class="planner-helper-text">
+                <i class="fa fa-info-circle"></i>
+                Open a workout day to add exercises to it.
               </div>
             </div>
 
@@ -909,52 +1066,7 @@ watch(
             <div v-else-if="workoutExercises.length === 0" class="builder-empty planner-empty" aria-live="polite">
               <div class="planner-empty__icon">🗓️</div>
               <h4>No exercises added yet</h4>
-              <p>Start building your workout schedule by adding your first exercise.</p>
-              <button type="button" class="btn-add-exercise btn-add-exercise--empty" @click="openPicker">
-                <span class="btn-add-exercise__icon">＋</span>
-                <span>Add Exercise</span>
-              </button>
-            </div>
-
-            <div v-else class="planner-content">
-              <section
-                v-for="group in plannerGroupsWithExercises"
-                :key="group.name"
-                class="planner-group-card"
-              >
-                <header class="planner-group-card__head">
-                  <div>
-                    <h4>{{ group.name }}</h4>
-                    <p>{{ group.exercises.length }} exercise{{ group.exercises.length === 1 ? '' : 's' }}</p>
-                  </div>
-                  <button
-                    type="button"
-                    class="planner-remove-group"
-                    :disabled="!canRemoveScheduleGroup(group.name)"
-                    @click="removeScheduleGroup(group.name)"
-                  >
-                    Remove {{ scheduleMode === 'week' ? 'Week' : 'Day' }}
-                  </button>
-                </header>
-
-                <div v-if="group.exercises.length === 0" class="planner-group-empty">
-                  No exercises assigned yet. Use Add Exercise or move an exercise into {{ group.name }}.
-                </div>
-
-                <WorkoutExerciseBlock
-                  v-for="entry in group.exercises"
-                  :key="entry.exercise.id"
-                  :exercise="entry.exercise"
-                  :index="entry.index"
-                  :total="workoutExercises.length"
-                  :schedule-groups="activeGroups"
-                  :schedule-mode="scheduleMode"
-                  @update-field="updateExerciseField"
-                  @remove="removeExercise"
-                  @move-up="moveExerciseUp"
-                  @move-down="moveExerciseDown"
-                />
-              </section>
+              <p>Open a workout day above and start adding exercises.</p>
             </div>
           </div>
         </transition>
@@ -982,6 +1094,31 @@ watch(
       @close="closePicker"
       @add="addExerciseToWorkout"
     />
+
+    <!-- Delete Day Confirmation Modal -->
+    <transition name="modal-fade">
+      <div v-if="showDeleteModal" class="delete-modal-backdrop" @click.self="cancelDeleteDay">
+        <div class="delete-modal">
+          <div class="delete-modal__header">
+            <h3>Delete Workout Day?</h3>
+          </div>
+          <div class="delete-modal__body">
+            <p>
+              Are you sure you want to delete <strong>{{ dayToDelete }}</strong>?
+              This will also delete all exercises assigned to that day.
+            </p>
+          </div>
+          <div class="delete-modal__actions">
+            <button type="button" class="modal-btn modal-btn--cancel" @click="cancelDeleteDay">
+              Cancel
+            </button>
+            <button type="button" class="modal-btn modal-btn--delete" @click="confirmDeleteDay">
+              Delete Day
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -1306,63 +1443,389 @@ watch(
   font-weight: 700;
 }
 
-.planner-group-chips {
-  display: grid;
+.planner-helper-text {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f0f9ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-top: 12px;
 }
 
-.planner-group-chip {
-  border: 1px solid #dbe4ef;
-  border-radius: 12px;
-  background: #f8fafc;
-  padding: 8px 10px;
+.planner-helper-text i {
+  font-size: 14px;
+}
+
+/* Workout Day Accordion System */
+.workout-day-accordion {
+  display: grid;
+  gap: 10px;
+}
+
+.workout-day-card {
+  border: 1px solid #dbe4f0;
+  border-radius: 14px;
+  background: #ffffff;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.workout-day-card.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.10);
+}
+
+.workout-day-header {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 14px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s ease;
+}
+
+.workout-day-header:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.workout-day-card.active .workout-day-header {
+  background: transparent;
+}
+
+.day-title-group {
+  display: flex;
+  align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  min-width: 0;
+  flex: 1;
 }
 
-.planner-group-chip__name {
-  font-size: 0.86rem;
+.day-title-group strong {
+  font-size: 0.96rem;
   font-weight: 700;
-  color: #1e293b;
+  color: #0f172a;
 }
 
-.planner-group-chip__actions {
+.selected-badge {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.exercise-count {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.day-actions {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
-.planner-group-chip__btn {
+.day-action-btn {
   border-radius: 8px;
-  min-height: 30px;
+  min-height: 32px;
   padding: 0 10px;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 700;
+  transition: all 0.2s ease;
 }
 
-.planner-group-chip__btn--edit {
+.day-action-btn--select {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+}
+
+.day-action-btn--select:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.day-action-btn--selected {
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+  cursor: default;
+}
+
+.day-action-btn--selected:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.day-action-btn--edit {
   border: 1px solid #bfdbfe;
   background: #eff6ff;
   color: #1d4ed8;
 }
 
-.planner-group-chip__btn--remove {
+.day-action-btn--edit:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.day-action-btn--delete {
   border: 1px solid #fecaca;
   background: #fff1f2;
   color: #b91c1c;
 }
 
-.planner-group-chip__btn:disabled {
-  opacity: 0.55;
+.day-action-btn--delete:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.day-action-btn:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-.planner-primary-actions {
+.chevron-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #475569;
   display: grid;
-  margin-top: 2px;
+  place-items: center;
+  transition: all 0.2s ease;
+}
+
+.chevron-btn:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+.workout-day-card.active .chevron-btn {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.workout-day-panel {
+  background: #ffffff;
+  border-top: 1px solid #dbe4f0;
+  padding: 16px;
+}
+
+.workout-day-card.active .workout-day-panel {
+  background: #ffffff;
+}
+
+.day-exercises-list {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.empty-day-state {
+  border: 1px dashed #bfdbfe;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  background: #f8fbff;
+  margin-bottom: 16px;
+}
+
+.empty-day-state p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.92rem;
+}
+
+.day-panel-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.btn-add-exercise-day {
+  border: 1px solid #10b981;
+  border-radius: 12px;
+  background: #059669;
+  color: #fff;
+  font-weight: 700;
+  padding: 12px 24px;
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 6px 16px rgba(5, 150, 105, 0.18);
+  transition: all 0.2s ease;
+  font-size: 0.92rem;
+}
+
+.btn-add-exercise-day:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(5, 150, 105, 0.25);
+  background: #047857;
+}
+
+.btn-add-exercise-day .btn-add-exercise__icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* Accordion slide animation */
+.accordion-slide-enter-active,
+.accordion-slide-leave-active {
+  transition: all 0.3s ease;
+  max-height: 2000px;
+  overflow: hidden;
+}
+
+.accordion-slide-enter-from,
+.accordion-slide-leave-to {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Delete Modal */
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+
+.delete-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 16px;
+}
+
+.delete-modal {
+  width: min(420px, 100%);
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
+  animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.delete-modal__header {
+  padding: 20px 22px 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.delete-modal__header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.delete-modal__body {
+  padding: 20px 22px;
+}
+
+.delete-modal__body p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.94rem;
+  line-height: 1.6;
+}
+
+.delete-modal__body strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.delete-modal__actions {
+  padding: 16px 22px 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.modal-btn {
+  border-radius: 10px;
+  min-height: 42px;
+  padding: 0 20px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.modal-btn--cancel {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+}
+
+.modal-btn--cancel:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.modal-btn--delete {
+  border: 1px solid #dc2626;
+  background: #dc2626;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+}
+
+.modal-btn--delete:hover {
+  background: #b91c1c;
+  box-shadow: 0 6px 16px rgba(220, 38, 38, 0.3);
+}
+
+/* Responsive adjustments */
+@media (max-width: 639px) {
+  .day-title-group {
+    flex-basis: 100%;
+  }
+
+  .day-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .workout-day-header {
+    flex-wrap: wrap;
+  }
 }
 
 .builder-section__head h3 {

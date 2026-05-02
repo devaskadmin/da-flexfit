@@ -1,5 +1,67 @@
 # Changelog
 
+## [0.8.0] - 2026-05-02 12:24 AM
+
+### Added
+- **Favorite Exercises tab** (`frontend/src/views/Member/exercises.vue`):
+  - Added third tab to Exercises Database: Search Exercises | My Custom Exercises | Favorite Exercises.
+  - Displays user-specific favorited exercises with loading, error, and empty states.
+  - Reuses existing exercise card layout with heart icon buttons.
+- **Select button on workout day cards** (`frontend/src/views/Member/WorkoutBuilder.vue`):
+  - Added visible "Select/Selected" button to each workout day header.
+  - Shows "Select" when day is not selected, "Selected" with blue styling when active.
+  - Button order: [Select/Selected] [Edit] [Delete] [Accordion Arrow].
+- **Exercise image resolution** (`frontend/src/views/Member/WorkoutBuilder.vue`):
+  - Added `normalizeExerciseFolderName()` helper to convert exercise titles to folder names.
+  - Added `resolveExerciseImage()` helper with 4-tier priority: ImageURL → ImageGallery[0] → `/assets/Excerises/${title}/0.jpg` → default fallback.
+  - Updated `createBlock()` to preserve ImageURL, ImageGallery, and RecordingType fields from selected exercises.
+- **Backend static serving for exercise images** (`backend/server.js`):
+  - Added `app.use('/assets/Excerises', express.static(...))` route to serve exercise images from free-exercise-db-main/exercises.
+
+### Changed
+- **Workout Builder scheduled exercise image carry-over** (`frontend/src/views/Member/WorkoutBuilder.vue`):
+  - Fixed scheduled exercises to preserve selected exercise image info instead of falling back to default.
+  - Every added exercise now carries over ImageURL/ImageGallery into workout schedule item.
+- **Favorite button styling** (`frontend/src/views/Member/exercises.vue`):
+  - Changed from yellow outline (btn-outline-warning) to red solid (btn-danger).
+  - Changed icon from star (★/☆) to heart (<i class="fa-solid fa-heart"></i>).
+  - Changed button text from "Favorite"/"Favorited" to "Fav"/"Unfav".
+- **Sidebar role-based menu visibility** (`frontend/src/components/MainSidebarComponent.vue`):
+  - Fixed role normalization to check `localStorage.getItem('role')` as fallback.
+  - Added `isAdmin`, `isTrainer`, `isUser` computed properties for consistent role checking.
+  - Admin users now see Trainer menu and Administrator menu sections.
+  - Trainer users now see Trainer menu section only.
+  - Added debug logging: `console.log('Sidebar role debug:', { rawUser, normalizedRole, isAdmin, isTrainer, isUser })`.
+- **Favorites tab UI/UX improvements** (`frontend/src/views/Member/exercises.vue`):
+  - Added loading spinner state while fetching favorites.
+  - Added error state with "Try Again" button if fetch fails.
+  - Added empty state with heart icon when no favorites exist.
+  - Improved data handling with multiple response format fallbacks.
+  - Enhanced error logging for debugging.
+
+### Fixed
+- **Favorite API error handling** (`frontend/src/views/Member/exercises.vue`):
+  - Added detailed console logging for favorite operations: `[Favorite] POST/DELETE ${url}`.
+  - Added error response logging with status code and response text.
+  - Improved error messages for better debugging.
+- **Database foreign key constraint issue** (`backend/api/excerises.js`):
+  - Removed `CONSTRAINT fk_ufe_exercise` foreign key from `user_favorite_exercises` table creation.
+  - Fixed errno 150 "Foreign key constraint is incorrectly formed" error.
+  - Table now creates successfully without foreign key constraint while maintaining indexes and unique constraints.
+- **Missing closing div tag** (`frontend/src/views/Member/WorkoutBuilder.vue`):
+  - Removed extra `</div>` tag that was causing rendering issues in Favorite Exercises section.
+
+### Backend
+- **Exercise favorites API** (`backend/api/excerises.js`):
+  - `GET /api/exercises/favorites` - Returns user's favorited exercises (already existed).
+  - `POST /api/exercises/:id/favorite` - Adds favorite for logged-in user (already existed).
+  - `DELETE /api/exercises/:id/favorite` - Removes favorite for logged-in user (already existed).
+  - `user_favorite_exercises` table with user_id, exercise_id, unique constraint, and indexes.
+
+### Notes
+- All changes maintain existing functionality - no redesigns or breaking changes to sidebar, dashboard, Workout Builder, or Nutrition sections.
+- Exercise images now display correctly using the exercise database in `backend/free-exercise-db-main/exercises/`.
+
 ## [0.75.2] - 2026-04-23
 
 ### Changed

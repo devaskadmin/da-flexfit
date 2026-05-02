@@ -1,10 +1,10 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import axios from "axios";
-import { API_BASE } from '@/config/env';
+import { useAuth } from '@/composable/useAuth';
 
 const router = useRouter();
+const { user, logout: authLogout, logoutInProgress } = useAuth();
 const username = ref(""); // ✅ Store logged-in username
 const logoutMessage = ref("");
 const showNotification = ref(false);
@@ -13,10 +13,12 @@ const showConfirmation = ref(true); // ✅ Show confirmation first
 // ✅ Fetch the logged-in user from session
 const fetchUserSession = async () => {
   try {
-    const response = await axios.get(`${API_BASE}/api/session`, { withCredentials: true });
+    const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+    const response = await fetch(`${API_BASE}/api/session`, { credentials: 'include' });
+    const data = await response.json();
 
-    if (response.data.loggedIn && response.data.user) {
-      username.value = response.data.user.username;
+    if (data.loggedIn && data.user) {
+      username.value = data.user.username;
       console.log("✅ Logged-in user:", username.value);
     } else {
       console.log("❌ No user logged in.");
@@ -28,29 +30,17 @@ const fetchUserSession = async () => {
   }
 };
 
-// ✅ Logout Function
+// ✅ Logout Function - uses shared logout from useAuth
 const logout = async () => {
-  try {
+  console.log('[LOGOUT DEBUG] Logout.vue logout called');
   
-    await axios.post(`${API_BASE}/api/logout`, {}, { withCredentials: true });
-    console.log("✅ Logout successful");
+  // Show brief notification
+  logoutMessage.value = `Signing out, ${username.value}...`;
+  showNotification.value = true;
+  showConfirmation.value = false;
 
-    // ✅ Show logout message
-    logoutMessage.value = `You have successfully logged out, ${username.value}.`;
-    showNotification.value = true;
-    showConfirmation.value = false; // Hide confirmation message
-    
-
-    // ✅ Wait 2 seconds before redirecting to login
-    setTimeout(() => {
-      showNotification.value = false;
-      router.push({ name: "login" });
-    }, 200);
-  } catch (error) {
-    console.error("❌ Logout failed:", error);
-    logoutMessage.value = "Logout failed. Please try again.";
-    showNotification.value = true;
-  }
+  // Use shared logout function (handles everything)
+  await authLogout();
 };
 
 // ✅ Cancel Logout - Redirects back to home without logging out
@@ -72,7 +62,14 @@ onMounted(fetchUserSession);
       <div v-if="showConfirmation">
         <p>Are you sure you want to log out, <strong>{{ username }}</strong>?</p>
         <div class="button-group">
-          <button @click="logout" class="btn btn-danger">Logout</button>
+          <button 
+            @click="logout" 
+            class="btn btn-danger"
+            :disabled="logoutInProgress"
+          >
+            <span v-if="logoutInProgress">Signing out...</span>
+            <span v-else>Logout</span>
+          </button>
           <button @click="cancelLogout" class="btn btn-secondary">Cancel</button>
         </div>
       </div>

@@ -192,11 +192,18 @@ router.get('/user-profile-settings', async (req, res) => {
     }
 
     const user = userRows?.[0] || {};
+    
+    // Apply default avatar if none exists
+    const avatarPath = user?.avatarPath || '/images/avatar/default.png';
+    const avatarName = user?.avatarName || 'default.png';
+    
     const profile = {
       firstName: user?.FirstName || '',
       lastName: user?.LastName || '',
       username: user?.username || '',
       email: user?.Email || user?.email || user?.username || '',
+      avatarPath: avatarPath,
+      avatarName: avatarName,
     };
 
     if (!rows.length) {

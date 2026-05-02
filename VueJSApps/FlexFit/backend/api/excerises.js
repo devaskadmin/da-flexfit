@@ -41,6 +41,7 @@ const ensureExerciseSchema = async () => {
   }
 
   // Ensure favorites table exists for per-user exercise favorites.
+  // Removed foreign key constraint to avoid errno 150 - exercises table may not have proper primary key setup
   await pool.query(`
     CREATE TABLE IF NOT EXISTS user_favorite_exercises (
       id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -50,9 +51,7 @@ const ensureExerciseSchema = async () => {
       PRIMARY KEY (id),
       UNIQUE KEY ux_user_favorite_exercise (user_id, exercise_id),
       KEY idx_ufe_user (user_id),
-      KEY idx_ufe_exercise (exercise_id),
-      CONSTRAINT fk_ufe_exercise FOREIGN KEY (exercise_id) REFERENCES exercises (ExerciseID)
-        ON DELETE CASCADE
+      KEY idx_ufe_exercise (exercise_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
 
@@ -231,13 +230,22 @@ router.put('/get-exercise/:id', (req, res) => {
       );
 
       if (!updateResult.affectedRows) {
-        return res.status(404).json({ error: 'Exercise not found' });
+        return res.status(404).json({ error: 'Exercise not found or no changes made' });
       }
 
-      res.status(200).json({ message: 'Exercise updated successfully' });
+      res.status(200).json({ 
+        success: true,
+        message: 'Exercise updated successfully' 
+      });
     } catch (updateErr) {
       console.error('❌ Update error:', updateErr);
-      res.status(500).json({ error: 'Update failed' });
+      const errorMessage = updateErr.code === 'ER_DUP_ENTRY' 
+        ? 'An exercise with this name already exists'
+        : updateErr.message || 'Update failed';
+      res.status(500).json({ 
+        success: false,
+        error: errorMessage 
+      });
     }
   });
 });

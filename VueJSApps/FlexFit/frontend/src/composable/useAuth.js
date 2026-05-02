@@ -29,6 +29,9 @@ const isAdministrator = computed(() => role.value === 'administrator');
 const canViewTrainerMenu = computed(() => isTrainer.value);
 const canViewAdministratorMenu = computed(() => isAdministrator.value);
 
+/** Logout in progress flag to prevent duplicate calls */
+const logoutInProgress = ref(false);
+
 export function useAuth() {
   const router = useRouter();
 
@@ -52,10 +55,70 @@ export function useAuth() {
     }
   };
 
+  /**
+   * Immediate, reliable logout function with timeout protection
+   * Clears local state first, then attempts backend logout with timeout
+   */
+  const logout = async () => {
+    // Prevent duplicate logout calls
+    if (logoutInProgress.value) {
+      console.log('[LOGOUT DEBUG] logout already in progress, skipping');
+      return;
+    }
+
+    console.log('[LOGOUT DEBUG] logout clicked');
+    logoutInProgress.value = true;
+
+    try {
+      console.log('[LOGOUT DEBUG] clearing local auth state');
+      
+      // Clear frontend state FIRST (immediate)
+      user.value = null;
+      
+      // Clear all storage
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      sessionStorage.clear();
+
+      // Try backend logout with timeout (non-blocking)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.warn('[LOGOUT DEBUG] backend logout timed out after 3s, continuing');
+        controller.abort();
+      }, 3000);
+
+      try {
+        const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+        await fetch(`${API_BASE}/api/auth/logout`, {
+          method: 'POST',
+          credentials: 'include',
+          signal: controller.signal,
+        });
+        console.log('[LOGOUT DEBUG] backend logout successful');
+      } catch (err) {
+        // Backend logout failed or timed out - that's OK, continue
+        console.warn('[LOGOUT DEBUG] backend logout failed or timed out, continuing local logout', err.message);
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      // Redirect to login (immediate)
+      console.log('[LOGOUT DEBUG] redirecting to login');
+      await router.replace({ name: 'login' });
+      
+    } finally {
+      // Reset flag after a short delay to allow redirect
+      setTimeout(() => {
+        logoutInProgress.value = false;
+      }, 500);
+    }
+  };
+
   return {
     // State
     user,
     role,
+    logoutInProgress,
     // Role booleans
     isTrainer,
     isAdministrator,
@@ -65,5 +128,6 @@ export function useAuth() {
     // Actions
     fetchUser,
     requireAuth,
+    logout,
   };
 }

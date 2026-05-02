@@ -29,6 +29,33 @@ import router from './router';
 
 const app = createApp(App)
 
+const removeLegacyDebugArtifacts = () => {
+	if (typeof document === 'undefined') return;
+
+	const appRoot = document.getElementById('app');
+	if (!appRoot) return;
+
+	const isLegacyDebugNode = (node) => {
+		if (!(node instanceof Element)) return false;
+
+		const text = `${node.id || ''} ${node.className || ''} ${node.getAttribute('data-testid') || ''} ${node.getAttribute('aria-label') || ''}`.toLowerCase();
+		const src = `${node.getAttribute('src') || ''} ${node.getAttribute('href') || ''}`.toLowerCase();
+
+		const hasLegacyKeywords = /maricopa|\bpit\b|homeless|sheltered|unsheltered|matplotlib|debug|test|plot|chart/.test(text)
+			|| /data:image\/|base64/.test(src);
+
+		const isVisualDebugTag = ['IMG', 'CANVAS', 'IFRAME', 'SVG', 'FIGURE'].includes(node.tagName);
+
+		return hasLegacyKeywords || isVisualDebugTag;
+	};
+
+	// Remove stray elements injected outside #app (common cause of content appearing above the app shell).
+	Array.from(document.body.children)
+		.filter((child) => child !== appRoot && isLegacyDebugNode(child))
+		.forEach((child) => child.remove());
+};
+
+removeLegacyDebugArtifacts();
 
 
 import 'bootstrap/dist/css/bootstrap.css'
