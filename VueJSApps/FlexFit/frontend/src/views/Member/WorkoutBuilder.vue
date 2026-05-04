@@ -1100,6 +1100,7 @@ watch(
     <ExercisePickerModal
       :is-open="pickerOpen"
       :exercises="allExercises"
+      :user-id="userId"
       @close="closePicker"
       @add="addExerciseToWorkout"
     />
