@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue';
 import { API_BASE } from '@/config/env';
 
 const props = defineProps({
@@ -87,6 +88,24 @@ const handleImageError = (event) => {
   event.target.src = resolveImagePath(FALLBACK_EXERCISE_IMAGE);
 };
 
+const normalizedWorkoutType = computed(() =>
+  String(props.exercise.workoutType || props.exercise.WorkoutType || '').trim().toLowerCase()
+);
+const isCardio   = computed(() => normalizedWorkoutType.value === 'cardio');
+const isStrength = computed(() => normalizedWorkoutType.value === 'strength' || normalizedWorkoutType.value === '');
+const isOther    = computed(() => !isCardio.value && !isStrength.value);
+
+const workoutTypeBadgeLabel = computed(() => {
+  if (isCardio.value)   return 'Cardio';
+  if (isOther.value)    return 'Other';
+  return 'Strength';
+});
+const workoutTypeBadgeClass = computed(() => {
+  if (isCardio.value) return 'type-badge--cardio';
+  if (isOther.value)  return 'type-badge--other';
+  return 'type-badge--strength';
+});
+
 const updateField = (field, value, isNumeric = false) => {
   emit('update-field', {
     id: props.exercise.id,
@@ -111,6 +130,7 @@ const updateField = (field, value, isNumeric = false) => {
         />
         <div>
           <span class="exercise-block__badge">Block {{ index + 1 }}</span>
+          <span :class="['type-badge', workoutTypeBadgeClass]">{{ workoutTypeBadgeLabel }}</span>
           <h4>{{ exercise.name }}</h4>
           <p>{{ exercise.muscleGroup || 'N/A' }} • {{ exercise.equipment || 'Bodyweight' }}</p>
         </div>
@@ -124,7 +144,8 @@ const updateField = (field, value, isNumeric = false) => {
     </header>
 
     <div class="exercise-block__fields">
-      <label>
+      <!-- Schedule group (always visible) -->
+      <label class="field-full">
         <span>{{ scheduleMode === 'week' ? 'Week Group' : 'Day Group' }}</span>
         <select
           :value="exercise.scheduleGroup"
@@ -140,56 +161,101 @@ const updateField = (field, value, isNumeric = false) => {
         </select>
       </label>
 
-      <label>
-        <span>Sets</span>
-        <input
-          :value="exercise.sets"
-          type="number"
-          min="0"
-          @input="updateField('sets', $event.target.value, true)"
-        />
-      </label>
+      <!-- STRENGTH fields -->
+      <template v-if="isStrength || isOther">
+        <label>
+          <span>Sets</span>
+          <input
+            :value="exercise.sets"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('sets', $event.target.value, true)"
+          />
+        </label>
 
-      <label>
-        <span>Reps</span>
-        <input
-          :value="exercise.reps"
-          type="number"
-          min="0"
-          @input="updateField('reps', $event.target.value, true)"
-        />
-      </label>
+        <label>
+          <span>Reps</span>
+          <input
+            :value="exercise.reps"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('reps', $event.target.value, true)"
+          />
+        </label>
 
-      <label>
-        <span>Weight</span>
-        <input
-          :value="exercise.weight"
-          type="number"
-          min="0"
-          @input="updateField('weight', $event.target.value, true)"
-        />
-      </label>
+        <label>
+          <span>Weight (lbs)</span>
+          <input
+            :value="exercise.weight"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('weight', $event.target.value, true)"
+          />
+        </label>
 
-      <label>
-        <span>Duration (min)</span>
-        <input
-          :value="exercise.duration"
-          type="number"
-          min="0"
-          @input="updateField('duration', $event.target.value, true)"
-        />
-      </label>
+        <label class="field-full">
+          <span>Rest (sec)</span>
+          <input
+            :value="exercise.restTime"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('restTime', $event.target.value, true)"
+          />
+        </label>
+      </template>
 
-      <label>
-        <span>Rest (sec)</span>
-        <input
-          :value="exercise.restTime"
-          type="number"
-          min="0"
-          @input="updateField('restTime', $event.target.value, true)"
-        />
-      </label>
+      <!-- CARDIO fields -->
+      <template v-if="isCardio || isOther">
+        <label>
+          <span>Duration (min)</span>
+          <input
+            :value="exercise.duration"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('duration', $event.target.value, true)"
+          />
+        </label>
 
+        <label>
+          <span>Distance (miles)</span>
+          <input
+            :value="exercise.distance"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('distance', $event.target.value, true)"
+          />
+        </label>
+
+        <label>
+          <span>Speed (mph)</span>
+          <input
+            :value="exercise.speed"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('speed', $event.target.value, true)"
+          />
+        </label>
+
+        <label>
+          <span>Calories</span>
+          <input
+            :value="exercise.calories"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('calories', $event.target.value, true)"
+          />
+        </label>
+      </template>
+
+      <!-- Notes (always visible) -->
       <label class="field-notes">
         <span>Notes</span>
         <input
@@ -254,6 +320,28 @@ const updateField = (field, value, isNumeric = false) => {
   color: #1e3a8a;
   font-weight: 700;
   font-size: 0.72rem;
+}
+
+.type-badge {
+  display: inline-flex;
+  margin-bottom: 4px;
+  margin-left: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.72rem;
+}
+.type-badge--strength {
+  background: #fef3c7;
+  color: #92400e;
+}
+.type-badge--cardio {
+  background: #dcfce7;
+  color: #166534;
+}
+.type-badge--other {
+  background: #f1f5f9;
+  color: #475569;
 }
 
 .exercise-block__identity h4 {
@@ -332,7 +420,8 @@ const updateField = (field, value, isNumeric = false) => {
   min-height: 42px;
 }
 
-.field-notes {
+.field-notes,
+.field-full {
   grid-column: span 1;
 }
 
@@ -341,7 +430,8 @@ const updateField = (field, value, isNumeric = false) => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .field-notes {
+  .field-notes,
+  .field-full {
     grid-column: span 2;
   }
 }
@@ -351,7 +441,8 @@ const updateField = (field, value, isNumeric = false) => {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .field-notes {
+  .field-notes,
+  .field-full {
     grid-column: span 3;
   }
 }

@@ -477,25 +477,34 @@ const resolveExerciseImage = (exercise) => {
   return '/assets/Excerises/default/default.jpg';
 };
 
-const createBlock = (exercise) => ({
-  id: `${exercise.ExerciseID}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-  exerciseId: exercise.ExerciseID,
-  name: exercise.ExerciseTitle,
-  image: resolveExerciseImage(exercise),
-  ImageURL: exercise.ImageURL || '',
-  ImageGallery: exercise.ImageGallery || '',
-  workoutType: exercise.WorkoutType || metadata.value.type,
-  muscleGroup: exercise.MuscleGroup || '',
-  equipment: exercise.Equipment || '',
-  recordingType: exercise.RecordingType || '',
-  sets: metadata.value.type === 'Cardio' ? 0 : 3,
-  reps: metadata.value.type === 'Cardio' ? 0 : 10,
-  weight: 0,
-  duration: metadata.value.type === 'Cardio' ? 10 : 0,
-  restTime: 60,
-  notes: '',
-  scheduleGroup: activeGroups.value[0],
-});
+const createBlock = (exercise) => {
+  const wt = String(exercise.WorkoutType || metadata.value.type || '').trim().toLowerCase();
+  const isCardio = wt === 'cardio';
+  return {
+    id: `${exercise.ExerciseID}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    exerciseId: exercise.ExerciseID,
+    name: exercise.ExerciseTitle,
+    image: resolveExerciseImage(exercise),
+    ImageURL: exercise.ImageURL || '',
+    ImageGallery: exercise.ImageGallery || '',
+    workoutType: exercise.WorkoutType || metadata.value.type,
+    muscleGroup: exercise.MuscleGroup || '',
+    equipment: exercise.Equipment || '',
+    recordingType: exercise.RecordingType || '',
+    // Strength fields — blank for cardio
+    sets:     isCardio ? 0 : 0,
+    reps:     isCardio ? 0 : 0,
+    weight:   0,
+    restTime: isCardio ? 0 : 0,
+    // Cardio fields — blank for strength
+    duration: 0,
+    distance: 0,
+    speed:    0,
+    calories: 0,
+    notes: '',
+    scheduleGroup: activeGroups.value[0],
+  };
+};
 
 const addExerciseToWorkout = (exercise) => {
   ensureActiveGroups();
