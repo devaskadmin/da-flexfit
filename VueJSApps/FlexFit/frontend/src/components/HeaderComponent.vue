@@ -139,13 +139,16 @@ const loadCurrentUser = async () => {
 }
 
 watchEffect(() => {
-  window.addEventListener('resize', checkScreenSize());
+  window.addEventListener('resize', checkScreenSize);
   checkScreenSize();
 })
 
 onMounted(() => {
   Tr.switchLanguage(Tr.guessDefaultLocale());
-  document.getElementById('btnFullscreen').addEventListener('click', toggleFullscreen);
+  const btnFullscreen = document.getElementById('btnFullscreen');
+  if (btnFullscreen) {
+    btnFullscreen.addEventListener('click', toggleFullscreen);
+  }
 
   window.addEventListener('resize', handleResize)
   loadUnreadCount()

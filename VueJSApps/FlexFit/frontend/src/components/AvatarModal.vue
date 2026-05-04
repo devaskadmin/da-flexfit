@@ -15,17 +15,11 @@ const fetchAvatars = async () => {
   errorMessage.value = ''
   
   const url = `${API_BASE}/api/avatar/list`
-  console.log('[AVATAR DEBUG] Fetching avatars from:', url)
-  console.log('[AVATAR DEBUG] API_BASE:', API_BASE)
-  
   try {
     const response = await fetch(url, {
       credentials: 'include'
     })
-    
-    console.log('[AVATAR DEBUG] Response status:', response.status)
-    console.log('[AVATAR DEBUG] Response ok:', response.ok)
-    
+
     if (!response.ok) {
       const text = await response.text()
       console.error('[AVATAR DEBUG] Error response:', text)
@@ -33,8 +27,6 @@ const fetchAvatars = async () => {
     }
     
     const data = await response.json()
-    console.log('[AVATAR DEBUG] Response data:', data)
-    
     if (data.success) {
       avatars.value = data.avatars
     } else {

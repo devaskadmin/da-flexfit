@@ -4,8 +4,10 @@ import axios from "axios";
 import { useRouter } from "vue-router";
 import { API_BASE } from '@/config/env';
 import { isDemoMode } from '@/config/appConfig';
+import { useAuth } from '@/composable/useAuth';
 
 const router = useRouter();
+const { fetchUser } = useAuth();
 
 const username = ref("");
 const password = ref("");
@@ -177,9 +179,6 @@ const waitForSessionReady = async (maxAttempts = 5, waitMs = 250) => {
   let lastNote = '';
   let lastHasSessionCookie = null;
 
-  console.log('[FlexFit Session Verify] URL:', sessionUrl);
-  console.log('[FlexFit Session Verify] withCredentials:', true);
-
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
       devLog('Session verification request', {
@@ -247,10 +246,6 @@ const login = async () => {
     devLog('Submitting login request', { username: safeUsername, rememberMe: !!rememberMe.value });
 
     const loginUrl = `${API_BASE}/api/login`;
-    console.log('[FlexFit Login] API_BASE:', API_BASE);
-    console.log('[FlexFit Login] URL:', loginUrl);
-    console.log('[FlexFit Login] withCredentials:', true);
-
     const response = await axios.post(
       loginUrl,
       {
@@ -297,6 +292,8 @@ const login = async () => {
         });
         return;
       }
+      // Hydrate the auth store before navigating so user/role are available immediately
+      await fetchUser();
       await goToDashboard();
       return;
     }

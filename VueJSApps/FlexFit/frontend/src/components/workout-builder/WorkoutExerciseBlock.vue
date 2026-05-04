@@ -53,22 +53,7 @@ const getExerciseImageSrc = (exercise) => {
     exercise.imagePath ||
     getFirstImageFromGallery(exercise.ImageGallery || exercise.imageGallery);
 
-  // Debug logging to help diagnose image issues
-  console.log('[EXERCISE IMAGE DEBUG]', {
-    exerciseName: exercise.name || exercise.ExerciseTitle,
-    ImageURL: exercise.ImageURL,
-    imageURL: exercise.imageURL,
-    imageUrl: exercise.imageUrl,
-    image: exercise.image,
-    imagePath: exercise.imagePath,
-    ImageGallery: exercise.ImageGallery,
-    imageGallery: exercise.imageGallery,
-    raw,
-    apiBase: API_BASE,
-  });
-
   if (!raw) {
-    console.warn('[EXERCISE IMAGE] No image found, using fallback');
     return resolveImagePath(FALLBACK_EXERCISE_IMAGE);
   }
 

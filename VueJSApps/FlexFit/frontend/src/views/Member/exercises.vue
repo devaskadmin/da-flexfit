@@ -433,8 +433,6 @@ const toggleFavoriteExercise = async (exercise) => {
     const method = shouldAddFavorite ? 'POST' : 'DELETE';
     const url = `${API_BASE}/api/exercises/${exerciseId}/favorite`;
 
-    console.log(`[Favorite] ${method} ${url}`);
-
     const res = await fetch(url, {
       method,
       credentials: 'include'
@@ -450,11 +448,9 @@ const toggleFavoriteExercise = async (exercise) => {
     if (shouldAddFavorite) {
       next.add(exerciseId);
       exercise.IsFavorite = 1;
-      console.log(`[Favorite] Added exercise ${exerciseId} to favorites`);
     } else {
       next.delete(exerciseId);
       exercise.IsFavorite = 0;
-      console.log(`[Favorite] Removed exercise ${exerciseId} from favorites`);
     }
     favoriteExerciseIds.value = next;
 
@@ -477,8 +473,6 @@ const loadFavoriteExercises = async () => {
   favoritesLoadError.value = '';
   try {
     const url = `${API_BASE}/api/exercises/favorites`;
-    console.log(`[Favorite] Loading favorites from ${url}`);
-    
     const res = await fetch(url, {
       credentials: 'include'
     });
@@ -490,11 +484,8 @@ const loadFavoriteExercises = async () => {
     }
 
     const data = await res.json();
-    console.log('Favorite exercises response:', data);
-    
     // Handle different response formats from backend
     favoriteExercises.value = Array.isArray(data) ? data : (data.favorites || data.exercises || []);
-    console.log(`[Favorite] Loaded ${favoriteExercises.value.length} favorite exercises`);
   } catch (err) {
     console.error('Error pulling favorites:', err);
     favoriteExercises.value = [];
@@ -715,21 +706,6 @@ const selectedImage = computed(() => {
          : import.meta.env.VITE_API_BASE + '/api/save-exercises';
        const method = isUpdate ? 'PUT' : 'POST';
 
-       // Debug logging
-       console.log('[EXERCISE UPDATE DEBUG]', {
-         exerciseId: editExercise.ExerciseID,
-         endpoint: url,
-         method: method,
-         isUpdate: isUpdate,
-         payloadKeys: Object.keys(editExercise),
-         exerciseTitle: editExercise.ExerciseTitle,
-         workoutType: editExercise.WorkoutType,
-         muscleGroup: editExercise.MuscleGroup,
-         existingImagesCount: existingImages.value.length,
-         newImagesCount: selectedImages.value.length,
-         imagesToDeleteCount: imagesToDelete.value.length
-       });
-
        const response = await fetch(url, {
          method,
          body: formData,
@@ -737,7 +713,6 @@ const selectedImage = computed(() => {
        });
 
        const result = await response.json();
-       console.log(`📥 Response status: ${response.status}`, result);
 
        if (!response.ok) {
          console.error(`❌ API Error (${response.status}):`, result);

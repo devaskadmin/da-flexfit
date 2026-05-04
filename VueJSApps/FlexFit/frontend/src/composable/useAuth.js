@@ -61,56 +61,54 @@ export function useAuth() {
    */
   const logout = async () => {
     // Prevent duplicate logout calls
-    if (logoutInProgress.value) {
-      console.log('[LOGOUT DEBUG] logout already in progress, skipping');
-      return;
-    }
+    if (logoutInProgress.value) return;
 
-    console.log('[LOGOUT DEBUG] logout clicked');
     logoutInProgress.value = true;
 
     try {
-      console.log('[LOGOUT DEBUG] clearing local auth state');
-      
       // Clear frontend state FIRST (immediate)
       user.value = null;
-      
-      // Clear all storage
+
+      // Clear all auth-related storage keys
       localStorage.removeItem('token');
+      localStorage.removeItem('authToken');
       localStorage.removeItem('user');
-      sessionStorage.clear();
+      localStorage.removeItem('role');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('currentUser');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('authToken');
+      sessionStorage.removeItem('user');
+      sessionStorage.removeItem('role');
+      sessionStorage.removeItem('userRole');
+      sessionStorage.removeItem('currentUser');
 
       // Try backend logout with timeout (non-blocking)
+      // Backend endpoint is POST /api/logout (mounted via app.use('/api', auth.js))
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        console.warn('[LOGOUT DEBUG] backend logout timed out after 3s, continuing');
-        controller.abort();
-      }, 3000);
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
 
       try {
         const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
-        await fetch(`${API_BASE}/api/auth/logout`, {
+        await fetch(`${API_BASE}/api/logout`, {
           method: 'POST',
           credentials: 'include',
           signal: controller.signal,
         });
-        console.log('[LOGOUT DEBUG] backend logout successful');
       } catch (err) {
-        // Backend logout failed or timed out - that's OK, continue
-        console.warn('[LOGOUT DEBUG] backend logout failed or timed out, continuing local logout', err.message);
+        // Backend logout failed or timed out - that's OK, continue with local logout
+        if (err.name !== 'AbortError') {
+          console.error('[Logout] Backend logout error:', err.message);
+        }
       } finally {
         clearTimeout(timeoutId);
       }
 
-      // Redirect to login (immediate)
-      console.log('[LOGOUT DEBUG] redirecting to login');
+      // Redirect to login
       await router.replace({ name: 'login' });
-      
+
     } finally {
-      // Reset flag after a short delay to allow redirect
-      setTimeout(() => {
-        logoutInProgress.value = false;
-      }, 500);
+      setTimeout(() => { logoutInProgress.value = false; }, 500);
     }
   };
 

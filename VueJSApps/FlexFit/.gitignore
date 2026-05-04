@@ -43,3 +43,18 @@ frontend/.env
 
 # Database backups and sensitive documents
 Documents/
+
+# Archive / build output files — never commit these
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+
+# Build outputs
+dist/
+build/
+.vite/
+
+# node_modules (should already be excluded by nested .gitignores, belt-and-suspenders)
+node_modules/

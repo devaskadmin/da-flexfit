@@ -19,10 +19,8 @@ const fetchUserSession = async () => {
 
     if (data.loggedIn && data.user) {
       username.value = data.user.username;
-      console.log("✅ Logged-in user:", username.value);
     } else {
-      console.log("❌ No user logged in.");
-      router.push({ name: "login" }); // Redirect to login if not logged in
+      router.push({ name: "login" });
     }
   } catch (error) {
     console.error("❌ Session fetch error:", error);
@@ -32,8 +30,6 @@ const fetchUserSession = async () => {
 
 // ✅ Logout Function - uses shared logout from useAuth
 const logout = async () => {
-  console.log('[LOGOUT DEBUG] Logout.vue logout called');
-  
   // Show brief notification
   logoutMessage.value = `Signing out, ${username.value}...`;
   showNotification.value = true;
@@ -45,7 +41,6 @@ const logout = async () => {
 
 // ✅ Cancel Logout - Redirects back to home without logging out
 const cancelLogout = () => {
-  console.log("🚀 Logout canceled. Redirecting to dashboard...");
   router.push({ name: "dashboard_index" });
 };
 
