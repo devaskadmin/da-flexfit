@@ -1435,11 +1435,12 @@ const clearFilters = () => {
                                   </div>
 
                                   <div class="exercise-actions">
-                                    <button class="btn btn-sm btn-outline-primary" @click="selectExerciseFromList(ex)">
-                                      Select Exercise
-                                    </button>
-                                    <button class="btn btn-sm btn-danger" @click="toggleFavoriteExercise(ex)">
-                                      <i class="fa-solid fa-heart"></i> {{ isFavoriteExercise(ex.ExerciseID) ? 'Unfav' : 'Fav' }}
+                                    <button
+                                      :class="['btn', 'btn-sm', 'btn-fav', isFavoriteExercise(ex.ExerciseID) && 'btn-fav--active']"
+                                      @click="toggleFavoriteExercise(ex)"
+                                    >
+                                      <i v-if="isFavoriteExercise(ex.ExerciseID)" class="fa-solid fa-heart"></i>
+                                      {{ isFavoriteExercise(ex.ExerciseID) ? 'Unfav' : 'Fav' }}
                                     </button>
                                     <button class="btn btn-sm btn-outline-secondary" @click="startEditing(ex)">
                                       Edit Exercise
@@ -1528,11 +1529,12 @@ const clearFilters = () => {
                   </div>
                 </div>
                 <div class="exercise-actions">
-                  <button class="btn btn-sm btn-outline-primary" @click="selectExerciseFromList(ex)">
-                    Select Exercise
-                  </button>
-                  <button class="btn btn-sm btn-danger" @click="toggleFavoriteExercise(ex)">
-                    <i class="fa-solid fa-heart"></i> Unfav
+                  <button
+                    :class="['btn', 'btn-sm', 'btn-fav', isFavoriteExercise(ex.ExerciseID) && 'btn-fav--active']"
+                    @click="toggleFavoriteExercise(ex)"
+                  >
+                    <i v-if="isFavoriteExercise(ex.ExerciseID)" class="fa-solid fa-heart"></i>
+                    {{ isFavoriteExercise(ex.ExerciseID) ? 'Unfav' : 'Fav' }}
                   </button>
                   <button class="btn btn-sm btn-outline-secondary" @click="startEditing(ex)">
                     Edit Exercise
@@ -1978,6 +1980,31 @@ Please Select an excerise
   border-radius: 7px;
   margin: 0;
   }
+
+.btn-fav {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.btn-fav:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+.btn-fav--active {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+.btn-fav--active .fa-heart {
+  color: #dc2626;
+}
+.btn-fav--active:hover {
+  background: #fecaca;
+  border-color: #fca5a5;
+  color: #7f1d1d;
+}
 
 /* Edit Exercise Panel */
 .edit-exercise-panel {
