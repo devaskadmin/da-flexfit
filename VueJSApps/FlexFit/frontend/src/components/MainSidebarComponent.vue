@@ -32,9 +32,12 @@ const sidebarUser = computed(() => authStore.user?.value || authStore.user || nu
 // membershipType = membership/billing/profile tier
 const normalizedRole = computed(() =>
   String(
-    sidebarUser.value?.role ||
-    sidebarUser.value?.Role ||
+    authStore.user?.value?.role ||
+    authStore.user?.role ||
+    authStore.currentUser?.role ||
     localStorage.getItem('role') ||
+    localStorage.getItem('userRole') ||
+    JSON.parse(localStorage.getItem('user') || '{}')?.role ||
     ''
   ).trim().toLowerCase()
 )
@@ -51,15 +54,7 @@ const canViewAdminMenu = computed(() =>
   isAdmin.value
 )
 
-watchEffect(() => {
-  console.log('Sidebar role debug:', {
-    rawUser: authStore.user,
-    normalizedRole: normalizedRole.value,
-    isAdmin: isAdmin.value,
-    isTrainer: isTrainer.value,
-    isUser: isUser.value
-  })
-})
+
 
 const shouldRenderMenuItem = (menu) => {
   if (!menu?.requiresWorkoutLists && !menu?.requiresUnlock) return true
@@ -138,6 +133,7 @@ onMounted(() => {
   useSidebarCurrentBG();
   checkUserWorkoutStatus(); // Check workout status from global composable
   authStore.fetchUser();
+  console.log('Sidebar role debug:', { normalizedRole: normalizedRole.value, isAdmin: isAdmin.value, isTrainer: isTrainer.value })
 })
 </script>
 
