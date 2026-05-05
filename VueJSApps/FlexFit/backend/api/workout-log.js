@@ -401,4 +401,49 @@ router.post('/session', async (req, res) => {
   }
 });
 
+// ─── GET /history ── Completed workout logs for user on a given date ─────────
+router.get('/history', async (req, res) => {
+  if (!req.session?.user?.id) {
+    return res.status(401).json({ error: 'Unauthorized. Please log in.' });
+  }
+
+  const { date } = req.query;
+  if (!date) {
+    return res.status(400).json({ error: 'Missing date parameter (YYYY-MM-DD).' });
+  }
+
+  try {
+    const [rows] = await pool.query(`
+      SELECT
+        wl.WorkoutLogID,
+        wl.WorkoutDate,
+        wl.WorkoutType,
+        wl.Sets,
+        wl.Reps,
+        wl.Weight,
+        wl.Duration,
+        wl.Calories,
+        wl.Distance,
+        wl.performed_at,
+        wl.source_schedule_group_label  AS workoutDayName,
+        wls.notes                        AS planName,
+        ex.ExerciseTitle                 AS exerciseName
+      FROM workout_log wl
+      LEFT JOIN workout_log_sessions wls ON wl.workout_log_session_id = wls.id
+      LEFT JOIN exercises            ex  ON wl.ExerciseID = ex.ExerciseID
+      WHERE wl.UserID = ? AND wl.WorkoutDate = ?
+      ORDER BY wl.WorkoutLogID DESC
+    `, [req.session.user.id, date]);
+
+    res.status(200).json({
+      date,
+      username: req.session.user.username || '',
+      records: rows,
+    });
+  } catch (err) {
+    console.error('❌ History fetch error:', err);
+    res.status(500).json({ error: 'Failed to fetch workout history.' });
+  }
+});
+
 module.exports = router;

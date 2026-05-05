@@ -1,14 +1,21 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import DateRangePicker from '@/components/template/DateRangePicker.vue';
 import ExerciseSessionCard from '@/components/workout-session/ExerciseSessionCard.vue';
 import { API_BASE } from '@/config/env';
 
 const router = useRouter();
 
-/* ─── Tab state ──────────────────────────────────────────────────────────── */
-const activeTab = ref('overview'); // 'overview' | 'dayDetails'
+/* ─── Tab state ───────────────────────────────────────────────── */
+const activeTab = ref('overview'); // 'overview' | 'dayDetails' | 'workoutHistory'
+
+/* ─── Selected date (single date, used by all tabs) ───────────────────────── */
+const selectedWorkoutDate = ref(new Date().toISOString().split('T')[0]);
+
+/* ─── Workout History state ───────────────────────────────────────────── */
+const workoutHistoryRecords    = ref([]);
+const isLoadingWorkoutHistory  = ref(false);
+const workoutHistoryUsername   = ref('');
 
 /* ─── Plan list state ────────────────────────────────────────────────────── */
 const loading       = ref(false);
@@ -52,7 +59,23 @@ const summaryStats = computed(() => {
     averageDuration: Math.round(totalDuration / workoutLists.value.length),
   };
 });
-
+/* ─── Workout History grouped view ──────────────────────────────────────────── */
+const historyGrouped = computed(() => {
+  const map = new Map();
+  for (const row of workoutHistoryRecords.value) {
+    const key = `${row.planName || ''}__${row.workoutDayName || ''}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        planName: row.planName || '',
+        dayName:  row.workoutDayName || '',
+        type:     row.WorkoutType || '',
+        exercises: [],
+      });
+    }
+    map.get(key).exercises.push(row);
+  }
+  return [...map.values()];
+});
 /* ─── Derived: expanded plan schedule ───────────────────────────────────── */
 const scheduleMode = computed(() => expandedPlanData.value?.scheduleMode || 'day');
 
@@ -341,7 +364,30 @@ const goToInProgress = () => {
     activeTab.value   = 'dayDetails';
   }
 };
+/* ─── Workout History loader ────────────────────────────────────────────── */
+const loadWorkoutHistory = async () => {
+  isLoadingWorkoutHistory.value = true;
+  workoutHistoryRecords.value   = [];
+  try {
+    const res  = await fetch(
+      `${API_BASE}/api/workout-log/history?date=${encodeURIComponent(selectedWorkoutDate.value)}`,
+      { credentials: 'include' },
+    );
+    if (!res.ok) throw new Error('Failed to load workout history.');
+    const data = await res.json();
+    workoutHistoryRecords.value  = Array.isArray(data.records) ? data.records : [];
+    workoutHistoryUsername.value = data.username || '';
+  } catch (_) {
+    workoutHistoryRecords.value = [];
+  } finally {
+    isLoadingWorkoutHistory.value = false;
+  }
+};
 
+const openHistoryTab = () => {
+  activeTab.value = 'workoutHistory';
+  loadWorkoutHistory();
+};
 /* ─── Lifecycle ──────────────────────────────────────────────────────────── */
 onMounted(async () => {
   await loadWorkoutLists();
@@ -361,7 +407,12 @@ onMounted(async () => {
             <p class="builder-hero__subtitle">View workout plans saved from Workout Builder and start a workout.</p>
           </div>
           <div class="builder-hero__actions">
-            <DateRangePicker />
+            <input
+              type="date"
+              v-model="selectedWorkoutDate"
+              class="wl-date-input"
+              :max="new Date().toISOString().split('T')[0]"
+            />
           </div>
         </div>
         <!-- Action toolbar inside hero -->
@@ -425,6 +476,13 @@ onMounted(async () => {
         >
           <i class="fa-solid fa-dumbbell"></i> Day Details
           <span v-if="selectedDay" class="wl-tab-badge">{{ selectedDay }}</span>
+        </button>
+        <button
+          type="button" role="tab"
+          :class="['wl-tab', activeTab === 'workoutHistory' ? 'wl-tab--active' : '']"
+          @click="openHistoryTab"
+        >
+          <i class="fa-solid fa-clock-rotate-left"></i> Workout History
         </button>
       </nav>
 
@@ -606,6 +664,73 @@ onMounted(async () => {
           <i class="fa-solid fa-dumbbell wl-empty-icon"></i>
           <p>No day selected. Go to <strong>Overview</strong>, pick a workout plan and click <strong>Start Workout</strong> on a day.</p>
           <button type="button" class="wl-btn" @click="activeTab = 'overview'">Go to Overview</button>
+        </div>
+      </div>
+
+      <!-- ══ WORKOUT HISTORY TAB ════════════════════════════════════════ -->
+      <div v-show="activeTab === 'workoutHistory'" class="wl-tab-panel">
+
+        <!-- Date context bar -->
+        <div class="wl-history-datebar">
+          <span><i class="fa-solid fa-calendar-day"></i> Showing records for <strong>{{ selectedWorkoutDate }}</strong></span>
+          <button type="button" class="wl-btn-preview" style="padding:7px 12px;font-size:0.8rem" @click="loadWorkoutHistory">
+            <i class="fa-solid fa-arrows-rotate"></i> Refresh
+          </button>
+        </div>
+
+        <!-- Loading -->
+        <div v-if="isLoadingWorkoutHistory" class="wl-empty"><p>Loading history…</p></div>
+
+        <!-- Empty -->
+        <div v-else-if="workoutHistoryRecords.length === 0" class="wl-empty app-section-card">
+          <i class="fa-solid fa-calendar-xmark wl-empty-icon"></i>
+          <h6>No exercises recorded</h6>
+          <p v-if="workoutHistoryUsername">
+            No exercises recorded for <strong>{{ workoutHistoryUsername }}</strong> on <strong>{{ selectedWorkoutDate }}</strong>.
+          </p>
+          <p v-else>No exercises recorded on <strong>{{ selectedWorkoutDate }}</strong>.</p>
+        </div>
+
+        <!-- History cards -->
+        <div v-else class="wl-history-list">
+          <!-- Group by plan/day -->
+          <template v-for="(group, gidx) in historyGrouped" :key="gidx">
+            <div class="wl-history-group">
+              <div class="wl-history-group__header">
+                <div class="wl-history-group__title">
+                  <i class="fa-solid fa-circle-check" style="color:#22c55e"></i>
+                  <span class="wl-history-group__plan">{{ group.planName || 'Workout' }}</span>
+                  <span v-if="group.dayName" class="wl-history-group__day">{{ group.dayName }}</span>
+                </div>
+                <span class="wl-history-group__type wl-plan__tag">{{ group.type }}</span>
+              </div>
+
+              <div class="wl-history-exercises">
+                <div
+                  v-for="(ex, eidx) in group.exercises"
+                  :key="eidx"
+                  class="wl-history-ex"
+                >
+                  <div class="wl-history-ex__name">{{ ex.exerciseName }}</div>
+                  <div class="wl-history-ex__stats">
+                    <!-- Cardio -->
+                    <template v-if="ex.WorkoutType === 'Cardio' || ex.WorkoutType === 'cardio'">
+                      <span v-if="ex.Duration"><i class="fa-solid fa-clock"></i> {{ ex.Duration }} min</span>
+                      <span v-if="ex.Distance"><i class="fa-solid fa-road"></i> {{ ex.Distance }} mi</span>
+                      <span v-if="ex.Calories"><i class="fa-solid fa-fire"></i> {{ ex.Calories }} kcal</span>
+                    </template>
+                    <!-- Strength -->
+                    <template v-else>
+                      <span v-if="ex.Sets"><i class="fa-solid fa-layer-group"></i> {{ ex.Sets }} sets</span>
+                      <span v-if="ex.Reps"><i class="fa-solid fa-repeat"></i> {{ ex.Reps }} reps</span>
+                      <span v-if="ex.Weight"><i class="fa-solid fa-weight-hanging"></i> {{ ex.Weight }} lb</span>
+                    </template>
+                    <span class="wl-history-ex__type">{{ ex.WorkoutType }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
 
@@ -931,6 +1056,70 @@ onMounted(async () => {
   display: flex; align-items: center; gap: 7px; transition: background 0.15s;
 }
 .wl-btn-end:hover { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+
+/* ── Date input ───────────────────────────────────────────────────────────── */
+.wl-date-input {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.35);
+  color: #fff; border-radius: 10px; padding: 8px 12px;
+  font-size: 0.88rem; font-weight: 600;
+  cursor: pointer; outline: none;
+  color-scheme: dark;
+}
+.wl-date-input::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+
+/* ── History tab ─────────────────────────────────────────────────────────── */
+.wl-history-datebar {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--panel-bg, #f8fafc);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px; padding: 10px 16px;
+  font-size: 0.88rem; color: var(--text-color-secondary, #6b7280);
+  margin-bottom: 16px;
+}
+.wl-history-datebar i { color: #3b82f6; }
+
+.wl-history-list { display: grid; gap: 14px; }
+
+.wl-history-group {
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 14px; background: #fff; overflow: hidden;
+}
+.wl-history-group__header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 18px;
+  background: var(--panel-bg, #f8fafc);
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+.wl-history-group__title   { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.wl-history-group__plan    { font-weight: 800; font-size: 0.95rem; color: var(--text-color, #111827); }
+.wl-history-group__day {
+  background: #dbeafe; color: #1e40af;
+  border-radius: 999px; padding: 2px 10px;
+  font-size: 0.75rem; font-weight: 700;
+}
+
+.wl-history-exercises { padding: 12px 18px; display: grid; gap: 8px; }
+
+.wl-history-ex {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-color, #f3f4f6);
+  font-size: 0.85rem;
+}
+.wl-history-ex:last-child { border-bottom: none; }
+.wl-history-ex__name  { font-weight: 700; color: var(--text-color, #111827); flex: 1; }
+.wl-history-ex__stats {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  color: var(--text-color-secondary, #6b7280);
+  justify-content: flex-end;
+}
+.wl-history-ex__stats i { color: #3b82f6; margin-right: 3px; }
+.wl-history-ex__type {
+  background: #f3f4f6; color: #6b7280;
+  border-radius: 999px; padding: 1px 9px;
+  font-size: 0.72rem; font-weight: 700;
+}
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
