@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.77.5] - 2026-05-05
+
+### Overview
+Added a **Preview Workout** button to each day card in the Workout Log Overview tab.
+Users can now inspect a day's exercises without accidentally creating a workout session.
+
+### Added
+- `isPreviewMode` ref — tracks whether Day Details is showing a live session or a read-only preview.
+- `previewDay(dayName)` function — sets `selectedDay`, builds `sessionExercises` from the expanded plan, sets `isPreviewMode = true`, switches to Day Details tab. No API call, no session created.
+- **Preview Workout** button (outline/secondary style) on each day card footer, alongside the existing Start Workout button.
+- **Preview banner** in Day Details when `isPreviewMode` is true:
+  - Amber/yellow banner: *"Preview only — start the workout to log sets."*
+  - Inline **Start Workout** shortcut button inside the banner.
+- **Preview badge** ("👁 Preview") shown in the Day Details sub-header next to the exercise count.
+- Progress bar hidden in preview mode (no sets to track).
+- Exercise list rendered with `opacity: 0.75; pointer-events: none` in preview mode — visible but non-interactive.
+- Sticky bottom bar (End Workout / Complete Workout) hidden in preview mode.
+
+### Changed
+- Day card footer now shows two buttons when no session is in progress: **Preview** (outline blue) + **Start Workout** (solid blue). Resume Workout still appears when a session is active for that day.
+- `startDayWorkout` now sets `isPreviewMode = false` on successful session start, exiting preview mode.
+- `endWithoutSaving` now clears `isPreviewMode = false`.
+
+---
+
 ## [0.77.4] - 2026-05-05
 
 ### Overview
