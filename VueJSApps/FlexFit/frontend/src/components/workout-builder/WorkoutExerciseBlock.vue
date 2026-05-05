@@ -196,20 +196,46 @@ const updateField = (field, value, isNumeric = false) => {
           />
         </label>
 
-        <label class="field-full">
-          <span>Rest (sec)</span>
+      </template>
+
+      <!-- CARDIO fields -->
+      <template v-if="isCardio">
+        <label>
+          <span>Targeted Time (Mins)</span>
           <input
-            :value="exercise.restTime"
+            :value="exercise.duration"
             type="number"
             min="0"
             placeholder="0"
-            @input="updateField('restTime', $event.target.value, true)"
+            @input="updateField('duration', $event.target.value, true)"
+          />
+        </label>
+
+        <label>
+          <span>Targeted Distance (Miles)</span>
+          <input
+            :value="exercise.distance"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('distance', $event.target.value, true)"
+          />
+        </label>
+
+        <label>
+          <span>Targeted Calories</span>
+          <input
+            :value="exercise.calories"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('calories', $event.target.value, true)"
           />
         </label>
       </template>
 
-      <!-- CARDIO fields -->
-      <template v-if="isCardio || isOther">
+      <!-- OTHER (non-strength, non-cardio) fields -->
+      <template v-if="isOther">
         <label>
           <span>Duration (min)</span>
           <input

@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.77.2] - 2026-05-05
+
+### Overview
+UI polish pass on the Workout Builder exercise add/edit form. Cardio and Strength exercise fields
+now display contextually — only showing the fields relevant to each workout type, with standardized label formatting.
+
+### Changed
+
+**Frontend — WorkoutExerciseBlock.vue**
+
+*Cardio exercises (WorkoutType = Cardio):*
+- **Renamed** label: `Duration (min)` → `Targeted Time (Mins)`
+- **Renamed** label: `Distance (miles)` → `Targeted Distance (Miles)`
+- **Renamed** label: `Calories` → `Targeted Calories`
+- **Removed** `Speed (mph)` field — hidden entirely for Cardio exercises.
+- Cardio block split from the shared `isCardio || isOther` template into its own dedicated `v-if="isCardio"` block.
+
+*Strength exercises (WorkoutType = Strength):*
+- **Removed** `Rest (sec)` field — hidden entirely for Strength exercises.
+
+*Other exercises (non-Strength, non-Cardio):*
+- No changes — `isOther` block retains all original fields and labels.
+
+**Frontend — `style.css` (global layout)**
+- Reduced `.main-content` top padding: `92px 30px 70px` → `5px 30px 30px`.
+- Eliminates excessive vertical whitespace above the blue page header across all pages (Dashboard, Workout Log, Workout Builder, Exercises, Nutrition).
+
+### Fixed
+- No empty spacing or layout gaps when fields are conditionally hidden in the exercise form.
+
+---
+
 ## [0.77] - 2026-05-04
 
 ### Overview

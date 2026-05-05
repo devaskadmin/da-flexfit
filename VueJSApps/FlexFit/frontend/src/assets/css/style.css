@@ -5571,7 +5571,7 @@ pre .punctuation {
 .main-content {
   width: 100%;
   position: relative;
-  padding: 92px 30px 70px;
+  padding: 5px 30px 30px;
   z-index: 2;
 }
 .main-content::after {
