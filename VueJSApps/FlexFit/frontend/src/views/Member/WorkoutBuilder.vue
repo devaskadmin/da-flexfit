@@ -36,6 +36,9 @@ const isSchedulePlannerOpen = ref(true);
 const route = useRoute();
 const router = useRouter();
 
+// Tab: 'plans' | 'details' | 'planner'
+const builderTab = ref('plans');
+
 const scheduleMode = ref('day'); // day | week
 const dayGroups = ref(['Any Day']);
 const weekGroups = ref(['Week 1']);
@@ -175,12 +178,19 @@ const hydratePlanner = (planner = {}, { markSaved = true } = {}) => {
   newScheduleGroupName.value = '';
   isWorkoutDetailsOpen.value = true;
   isSchedulePlannerOpen.value = markSaved;
+  // Auto-switch to Schedule Planner tab when a plan is loaded
+  if (markSaved) {
+    builderTab.value = 'planner';
+  } else {
+    builderTab.value = 'details';
+  }
 };
 
 const clearSelection = async () => {
   selectedWorkoutId.value = '';
   isCreatingWorkout.value = false;
   hasSavedWorkoutDetails.value = false;
+  builderTab.value = 'plans';
   resetPlannerDraft();
   await router.replace({ query: { ...route.query, planId: undefined } });
 };
@@ -250,6 +260,7 @@ const createWorkoutPlan = async () => {
     plannerMessage.value = '';
     isWorkoutDetailsOpen.value = true;
     isSchedulePlannerOpen.value = false;
+    builderTab.value = 'details';
 
     await router.replace({ query: { ...route.query, planId: createdPlanId } });
     saveMessage.value = 'Draft workout plan created. Add details and save to continue.';
@@ -817,7 +828,44 @@ watch(
         </div>
       </section>
 
-      <section class="builder-section schedule-hub-section">
+      <!-- ── Tab Bar ──────────────────────────────────────────── -->
+      <nav class="builder-tabs" role="tablist" aria-label="Workout Builder sections">
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="builderTab === 'plans'"
+          :class="['builder-tab', { 'builder-tab--active': builderTab === 'plans' }]"
+          @click="builderTab = 'plans'"
+        >
+          <i class="fa-solid fa-list-check"></i>
+          Plans
+        </button>
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="builderTab === 'details'"
+          :disabled="!canShowWorkoutDetails"
+          :class="['builder-tab', { 'builder-tab--active': builderTab === 'details' }]"
+          @click="builderTab = 'details'"
+        >
+          <i class="fa-solid fa-circle-info"></i>
+          Details
+        </button>
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="builderTab === 'planner'"
+          :disabled="!canShowSchedulePlanner"
+          :class="['builder-tab', { 'builder-tab--active': builderTab === 'planner' }]"
+          @click="builderTab = 'planner'"
+        >
+          <i class="fa-solid fa-calendar-days"></i>
+          Schedule Planner
+        </button>
+      </nav>
+
+      <!-- ── TAB 1: Plans ─────────────────────────────────────── -->
+      <section v-show="builderTab === 'plans'" class="builder-section schedule-hub-section">
         <div class="builder-section__head builder-section__head--inline schedule-hub-head">
           <div>
             <h3>My Workout Schedules</h3>
@@ -868,56 +916,47 @@ watch(
         </div>
       </section>
 
-      <section v-if="canShowWorkoutDetails" class="builder-section collapsible-panel">
-        <button
-          type="button"
-          class="collapsible-header"
-          :aria-expanded="isWorkoutDetailsOpen"
-          @click="toggleWorkoutDetails"
-        >
-          <span class="collapsible-header__text">
-            <strong>Workout Details</strong>
-            <small>Set the workout context before adding exercises.</small>
-          </span>
-          <span class="collapsible-header__icon" :class="{ open: isWorkoutDetailsOpen }" aria-hidden="true">
-            <i class="fa-solid fa-chevron-down"></i>
-          </span>
-        </button>
-
-        <transition name="panel-collapse">
-          <div v-show="isWorkoutDetailsOpen" class="collapsible-panel__body">
+      <!-- ── TAB 2: Details ───────────────────────────────────── -->
+      <section v-show="builderTab === 'details'" class="builder-section collapsible-panel">
+        <div v-if="!canShowWorkoutDetails" class="builder-empty planner-empty" aria-live="polite">
+          <div class="planner-empty__icon">📝</div>
+          <h4>No plan selected</h4>
+          <p>Select or create a workout plan from the Plans tab first.</p>
+          <button type="button" class="btn-create-plan" style="margin-top:8px" @click="builderTab = 'plans'">
+            Go to Plans
+          </button>
+        </div>
+        <template v-else>
+          <div class="collapsible-header" style="cursor:default;">
+            <span class="collapsible-header__text">
+              <strong>Workout Details</strong>
+              <small>Set the workout context before adding exercises.</small>
+            </span>
+          </div>
+          <div class="collapsible-panel__body">
             <WorkoutMetadataForm
               :metadata="metadata"
               @update:metadata="metadata = $event"
             />
           </div>
-        </transition>
+        </template>
       </section>
 
-      <section v-if="canShowSchedulePlanner" class="builder-section planner-section">
-        <div
-          class="builder-section__head builder-section__head--inline planner-panel-head"
-          role="button"
-          tabindex="0"
-          :aria-expanded="isSchedulePlannerOpen"
-          @click="toggleSchedulePlanner"
-          @keydown.enter.prevent="toggleSchedulePlanner"
-          @keydown.space.prevent="toggleSchedulePlanner"
-        >
-          <div class="planner-heading-group">
+      <!-- ── TAB 3: Schedule Planner ──────────────────────────── -->
+      <section v-show="builderTab === 'planner'" class="builder-section planner-section">
+        <div v-if="!canShowSchedulePlanner" class="builder-empty planner-empty" aria-live="polite">
+          <div class="planner-empty__icon">🗓️</div>
+          <h4>Save workout details first</h4>
+          <p>Fill in the workout name and details, then save to unlock the Schedule Planner.</p>
+          <button type="button" class="btn-create-plan" style="margin-top:8px" @click="builderTab = 'details'">
+            Go to Details
+          </button>
+        </div>
+        <template v-else>
+          <div class="planner-heading-group" style="margin-bottom:14px;">
             <h3>Workout Schedule Planner</h3>
             <p>Plan your workout flow, add exercises, and organize each session clearly.</p>
           </div>
-
-          <div class="planner-head-actions">
-            <span class="collapsible-header__icon" :class="{ open: isSchedulePlannerOpen }" aria-hidden="true">
-              <i class="fa-solid fa-chevron-down"></i>
-            </span>
-          </div>
-        </div>
-
-        <transition name="panel-collapse">
-          <div v-show="isSchedulePlannerOpen" class="collapsible-panel__body">
             <div class="planner-tools">
               <div class="planner-mode-toggle" role="tablist" aria-label="Schedule grouping mode">
                 <button
@@ -1077,8 +1116,7 @@ watch(
               <h4>No exercises added yet</h4>
               <p>Open a workout day above and start adding exercises.</p>
             </div>
-          </div>
-        </transition>
+        </template>
       </section>
 
       <footer v-if="canShowWorkoutDetails" class="builder-footer">
@@ -1140,6 +1178,61 @@ watch(
 .workout-builder-canvas {
   display: grid;
   gap: 16px;
+}
+
+/* ── Tab Bar ──────────────────────────────────────────────────── */
+.builder-tabs {
+  display: flex;
+  gap: 4px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 5px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.builder-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  min-height: 42px;
+  padding: 0 10px;
+  font-weight: 700;
+  font-size: 0.86rem;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.builder-tab i {
+  font-size: 0.82rem;
+}
+
+.builder-tab:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.builder-tab--active {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.builder-tab--active:hover {
+  background: #1d4ed8;
+  color: #ffffff;
+}
+
+.builder-tab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .builder-hero {
