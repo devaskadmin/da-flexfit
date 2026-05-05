@@ -10,6 +10,7 @@ const router = useRouter();
 const loading = ref(false);
 const error = ref('');
 const workoutLists = ref([]);
+const hasActiveWorkout = ref(true);
 
 const formatUpdatedAt = (value) => {
   if (!value) return '—';
@@ -88,24 +89,40 @@ const startBuilder = () => {
   router.push({ name: 'workout_builder' });
 };
 
+const goToInProgress = () => {
+  console.log('Workouts In Progress – route not yet implemented');
+};
+
 onMounted(loadWorkoutLists);
 </script>
 
 <template>
   <div class="app-page-shell">
     <div class="app-page-canvas app-inner-shell">
-      <div class="dashboard-breadcrumb ff-page-header app-header-gradient mb-0">
-        <h2>Workout Log</h2>
-        <DateRangePicker />
-      </div>
-
-      <section class="workout-hero panel-bg app-section-card">
-        <div>
-          <h3>Modern Workout Log</h3>
-          <p>View workout plans saved from Workout Builder and reopen any plan in edit mode.</p>
+      <section class="builder-hero ff-page-header app-header-gradient">
+        <div class="builder-hero__content">
+          <div class="builder-hero__text">
+            <h2>Workout Log</h2>
+            <p class="builder-hero__subtitle">View workout plans saved from Workout Builder and reopen any plan in edit mode.</p>
+          </div>
+          <div class="builder-hero__actions">
+            <DateRangePicker />
+          </div>
         </div>
-        <button type="button" class="btn-builder" @click="startBuilder">Open Workout Builder</button>
       </section>
+
+      <div class="workout-log-toolbar">
+        <button
+          type="button"
+          :class="['btn-builder', hasActiveWorkout ? 'btn-builder--active' : 'btn-builder--secondary']"
+          @click="goToInProgress"
+        >
+          <i class="fa-solid fa-clock-rotate-left me-2"></i>Workouts In Progress
+        </button>
+        <button type="button" class="btn-builder" @click="startBuilder">
+          <i class="fa-solid fa-dumbbell me-2"></i>Open Workout Builder
+        </button>
+      </div>
 
       <section class="workout-stats row g-3 mt-0" v-if="workoutLists.length > 0">
         <div class="col-md-4">
@@ -163,29 +180,48 @@ onMounted(loadWorkoutLists);
 </template>
 
             <style scoped>
-            .dashboard-breadcrumb.ff-page-header {
-              border: 1px solid var(--border-color);
-            }
-
-            .workout-hero {
-              border: 1px solid var(--border-color);
-              border-radius: 14px;
-              padding: 16px;
+            .builder-hero__content {
               display: flex;
               justify-content: space-between;
               align-items: center;
-              gap: 14px;
+              gap: 16px;
               flex-wrap: wrap;
             }
 
-            .workout-hero h3 {
-              margin: 0;
-              color: var(--text-color);
+            .builder-hero__text h2 {
+              margin: 0 0 4px;
             }
 
-            .workout-hero p {
-              margin: 4px 0 0;
-              color: var(--text-color-secondary);
+            .builder-hero__subtitle {
+              margin: 0;
+              opacity: 0.85;
+              font-size: 0.92rem;
+            }
+
+            .workout-log-toolbar {
+              display: flex;
+              justify-content: flex-end;
+              gap: 10px;
+            }
+
+            .btn-builder--secondary {
+              background: #f1f5f9;
+              color: #1e40af;
+              border: 1px solid #bfdbfe;
+            }
+
+            .btn-builder--secondary:hover {
+              background: #dbeafe;
+            }
+
+            .btn-builder--active {
+              background: #22c55e;
+              color: #fff;
+              border: none;
+            }
+
+            .btn-builder--active:hover {
+              background: #16a34a;
             }
 
             .btn-builder {

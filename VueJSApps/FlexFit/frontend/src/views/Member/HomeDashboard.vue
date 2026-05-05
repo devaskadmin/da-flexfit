@@ -134,11 +134,14 @@ const recentActivity = [
 
 .dashboard-container {
   display: block;
+  padding-top: 0 !important;
+  margin-top: 5px;
 }
 
 .dashboard-canvas {
   display: grid;
   gap: 16px;
+  padding-block: 4px !important;
 }
 
 /* ─────────────────────────────────────────────────────────────────── */
