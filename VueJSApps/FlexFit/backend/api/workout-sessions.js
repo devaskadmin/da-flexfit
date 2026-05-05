@@ -10,6 +10,12 @@ const requireAuth = (req, res, next) => {
   next();
 };
 
+// ─── NOTE: Uses the existing `workout_log_sessions` table.
+// Required ALTER before deploying:
+//   ALTER TABLE `workout_log_sessions`
+//     ADD COLUMN `workout_day_id`   INT UNSIGNED NULL        AFTER `source_workout_schedule_id`,
+//     ADD COLUMN `workout_day_name` VARCHAR(120) NOT NULL DEFAULT '' AFTER `workout_day_id`;
+
 // ─── GET /api/workout-sessions/active ──────────────────────────────────────
 // Returns the single in_progress session for the current user, if any.
 router.get('/workout-sessions/active', requireAuth, async (req, res) => {
@@ -19,16 +25,16 @@ router.get('/workout-sessions/active', requireAuth, async (req, res) => {
     const [rows] = await pool.query(
       `SELECT
          id,
-         user_id       AS userId,
-         workout_plan_id  AS workoutPlanId,
-         workout_day_id   AS workoutDayId,
-         workout_day_name AS workoutDayName,
-         workout_date     AS workoutDate,
-         session_status   AS sessionStatus,
-         started_at       AS startedAt,
-         completed_at     AS completedAt
-       FROM workout_sessions
-       WHERE user_id = ? AND session_status = 'in_progress'
+         user_id                    AS userId,
+         source_workout_schedule_id AS workoutPlanId,
+         workout_day_id             AS workoutDayId,
+         workout_day_name           AS workoutDayName,
+         workout_date               AS workoutDate,
+         status                     AS sessionStatus,
+         started_at                 AS startedAt,
+         completed_at               AS completedAt
+       FROM workout_log_sessions
+       WHERE user_id = ? AND status = 'in_progress'
        ORDER BY started_at DESC
        LIMIT 1`,
       [userId]
@@ -61,9 +67,11 @@ router.post('/workout-sessions/start', requireAuth, async (req, res) => {
 
     // Check for existing in_progress session
     const [existing] = await pool.query(
-      `SELECT id, workout_plan_id AS workoutPlanId, workout_day_name AS workoutDayName
-       FROM workout_sessions
-       WHERE user_id = ? AND session_status = 'in_progress'
+      `SELECT id,
+              source_workout_schedule_id AS workoutPlanId,
+              workout_day_name           AS workoutDayName
+       FROM workout_log_sessions
+       WHERE user_id = ? AND status = 'in_progress'
        LIMIT 1`,
       [userId]
     );
@@ -77,9 +85,9 @@ router.post('/workout-sessions/start', requireAuth, async (req, res) => {
 
     // Create new session
     const [result] = await pool.query(
-      `INSERT INTO workout_sessions
-         (user_id, workout_plan_id, workout_day_id, workout_day_name, workout_date, session_status, started_at)
-       VALUES (?, ?, ?, ?, ?, 'in_progress', NOW())`,
+      `INSERT INTO workout_log_sessions
+         (user_id, source_workout_schedule_id, workout_day_id, workout_day_name, workout_date, status, started_at, notes)
+       VALUES (?, ?, ?, ?, ?, 'in_progress', NOW(), '')`,
       [
         userId,
         Number(workoutPlanId),
@@ -94,14 +102,14 @@ router.post('/workout-sessions/start', requireAuth, async (req, res) => {
     return res.status(201).json({
       message: 'Workout session started.',
       session: {
-        id: sessionId,
+        id:             sessionId,
         userId,
-        workoutPlanId: Number(workoutPlanId),
-        workoutDayId:  workoutDayId ? Number(workoutDayId) : null,
+        workoutPlanId:  Number(workoutPlanId),
+        workoutDayId:   workoutDayId ? Number(workoutDayId) : null,
         workoutDayName: String(workoutDayName).trim(),
         workoutDate,
-        sessionStatus: 'in_progress',
-        startedAt:     new Date().toISOString(),
+        sessionStatus:  'in_progress',
+        startedAt:      new Date().toISOString(),
       },
     });
   } catch (err) {
@@ -122,10 +130,7 @@ router.post('/workout-sessions/complete/:sessionId', requireAuth, async (req, re
     }
 
     const [rows] = await pool.query(
-      `SELECT id, session_status AS sessionStatus
-       FROM workout_sessions
-       WHERE id = ? AND user_id = ?
-       LIMIT 1`,
+      `SELECT id FROM workout_log_sessions WHERE id = ? AND user_id = ? LIMIT 1`,
       [sessionId, userId]
     );
 
@@ -134,8 +139,8 @@ router.post('/workout-sessions/complete/:sessionId', requireAuth, async (req, re
     }
 
     await pool.query(
-      `UPDATE workout_sessions
-       SET session_status = 'completed', completed_at = NOW()
+      `UPDATE workout_log_sessions
+       SET status = 'completed', completed_at = NOW()
        WHERE id = ? AND user_id = ?`,
       [sessionId, userId]
     );
@@ -159,8 +164,8 @@ router.post('/workout-sessions/cancel/:sessionId', requireAuth, async (req, res)
     }
 
     await pool.query(
-      `UPDATE workout_sessions
-       SET session_status = 'cancelled', completed_at = NOW()
+      `UPDATE workout_log_sessions
+       SET status = 'cancelled', completed_at = NOW()
        WHERE id = ? AND user_id = ?`,
       [sessionId, userId]
     );
