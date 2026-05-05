@@ -1,5 +1,49 @@
 # Changelog
 
+## [0.77.4] - 2026-05-05
+
+### Overview
+Unified the Workout Log page into a single tabbed hub, replacing the confusing two-page flow
+(Workout Log → separate plan page) with an all-in-one experience.
+
+### Changed
+- **`LogWorkout.vue`** fully rewritten as a self-contained workout session hub:
+  - Added **Overview** and **Day Details** tab bar under the Workout Log header.
+  - Removed navigation to `/workouts/:planId` (WorkoutDetail.vue) from the Start Workout flow.
+  - Removed the separate plan page header (plan stats, Edit Plan, Back to Workouts hero).
+
+### Added
+- **Accordion plan selector (Overview tab)**:
+  - All saved workout plans displayed as a modern vertical accordion list.
+  - Clicking a plan expands it (collapse any other open plan); loads full plan detail from API on expand.
+  - Expanded plan shows a blue border + "Selected" badge.
+  - Each expanded plan shows day cards (Monday - Cardio, Tuesday - Chest And Biceps, etc.) with exercise count, estimated duration, workout type, and exercise preview list.
+  - **Start Workout** button on each day card — starts the session and auto-switches to Day Details tab.
+  - **Resume Workout** button shown if a session is already in progress for that day.
+  - **Edit Plan** button on each accordion row — routes to Workout Builder for that plan.
+- **Day Details tab (inline session logging)**:
+  - Disabled/greyed out until a day is started.
+  - Shows selected day name badge in tab label.
+  - Displays day sub-header with exercise count + live progress bar (sets completed %).
+  - Full `ExerciseSessionCard` exercise logging UI reused from WorkoutDetail.vue.
+  - Sticky bottom bar: "X / Y sets done" · End Workout · Complete Workout.
+- **Active session recovery**: On mount, if a session is already in progress, auto-expands the matching plan accordion and restores state.
+- **Conflict handling**: Banner shown if user tries to start a new day while a session is in progress.
+- **Success banner**: "✓ Workout complete!" shown after saving, then auto-returns to Overview.
+- **Stats row** (Saved Plans / Avg Duration / Total Exercises) retained above the tab bar.
+- **Workouts In Progress** button switches to Day Details tab if a session is active (no page navigation needed).
+
+### User Flow (New)
+```
+Workout Log → Overview tab → click plan accordion → choose day card → Start Workout → Day Details tab
+```
+Replaces the old confusing flow:
+```
+Workout Log → saved plans page → separate /workouts/:planId page → Overview
+```
+
+---
+
 ## [0.77.3] - 2026-05-05
 
 ### Overview
