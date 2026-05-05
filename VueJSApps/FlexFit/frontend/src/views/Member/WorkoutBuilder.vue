@@ -926,8 +926,8 @@ watch(
             Go to Plans
           </button>
         </div>
-        <template v-else>
-          <div class="collapsible-header" style="cursor:default;">
+        <div v-else>
+          <div class="collapsible-header" style="cursor:default; margin-bottom:0;">
             <span class="collapsible-header__text">
               <strong>Workout Details</strong>
               <small>Set the workout context before adding exercises.</small>
@@ -939,7 +939,7 @@ watch(
               @update:metadata="metadata = $event"
             />
           </div>
-        </template>
+        </div>
       </section>
 
       <!-- ── TAB 3: Schedule Planner ──────────────────────────── -->
@@ -952,12 +952,12 @@ watch(
             Go to Details
           </button>
         </div>
-        <template v-else>
+        <div v-else>
           <div class="planner-heading-group" style="margin-bottom:14px;">
             <h3>Workout Schedule Planner</h3>
             <p>Plan your workout flow, add exercises, and organize each session clearly.</p>
           </div>
-            <div class="planner-tools">
+          <div class="planner-tools">
               <div class="planner-mode-toggle" role="tablist" aria-label="Schedule grouping mode">
                 <button
                   type="button"
@@ -1116,7 +1116,7 @@ watch(
               <h4>No exercises added yet</h4>
               <p>Open a workout day above and start adding exercises.</p>
             </div>
-        </template>
+        </div>
       </section>
 
       <footer v-if="canShowWorkoutDetails" class="builder-footer">
