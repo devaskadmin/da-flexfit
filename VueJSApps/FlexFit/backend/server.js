@@ -120,9 +120,10 @@ app.use('/images/avatar', express.static(path.join(__dirname, 'src/images/avatar
 app.use('/assets/Excerises', express.static(path.join(__dirname, 'free-exercise-db-main/exercises')));
 
 //Define Workout Routes - Loads workout log API
-const workoutLogRoutes = require('./api/workout-log'); // ✅ correct path
-const openFoodFactsRoutes = require('./api/OpenFoodFactsAPI/main-api.js');
-const avatarRoutes = require('./src/routes/avatar.js');
+const workoutLogRoutes      = require('./api/workout-log'); // ✅ correct path
+const workoutSessionRoutes  = require('./api/workout-sessions'); // ✅ 0.77 session tracking
+const openFoodFactsRoutes   = require('./api/OpenFoodFactsAPI/main-api.js');
+const avatarRoutes          = require('./src/routes/avatar.js');
 
 // Import routes
 app.use('/api', require('./api/auth.js'));
@@ -130,6 +131,7 @@ app.use('/api', require('./api/users.js'));
 app.use('/api', require('./api/excerises.js'));
 app.use('/api', require('./api/notifications.js'));
 app.use('/api/workout-log', workoutLogRoutes);
+app.use('/api', workoutSessionRoutes);
 app.use('/api', openFoodFactsRoutes);
 app.use('/api/avatar', avatarRoutes);
 app.use('/api/admin', require('./api/admin.js')); // 🔒 Admin-only routes

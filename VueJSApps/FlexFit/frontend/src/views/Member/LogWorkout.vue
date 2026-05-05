@@ -10,7 +10,8 @@ const router = useRouter();
 const loading = ref(false);
 const error = ref('');
 const workoutLists = ref([]);
-const hasActiveWorkout = ref(true);
+const hasActiveWorkout  = ref(false);
+const activeSessionData = ref(null);
 
 const formatUpdatedAt = (value) => {
   if (!value) return '—';
@@ -89,11 +90,56 @@ const startBuilder = () => {
   router.push({ name: 'workout_builder' });
 };
 
-const goToInProgress = () => {
-  console.log('Workouts In Progress – route not yet implemented');
+const goToInProgress = async () => {
+  // If we already have the session data cached, navigate immediately
+  if (activeSessionData.value?.workoutPlanId) {
+    router.push({
+      name:   'workout_detail',
+      params: { planId: String(activeSessionData.value.workoutPlanId) },
+    });
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/workout-sessions/active`, {
+      credentials: 'include',
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.session?.workoutPlanId) {
+      router.push({
+        name:   'workout_detail',
+        params: { planId: String(data.session.workoutPlanId) },
+      });
+    }
+  } catch (_) {
+    // silently ignore
+  }
 };
 
-onMounted(loadWorkoutLists);
+const checkActiveSession = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/api/workout-sessions/active`, {
+      credentials: 'include',
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.session) {
+      activeSessionData.value = data.session;
+      hasActiveWorkout.value  = true;
+    } else {
+      activeSessionData.value = null;
+      hasActiveWorkout.value  = false;
+    }
+  } catch (_) {
+    // silently ignore
+  }
+};
+
+onMounted(() => {
+  loadWorkoutLists();
+  checkActiveSession();
+});
 </script>
 
 <template>
