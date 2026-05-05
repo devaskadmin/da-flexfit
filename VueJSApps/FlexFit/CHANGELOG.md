@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.77.6] - 2026-05-05
+
+### Overview
+Replaced the date range picker in the Workout Log header with a single date input and added a third **Workout History** tab that displays completed workout records for the logged-in user on the selected date.
+
+### Changed
+- **Header date input**: Removed `DateRangePicker` component. Replaced with a single `<input type="date">` styled for the dark blue header (white border, transparent background, white text, dark calendar icon). Defaults to today's date. Used by both Overview context and Workout History lookup.
+- `activeTab` now supports three values: `'overview'` | `'dayDetails'` | `'workoutHistory'`.
+
+### Added — Frontend (`LogWorkout.vue`)
+- `selectedWorkoutDate` ref (defaults to today, ISO `YYYY-MM-DD`).
+- `workoutHistoryRecords`, `isLoadingWorkoutHistory`, `workoutHistoryUsername` refs.
+- `historyGrouped` computed — groups history records by `planName + workoutDayName` for clean card display.
+- `loadWorkoutHistory()` — fetches `GET /api/workout-log/history?date=...` on tab click or Refresh button.
+- `openHistoryTab()` — switches tab and triggers load.
+- **Workout History tab** button in tab bar (always enabled; loads on click).
+- **Workout History tab panel**:
+  - Date context bar showing selected date + Refresh button.
+  - Loading state.
+  - Empty state: *"No exercises recorded for {username} on {date}."*
+  - History cards grouped by plan + day, each showing per-exercise rows with:
+    - **Cardio**: Duration (min), Distance (mi), Calories (kcal)
+    - **Strength**: Sets, Reps, Weight (lb)
+    - Workout type badge per exercise row.
+- CSS for `.wl-date-input`, `.wl-history-datebar`, `.wl-history-group`, `.wl-history-exercises`, `.wl-history-ex`.
+
+### Added — Backend (`workout-log.js`)
+- `GET /api/workout-log/history?date=YYYY-MM-DD`
+  - Auth-guarded (session required).
+  - Joins `workout_log` → `workout_log_sessions` (for plan name) → `exercises` (for exercise title).
+  - Returns: `{ date, username, records: [...] }`.
+  - `records` includes: `WorkoutLogID`, `WorkoutDate`, `WorkoutType`, `Sets`, `Reps`, `Weight`, `Duration`, `Calories`, `Distance`, `performed_at`, `workoutDayName` (from `source_schedule_group_label`), `planName` (from session `notes`), `exerciseName`.
+
+---
+
 ## [0.77.5] - 2026-05-05
 
 ### Overview
