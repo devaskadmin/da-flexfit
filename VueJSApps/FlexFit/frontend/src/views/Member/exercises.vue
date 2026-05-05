@@ -484,8 +484,10 @@ const loadFavoriteExercises = async () => {
     }
 
     const data = await res.json();
+    console.log('Favorite API response:', data);
     // Handle different response formats from backend
     favoriteExercises.value = Array.isArray(data) ? data : (data.favorites || data.exercises || []);
+    console.log('favoriteExercises:', favoriteExercises.value);
   } catch (err) {
     console.error('Error pulling favorites:', err);
     favoriteExercises.value = [];
@@ -538,8 +540,18 @@ watch(exerciseView, async () => {
   await loadExercisesLibrary();
 });
 
+// Trigger favorites load whenever the favorites tab becomes active
+watch(activeTab, (tab) => {
+  if (tab === 'favorite-exercises') {
+    console.log('Favorite tab active');
+    loadFavoriteExercises();
+  }
+});
+
 // Helper: Switch to log-exercise if there are logs, else to search-exercises
+// Does NOT override if the user deliberately switched to the Favorites tab.
 function autoSwitchTabToLogOrLibrary() {
+  if (activeTab.value === 'favorite-exercises') return;
   if (Array.isArray(existingLogs.value) && existingLogs.value.length > 0) {
     activeTab.value = 'log-exercise';
   } else {
@@ -1471,13 +1483,15 @@ const clearFilters = () => {
         
                   <!--end of WorkoutList-->
                   <!--End of panel body-->
-                
 
-              
+              </div>
+              <!-- /exercise-results-panel -->
+            </div>
+            <!-- /container-block -->
           </div>
-          <!--End of Exercise Tab Section-->
+          <!-- /search-exercises tab -->
 
-  <!-- Favorite Exercises Section -->
+          <!-- Favorite Exercises Section -->
   <div v-if="activeTab === 'favorite-exercises'">
     <div class="container container-block">
       <div class="panel search-filter-card">
@@ -1496,7 +1510,7 @@ const clearFilters = () => {
           <!-- Error State -->
           <div v-else-if="favoritesLoadError" class="text-center py-5">
             <i class="fa-solid fa-exclamation-triangle" style="font-size: 3rem; color: #dc3545; margin-bottom: 1rem;"></i>
-            <p style="color: #dc3545; font-size: 1rem; font-weight: 600;">{{ favoritesLoadError }}</p>
+            <p style="color: #dc3545; font-size: 1rem; font-weight: 600;">Error loading favorite exercises. Please try again.</p>
             <button class="btn btn-primary mt-2" @click="loadFavoriteExercises()">Try Again</button>
           </div>
 
@@ -1504,19 +1518,20 @@ const clearFilters = () => {
           <div v-else-if="favoriteExercises.length === 0" class="text-center py-5">
             <i class="fa-solid fa-heart" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 1rem;"></i>
             <p style="color: #64748b; font-size: 1rem;">
-              No favorites yet. Add exercises to your favorites from the Search Exercises tab.
+              No favorite exercises yet. Favorite exercises from the Search Exercises tab to see them here.
             </p>
           </div>
 
           <!-- Favorite Exercises List -->
           <div v-else class="row">
-            <div v-for="ex in favoriteExercises" :key="ex.ExerciseID" class="col-lg-6 col-xl-4 mb-4">
+            <div v-for="ex in favoriteExercises" :key="ex.ExerciseID" class="col-sm-6 col-lg-4 col-xl-3 mb-4">
               <div class="exercise-card">
                 <div class="exercise-image">
                   <img
                     :src="getExerciseImage(ex)"
                     :alt="ex.ExerciseTitle"
                     class="img-fluid"
+                    loading="lazy"
                     @error="$event.target.src = DEFAULT_EXERCISE_IMAGE"
                   />
                 </div>
@@ -1530,14 +1545,10 @@ const clearFilters = () => {
                 </div>
                 <div class="exercise-actions">
                   <button
-                    :class="['btn', 'btn-sm', 'btn-fav', isFavoriteExercise(ex.ExerciseID) && 'btn-fav--active']"
+                    class="btn btn-sm btn-fav btn-fav--active"
                     @click="toggleFavoriteExercise(ex)"
                   >
-                    <i v-if="isFavoriteExercise(ex.ExerciseID)" class="fa-solid fa-heart"></i>
-                    {{ isFavoriteExercise(ex.ExerciseID) ? 'Unfav' : 'Fav' }}
-                  </button>
-                  <button class="btn btn-sm btn-outline-secondary" @click="startEditing(ex)">
-                    Edit Exercise
+                    <i class="fa-solid fa-heart"></i> Unfav
                   </button>
                 </div>
               </div>
@@ -1844,8 +1855,6 @@ Please Select an excerise
 
 
   </div><!--end ofLog Exercise Section-->
-</div>
-</div>
 </div><!-- End of tab-content -->
 </div><!-- End of ex-page-body: Exercise Section -->
   </div>
@@ -1903,6 +1912,16 @@ Please Select an excerise
   min-height: 120px;
   background-color: #fff;
   border-radius: 12px;
+}
+.exercise-card .exercise-image {
+  width: 75%;
+  margin: 0 auto;
+}
+.exercise-card .exercise-image img {
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  display: block;
 }
    .image-box {
    flex-shrink: 0;

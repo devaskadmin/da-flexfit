@@ -92,11 +92,16 @@ const fetchExercisesForView = async ({ view = 'all', userId }) => {
 
   if (normalizedView === 'favorites' || normalizedView === 'favourites') {
     const [rows] = await pool.query(
-      `${baseSelect}
+      `SELECT e.*,
+        1 AS IsFavorite
+       FROM exercises e
+       INNER JOIN user_favorite_exercises ufe
+         ON ufe.exercise_id = e.ExerciseID
        WHERE ufe.user_id = ?
        ORDER BY e.ExerciseTitle ASC`,
-      [userId, userId]
+      [userId]
     );
+    console.log('Favorites rows:', rows.length);
     return mapExerciseRowsWithUserFlags(rows, userId);
   }
 
