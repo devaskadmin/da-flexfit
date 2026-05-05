@@ -1,5 +1,67 @@
 # Changelog
 
+## [0.77] - 2026-05-04
+
+### Overview
+Major Workout Log workflow upgrade. Replaced the single "Start Workout" screen with a two-tab
+Overview + Day Details experience, backed by a real active-session tracking system in the database.
+
+### Added
+
+**Frontend — WorkoutDetail.vue (complete redesign)**
+- Two-tab layout: **Overview** and **Day Details**.
+- **Overview tab**: each workout day (e.g. Monday – Chest, Tuesday – Cardio) rendered as its own card showing:
+  - Day name with calendar icon.
+  - Exercise count, estimated duration, and workout type.
+  - Summary list of all exercises in that day with sets × reps (or duration for cardio).
+  - Individual **Start Workout** button per day card.
+- **Day Details tab**:
+  - Loads only the selected day's exercises.
+  - Full set-by-set logging UI via `ExerciseSessionCard`.
+  - Locked to the selected day until the session is ended or completed.
+  - Tab is disabled in the tab bar until a day has been started.
+- **Tab bar** with Overview / Day Details tabs; Day Details shows the active day name as a badge.
+- **Active session badge** in the blue hero header showing day name and start time.
+- **Conflict banner**: blocks starting a second day while one is already in progress, with a clear message.
+- **Green highlight** border and "In Progress" chip on the active day card in Overview.
+- **Resume Workout** button replaces Start Workout on the currently-active day card.
+- **Sticky bottom bar** on Day Details with:
+  - **End Workout** button — cancels the session and returns to Overview without saving.
+  - **Complete Workout** button — saves all logged sets, marks session completed, shows success banner, returns to Overview.
+- Progress bar and set counter on Day Details (completed sets / total sets).
+- On mount: automatically checks for an in-progress session matching this plan and switches to Day Details tab if found.
+
+**Frontend — LogWorkout.vue**
+- `hasActiveWorkout` is now driven by a real API call (`GET /api/workout-sessions/active`) on mount — button is green only when a real session exists.
+- `goToInProgress()` now navigates to the active session's workout plan in WorkoutDetail.
+- `activeSessionData` ref caches the session for instant navigation without a second API call.
+
+**Backend — `backend/api/workout-sessions.js` (new file)**
+- `GET  /api/workout-sessions/active` — returns the current user's `in_progress` session from `workout_log_sessions`, or `null`.
+- `POST /api/workout-sessions/start` — creates a new session row; returns **409 Conflict** with the existing session if the user already has one in progress.
+- `POST /api/workout-sessions/complete/:id` — marks session `completed`, sets `completed_at`.
+- `POST /api/workout-sessions/cancel/:id` — marks session `cancelled` (End Workout without saving).
+- Registered in `backend/server.js` under `/api`.
+
+### Changed
+
+**Frontend — WorkoutDetail.vue**
+- Removed the old single-screen "Start Workout → Save Progress" flow.
+- Exercise logging UI moved into Day Details tab only — Overview never shows set inputs.
+- Save/Complete now marks the `workout_log_sessions` row as completed in addition to saving log entries.
+
+**Backend — server.js**
+- Imported and registered `workout-sessions.js` route module.
+
+### Database
+- **`ALTER TABLE workout_log_sessions`** — added two columns to the existing table:
+  - `workout_day_id` INT UNSIGNED NULL — optional FK to `workout_schedule_groups.id`.
+  - `workout_day_name` VARCHAR(120) NOT NULL DEFAULT '' — human-readable day label (e.g. "Monday").
+- No new tables created. All session tracking reuses the existing `workout_log_sessions` table.
+- Migration script: `backend/migrations/001_workout_sessions.sql`.
+
+---
+
 ## [0.8.0] - 2026-05-02 12:24 AM
 
 ### Added
