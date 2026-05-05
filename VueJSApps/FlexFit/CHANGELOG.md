@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.77.3] - 2026-05-05
+
+### Overview
+Converted the Workout Builder page from a long scrollable stacked layout into a compact 3-tab wizard UI.
+Eliminates excessive vertical whitespace and guides the user through a logical Plans → Details → Schedule Planner flow.
+
+### Changed
+
+**Frontend — WorkoutBuilder.vue**
+- Added `builderTab` ref (`'plans'` | `'details'` | `'planner'`) to drive tab visibility.
+- Added **tab bar** (`<nav class="builder-tabs">`) with three tabs, placed directly under the blue hero stats bar:
+  - **Plans** — always accessible; shows My Workout Schedules list, Create Workout Plan, and Suggest with AI buttons.
+  - **Details** — enabled only when a plan is selected/created; shows Workout Name and Workout Goals form.
+  - **Schedule Planner** — enabled only after workout details have been saved; shows By Day/Week toggle, Add Day, day accordion cards, exercise blocks, and Add Exercise button.
+- **Smart tab auto-switching**:
+  - Opening/loading an existing plan → auto-switches to **Schedule Planner**.
+  - Creating a new plan → auto-switches to **Details**.
+  - Clearing a plan selection → returns to **Plans**.
+- Removed collapsible accordion wrappers for Details and Schedule Planner (no longer needed — tabs replace them).
+- Replaced bare `<template v-else>` wrappers with `<div v-else>` for full Vue 3 compatibility inside `v-show` sections.
+- Added tab bar CSS: pill-style container, blue active state with box-shadow, disabled state for locked tabs.
+- Existing functionality fully preserved: create/edit/delete/open plans, add/move/remove exercises, day management.
+
+---
+
 ## [0.77.2] - 2026-05-05
 
 ### Overview
