@@ -25,6 +25,7 @@ const activeSession    = ref(null);
 const hasActiveWorkout = ref(false);
 const selectedDay      = ref('');
 const sessionExercises = ref([]);
+const isPreviewMode    = ref(false);
 const saving           = ref(false);
 const saveMessage      = ref('');
 const saveError        = ref('');
@@ -200,6 +201,17 @@ const checkActiveSession = async () => {
   } catch (_) { /* non-fatal */ }
 };
 
+/* ─── Preview a day (no session created) ────────────────────────────────── */
+const previewDay = (dayName) => {
+  selectedDay.value      = dayName;
+  isPreviewMode.value    = true;
+  // Build exercise list from expanded plan for display
+  sessionExercises.value = (expandedPlanData.value?.exercises || []).map((ex) => ({
+    ...ex, sessionSets: buildInitialSets(ex),
+  }));
+  activeTab.value = 'dayDetails';
+};
+
 /* ─── Start workout for a day ────────────────────────────────────────────── */
 const startDayWorkout = async (dayName) => {
   conflictMessage.value = '';
@@ -236,6 +248,7 @@ const startDayWorkout = async (dayName) => {
     activeSession.value    = data.session;
     hasActiveWorkout.value = true;
     selectedDay.value      = dayName;
+    isPreviewMode.value    = false;
 
     // Build session exercises from the expanded plan
     sessionExercises.value = (expandedPlanData.value?.exercises || []).map((ex) => ({
@@ -309,6 +322,7 @@ const endWithoutSaving = async () => {
   }
   activeSession.value    = null;
   hasActiveWorkout.value = false;
+  isPreviewMode.value    = false;
   activeTab.value        = 'overview';
   selectedDay.value      = '';
   conflictMessage.value  = '';
@@ -523,13 +537,20 @@ onMounted(async () => {
                     >
                       <i class="fa-solid fa-circle-play"></i> Resume Workout
                     </button>
-                    <button
-                      v-else
-                      type="button" class="wl-btn-start"
-                      @click="startDayWorkout(group.name)"
-                    >
-                      <i class="fa-solid fa-play"></i> Start Workout
-                    </button>
+                    <template v-else>
+                      <button
+                        type="button" class="wl-btn-preview"
+                        @click="previewDay(group.name)"
+                      >
+                        <i class="fa-solid fa-eye"></i> Preview
+                      </button>
+                      <button
+                        type="button" class="wl-btn-start"
+                        @click="startDayWorkout(group.name)"
+                      >
+                        <i class="fa-solid fa-play"></i> Start Workout
+                      </button>
+                    </template>
                   </div>
                 </article>
               </div>
@@ -542,13 +563,23 @@ onMounted(async () => {
       <div v-show="activeTab === 'dayDetails'" class="wl-tab-panel">
 
         <template v-if="selectedDay && dayExercises.length > 0">
+          <!-- Preview mode banner -->
+          <div v-if="isPreviewMode" class="wl-preview-banner">
+            <i class="fa-solid fa-eye"></i>
+            <span>Preview only — <strong>start the workout</strong> to log sets.</span>
+            <button type="button" class="wl-btn-start wl-preview-banner__start" @click="startDayWorkout(selectedDay)">
+              <i class="fa-solid fa-play"></i> Start Workout
+            </button>
+          </div>
+
           <!-- Day sub-header + progress -->
           <div class="wl-day-detail-header">
             <div class="wl-day-detail-header__left">
               <h4>{{ selectedDay }}</h4>
               <span class="wl-day-detail-count">{{ dayExercises.length }} exercises</span>
+              <span v-if="isPreviewMode" class="wl-preview-badge"><i class="fa-solid fa-eye"></i> Preview</span>
             </div>
-            <div class="wl-day-detail-header__progress">
+            <div v-if="!isPreviewMode" class="wl-day-detail-header__progress">
               <div class="wl-progress-bar">
                 <div class="wl-progress-fill" :style="{ width: progressPct + '%' }"></div>
               </div>
@@ -557,15 +588,16 @@ onMounted(async () => {
           </div>
 
           <!-- Exercises -->
-          <div class="wl-exercise-list">
+          <div :class="['wl-exercise-list', isPreviewMode ? 'wl-exercise-list--preview' : '']">
             <ExerciseSessionCard
               v-for="exercise in dayExercises"
               :key="exercise.id"
               :exercise="exercise"
               :is-cardio="isCardio(exercise)"
-              @add-set="addSet"
-              @remove-set="removeSet"
-              @update-set="updateSet"
+              :read-only="isPreviewMode"
+              @add-set="isPreviewMode ? null : addSet($event)"
+              @remove-set="isPreviewMode ? null : removeSet($event)"
+              @update-set="isPreviewMode ? null : updateSet($event)"
             />
           </div>
         </template>
@@ -580,7 +612,7 @@ onMounted(async () => {
     </div>
 
     <!-- ── Sticky bottom bar (Day Details only) ───────────────────────────── -->
-    <div v-if="activeTab === 'dayDetails' && selectedDay && dayExercises.length > 0" class="wl-bottom-bar">
+    <div v-if="activeTab === 'dayDetails' && selectedDay && dayExercises.length > 0 && !isPreviewMode" class="wl-bottom-bar">
       <div class="wl-bottom-bar__inner">
         <span class="wl-bottom-bar__label">{{ totalCompleted }} / {{ totalSets }} sets done</span>
         <div class="wl-bottom-bar__actions">
@@ -798,6 +830,14 @@ onMounted(async () => {
 
 .wl-day-card__footer { display: flex; justify-content: flex-end; gap: 10px; }
 
+.wl-btn-preview {
+  background: #fff; border: 1.5px solid #2563eb; color: #2563eb;
+  border-radius: 10px; padding: 10px 16px;
+  font-size: 0.85rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; gap: 7px; transition: background 0.15s, color 0.15s;
+}
+.wl-btn-preview:hover { background: #eff6ff; }
+
 .wl-btn-start {
   background: #2563eb; border: none; color: #fff;
   border-radius: 10px; padding: 10px 20px;
@@ -805,6 +845,26 @@ onMounted(async () => {
   display: flex; align-items: center; gap: 7px; transition: background 0.15s;
 }
 .wl-btn-start:hover { background: #1d4ed8; }
+
+/* Preview mode */
+.wl-preview-banner {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: #fffbeb; border: 1px solid #fde68a; color: #92400e;
+  border-radius: 10px; padding: 12px 16px;
+  font-size: 0.88rem; margin-bottom: 14px;
+}
+.wl-preview-banner i { color: #d97706; flex-shrink: 0; }
+.wl-preview-banner span { flex: 1; }
+.wl-preview-banner__start { margin-left: auto; padding: 8px 14px; font-size: 0.82rem; }
+
+.wl-preview-badge {
+  background: #fef3c7; color: #92400e; border: 1px solid #fde68a;
+  border-radius: 999px; padding: 2px 10px;
+  font-size: 0.72rem; font-weight: 800;
+  display: flex; align-items: center; gap: 4px;
+}
+
+.wl-exercise-list--preview { opacity: 0.75; pointer-events: none; user-select: none; }
 .wl-btn-resume {
   background: #22c55e; border: none; color: #fff;
   border-radius: 10px; padding: 10px 20px;
