@@ -2,17 +2,35 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import DateRangePicker from '@/components/template/DateRangePicker.vue';
-import WorkoutCard from '@/components/workout-log/WorkoutCard.vue';
+import ExerciseSessionCard from '@/components/workout-session/ExerciseSessionCard.vue';
 import { API_BASE } from '@/config/env';
 
 const router = useRouter();
 
-const loading = ref(false);
-const error = ref('');
-const workoutLists = ref([]);
-const hasActiveWorkout  = ref(false);
-const activeSessionData = ref(null);
+/* ─── Tab state ──────────────────────────────────────────────────────────── */
+const activeTab = ref('overview'); // 'overview' | 'dayDetails'
 
+/* ─── Plan list state ────────────────────────────────────────────────────── */
+const loading       = ref(false);
+const error         = ref('');
+const workoutLists  = ref([]);
+
+/* ─── Accordion / selected plan state ───────────────────────────────────── */
+const expandedPlanId    = ref(null);   // accordion open state
+const expandedPlanData  = ref(null);   // full plan detail (with exercises/days)
+const expandedLoading   = ref(false);
+
+/* ─── Session state (Day Details) ───────────────────────────────────────── */
+const activeSession    = ref(null);
+const hasActiveWorkout = ref(false);
+const selectedDay      = ref('');
+const sessionExercises = ref([]);
+const saving           = ref(false);
+const saveMessage      = ref('');
+const saveError        = ref('');
+const conflictMessage  = ref('');
+
+/* ─── Format helpers ─────────────────────────────────────────────────────── */
 const formatUpdatedAt = (value) => {
   if (!value) return '—';
   const parsed = new Date(value);
@@ -20,18 +38,13 @@ const formatUpdatedAt = (value) => {
   return parsed.toLocaleDateString();
 };
 
+const today = () => new Date().toISOString().split('T')[0];
+
+/* ─── Summary stats (top cards) ─────────────────────────────────────────── */
 const summaryStats = computed(() => {
-  if (workoutLists.value.length === 0) {
-    return {
-      totalPlans: 0,
-      totalExercises: 0,
-      averageDuration: 0,
-    };
-  }
-
-  const totalDuration = workoutLists.value.reduce((acc, plan) => acc + Number(plan.estimatedDuration || 0), 0);
-  const totalExercises = workoutLists.value.reduce((acc, plan) => acc + Number(plan.exerciseCount || 0), 0);
-
+  if (!workoutLists.value.length) return { totalPlans: 0, totalExercises: 0, averageDuration: 0 };
+  const totalDuration  = workoutLists.value.reduce((a, p) => a + Number(p.estimatedDuration || 0), 0);
+  const totalExercises = workoutLists.value.reduce((a, p) => a + Number(p.exerciseCount || 0), 0);
   return {
     totalPlans: workoutLists.value.length,
     totalExercises,
@@ -39,283 +52,834 @@ const summaryStats = computed(() => {
   };
 });
 
+/* ─── Derived: expanded plan schedule ───────────────────────────────────── */
+const scheduleMode = computed(() => expandedPlanData.value?.scheduleMode || 'day');
+
+const groups = computed(() => {
+  if (!expandedPlanData.value) return [];
+  if (scheduleMode.value === 'week') {
+    return Array.isArray(expandedPlanData.value.weekGroups) && expandedPlanData.value.weekGroups.length
+      ? expandedPlanData.value.weekGroups : ['Week 1'];
+  }
+  return Array.isArray(expandedPlanData.value.dayGroups) && expandedPlanData.value.dayGroups.length
+    ? expandedPlanData.value.dayGroups : ['Any Day'];
+});
+
+const allExercises = computed(() => expandedPlanData.value?.exercises || []);
+
+const exercisesByGroup = computed(() =>
+  groups.value
+    .map((group) => ({
+      name: group,
+      exercises: allExercises.value.filter(
+        (ex) => (ex.scheduleGroup || groups.value[0]) === group,
+      ),
+    }))
+    .filter((g) => g.exercises.length > 0),
+);
+
+/* ─── Derived: selected day exercises (for Day Details tab) ─────────────── */
+const dayExercises = computed(() =>
+  sessionExercises.value.filter(
+    (ex) => (ex.scheduleGroup || (groups.value[0] || '')) === selectedDay.value,
+  ),
+);
+
+/* ─── Progress (selected day) ────────────────────────────────────────────── */
+const totalCompleted = computed(() =>
+  dayExercises.value.reduce((acc, ex) => acc + ex.sessionSets.filter((s) => s.done).length, 0),
+);
+const totalSets = computed(() =>
+  dayExercises.value.reduce((acc, ex) => acc + ex.sessionSets.length, 0),
+);
+const progressPct = computed(() =>
+  totalSets.value === 0 ? 0 : Math.round((totalCompleted.value / totalSets.value) * 100),
+);
+
+/* ─── Cardio helper ──────────────────────────────────────────────────────── */
+const isCardio = (exercise) =>
+  String(exercise.workoutType || '').toLowerCase() === 'cardio' ||
+  (Number(exercise.duration || 0) > 0 && Number(exercise.reps || 0) === 0);
+
+/* ─── Set helpers ────────────────────────────────────────────────────────── */
+const buildInitialSets = (exercise) => {
+  const count = Math.max(Number(exercise.sets || 1), 1);
+  return Array.from({ length: count }, (_, i) => ({
+    setNum: i + 1, weight: Number(exercise.weight || 0),
+    reps: Number(exercise.reps || 0), duration: Number(exercise.duration || 0), done: false,
+  }));
+};
+
+const addSet = (exerciseId) => {
+  const ex = sessionExercises.value.find((e) => e.id === exerciseId);
+  if (!ex) return;
+  const last = ex.sessionSets[ex.sessionSets.length - 1] || { weight: 0, reps: 0, duration: 0 };
+  ex.sessionSets.push({ setNum: ex.sessionSets.length + 1, weight: last.weight, reps: last.reps, duration: last.duration, done: false });
+};
+
+const removeSet = (exerciseId, setIndex) => {
+  const ex = sessionExercises.value.find((e) => e.id === exerciseId);
+  if (!ex || ex.sessionSets.length <= 1) return;
+  ex.sessionSets.splice(setIndex, 1);
+  ex.sessionSets.forEach((s, i) => { s.setNum = i + 1; });
+};
+
+const updateSet = (exerciseId, setIndex, field, value) => {
+  const ex = sessionExercises.value.find((e) => e.id === exerciseId);
+  if (!ex) return;
+  ex.sessionSets[setIndex][field] = field === 'done' ? Boolean(value) : (Number(value) || 0);
+};
+
+/* ─── Load plan list ─────────────────────────────────────────────────────── */
 const loadWorkoutLists = async () => {
   loading.value = true;
-  error.value = '';
-
+  error.value   = '';
   try {
-    const response = await fetch(`${API_BASE}/api/workout-planner`, {
-      credentials: 'include',
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to load workout log.');
-    }
-
-    const data = await response.json();
-    const incomingLists = Array.isArray(data?.workoutLists) ? data.workoutLists : [];
-
-    workoutLists.value = incomingLists.map((plan) => ({
-      ...plan,
-      updatedAtLabel: formatUpdatedAt(plan.updatedAt),
-    }));
+    const res  = await fetch(`${API_BASE}/api/workout-planner`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Failed to load workout plans.');
+    const data = await res.json();
+    workoutLists.value = (Array.isArray(data?.workoutLists) ? data.workoutLists : [])
+      .map((plan) => ({ ...plan, updatedAtLabel: formatUpdatedAt(plan.updatedAt) }));
   } catch (err) {
-    error.value = err?.message || 'Failed to load workout log.';
+    error.value = err?.message || 'Failed to load workout plans.';
     workoutLists.value = [];
   } finally {
     loading.value = false;
   }
 };
 
-const openInBuilder = (plan) => {
-  const planId = String(plan?.planId || '').trim();
-  if (!planId) {
-    router.push({ name: 'workout_builder' });
+/* ─── Accordion: expand a plan (load full detail) ───────────────────────── */
+const togglePlan = async (planId) => {
+  const pid = String(planId || '');
+  if (expandedPlanId.value === pid) {
+    // Collapse
+    expandedPlanId.value   = null;
+    expandedPlanData.value = null;
     return;
   }
 
-  router.push({
-    name: 'workout_builder',
-    query: { planId },
-  });
-};
-
-const openSession = (plan) => {
-  const planId = String(plan?.planId || '').trim();
-  if (!planId) return;
-  router.push({ name: 'workout_detail', params: { planId } });
-};
-
-const startBuilder = () => {
-  router.push({ name: 'workout_builder' });
-};
-
-const goToInProgress = async () => {
-  // If we already have the session data cached, navigate immediately
-  if (activeSessionData.value?.workoutPlanId) {
-    router.push({
-      name:   'workout_detail',
-      params: { planId: String(activeSessionData.value.workoutPlanId) },
-    });
-    return;
-  }
+  expandedPlanId.value   = pid;
+  expandedPlanData.value = null;
+  expandedLoading.value  = true;
 
   try {
-    const res = await fetch(`${API_BASE}/api/workout-sessions/active`, {
-      credentials: 'include',
-    });
-    if (!res.ok) return;
+    const res  = await fetch(`${API_BASE}/api/workout-planner?planId=${encodeURIComponent(pid)}`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Failed to load plan details.');
     const data = await res.json();
-    if (data.session?.workoutPlanId) {
-      router.push({
-        name:   'workout_detail',
-        params: { planId: String(data.session.workoutPlanId) },
-      });
-    }
+    expandedPlanData.value = data?.planner || null;
   } catch (_) {
-    // silently ignore
+    expandedPlanData.value = null;
+  } finally {
+    expandedLoading.value = false;
   }
 };
 
+/* ─── Check active session ───────────────────────────────────────────────── */
 const checkActiveSession = async () => {
   try {
-    const res = await fetch(`${API_BASE}/api/workout-sessions/active`, {
-      credentials: 'include',
-    });
+    const res  = await fetch(`${API_BASE}/api/workout-sessions/active`, { credentials: 'include' });
     if (!res.ok) return;
     const data = await res.json();
     if (data.session) {
-      activeSessionData.value = data.session;
-      hasActiveWorkout.value  = true;
+      activeSession.value    = data.session;
+      hasActiveWorkout.value = true;
+      // Auto-expand the plan that has an active session
+      const pid = String(data.session.workoutPlanId || '');
+      if (pid && expandedPlanId.value !== pid) await togglePlan(pid);
+      selectedDay.value = data.session.workoutDayName;
+      // Rebuild sessionExercises from expanded plan
+      if (expandedPlanData.value) {
+        sessionExercises.value = (expandedPlanData.value.exercises || []).map((ex) => ({
+          ...ex, sessionSets: buildInitialSets(ex),
+        }));
+      }
     } else {
-      activeSessionData.value = null;
-      hasActiveWorkout.value  = false;
+      activeSession.value    = null;
+      hasActiveWorkout.value = false;
     }
-  } catch (_) {
-    // silently ignore
+  } catch (_) { /* non-fatal */ }
+};
+
+/* ─── Start workout for a day ────────────────────────────────────────────── */
+const startDayWorkout = async (dayName) => {
+  conflictMessage.value = '';
+  saveError.value       = '';
+  const planId = expandedPlanId.value;
+
+  if (activeSession.value) {
+    if (activeSession.value.workoutDayName === dayName) {
+      selectedDay.value = dayName;
+      activeTab.value   = 'dayDetails';
+      return;
+    }
+    conflictMessage.value =
+      `You already have a workout in progress (${activeSession.value.workoutDayName}). ` +
+      'Please finish or end it before starting another.';
+    return;
+  }
+
+  try {
+    const res  = await fetch(`${API_BASE}/api/workout-sessions/start`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ workoutPlanId: planId, workoutDayName: dayName, workoutDate: today() }),
+    });
+    const data = await res.json();
+
+    if (res.status === 409) {
+      conflictMessage.value = data.error || 'A workout is already in progress.';
+      if (data.activeSession) activeSession.value = data.activeSession;
+      return;
+    }
+    if (!res.ok) throw new Error(data?.error || 'Failed to start workout session.');
+
+    activeSession.value    = data.session;
+    hasActiveWorkout.value = true;
+    selectedDay.value      = dayName;
+
+    // Build session exercises from the expanded plan
+    sessionExercises.value = (expandedPlanData.value?.exercises || []).map((ex) => ({
+      ...ex, sessionSets: buildInitialSets(ex),
+    }));
+
+    activeTab.value = 'dayDetails';
+  } catch (err) {
+    saveError.value = err?.message || 'Failed to start workout.';
   }
 };
 
-onMounted(() => {
-  loadWorkoutLists();
-  checkActiveSession();
+/* ─── Complete workout ───────────────────────────────────────────────────── */
+const completeWorkout = async () => {
+  saving.value      = true;
+  saveMessage.value = '';
+  saveError.value   = '';
+
+  try {
+    const sessionPayload = {
+      planId:           expandedPlanId.value,
+      planName:         expandedPlanData.value?.metadata?.name || '',
+      workoutDate:      activeSession.value?.workoutDate || today(),
+      workoutSessionId: activeSession.value?.id || null,
+      exercises: dayExercises.value.map((ex) => ({
+        exerciseId: ex.exerciseId, name: ex.name,
+        workoutType: ex.workoutType || 'Strength',
+        scheduleGroup: ex.scheduleGroup, sets: ex.sessionSets,
+      })),
+    };
+
+    const logRes = await fetch(`${API_BASE}/api/workout-log/session`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sessionPayload), credentials: 'include',
+    });
+    if (!logRes.ok) {
+      const errBody = await logRes.json().catch(() => ({}));
+      throw new Error(errBody?.error || 'Failed to save session log.');
+    }
+
+    if (activeSession.value?.id) {
+      await fetch(`${API_BASE}/api/workout-sessions/complete/${activeSession.value.id}`, {
+        method: 'POST', credentials: 'include',
+      });
+    }
+
+    saveMessage.value      = '✓ Workout complete! Great work!';
+    activeSession.value    = null;
+    hasActiveWorkout.value = false;
+
+    setTimeout(() => {
+      saveMessage.value = '';
+      activeTab.value   = 'overview';
+      selectedDay.value = '';
+    }, 2000);
+  } catch (err) {
+    saveError.value = err?.message || 'Failed to complete workout.';
+  } finally {
+    saving.value = false;
+  }
+};
+
+/* ─── End without saving ─────────────────────────────────────────────────── */
+const endWithoutSaving = async () => {
+  if (activeSession.value?.id) {
+    try {
+      await fetch(`${API_BASE}/api/workout-sessions/cancel/${activeSession.value.id}`, {
+        method: 'POST', credentials: 'include',
+      });
+    } catch (_) { /* non-fatal */ }
+  }
+  activeSession.value    = null;
+  hasActiveWorkout.value = false;
+  activeTab.value        = 'overview';
+  selectedDay.value      = '';
+  conflictMessage.value  = '';
+};
+
+/* ─── Navigation helpers ─────────────────────────────────────────────────── */
+const startBuilder = () => router.push({ name: 'workout_builder' });
+const openInBuilder = (planId) => {
+  const pid = String(planId || '').trim();
+  router.push(pid ? { name: 'workout_builder', query: { planId: pid } } : { name: 'workout_builder' });
+};
+
+const goToInProgress = () => {
+  if (hasActiveWorkout.value && expandedPlanId.value) {
+    selectedDay.value = activeSession.value?.workoutDayName || selectedDay.value;
+    activeTab.value   = 'dayDetails';
+  }
+};
+
+/* ─── Lifecycle ──────────────────────────────────────────────────────────── */
+onMounted(async () => {
+  await loadWorkoutLists();
+  await checkActiveSession();
 });
 </script>
 
 <template>
-  <div class="app-page-shell">
+  <div class="app-page-shell wl-page">
     <div class="app-page-canvas app-inner-shell">
+
+      <!-- ── Hero header ─────────────────────────────────────────────────── -->
       <section class="builder-hero ff-page-header app-header-gradient">
         <div class="builder-hero__content">
           <div class="builder-hero__text">
             <h2>Workout Log</h2>
-            <p class="builder-hero__subtitle">View workout plans saved from Workout Builder and reopen any plan in edit mode.</p>
+            <p class="builder-hero__subtitle">View workout plans saved from Workout Builder and start a workout.</p>
           </div>
           <div class="builder-hero__actions">
             <DateRangePicker />
           </div>
         </div>
+        <!-- Action toolbar inside hero -->
+        <div class="wl-toolbar">
+          <button
+            type="button"
+            :class="['wl-btn', hasActiveWorkout ? 'wl-btn--active' : 'wl-btn--secondary']"
+            @click="goToInProgress"
+          >
+            <i class="fa-solid fa-clock-rotate-left"></i> Workouts In Progress
+          </button>
+          <button type="button" class="wl-btn" @click="startBuilder">
+            <i class="fa-solid fa-dumbbell"></i> Open Workout Builder
+          </button>
+        </div>
       </section>
 
-      <div class="workout-log-toolbar">
-        <button
-          type="button"
-          :class="['btn-builder', hasActiveWorkout ? 'btn-builder--active' : 'btn-builder--secondary']"
-          @click="goToInProgress"
-        >
-          <i class="fa-solid fa-clock-rotate-left me-2"></i>Workouts In Progress
-        </button>
-        <button type="button" class="btn-builder" @click="startBuilder">
-          <i class="fa-solid fa-dumbbell me-2"></i>Open Workout Builder
-        </button>
+      <!-- ── Banners ─────────────────────────────────────────────────────── -->
+      <div v-if="conflictMessage" class="wl-banner wl-banner--warn">
+        <i class="fa-solid fa-triangle-exclamation"></i> {{ conflictMessage }}
+        <button type="button" class="wl-banner-dismiss" @click="conflictMessage = ''">✕</button>
+      </div>
+      <div v-if="saveError" class="wl-banner wl-banner--error">
+        <i class="fa-solid fa-circle-xmark"></i> {{ saveError }}
+        <button type="button" class="wl-banner-dismiss" @click="saveError = ''">✕</button>
+      </div>
+      <div v-if="saveMessage" class="wl-banner wl-banner--success">
+        <i class="fa-solid fa-circle-check"></i> {{ saveMessage }}
       </div>
 
-      <section class="workout-stats row g-3 mt-0" v-if="workoutLists.length > 0">
-        <div class="col-md-4">
-          <article class="workout-stat-card panel-bg app-section-card">
-            <span>Saved Plans</span>
-            <strong>{{ summaryStats.totalPlans }}</strong>
-          </article>
-        </div>
-        <div class="col-md-4">
-          <article class="workout-stat-card panel-bg app-section-card">
-            <span>Average Duration</span>
-            <strong>{{ summaryStats.averageDuration }} min</strong>
-          </article>
-        </div>
-        <div class="col-md-4">
-          <article class="workout-stat-card panel-bg app-section-card">
-            <span>Total Exercises</span>
-            <strong>{{ summaryStats.totalExercises }}</strong>
-          </article>
-        </div>
+      <!-- ── Stats row ───────────────────────────────────────────────────── -->
+      <section v-if="workoutLists.length > 0" class="wl-stats">
+        <article class="wl-stat-card app-section-card">
+          <span>Saved Plans</span>
+          <strong>{{ summaryStats.totalPlans }}</strong>
+        </article>
+        <article class="wl-stat-card app-section-card">
+          <span>Avg Duration</span>
+          <strong>{{ summaryStats.averageDuration }} min</strong>
+        </article>
+        <article class="wl-stat-card app-section-card">
+          <span>Total Exercises</span>
+          <strong>{{ summaryStats.totalExercises }}</strong>
+        </article>
       </section>
 
-      <section class="panel panel-bg workout-section app-section-card">
-        <header class="panel-header">
-          <h5>Saved Workout Plans</h5>
-        </header>
+      <!-- ── Tab bar ─────────────────────────────────────────────────────── -->
+      <nav class="wl-tabs" role="tablist">
+        <button
+          type="button" role="tab"
+          :class="['wl-tab', activeTab === 'overview' ? 'wl-tab--active' : '']"
+          @click="activeTab = 'overview'"
+        >
+          <i class="fa-solid fa-list-ul"></i> Overview
+        </button>
+        <button
+          type="button" role="tab"
+          :class="['wl-tab', activeTab === 'dayDetails' ? 'wl-tab--active' : '', !selectedDay ? 'wl-tab--disabled' : '']"
+          :disabled="!selectedDay"
+          @click="selectedDay && (activeTab = 'dayDetails')"
+        >
+          <i class="fa-solid fa-dumbbell"></i> Day Details
+          <span v-if="selectedDay" class="wl-tab-badge">{{ selectedDay }}</span>
+        </button>
+      </nav>
 
-        <div v-if="loading" class="panel-body workout-empty-state">
-          <p>Loading workout plans...</p>
-        </div>
+      <!-- ══ OVERVIEW TAB ════════════════════════════════════════════════ -->
+      <div v-show="activeTab === 'overview'" class="wl-tab-panel">
 
-        <div v-else-if="error" class="panel-body workout-empty-state">
+        <!-- Loading -->
+        <div v-if="loading" class="wl-empty"><p>Loading workout plans…</p></div>
+
+        <!-- Error -->
+        <div v-else-if="error" class="wl-empty">
           <p>{{ error }}</p>
-          <button type="button" class="btn-builder" @click="loadWorkoutLists">Retry</button>
+          <button type="button" class="wl-btn" @click="loadWorkoutLists">Retry</button>
         </div>
 
-        <div v-else-if="workoutLists.length === 0" class="panel-body workout-empty-state">
-          <h6>No workouts yet</h6>
-          <p>Create your first workout in Workout Builder.</p>
-          <button type="button" class="btn-builder" @click="startBuilder">Create Workout</button>
+        <!-- Empty -->
+        <div v-else-if="workoutLists.length === 0" class="wl-empty app-section-card">
+          <i class="fa-solid fa-dumbbell wl-empty-icon"></i>
+          <h6>No workout plans yet</h6>
+          <p>Create your first plan in Workout Builder.</p>
+          <button type="button" class="wl-btn" @click="startBuilder">Create Workout</button>
         </div>
 
-        <div v-else class="panel-body workout-log-grid">
-          <WorkoutCard
+        <!-- ── Accordion plan list ──────────────────────────────────────── -->
+        <div v-else class="wl-accordion">
+          <div
             v-for="plan in workoutLists"
             :key="plan.planId"
-            :plan="plan"
-            @open-session="openSession"
-            @open-builder="openInBuilder"
-          />
+            :class="['wl-plan', expandedPlanId === String(plan.planId) ? 'wl-plan--expanded' : '']"
+          >
+            <!-- Plan row header -->
+            <div class="wl-plan__header" @click="togglePlan(plan.planId)">
+              <div class="wl-plan__left">
+                <div class="wl-plan__chevron">
+                  <i :class="expandedPlanId === String(plan.planId) ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
+                </div>
+                <div class="wl-plan__info">
+                  <span class="wl-plan__name">{{ plan.name || plan.planName || 'Unnamed Plan' }}</span>
+                  <div class="wl-plan__meta">
+                    <span v-if="plan.estimatedDuration"><i class="fa-solid fa-clock"></i> {{ plan.estimatedDuration }} min</span>
+                    <span v-if="plan.exerciseCount"><i class="fa-solid fa-list-check"></i> {{ plan.exerciseCount }} exercises</span>
+                    <span v-if="plan.type || plan.workoutType" class="wl-plan__tag">{{ plan.type || plan.workoutType }}</span>
+                    <span v-if="plan.updatedAtLabel"><i class="fa-solid fa-calendar"></i> {{ plan.updatedAtLabel }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="wl-plan__right" @click.stop>
+                <span v-if="expandedPlanId === String(plan.planId)" class="wl-plan__selected-badge">
+                  <i class="fa-solid fa-circle-check"></i> Selected
+                </span>
+                <button type="button" class="wl-btn-edit" @click="openInBuilder(plan.planId)">
+                  <i class="fa-solid fa-pencil"></i> Edit Plan
+                </button>
+              </div>
+            </div>
+
+            <!-- Expanded: day cards -->
+            <div v-if="expandedPlanId === String(plan.planId)" class="wl-plan__body">
+              <div v-if="expandedLoading" class="wl-plan__loading">Loading days…</div>
+
+              <div v-else-if="!expandedPlanData || exercisesByGroup.length === 0" class="wl-plan__loading">
+                No scheduled days found. <button type="button" class="wl-link" @click="openInBuilder(plan.planId)">Open in Builder</button>
+              </div>
+
+              <div v-else class="wl-day-grid">
+                <article
+                  v-for="group in exercisesByGroup"
+                  :key="group.name"
+                  class="wl-day-card app-section-card"
+                  :class="{ 'wl-day-card--active': activeSession && activeSession.workoutDayName === group.name }"
+                >
+                  <!-- Day card header -->
+                  <div class="wl-day-card__header">
+                    <div class="wl-day-card__title">
+                      <i class="fa-solid fa-calendar-day wl-day-icon"></i>
+                      <h4>{{ group.name }}</h4>
+                      <span v-if="activeSession && activeSession.workoutDayName === group.name" class="wl-in-progress-chip">
+                        In Progress
+                      </span>
+                    </div>
+                    <div class="wl-day-card__meta">
+                      <span><i class="fa-solid fa-list-check"></i> {{ group.exercises.length }} exercise{{ group.exercises.length !== 1 ? 's' : '' }}</span>
+                      <span v-if="expandedPlanData?.metadata?.estimatedDuration">
+                        <i class="fa-solid fa-clock"></i>
+                        ~{{ Math.round(expandedPlanData.metadata.estimatedDuration / (exercisesByGroup.length || 1)) }} min
+                      </span>
+                      <span v-if="expandedPlanData?.metadata?.type">
+                        <i class="fa-solid fa-tag"></i> {{ expandedPlanData.metadata.type }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Exercise preview -->
+                  <ul class="wl-day-card__exercises">
+                    <li v-for="ex in group.exercises" :key="ex.id" class="wl-day-card__ex-row">
+                      <span class="wl-ex-name">{{ ex.name }}</span>
+                      <span class="wl-ex-detail">
+                        <template v-if="isCardio(ex)">{{ ex.duration || '—' }} min</template>
+                        <template v-else>{{ ex.sets || '—' }} × {{ ex.reps || '—' }}<template v-if="ex.weight"> @ {{ ex.weight }} lb</template></template>
+                      </span>
+                    </li>
+                  </ul>
+
+                  <!-- Action -->
+                  <div class="wl-day-card__footer">
+                    <button
+                      v-if="activeSession && activeSession.workoutDayName === group.name"
+                      type="button" class="wl-btn-resume"
+                      @click="activeTab = 'dayDetails'"
+                    >
+                      <i class="fa-solid fa-circle-play"></i> Resume Workout
+                    </button>
+                    <button
+                      v-else
+                      type="button" class="wl-btn-start"
+                      @click="startDayWorkout(group.name)"
+                    >
+                      <i class="fa-solid fa-play"></i> Start Workout
+                    </button>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </div>
         </div>
-      </section>
+      </div>
+
+      <!-- ══ DAY DETAILS TAB ═════════════════════════════════════════════ -->
+      <div v-show="activeTab === 'dayDetails'" class="wl-tab-panel">
+
+        <template v-if="selectedDay && dayExercises.length > 0">
+          <!-- Day sub-header + progress -->
+          <div class="wl-day-detail-header">
+            <div class="wl-day-detail-header__left">
+              <h4>{{ selectedDay }}</h4>
+              <span class="wl-day-detail-count">{{ dayExercises.length }} exercises</span>
+            </div>
+            <div class="wl-day-detail-header__progress">
+              <div class="wl-progress-bar">
+                <div class="wl-progress-fill" :style="{ width: progressPct + '%' }"></div>
+              </div>
+              <span class="wl-progress-label">{{ totalCompleted }} / {{ totalSets }} sets ({{ progressPct }}%)</span>
+            </div>
+          </div>
+
+          <!-- Exercises -->
+          <div class="wl-exercise-list">
+            <ExerciseSessionCard
+              v-for="exercise in dayExercises"
+              :key="exercise.id"
+              :exercise="exercise"
+              :is-cardio="isCardio(exercise)"
+              @add-set="addSet"
+              @remove-set="removeSet"
+              @update-set="updateSet"
+            />
+          </div>
+        </template>
+
+        <div v-else class="wl-empty app-section-card">
+          <i class="fa-solid fa-dumbbell wl-empty-icon"></i>
+          <p>No day selected. Go to <strong>Overview</strong>, pick a workout plan and click <strong>Start Workout</strong> on a day.</p>
+          <button type="button" class="wl-btn" @click="activeTab = 'overview'">Go to Overview</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Sticky bottom bar (Day Details only) ───────────────────────────── -->
+    <div v-if="activeTab === 'dayDetails' && selectedDay && dayExercises.length > 0" class="wl-bottom-bar">
+      <div class="wl-bottom-bar__inner">
+        <span class="wl-bottom-bar__label">{{ totalCompleted }} / {{ totalSets }} sets done</span>
+        <div class="wl-bottom-bar__actions">
+          <button type="button" class="wl-btn-end" @click="endWithoutSaving">
+            <i class="fa-solid fa-xmark"></i> End Workout
+          </button>
+          <button type="button" class="wl-btn-complete" :disabled="saving" @click="completeWorkout">
+            <i class="fa-solid fa-flag-checkered"></i>
+            {{ saving ? 'Saving…' : 'Complete Workout' }}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
-            <style scoped>
-            .builder-hero__content {
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              gap: 16px;
-              flex-wrap: wrap;
-            }
+<style scoped>
+.wl-page { padding-bottom: 100px; }
 
-            .builder-hero__text h2 {
-              margin: 0 0 4px;
-            }
+/* ── Hero ──────────────────────────────────────────────────────────────── */
+.builder-hero__content {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 16px; flex-wrap: wrap;
+}
+.builder-hero__text h2 { margin: 0 0 4px; }
+.builder-hero__subtitle { margin: 0; opacity: 0.85; font-size: 0.92rem; }
 
-            .builder-hero__subtitle {
-              margin: 0;
-              opacity: 0.85;
-              font-size: 0.92rem;
-            }
+.wl-toolbar {
+  display: flex; justify-content: flex-end; gap: 10px;
+  margin-top: 12px; flex-wrap: wrap;
+}
 
-            .workout-log-toolbar {
-              display: flex;
-              justify-content: flex-end;
-              gap: 10px;
-            }
+/* ── Buttons ───────────────────────────────────────────────────────────── */
+.wl-btn {
+  border: none; border-radius: 10px; background: #2563eb;
+  color: #fff; padding: 10px 14px; font-weight: 700;
+  font-size: 0.85rem; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px;
+  transition: background 0.15s;
+}
+.wl-btn:hover { background: #1d4ed8; }
+.wl-btn--secondary { background: #f1f5f9; color: #1e40af; border: 1px solid #bfdbfe; }
+.wl-btn--secondary:hover { background: #dbeafe; }
+.wl-btn--active { background: #22c55e; }
+.wl-btn--active:hover { background: #16a34a; }
 
-            .btn-builder--secondary {
-              background: #f1f5f9;
-              color: #1e40af;
-              border: 1px solid #bfdbfe;
-            }
+.wl-link {
+  background: none; border: none; color: #2563eb; font-weight: 700;
+  cursor: pointer; padding: 0; font-size: inherit; text-decoration: underline;
+}
 
-            .btn-builder--secondary:hover {
-              background: #dbeafe;
-            }
+/* ── Banners ────────────────────────────────────────────────────────────── */
+.wl-banner {
+  display: flex; align-items: center; gap: 10px;
+  border-radius: 10px; padding: 12px 16px;
+  font-size: 0.88rem; font-weight: 600; margin-bottom: 12px;
+}
+.wl-banner--warn    { background: #fef9c3; border: 1px solid #fde047; color: #854d0e; }
+.wl-banner--error   { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; }
+.wl-banner--success { background: #dcfce7; border: 1px solid #86efac; color: #166534; }
+.wl-banner-dismiss  {
+  margin-left: auto; background: none; border: none;
+  font-size: 1rem; cursor: pointer; color: inherit; opacity: 0.6;
+}
+.wl-banner-dismiss:hover { opacity: 1; }
 
-            .btn-builder--active {
-              background: #22c55e;
-              color: #fff;
-              border: none;
-            }
+/* ── Stats ──────────────────────────────────────────────────────────────── */
+.wl-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  margin-bottom: 16px;
+}
+.wl-stat-card {
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px; padding: 14px; display: grid; gap: 6px;
+}
+.wl-stat-card span   { color: var(--text-color-secondary, #6b7280); font-size: 0.82rem; }
+.wl-stat-card strong { color: var(--text-color, #111827); font-size: 1.25rem; font-weight: 800; }
 
-            .btn-builder--active:hover {
-              background: #16a34a;
-            }
+/* ── Tabs ───────────────────────────────────────────────────────────────── */
+.wl-tabs {
+  display: flex; gap: 4px;
+  border-bottom: 2px solid var(--border-color, #e5e7eb);
+  margin-bottom: 20px;
+}
+.wl-tab {
+  background: none; border: none;
+  border-bottom: 2px solid transparent; margin-bottom: -2px;
+  padding: 10px 18px; font-size: 0.88rem; font-weight: 700;
+  cursor: pointer; color: var(--text-color-secondary, #6b7280);
+  display: flex; align-items: center; gap: 7px;
+  transition: color 0.15s, border-color 0.15s;
+  border-radius: 8px 8px 0 0;
+}
+.wl-tab:hover      { color: #2563eb; }
+.wl-tab--active    { color: #2563eb; border-bottom-color: #2563eb; }
+.wl-tab--disabled  { opacity: 0.4; cursor: not-allowed; }
+.wl-tab-badge {
+  background: #dbeafe; color: #1d4ed8;
+  border-radius: 999px; padding: 1px 9px;
+  font-size: 0.72rem; font-weight: 800;
+}
+.wl-tab-panel { min-height: 200px; }
 
-            .btn-builder {
-              border: none;
-              border-radius: 10px;
-              background: #2563eb;
-              color: #fff;
-              padding: 10px 14px;
-              font-weight: 700;
-            }
+/* ── Empty state ────────────────────────────────────────────────────────── */
+.wl-empty {
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 14px; padding: 36px 24px; text-align: center;
+  display: grid; gap: 12px; justify-items: center;
+  color: var(--text-color-secondary, #6b7280);
+}
+.wl-empty h6    { margin: 0; color: var(--text-color, #111827); font-size: 1rem; }
+.wl-empty p     { margin: 0; }
+.wl-empty-icon  { font-size: 2rem; color: #bfdbfe; }
 
-            .workout-stat-card {
-              border: 1px solid var(--border-color);
-              border-radius: 12px;
-              padding: 14px;
-              display: grid;
-              gap: 6px;
-              box-shadow: none;
-            }
+/* ── Accordion ──────────────────────────────────────────────────────────── */
+.wl-accordion { display: grid; gap: 10px; }
 
-            .workout-stat-card span { color: var(--text-color-secondary); font-size: 0.82rem; }
-            .workout-stat-card strong { color: var(--text-color); font-size: 1.25rem; }
+.wl-plan {
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 14px; background: #fff;
+  overflow: hidden; transition: border-color 0.15s, box-shadow 0.15s;
+}
+.wl-plan--expanded {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.10);
+}
 
-            .workout-section {
-              border: 1px solid var(--border-color);
-              border-radius: 12px;
-              box-shadow: none;
-            }
+.wl-plan__header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; padding: 16px 18px; cursor: pointer;
+  user-select: none;
+  transition: background 0.12s;
+}
+.wl-plan__header:hover { background: #f8fafc; }
 
-            .workout-empty-state {
-              display: grid;
-              gap: 10px;
-              justify-items: start;
-            }
+.wl-plan__left   { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
+.wl-plan__chevron {
+  color: #2563eb; width: 20px; text-align: center;
+  flex-shrink: 0; font-size: 0.85rem;
+}
+.wl-plan__info   { display: grid; gap: 5px; min-width: 0; }
+.wl-plan__name   { font-size: 1rem; font-weight: 800; color: var(--text-color, #111827); }
+.wl-plan__meta {
+  display: flex; gap: 14px; flex-wrap: wrap;
+  font-size: 0.8rem; color: var(--text-color-secondary, #6b7280);
+}
+.wl-plan__meta span { display: flex; align-items: center; gap: 4px; }
+.wl-plan__meta i    { color: #3b82f6; }
+.wl-plan__tag {
+  background: #dbeafe; color: #1e40af;
+  border-radius: 999px; padding: 1px 9px;
+  font-size: 0.75rem; font-weight: 700;
+}
 
-            .workout-empty-state h6 {
-              margin: 0;
-              font-size: 1rem;
-              color: var(--text-color);
-            }
+.wl-plan__right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.wl-plan__selected-badge {
+  background: #dbeafe; color: #1d4ed8;
+  border-radius: 999px; padding: 3px 11px;
+  font-size: 0.75rem; font-weight: 800;
+  display: flex; align-items: center; gap: 5px;
+}
+.wl-btn-edit {
+  background: #f1f5f9; border: 1px solid #cbd5e1;
+  color: #475569; border-radius: 8px; padding: 7px 12px;
+  font-size: 0.8rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; gap: 5px; transition: background 0.12s;
+}
+.wl-btn-edit:hover { background: #e0e7ef; }
 
-            .workout-empty-state p {
-              margin: 0;
-              color: var(--text-color-secondary);
-            }
+.wl-plan__body { border-top: 1px solid var(--border-color, #e5e7eb); padding: 16px 18px; }
+.wl-plan__loading { color: var(--text-color-secondary, #6b7280); font-size: 0.88rem; padding: 8px 0; }
 
-            .workout-log-grid {
-              display: grid;
-              gap: 12px;
-            }
-            </style>
+/* ── Day cards grid ─────────────────────────────────────────────────────── */
+.wl-day-grid { display: grid; gap: 14px; }
+
+.wl-day-card {
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px; padding: 16px; background: #fff;
+  display: grid; gap: 12px; transition: border-color 0.15s, box-shadow 0.15s;
+}
+.wl-day-card--active {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34,197,94,0.12);
+}
+
+.wl-day-card__header  { display: grid; gap: 8px; }
+.wl-day-card__title   { display: flex; align-items: center; gap: 10px; }
+.wl-day-card__title h4 {
+  margin: 0; font-size: 1rem; font-weight: 800;
+  color: var(--text-color, #111827); flex: 1;
+}
+.wl-day-icon { color: #3b82f6; }
+.wl-in-progress-chip {
+  background: #dcfce7; color: #166534; border: 1px solid #86efac;
+  border-radius: 999px; padding: 2px 10px; font-size: 0.72rem; font-weight: 800;
+}
+.wl-day-card__meta {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  color: var(--text-color-secondary, #6b7280); font-size: 0.8rem;
+}
+.wl-day-card__meta span { display: flex; align-items: center; gap: 4px; }
+.wl-day-card__meta i    { color: #3b82f6; }
+
+.wl-day-card__exercises {
+  list-style: none; padding: 0; margin: 0;
+  display: grid; gap: 5px;
+  border-top: 1px solid var(--border-color, #f3f4f6); padding-top: 10px;
+}
+.wl-day-card__ex-row {
+  display: flex; justify-content: space-between;
+  align-items: center; gap: 8px; font-size: 0.83rem;
+}
+.wl-ex-name   { color: var(--text-color, #111827); font-weight: 600; }
+.wl-ex-detail { color: var(--text-color-secondary, #6b7280); white-space: nowrap; }
+
+.wl-day-card__footer { display: flex; justify-content: flex-end; gap: 10px; }
+
+.wl-btn-start {
+  background: #2563eb; border: none; color: #fff;
+  border-radius: 10px; padding: 10px 20px;
+  font-size: 0.85rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; gap: 7px; transition: background 0.15s;
+}
+.wl-btn-start:hover { background: #1d4ed8; }
+.wl-btn-resume {
+  background: #22c55e; border: none; color: #fff;
+  border-radius: 10px; padding: 10px 20px;
+  font-size: 0.85rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; gap: 7px; transition: background 0.15s;
+}
+.wl-btn-resume:hover { background: #16a34a; }
+
+/* ── Day Details tab ────────────────────────────────────────────────────── */
+.wl-day-detail-header {
+  display: flex; flex-wrap: wrap;
+  justify-content: space-between; align-items: flex-start; gap: 14px;
+  padding: 16px; background: var(--panel-bg, #f8fafc);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px; margin-bottom: 16px;
+}
+.wl-day-detail-header__left  { display: flex; align-items: center; gap: 12px; }
+.wl-day-detail-header__left h4 { margin: 0; font-size: 1rem; font-weight: 800; }
+.wl-day-detail-count {
+  background: #dbeafe; color: #1d4ed8;
+  border-radius: 999px; padding: 2px 10px;
+  font-size: 0.75rem; font-weight: 700;
+}
+.wl-day-detail-header__progress { display: grid; gap: 6px; min-width: 200px; }
+
+.wl-progress-bar {
+  height: 8px; background: #e5e7eb;
+  border-radius: 999px; overflow: hidden;
+}
+.wl-progress-fill {
+  height: 100%; background: #22c55e;
+  border-radius: 999px; transition: width 0.35s ease;
+}
+.wl-progress-label { color: var(--text-color-secondary, #6b7280); font-size: 0.78rem; }
+.wl-exercise-list  { display: grid; gap: 12px; }
+
+/* ── Sticky bottom bar ──────────────────────────────────────────────────── */
+.wl-bottom-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+  background: rgba(255,255,255,0.96);
+  border-top: 1px solid var(--border-color, #e5e7eb);
+  backdrop-filter: blur(8px); padding: 12px 16px;
+}
+.wl-bottom-bar__inner {
+  max-width: 960px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.wl-bottom-bar__label   { font-size: 0.88rem; font-weight: 700; color: var(--text-color, #111827); }
+.wl-bottom-bar__actions { display: flex; gap: 10px; }
+
+.wl-btn-complete {
+  background: #22c55e; border: none; color: #fff;
+  border-radius: 10px; padding: 10px 18px;
+  font-size: 0.88rem; font-weight: 800; cursor: pointer;
+  display: flex; align-items: center; gap: 7px; transition: background 0.15s;
+}
+.wl-btn-complete:hover:not(:disabled) { background: #16a34a; }
+.wl-btn-complete:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.wl-btn-end {
+  background: #f1f5f9; border: 1px solid #cbd5e1;
+  color: #475569; border-radius: 10px; padding: 10px 16px;
+  font-size: 0.88rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; gap: 7px; transition: background 0.15s;
+}
+.wl-btn-end:hover { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .wl-stats { grid-template-columns: repeat(3, 1fr); }
+  .wl-plan__header { flex-direction: column; align-items: flex-start; }
+  .wl-plan__right  { width: 100%; justify-content: flex-end; }
+  .wl-tabs { overflow-x: auto; }
+  .wl-day-detail-header { flex-direction: column; }
+  .wl-bottom-bar__inner { flex-direction: column; align-items: stretch; }
+  .wl-bottom-bar__actions { justify-content: flex-end; }
+}
+</style>
