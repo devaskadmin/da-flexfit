@@ -1,1 +1,57 @@
+# ── Archive & compressed files ───────────────────────────────────────────────
 *.zip
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.z
+
+# ── Large binary / executable files ──────────────────────────────────────────
+*.exe
+*.dll
+*.so
+*.dylib
+*.dmg
+*.iso
+*.img
+*.apk
+*.ipa
+
+# ── Database dumps ────────────────────────────────────────────────────────────
+*.sql.gz
+*.dump
+*.bak
+
+# ── Large media files ─────────────────────────────────────────────────────────
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.wmv
+*.flv
+*.psd
+*.ai
+
+# ── OS / editor noise ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+*.suo
+*.sw?
+
+# ── Dependencies ──────────────────────────────────────────────────────────────
+node_modules/
+
+# ── Build outputs ─────────────────────────────────────────────────────────────
+dist/
+build/
+.vite/
+
+# ── Secrets / env ─────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
