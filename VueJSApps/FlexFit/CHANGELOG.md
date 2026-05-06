@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.77.7b2] - 2026-05-06
+
+### Overview
+Visual polish pass on the cardio logging table introduced in 0.77.7b. Addresses the sparse, stretched appearance by constraining the table width, fixing column proportions, and adding subtle set-group highlighting.
+
+### Changed — Frontend (`ExerciseSessionCard.vue`)
+- **Table max-width**: Wrapped the cardio table in a `.cardio-table-wrap` container capped at `900px`, left-aligned inside the exercise card. The card itself remains full width.
+- **Column widths** updated from `40px / 1fr / 120px` → `70px / 1fr / 260px`:
+  - Set column widened to `70px` for better number legibility.
+  - Value column widened to `260px` — inputs now fill that column properly without overflow.
+- **Value inputs**: `width: 100%; box-sizing: border-box` inside the Value column. Inputs no longer stretch across the entire card.
+- **First-row tint per set**: The Duration row (first row of each set group) has a subtle blue `rgba(59,130,246,0.04)` tint — turns green when the set is completed — making set boundaries easy to scan.
+- **Completed Exercise row**: Gets a `border-top` separator to visually distinguish it from the data rows above.
+- **Mobile (≤ 600 px)**: `max-width` removed (table becomes full width); columns tighten to `44px / 1fr / 130px`; font sizes reduce slightly. No horizontal scrolling.
+- **Removed stale `@media` block**: Deleted leftover class selectors from 0.77.7a (`cardio-head`, `cardio-row-primary`, etc.) that were no longer used.
+
+### Not Changed
+- Cardio field data (`duration`, `caloriesBurned`, `distanceMiles`, `speedMph`, `done`) — untouched.
+- Strength exercise layout — untouched.
+- Backend, Workout Builder, Overview tab, History tab, Preview mode.
+
+---
+
 ## [0.77.7b] - 2026-05-06
 
 ### Overview
