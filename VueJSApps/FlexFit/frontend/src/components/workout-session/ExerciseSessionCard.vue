@@ -245,7 +245,7 @@ const allDone = computed(() => completedSets.value === totalSets.value && totalS
 
     <!-- ── CARDIO Sets Table ─────────────────────────────────────────── -->
     <div v-if="workoutType === 'cardio'" class="cardio-table-wrap">
-    <div class="cardio-3col-table">
+      <div class="cardio-3col-table">
       <!-- Header -->
       <div class="c3-head">
         <span class="c3-col-set">Set</span>
@@ -350,7 +350,6 @@ const allDone = computed(() => completedSets.value === totalSets.value && totalS
           </div>
         </div>
       </div>
-    </div>
     </div>
 
     <!-- Add Set -->
