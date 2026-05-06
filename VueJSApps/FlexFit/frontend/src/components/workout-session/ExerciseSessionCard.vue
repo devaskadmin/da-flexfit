@@ -96,7 +96,8 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
     </div>
 
     <!-- ── CARDIO Sets Table ─────────────────────────────────────────── -->
-    <div v-if="isCardio" class="cardio-3col-table">
+    <div v-if="isCardio" class="cardio-table-wrap">
+    <div class="cardio-3col-table">
       <!-- Header -->
       <div class="c3-head">
         <span class="c3-col-set">Set</span>
@@ -201,6 +202,7 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
           </div>
         </div>
       </div>
+    </div>
     </div>
 
     <!-- Add Set -->
@@ -355,6 +357,12 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
   background: #fff;
 }
 
+/* ─── Cardio Table Wrapper (constrains width) */
+.cardio-table-wrap {
+  max-width: 900px;
+  width: 100%;
+}
+
 /* ─── Cardio 3-Column Table ───────────────── */
 .cardio-3col-table {
   display: flex;
@@ -362,16 +370,22 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
   border: 1px solid var(--border-color, #e5e7eb);
   border-radius: 10px;
   overflow: hidden;
+  width: 100%;
+}
+
+/* Shared column grid: Set(70px) | Info(flex) | Value(260px) */
+.c3-head,
+.c3-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 260px;
+  align-items: center;
 }
 
 /* Header row */
 .c3-head {
-  display: grid;
-  grid-template-columns: 40px 1fr 120px;
-  gap: 0;
   background: #f9fafb;
   border-bottom: 1px solid var(--border-color, #e5e7eb);
-  padding: 6px 10px;
+  padding: 7px 12px;
 }
 
 .c3-head span {
@@ -398,16 +412,22 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
 
 /* Individual field row */
 .c3-row {
-  display: grid;
-  grid-template-columns: 40px 1fr 120px;
-  gap: 0;
-  align-items: center;
-  padding: 5px 10px;
+  padding: 5px 12px;
   border-bottom: 1px solid #f3f4f6;
+  gap: 0;
 }
 
 .c3-row:last-child {
   border-bottom: none;
+}
+
+/* First row of each set gets a subtle tint to mark the group start */
+.c3-row:first-child {
+  background: rgba(59, 130, 246, 0.04);
+}
+
+.c3-set-group.c3-set-done .c3-row:first-child {
+  background: rgba(34, 197, 94, 0.08);
 }
 
 .c3-col-set {
@@ -418,23 +438,40 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
 }
 
 .c3-set-num {
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   font-weight: 800;
   color: #374151;
 }
 
 .c3-col-info {
-  font-size: 0.83rem;
+  font-size: 0.84rem;
   color: #374151;
   font-weight: 500;
-  padding-right: 10px;
+  padding: 0 12px 0 0;
 }
 
 .c3-col-value {
   min-width: 0;
+  padding: 3px 0;
 }
 
-/* Completed row */
+/* Value inputs — constrained to their column */
+.c3-col-value .set-input {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Completed row — slight top separation */
+.c3-row-done {
+  border-top: 1px solid var(--border-color, #e5e7eb) !important;
+  background: none !important;
+}
+
+.c3-set-group.c3-set-done .c3-row-done {
+  background: rgba(34, 197, 94, 0.04) !important;
+}
+
 .c3-done-cell {
   display: flex;
   align-items: center;
@@ -526,81 +563,26 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
   color: var(--text-color-secondary, #6b7280);
 }
 
-/* ─── Cardio Mobile Layout ────────────────── */
-@media (max-width: 575px) {
-  /* Hide the desktop-only header */
-  .cardio-head {
-    display: none;
+/* ─── Cardio Mobile ───────────────────────── */
+@media (max-width: 600px) {
+  .cardio-table-wrap {
+    max-width: 100%;
   }
 
-  /* Row 1: Set# | [input+label stacked] | Done | Remove */
-  .cardio-row-primary {
-    grid-template-columns: 28px 1fr auto auto;
-    gap: 6px;
+  .c3-head,
+  .c3-row {
+    grid-template-columns: 44px 1fr 130px;
   }
 
-  /* Show the label below the duration input on mobile */
-  .cardio-inline-label {
-    display: block;
-    font-size: 0.68rem;
-    font-weight: 600;
-    color: #9ca3af;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    text-align: center;
-    margin-top: 2px;
-  }
-
-  /* Row 2 becomes a vertical stack — no spacer needed */
-  .cardio-row-secondary {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-
-  .cardio-secondary-spacer {
-    display: none;
-  }
-
-  /* Each field becomes its own 4-col row: Set# | Input | Label | (blank) */
-  .cardio-extra-group {
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .cardio-extra-field {
-    flex: none;
-    display: grid;
-    grid-template-columns: 28px 1fr auto 32px;
-    gap: 6px;
-    align-items: center;
-  }
-
-  /* Show set# badge on mobile */
-  .cardio-mob-set {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .c3-col-info {
     font-size: 0.78rem;
-    font-weight: 700;
-    color: #6b7280;
+    padding-right: 8px;
   }
 
-  /* Label becomes inline text, not uppercase small */
-  .cardio-field-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #6b7280;
-    text-transform: none;
-    letter-spacing: 0;
-    text-align: left;
-    white-space: nowrap;
+  .c3-col-set {
+    font-size: 0.78rem;
   }
 
-  .cardio-mob-blank {
-    display: block;
-  }
-
-  /* Tighten inputs on mobile */
   .set-input {
     padding: 5px 6px;
     font-size: 0.82rem;
