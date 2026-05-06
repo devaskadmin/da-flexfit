@@ -41,32 +41,45 @@ const conflictMessage  = ref('');
 /* ─── Accordion: active exercise ───────────────────────────────────── */
 const activeExerciseId = ref(null);
 
-// When session exercises change, auto-open the first incomplete exercise
+// Helper: open the first incomplete exercise in a list, or null if all done
+function openFirstIncomplete(exercises) {
+  if (!exercises || exercises.length === 0) { activeExerciseId.value = null; return; }
+  const first = exercises.find((e) => !e.sessionSets.every((s) => s.done)) || null;
+  activeExerciseId.value = first ? first.id : null;
+}
+
+// Reset accordion whenever the selected day changes
+watch(selectedDay, () => {
+  activeExerciseId.value = null;
+});
+
+// Auto-open first incomplete exercise whenever the day exercise list is populated/rebuilt
 watch(
-  sessionExercises,
+  () => dayExercises.value,
   (exercises) => {
-    if (!exercises || exercises.length === 0) return;
-    // Keep current selection if it's still valid in the new list
+    // Only auto-open if nothing is currently selected for this day
     if (activeExerciseId.value && exercises.some((e) => e.id === activeExerciseId.value)) return;
-    const firstIncomplete = exercises.find((e) => !e.sessionSets.every((s) => s.done));
-    activeExerciseId.value = (firstIncomplete || exercises[0]).id;
+    openFirstIncomplete(exercises);
   },
-  { immediate: true, deep: false },
+  { immediate: true },
 );
 
 const selectExercise = (exerciseId) => {
-  // Toggle: clicking the open exercise collapses it (sets null), clicking another opens it
+  // Toggle: clicking the open exercise collapses it, clicking another opens it
   activeExerciseId.value = activeExerciseId.value === exerciseId ? null : exerciseId;
 };
 
 const onExerciseCompleted = (exerciseId) => {
-  // After completing, collapse that exercise and open the next incomplete one
+  // Mark all sets done then collapse and advance to next incomplete
   const exercises = dayExercises.value;
   const currentIdx = exercises.findIndex((e) => e.id === exerciseId);
-  const nextIncomplete = exercises.find(
-    (e, idx) => idx > currentIdx && !e.sessionSets.every((s) => s.done)
-  );
-  activeExerciseId.value = nextIncomplete ? nextIncomplete.id : null;
+  // Search from next exercise onward, then wrap to beginning
+  const remaining = [
+    ...exercises.slice(currentIdx + 1),
+    ...exercises.slice(0, currentIdx),
+  ];
+  const next = remaining.find((e) => !e.sessionSets.every((s) => s.done));
+  activeExerciseId.value = next ? next.id : null;
 };
 
 /* ─── Format helpers ─────────────────────────────────────────────────────── */
