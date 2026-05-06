@@ -11,6 +11,14 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
+
+function completeExercise(exerciseId) {
+  props.exercise.sessionSets.forEach((set, idx) => {
+    if (!set.done) {
+      emit('update-set', exerciseId, idx, 'done', true);
+    }
+  });
+}
 </script>
 
 <template>
@@ -197,7 +205,7 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
             >
               <i v-if="set.done" class="fa-solid fa-circle-check"></i>
               <i v-else class="fa-regular fa-circle"></i>
-              {{ set.done ? 'Completed' : 'Complete Exercise' }}
+              {{ set.done ? 'Set Done' : 'Complete Set' }}
             </button>
           </div>
         </div>
@@ -215,6 +223,15 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
         {{ exercise.sessionSets.filter((s) => s.done).length }} /
         {{ exercise.sessionSets.length }} sets completed
       </span>
+
+      <button
+        type="button"
+        class="c3-finish-btn"
+        :class="{ 'c3-finish-btn--done': exercise.sessionSets.every((s) => s.done) }"
+        @click="completeExercise(exercise.id)"
+      >
+        <i class="fa-solid fa-flag-checkered"></i> Complete Exercise
+      </button>
     </div>
   </article>
 </template>
@@ -479,7 +496,7 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
 .c3-done-cell {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 /* ─── Remove Set Button ──────────────── */
@@ -505,17 +522,17 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
   border-color: #ef4444;
 }
 
-/* ─── Complete Exercise Button ───────────── */
+/* ─── Complete Set Button (per-set) ───────────── */
 .c3-complete-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   background: #16a34a;
   color: #fff;
   border: none;
-  border-radius: 8px;
-  padding: 6px 14px;
-  font-size: 0.82rem;
+  border-radius: 7px;
+  padding: 4px 11px;
+  font-size: 0.77rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s ease, opacity 0.15s ease;
@@ -533,6 +550,38 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
 }
 
 .c3-complete-btn--done:hover {
+  background: #166534;
+}
+
+/* ─── Complete Exercise Button (entire exercise) ─── */
+.c3-finish-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  padding: 7px 16px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(22,163,74,0.18);
+}
+
+.c3-finish-btn:hover {
+  background: #15803d;
+}
+
+.c3-finish-btn--done {
+  background: #166534;
+  opacity: 0.8;
+  cursor: default;
+}
+
+.c3-finish-btn--done:hover {
   background: #166534;
 }
 
