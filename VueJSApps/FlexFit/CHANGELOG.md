@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.78.g1] — Fix Workout History 500 Error (Missing DB Columns)
+
+Resolved the `ER_BAD_FIELD_ERROR: Unknown column 'calories_burned' in 'SELECT'` 500 error on `GET /api/workout-log/history`.
+
+### Root Cause
+Migration `backend/migrations/002_workout_log_sets_cardio_fields.sql` (added in 0.78.f) had not been applied to the database. The `GET /history` and `POST /session` routes both reference `calories_burned`, `distance_miles`, and `speed_mph` on `workout_log_sets`, but those columns did not exist yet.
+
+### Fix
+- Confirmed the three columns (`calories_burned DECIMAL(7,2)`, `distance_miles DECIMAL(7,3)`, `speed_mph DECIMAL(6,2)`) were added to `workout_log_sets` via the migration.
+- No code changes required — all backend/frontend logic from 0.78.f and 0.78.g was already correct.
+
+### Also
+- Renamed the previous git commit from `0.77.G` → `0.78.G`.
+
+---
+
 ## [0.78.g] — Edit And Save Workout History
 
 Completed workout history records are now editable. Each history session card has an Edit button that switches the set table to editable inputs. Changes are saved via a new PUT endpoint and the history refreshes automatically.
