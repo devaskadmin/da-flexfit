@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.77.7c] - 2026-05-06
+
+### Overview
+Added a visible **Remove Set** button to each cardio set group so users can undo sets added with Add Set.
+
+### Changed — Frontend (`ExerciseSessionCard.vue`)
+- **Remove Set button**: Replaced the icon-only ✕ button (`remove-set-btn c3-rm-btn`) in the Completed Exercise row with a labeled **"Remove Set"** button:
+  - Red outline style: transparent background, `#fca5a5` border, `#dc2626` text.
+  - Hover: light red fill (`#fef2f2`), darker border (`#ef4444`).
+  - Smaller than Complete Exercise (`0.75rem`, `4px 10px` padding) — doesn't overpower the green button.
+  - Icon: `fa-minus` prefix.
+- **Hide when single set**: Changed from `:disabled` to `v-if="exercise.sessionSets.length > 1"` — button is completely hidden when only one set exists, keeping the row clean.
+- **Layout**: `.c3-done-cell` changed from `justify-content: center` → `justify-content: space-between` — Complete Exercise button sits on the left, Remove Set on the right.
+- **Strength layout unaffected**: The `.remove-set-btn` CSS used by the strength table is unchanged.
+
+### Not Changed
+- Complete Exercise button behavior, color, or position (relative to its side of the row).
+- All cardio fields, Add Set, backend, Workout History.
+
+---
+
 ## [0.77.7b5] - 2026-05-06
 
 ### Overview
