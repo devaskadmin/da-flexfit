@@ -373,12 +373,13 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
   width: 100%;
 }
 
-/* Shared column grid: Set(70px) | Info(flex) | Value(260px) */
+/* Shared column grid: Set(30%) | Info(40%) | Value(30%) */
 .c3-head,
 .c3-row {
   display: grid;
-  grid-template-columns: 70px 1fr 260px;
+  grid-template-columns: 30% 40% 30%;
   align-items: center;
+  width: 100%;
 }
 
 /* Header row */
@@ -412,7 +413,7 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
 
 /* Individual field row */
 .c3-row {
-  padding: 5px 12px;
+  padding: 4px 12px;
   border-bottom: 1px solid #f3f4f6;
   gap: 0;
 }
@@ -569,10 +570,7 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
     max-width: 100%;
   }
 
-  .c3-head,
-  .c3-row {
-    grid-template-columns: 44px 1fr 130px;
-  }
+  /* Columns stay percentage-based — no override needed */
 
   .c3-col-info {
     font-size: 0.78rem;
@@ -581,6 +579,14 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
 
   .c3-col-set {
     font-size: 0.78rem;
+  }
+
+  .c3-head {
+    padding: 6px 10px;
+  }
+
+  .c3-row {
+    padding: 3px 10px;
   }
 
   .set-input {
