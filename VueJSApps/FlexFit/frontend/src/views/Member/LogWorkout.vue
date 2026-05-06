@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import ExerciseSessionCard from '@/components/workout-session/ExerciseSessionCard.vue';
 import { API_BASE } from '@/config/env';
@@ -37,6 +37,37 @@ const saving           = ref(false);
 const saveMessage      = ref('');
 const saveError        = ref('');
 const conflictMessage  = ref('');
+
+/* ─── Accordion: active exercise ───────────────────────────────────── */
+const activeExerciseId = ref(null);
+
+// When session exercises change, auto-open the first incomplete exercise
+watch(
+  sessionExercises,
+  (exercises) => {
+    if (!exercises || exercises.length === 0) return;
+    // Keep current selection if it's still valid in the new list
+    if (activeExerciseId.value && exercises.some((e) => e.id === activeExerciseId.value)) return;
+    const firstIncomplete = exercises.find((e) => !e.sessionSets.every((s) => s.done));
+    activeExerciseId.value = (firstIncomplete || exercises[0]).id;
+  },
+  { immediate: true, deep: false },
+);
+
+const selectExercise = (exerciseId) => {
+  // Toggle: clicking the open exercise collapses it (sets null), clicking another opens it
+  activeExerciseId.value = activeExerciseId.value === exerciseId ? null : exerciseId;
+};
+
+const onExerciseCompleted = (exerciseId) => {
+  // After completing, collapse that exercise and open the next incomplete one
+  const exercises = dayExercises.value;
+  const currentIdx = exercises.findIndex((e) => e.id === exerciseId);
+  const nextIncomplete = exercises.find(
+    (e, idx) => idx > currentIdx && !e.sessionSets.every((s) => s.done)
+  );
+  activeExerciseId.value = nextIncomplete ? nextIncomplete.id : null;
+};
 
 /* ─── Format helpers ─────────────────────────────────────────────────────── */
 const formatUpdatedAt = (value) => {
@@ -653,10 +684,13 @@ onMounted(async () => {
               :key="exercise.id"
               :exercise="exercise"
               :is-cardio="isCardio(exercise)"
+              :is-expanded="activeExerciseId === exercise.id"
               :read-only="isPreviewMode"
+              @select="isPreviewMode ? null : selectExercise($event)"
               @add-set="isPreviewMode ? null : addSet($event)"
               @remove-set="isPreviewMode ? null : removeSet($event)"
               @update-set="isPreviewMode ? null : updateSet($event)"
+              @exercise-completed="isPreviewMode ? null : onExerciseCompleted($event)"
             />
           </div>
         </template>

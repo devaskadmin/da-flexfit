@@ -10,9 +10,13 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  isExpanded: {
+    type: Boolean,
+    default: true,
+  },
 });
 
-const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
+const emit = defineEmits(['add-set', 'remove-set', 'update-set', 'select', 'exercise-completed']);
 
 function completeExercise(exerciseId) {
   props.exercise.sessionSets.forEach((set, idx) => {
@@ -20,6 +24,7 @@ function completeExercise(exerciseId) {
       emit('update-set', exerciseId, idx, 'done', true);
     }
   });
+  emit('exercise-completed', exerciseId);
 }
 
 const workoutType = computed(() => {
@@ -35,12 +40,18 @@ const workoutType = computed(() => {
   if (props.isCardio) return 'cardio';
   return 'strength';
 });
+
+const completedSets = computed(() =>
+  props.exercise.sessionSets.filter((s) => s.done).length
+);
+const totalSets = computed(() => props.exercise.sessionSets.length);
+const allDone = computed(() => completedSets.value === totalSets.value && totalSets.value > 0);
 </script>
 
 <template>
-  <article class="session-exercise-card">
+  <article class="session-exercise-card" :class="{ 'session-exercise-card--active': isExpanded, 'session-exercise-card--done': allDone }">
     <!-- Exercise Header -->
-    <div class="sec-header">
+    <div class="sec-header" :class="{ 'sec-header--active': isExpanded }" @click="emit('select', exercise.id)">
       <div class="sec-identity">
         <img
           v-if="exercise.image"
@@ -60,8 +71,27 @@ const workoutType = computed(() => {
           </p>
         </div>
       </div>
-      <span class="sec-type-chip">{{ exercise.workoutType || 'Strength' }}</span>
+      <div class="sec-header-actions">
+        <span class="sec-type-chip">{{ exercise.workoutType || 'Strength' }}</span>
+        <span class="sec-sets-summary" :class="{ 'sec-sets-summary--done': allDone }">
+          <i v-if="allDone" class="fa-solid fa-circle-check"></i>
+          <i v-else class="fa-regular fa-circle"></i>
+          {{ completedSets }} / {{ totalSets }}
+        </span>
+        <button
+          type="button"
+          class="sec-select-btn"
+          :class="{ 'sec-select-btn--active': isExpanded }"
+          @click.stop="emit('select', exercise.id)"
+        >
+          <i :class="isExpanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
+          {{ isExpanded ? 'Collapse' : 'Select Exercise' }}
+        </button>
+      </div>
     </div>
+
+    <!-- ── Collapsible body ─────────────────────────────────────────────── -->
+    <div v-show="isExpanded" class="sec-body">
 
     <!-- ── STRENGTH Sets Table ─────────────────────────────────────────── -->
     <div v-if="workoutType === 'strength'" class="cardio-table-wrap">
@@ -343,6 +373,8 @@ const workoutType = computed(() => {
         <i class="fa-solid fa-flag-checkered"></i> Complete Exercise
       </button>
     </div>
+
+    </div><!-- end sec-body -->
   </article>
 </template>
 
@@ -355,7 +387,16 @@ const workoutType = computed(() => {
   display: grid;
   gap: 14px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-  transition: box-shadow 0.18s ease;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.session-exercise-card--active {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.session-exercise-card--done {
+  border-color: #86efac;
 }
 
 .session-exercise-card:focus-within {
@@ -369,6 +410,72 @@ const workoutType = computed(() => {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 8px;
+  transition: background 0.14s ease;
+  margin: -4px;
+  padding: 4px;
+}
+
+.sec-header:hover {
+  background: #f8faff;
+}
+
+.sec-header--active {
+  background: #eff6ff;
+}
+
+.sec-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.sec-sets-summary {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.sec-sets-summary--done {
+  color: #16a34a;
+}
+
+.sec-select-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 1.5px solid #3b82f6;
+  color: #2563eb;
+  border-radius: 8px;
+  padding: 5px 11px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.14s ease;
+  white-space: nowrap;
+}
+
+.sec-select-btn:hover {
+  background: #eff6ff;
+}
+
+.sec-select-btn--active {
+  background: #dbeafe;
+  border-color: #2563eb;
+}
+
+.sec-body {
+  display: grid;
+  gap: 14px;
 }
 
 .sec-identity {
