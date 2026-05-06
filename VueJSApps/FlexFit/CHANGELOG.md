@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.77.7d]
+### Changed
+- Cardio "Completed Exercise" row restructured into a true action row
+  - Moved "Remove Set" button into the Info column (replaces the old text label)
+  - Centered "Complete Exercise" button in the Value column
+  - Removed "Remove Set" from the right side of the Value cell
+  - Layout: `[ Remove Set ]` (left) · `[ Complete Exercise ]` (center)
+- Added `.c3-info-action` flex container for Info column in the done row
+
 ## [0.77.7c] - 2026-05-06
 
 ### Overview
