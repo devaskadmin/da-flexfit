@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.77.7e]
+### Changed
+- Cardio exercise table: separated "Complete Set" (per-set) from "Complete Exercise" (entire exercise)
+  - Renamed in-row button from "Complete Exercise" → "Complete Set" / "Set Done"
+  - Button is slightly smaller (`0.77rem`, `4px 11px` padding) to reflect secondary scope
+  - Left-aligned "Complete Set" button inside the Value column (`.c3-done-cell` → `flex-start`)
+  - Added new "Complete Exercise" button to the bottom footer row (right side)
+    - Marks all sets as done via local `completeExercise()` function
+    - Larger, more prominent (`0.85rem`, `7px 16px` padding, box-shadow)
+    - Shows dimmed `--done` state when all sets already complete
+  - Footer row: `[+ Add Set]` · `[X/Y sets completed]` · `[Complete Exercise]` (space-between)
+- Added `.c3-finish-btn` / `.c3-finish-btn--done` CSS classes for Complete Exercise button
+
 ## [0.77.7d]
 ### Changed
 - Cardio "Completed Exercise" row restructured into a true action row
