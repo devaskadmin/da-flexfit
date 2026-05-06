@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.77.9b]
+### Fixed
+- **Accordion default open state** — exercises were all collapsed when Day Details loaded
+
+**Root cause:** `watch(sessionExercises, ...)` observed the raw full exercise list, not the day-filtered `dayExercises` computed. IDs found in the raw list may belong to a different day and never match the rendered cards. Additionally, stale `activeExerciseId` from a previous day was kept alive across day switches.
+
+**Fixes in `LogWorkout.vue`:**
+- Replaced `watch(sessionExercises)` with `watch(() => dayExercises.value)` (getter form) so the watcher correctly tracks the filtered, day-specific exercise list
+- Added `watch(selectedDay)` that resets `activeExerciseId` to `null` on every day change, clearing any stale selection before the day-exercises watcher re-runs
+- Extracted `openFirstIncomplete(exercises)` helper used by both the auto-open watcher and `onExerciseCompleted`
+- `onExerciseCompleted` now searches for the next incomplete exercise across the **full remaining list** (wraps around), not just exercises after the current index
+- Result: Day Details always auto-opens the first incomplete exercise on load, after Start Workout, after Preview, and after completing an exercise
+
 ## [0.77.9a]
 ### Fixed
 - **Critical bug**: `@update-set`, `@remove-set`, `@add-set`, `@select`, `@exercise-completed` event bindings in `LogWorkout.vue` were using `handler($event)` syntax which only passes the **first** emitted argument
