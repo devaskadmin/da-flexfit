@@ -95,27 +95,27 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
       </div>
     </div>
 
-    <!-- ── CARDIO Sets Table ───────────────────────────────────────────── -->
-    <div v-if="isCardio" class="sec-sets-table cardio-table">
-      <!-- Desktop header (hidden on mobile) -->
-      <div class="sec-sets-head cardio-head">
-        <span class="col-set">Set</span>
-        <span>Duration (min)</span>
-        <span class="col-done">Done</span>
-        <span class="col-rm"></span>
+    <!-- ── CARDIO Sets Table ─────────────────────────────────────────── -->
+    <div v-if="isCardio" class="cardio-3col-table">
+      <!-- Header -->
+      <div class="c3-head">
+        <span class="c3-col-set">Set</span>
+        <span class="c3-col-info">Info</span>
+        <span class="c3-col-value">Value</span>
       </div>
 
-      <!-- One block per set -->
+      <!-- Per-set group -->
       <div
         v-for="(set, idx) in exercise.sessionSets"
         :key="idx"
-        class="cardio-set-block"
-        :class="{ 'set-done': set.done }"
+        class="c3-set-group"
+        :class="{ 'c3-set-done': set.done }"
       >
-        <!-- Row 1: Set# | Duration | Done | Remove -->
-        <div class="cardio-row-primary">
-          <span class="col-set set-num">{{ set.setNum }}</span>
-          <div class="cardio-dur-cell">
+        <!-- Duration row -->
+        <div class="c3-row">
+          <span class="c3-col-set c3-set-num">{{ set.setNum }}</span>
+          <span class="c3-col-info">Duration (min)</span>
+          <div class="c3-col-value">
             <input
               type="number"
               class="set-input"
@@ -124,78 +124,80 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
               placeholder="0"
               @input="emit('update-set', exercise.id, idx, 'duration', $event.target.value)"
             />
-            <span class="cardio-inline-label">Duration (min)</span>
           </div>
-          <label class="col-done done-toggle" :class="{ active: set.done }">
-            <input
-              type="checkbox"
-              :checked="set.done"
-              @change="emit('update-set', exercise.id, idx, 'done', $event.target.checked)"
-            />
-            <span class="done-icon">
-              <i v-if="set.done" class="fa-solid fa-circle-check"></i>
-              <i v-else class="fa-regular fa-circle"></i>
-            </span>
-          </label>
-          <button
-            type="button"
-            class="col-rm remove-set-btn"
-            :disabled="exercise.sessionSets.length <= 1"
-            title="Remove set"
-            @click="emit('remove-set', exercise.id, idx)"
-          >
-            <i class="fa-solid fa-xmark"></i>
-          </button>
         </div>
-
-        <!-- Row 2 (desktop) / Rows 2-4 (mobile): Calories | Distance | Speed -->
-        <div class="cardio-row-secondary">
-          <span class="cardio-secondary-spacer"></span>
-          <div class="cardio-extra-group">
-            <!-- Calories -->
-            <div class="cardio-extra-field">
-              <span class="cardio-mob-set">{{ set.setNum }}</span>
+        <!-- Calories row -->
+        <div class="c3-row">
+          <span class="c3-col-set"></span>
+          <span class="c3-col-info">Calories Burned</span>
+          <div class="c3-col-value">
+            <input
+              type="number"
+              class="set-input"
+              :value="set.caloriesBurned"
+              min="0"
+              placeholder="0"
+              @input="emit('update-set', exercise.id, idx, 'caloriesBurned', $event.target.value)"
+            />
+          </div>
+        </div>
+        <!-- Distance row -->
+        <div class="c3-row">
+          <span class="c3-col-set"></span>
+          <span class="c3-col-info">Distance (Miles)</span>
+          <div class="c3-col-value">
+            <input
+              type="number"
+              class="set-input"
+              :value="set.distanceMiles"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              @input="emit('update-set', exercise.id, idx, 'distanceMiles', $event.target.value)"
+            />
+          </div>
+        </div>
+        <!-- Speed row -->
+        <div class="c3-row">
+          <span class="c3-col-set"></span>
+          <span class="c3-col-info">Speed (Mph)</span>
+          <div class="c3-col-value">
+            <input
+              type="number"
+              class="set-input"
+              :value="set.speedMph"
+              min="0"
+              step="0.1"
+              placeholder="0.0"
+              @input="emit('update-set', exercise.id, idx, 'speedMph', $event.target.value)"
+            />
+          </div>
+        </div>
+        <!-- Completed row -->
+        <div class="c3-row c3-row-done">
+          <span class="c3-col-set"></span>
+          <span class="c3-col-info">Completed Exercise</span>
+          <div class="c3-col-value c3-done-cell">
+            <label class="done-toggle" :class="{ active: set.done }">
               <input
-                type="number"
-                class="set-input"
-                :value="set.caloriesBurned"
-                min="0"
-                placeholder="0"
-                @input="emit('update-set', exercise.id, idx, 'caloriesBurned', $event.target.value)"
+                type="checkbox"
+                :checked="set.done"
+                @change="emit('update-set', exercise.id, idx, 'done', $event.target.checked)"
               />
-              <span class="cardio-field-label">Calories Burned</span>
-              <span class="cardio-mob-blank"></span>
-            </div>
-            <!-- Distance -->
-            <div class="cardio-extra-field">
-              <span class="cardio-mob-set">{{ set.setNum }}</span>
-              <input
-                type="number"
-                class="set-input"
-                :value="set.distanceMiles"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                @input="emit('update-set', exercise.id, idx, 'distanceMiles', $event.target.value)"
-              />
-              <span class="cardio-field-label">Distance (mi)</span>
-              <span class="cardio-mob-blank"></span>
-            </div>
-            <!-- Speed -->
-            <div class="cardio-extra-field">
-              <span class="cardio-mob-set">{{ set.setNum }}</span>
-              <input
-                type="number"
-                class="set-input"
-                :value="set.speedMph"
-                min="0"
-                step="0.1"
-                placeholder="0.0"
-                @input="emit('update-set', exercise.id, idx, 'speedMph', $event.target.value)"
-              />
-              <span class="cardio-field-label">Speed (mph)</span>
-              <span class="cardio-mob-blank"></span>
-            </div>
+              <span class="done-icon">
+                <i v-if="set.done" class="fa-solid fa-circle-check"></i>
+                <i v-else class="fa-regular fa-circle"></i>
+              </span>
+            </label>
+            <button
+              type="button"
+              class="remove-set-btn c3-rm-btn"
+              :disabled="exercise.sessionSets.length <= 1"
+              title="Remove set"
+              @click="emit('remove-set', exercise.id, idx)"
+            >
+              <i class="fa-solid fa-xmark"></i>
+            </button>
           </div>
         </div>
       </div>
@@ -353,89 +355,94 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
   background: #fff;
 }
 
-/* ─── Cardio Layout ───────────────────────── */
-.cardio-table {
-  gap: 8px;
+/* ─── Cardio 3-Column Table ───────────────── */
+.cardio-3col-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  overflow: hidden;
 }
 
-.cardio-head {
-  grid-template-columns: 36px 1fr 44px 30px;
-}
-
-.cardio-set-block {
+/* Header row */
+.c3-head {
   display: grid;
-  gap: 5px;
-  padding: 4px 0;
-  border-radius: 8px;
+  grid-template-columns: 40px 1fr 120px;
+  gap: 0;
+  background: #f9fafb;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  padding: 6px 10px;
+}
+
+.c3-head span {
+  font-size: 0.70rem;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Per-set group */
+.c3-set-group {
+  border-bottom: 2px solid var(--border-color, #e5e7eb);
   transition: background 0.14s ease;
 }
 
-.cardio-set-block.set-done {
+.c3-set-group:last-child {
+  border-bottom: none;
+}
+
+.c3-set-group.c3-set-done {
   background: #f0fdf4;
 }
 
-/* Desktop Row 1: Set# | Duration | Done | Remove */
-.cardio-row-primary {
+/* Individual field row */
+.c3-row {
   display: grid;
-  grid-template-columns: 36px 1fr 44px 30px;
-  gap: 8px;
-  align-items: center;
-}
-
-.cardio-dur-cell {
-  display: flex;
-  flex-direction: column;
+  grid-template-columns: 40px 1fr 120px;
   gap: 0;
-  min-width: 0;
+  align-items: center;
+  padding: 5px 10px;
+  border-bottom: 1px solid #f3f4f6;
 }
 
-/* The inline label is hidden on desktop (header handles it) */
-.cardio-inline-label {
-  display: none;
+.c3-row:last-child {
+  border-bottom: none;
 }
 
-/* Desktop Row 2: (spacer) | [Calories | Distance | Speed] */
-.cardio-row-secondary {
-  display: grid;
-  grid-template-columns: 36px 1fr;
-  gap: 8px;
-  align-items: start;
-}
-
-.cardio-secondary-spacer {
-  display: block;
-}
-
-.cardio-extra-group {
-  display: flex;
-  gap: 8px;
-}
-
-/* Each field: input on top, label below */
-.cardio-extra-field {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-
-.cardio-field-label {
-  font-size: 0.67rem;
-  font-weight: 600;
-  color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.c3-col-set {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #6b7280;
   text-align: center;
 }
 
-/* Mobile set# inside each extra field — hidden on desktop */
-.cardio-mob-set {
-  display: none;
+.c3-set-num {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #374151;
 }
 
-.cardio-mob-blank {
-  display: none;
+.c3-col-info {
+  font-size: 0.83rem;
+  color: #374151;
+  font-weight: 500;
+  padding-right: 10px;
+}
+
+.c3-col-value {
+  min-width: 0;
+}
+
+/* Completed row */
+.c3-done-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.c3-rm-btn {
+  margin-left: auto;
 }
 
 /* ─── Done Toggle ─────────────────────────── */
