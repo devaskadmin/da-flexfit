@@ -474,11 +474,11 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
 .c3-done-cell {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
 }
 
 .c3-rm-btn {
-  margin-left: auto;
   flex-shrink: 0;
 }
 
