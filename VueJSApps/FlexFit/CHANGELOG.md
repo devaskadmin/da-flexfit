@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.79.a] — Fix Cardio Still Creating 3 Sets
+
+### Root Cause
+The 0.79 `getDefaultSetCount` helper was never actually written into `LogWorkout.vue` — the `replace_string_in_file` tool silently failed due to Unicode box-drawing characters (─) in the comment line causing a byte-level mismatch. The file retained the old `exercise.sets || 1` logic, which read the plan's `target_sets` value (3 for the Elliptical Trainer) for all exercise types including Cardio.
+
+### Fix
+Applied `getDefaultSetCount(exercise)` correctly to both:
+- `frontend/src/views/Member/LogWorkout.vue` — active workout session (Start Workout flow)
+- `frontend/src/views/Member/WorkoutDetail.vue` — workout detail view
+
+Logic:
+| Type | Sets |
+|---|---|
+| `cardio` | Always **1** |
+| `other` | Always **1** |
+| `strength` | Plan `Sets` value; fallback **3** |
+| unknown | Plan value if valid; fallback **1** |
+
+The type check runs first (`if type === 'cardio' return 1`) before any plan `Sets` value is read, so a Cardio exercise with `target_sets = 3` in the plan is correctly overridden to 1.
+
+---
+
 ## [0.79] — Default Set Logic + Complete Workout Redirect
 
 ### Part 1+2 — Default Set Logic (Frontend)

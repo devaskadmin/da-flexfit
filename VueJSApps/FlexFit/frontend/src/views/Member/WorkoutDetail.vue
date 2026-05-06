@@ -76,8 +76,19 @@ const isCardio = (exercise) =>
   (Number(exercise.duration || 0) > 0 && Number(exercise.reps || 0) === 0);
 
 /* ─── Set helpers ────────────────────────────────────────────────────────── */
+const getDefaultSetCount = (exercise) => {
+  const type = String(
+    exercise.WorkoutType || exercise.workoutType || exercise.workout_type ||
+    exercise.ExerciseType || exercise.exerciseType || ''
+  ).trim().toLowerCase();
+  if (type === 'cardio' || type === 'other') return 1;
+  const planned = Number(exercise.Sets ?? exercise.sets ?? 0);
+  if (type === 'strength') return (Number.isFinite(planned) && planned > 0) ? planned : 3;
+  return (Number.isFinite(planned) && planned > 0) ? planned : 1;
+};
+
 const buildInitialSets = (exercise) => {
-  const count = Math.max(Number(exercise.sets || 1), 1);
+  const count = getDefaultSetCount(exercise);
   return Array.from({ length: count }, (_, i) => ({
     setNum:   i + 1,
     weight:   Number(exercise.weight   || 0),
