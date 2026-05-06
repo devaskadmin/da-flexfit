@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.77.7a] - 2026-05-06
+
+### Overview
+Upgraded cardio exercise logging in the Workout Log Day Details tab to track four fields per set — Duration, Calories Burned, Distance, and Speed — displayed in a clean two-row desktop layout and a responsive mobile layout.
+
+### Changed — Frontend (`ExerciseSessionCard.vue`)
+- Replaced the single-row cardio set layout (Duration only) with a **two-row per set** structure:
+  - **Row 1 (desktop)**: Set # | Duration (min) input | Done toggle | Remove button
+  - **Row 2 (desktop)**: *(spacer)* | Calories Burned input | Distance (mi) input | Speed (mph) input — each with a label beneath
+- Desktop header updated to match the new primary-row columns: Set | Duration (min) | Done.
+- Row 2 extra fields (`caloriesBurned`, `distanceMiles`, `speedMph`) share the same set — no new set is created.
+- Strength exercise layout is **unchanged**.
+
+### Added — Responsive Mobile Layout (`ExerciseSessionCard.vue`)
+- On screens ≤ 575 px, cardio sets render as a stacked 4-column row-per-field pattern:
+  - **Row 1**: Set # | Duration input | Duration (min) label | Done toggle + Remove
+  - **Row 2**: Set # | Calories input | Calories Burned label | *(blank)*
+  - **Row 3**: Set # | Distance input | Distance (mi) label | *(blank)*
+  - **Row 4**: Set # | Speed input | Speed (mph) label | *(blank)*
+- Desktop header hidden on mobile; inline label shown below the Duration input instead.
+- Inputs are full-width within their column; no horizontal overflow.
+
+### Changed — Frontend (`LogWorkout.vue`)
+- `buildInitialSets()` now initialises each cardio set with `caloriesBurned: 0`, `distanceMiles: 0`, `speedMph: 0` in addition to existing `duration`, `weight`, `reps`, `done` fields.
+- `addSet()` carries forward `caloriesBurned`, `distanceMiles`, `speedMph` from the previous set (mirrors existing weight/reps/duration carry-forward behaviour).
+
+### Not Changed
+- Database schema (new fields are frontend-state only in this version).
+- Workout History tab.
+- Overview tab / Preview Workout.
+- Workout Builder.
+
+---
+
 ## [0.77.6] - 2026-05-05
 
 ### Overview
