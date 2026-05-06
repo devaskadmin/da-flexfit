@@ -361,20 +361,26 @@ router.post('/session', async (req, res) => {
         const setEntry = sets[index] || {};
         await connection.query(
           `INSERT INTO workout_log_sets
-            (workout_log_id, set_number, reps, weight, duration_minutes, completed)
-           VALUES (?, ?, ?, ?, ?, ?)
+            (workout_log_id, set_number, reps, weight, duration_minutes, calories_burned, distance_miles, speed_mph, completed)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON DUPLICATE KEY UPDATE
-             reps = VALUES(reps),
-             weight = VALUES(weight),
+             reps             = VALUES(reps),
+             weight           = VALUES(weight),
              duration_minutes = VALUES(duration_minutes),
-             completed = VALUES(completed),
-             updated_at = CURRENT_TIMESTAMP`,
+             calories_burned  = VALUES(calories_burned),
+             distance_miles   = VALUES(distance_miles),
+             speed_mph        = VALUES(speed_mph),
+             completed        = VALUES(completed),
+             updated_at       = CURRENT_TIMESTAMP`,
           [
             workoutLogId,
             index + 1,
             Number(setEntry?.reps || 0) || null,
             Number(setEntry?.weight || 0) || null,
             Number(setEntry?.duration || 0) || null,
+            Number(setEntry?.caloriesBurned || 0) || null,
+            Number(setEntry?.distanceMiles || 0) || null,
+            Number(setEntry?.speedMph || 0) || null,
             setEntry?.done ? 1 : 0,
           ]
         );
@@ -401,7 +407,9 @@ router.post('/session', async (req, res) => {
   }
 });
 
-// ─── GET /history ── Completed workout logs for user on a given date ─────────
+// ─── GET /history ── Completed workout sessions for user on a given STARTED date
+// Filters by wl.WorkoutDate (= the date the user intended/started the workout).
+// Returns a structured sessions array with exercises and per-set details.
 router.get('/history', async (req, res) => {
   if (!req.session?.user?.id) {
     return res.status(401).json({ error: 'Unauthorized. Please log in.' });
@@ -413,36 +421,329 @@ router.get('/history', async (req, res) => {
   }
 
   try {
-    const [rows] = await pool.query(`
+    const userId = req.session.user.id;
+
+    // ── Step 1: fetch exercise-level rows filtered by started/workout date ──
+    // WorkoutDate is set to the workout's intended start date, making it the
+    // correct filter key. Only include rows that either have no session (legacy)
+    // or belong to a completed session.
+    const [exerciseRows] = await pool.query(`
       SELECT
-        wl.WorkoutLogID,
-        wl.WorkoutDate,
-        wl.WorkoutType,
-        wl.Sets,
-        wl.Reps,
-        wl.Weight,
-        wl.Duration,
-        wl.Calories,
-        wl.Distance,
-        wl.performed_at,
-        wl.source_schedule_group_label  AS workoutDayName,
-        wls.notes                        AS planName,
-        ex.ExerciseTitle                 AS exerciseName
+        wl.WorkoutLogID                   AS workoutLogId,
+        wl.workout_log_session_id         AS sessionId,
+        wl.WorkoutDate                    AS workoutDate,
+        wl.WorkoutType                    AS workoutType,
+        wl.Sets                           AS totalSets,
+        wl.Reps                           AS avgReps,
+        wl.Weight                         AS avgWeight,
+        wl.Duration                       AS totalDuration,
+        wl.Calories                       AS calories,
+        wl.Distance                       AS distance,
+        wl.Speed                          AS speed,
+        wl.source_schedule_group_label    AS scheduleGroup,
+        wls.started_at                    AS sessionStartedAt,
+        wls.completed_at                  AS sessionCompletedAt,
+        wls.workout_date                  AS sessionWorkoutDate,
+        ws.title                          AS planName,
+        ex.ExerciseTitle                  AS exerciseName,
+        ex.ImageGallery                   AS exerciseImage,
+        ex.MuscleGroup                    AS muscleGroup,
+        ex.Equipment                      AS equipment
       FROM workout_log wl
       LEFT JOIN workout_log_sessions wls ON wl.workout_log_session_id = wls.id
-      LEFT JOIN exercises            ex  ON wl.ExerciseID = ex.ExerciseID
-      WHERE wl.UserID = ? AND wl.WorkoutDate = ?
-      ORDER BY wl.WorkoutLogID DESC
-    `, [req.session.user.id, date]);
+      LEFT JOIN workout_schedules    ws  ON ws.id = wls.source_workout_schedule_id
+      LEFT JOIN exercises            ex  ON ex.ExerciseID = wl.ExerciseID
+      WHERE wl.UserID = ?
+        AND wl.WorkoutDate = ?
+        AND (wl.workout_log_session_id IS NULL OR wls.status = 'completed')
+      ORDER BY wl.workout_log_session_id ASC, wl.WorkoutLogID ASC
+    `, [userId, date]);
 
-    res.status(200).json({
+    if (exerciseRows.length === 0) {
+      return res.status(200).json({
+        date,
+        username: req.session.user.username || '',
+        sessions: [],
+      });
+    }
+
+    // ── Step 2: fetch per-set data for all exercise logs ──────────────────
+    const workoutLogIds = exerciseRows.map((r) => r.workoutLogId);
+    let setRows = [];
+    if (workoutLogIds.length > 0) {
+      [setRows] = await pool.query(`
+        SELECT
+          workout_log_id   AS workoutLogId,
+          set_number       AS setNumber,
+          weight,
+          reps,
+          duration_minutes AS duration,
+          calories_burned  AS caloriesBurned,
+          distance_miles   AS distanceMiles,
+          speed_mph        AS speedMph,
+          completed
+        FROM workout_log_sets
+        WHERE workout_log_id IN (?)
+        ORDER BY workout_log_id ASC, set_number ASC
+      `, [workoutLogIds]);
+    }
+
+    // ── Step 3: group sets by workoutLogId ────────────────────────────────
+    const setsByLog = {};
+    for (const set of setRows) {
+      if (!setsByLog[set.workoutLogId]) setsByLog[set.workoutLogId] = [];
+      setsByLog[set.workoutLogId].push(set);
+    }
+
+    // ── Step 4: group exercises into sessions ─────────────────────────────
+    // Use sessionId as the key; null-session rows each form their own group.
+    const sessionMap = new Map();
+    for (const ex of exerciseRows) {
+      const key = ex.sessionId != null ? String(ex.sessionId) : `legacy-${ex.workoutLogId}`;
+      if (!sessionMap.has(key)) {
+        sessionMap.set(key, {
+          sessionId:          ex.sessionId,
+          workoutDate:        ex.workoutDate,
+          workoutDayName:     ex.scheduleGroup || '',
+          sessionStartedAt:   ex.sessionStartedAt || null,
+          sessionCompletedAt: ex.sessionCompletedAt || null,
+          planName:           ex.planName || '',
+          exercises:          [],
+        });
+      }
+      sessionMap.get(key).exercises.push({
+        workoutLogId:  ex.workoutLogId,
+        exerciseName:  ex.exerciseName || 'Unknown Exercise',
+        exerciseImage: ex.exerciseImage || null,
+        muscleGroup:   ex.muscleGroup  || '',
+        equipment:     ex.equipment    || '',
+        workoutType:   ex.workoutType  || 'Strength',
+        scheduleGroup: ex.scheduleGroup || '',
+        totalSets:     ex.totalSets,
+        avgReps:       ex.avgReps,
+        avgWeight:     ex.avgWeight,
+        totalDuration: ex.totalDuration,
+        calories:      ex.calories,
+        distance:      ex.distance,
+        speed:         ex.speed,
+        sets:          setsByLog[ex.workoutLogId] || [],
+      });
+    }
+
+    const sessions = [...sessionMap.values()];
+
+    return res.status(200).json({
       date,
       username: req.session.user.username || '',
-      records: rows,
+      sessions,
     });
   } catch (err) {
     console.error('❌ History fetch error:', err);
-    res.status(500).json({ error: 'Failed to fetch workout history.' });
+    return res.status(500).json({ error: 'Failed to fetch workout history.' });
+  }
+});
+
+// ─── PUT /history/session/:sessionId ── Update completed workout history sets
+// Accepts updated per-set values for exercises in the session.
+// Only completed sessions owned by the logged-in user can be updated.
+router.put('/history/session/:sessionId', async (req, res) => {
+  if (!req.session?.user?.id) {
+    return res.status(401).json({ error: 'Unauthorized. Please log in.' });
+  }
+
+  const sessionId = Number(req.params.sessionId);
+  if (!sessionId || isNaN(sessionId)) {
+    return res.status(400).json({ error: 'Invalid sessionId.' });
+  }
+
+  const { exercises } = req.body;
+  if (!Array.isArray(exercises) || exercises.length === 0) {
+    return res.status(400).json({ error: 'exercises array is required.' });
+  }
+
+  const userId = req.session.user.id;
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // Verify ownership and completed status
+    const [[session]] = await connection.query(
+      `SELECT id, user_id, status FROM workout_log_sessions WHERE id = ? LIMIT 1`,
+      [sessionId]
+    );
+    if (!session) {
+      await connection.rollback();
+      return res.status(404).json({ error: 'Session not found.' });
+    }
+    if (session.user_id !== userId) {
+      await connection.rollback();
+      return res.status(403).json({ error: 'You do not have permission to edit this session.' });
+    }
+    if (session.status === 'in_progress') {
+      await connection.rollback();
+      return res.status(409).json({ error: 'Cannot edit an in-progress workout.' });
+    }
+
+    let updatedExercises = 0;
+    for (const ex of exercises) {
+      const workoutLogId = Number(ex.workoutLogId);
+      if (!workoutLogId) continue;
+
+      // Verify this workout_log row belongs to the session + user
+      const [[logRow]] = await connection.query(
+        `SELECT WorkoutLogID FROM workout_log
+         WHERE WorkoutLogID = ? AND workout_log_session_id = ? AND UserID = ?
+         LIMIT 1`,
+        [workoutLogId, sessionId, userId]
+      );
+      if (!logRow) continue;
+
+      const sets = Array.isArray(ex.sets) ? ex.sets : [];
+      for (const s of sets) {
+        const setNumber = Number(s.setNumber);
+        if (!setNumber) continue;
+        await connection.query(
+          `UPDATE workout_log_sets
+           SET reps             = ?,
+               weight           = ?,
+               duration_minutes = ?,
+               calories_burned  = ?,
+               distance_miles   = ?,
+               speed_mph        = ?,
+               updated_at       = CURRENT_TIMESTAMP
+           WHERE workout_log_id = ? AND set_number = ?`,
+          [
+            Number(s.reps  || 0) || null,
+            Number(s.weight || 0) || null,
+            Number(s.duration || 0) || null,
+            Number(s.caloriesBurned || 0) || null,
+            Number(s.distanceMiles || 0) || null,
+            Number(s.speedMph || 0) || null,
+            workoutLogId,
+            setNumber,
+          ]
+        );
+      }
+
+      // Update workout_log summary aggregates from the new set values
+      if (sets.length > 0) {
+        const n          = sets.length;
+        const avgWeight  = sets.reduce((a, s) => a + Number(s.weight  || 0), 0) / n;
+        const avgReps    = sets.reduce((a, s) => a + Number(s.reps    || 0), 0) / n;
+        const totalDur   = sets.reduce((a, s) => a + Number(s.duration       || 0), 0);
+        const totalCals  = sets.reduce((a, s) => a + Number(s.caloriesBurned || 0), 0);
+        const avgDist    = sets.reduce((a, s) => a + Number(s.distanceMiles  || 0), 0) / n;
+        const avgSpeed   = sets.reduce((a, s) => a + Number(s.speedMph       || 0), 0) / n;
+        await connection.query(
+          `UPDATE workout_log
+           SET Weight   = ?,
+               Reps     = ?,
+               Duration = ?,
+               Calories = ?,
+               Distance = ?,
+               Speed    = ?
+           WHERE WorkoutLogID = ? AND UserID = ?`,
+          [
+            Math.round(avgWeight),
+            Math.round(avgReps),
+            Math.round(totalDur),
+            Math.round(totalCals),
+            Number(avgDist.toFixed(3)),
+            Number(avgSpeed.toFixed(2)),
+            workoutLogId,
+            userId,
+          ]
+        );
+      }
+      updatedExercises++;
+    }
+
+    await connection.commit();
+    return res.status(200).json({ message: 'Session updated successfully.', sessionId, updatedExercises });
+  } catch (err) {
+    try { await connection.rollback(); } catch (_) {}
+    console.error('\u274c History update error:', err);
+    return res.status(500).json({ error: 'Failed to update workout history.' });
+  } finally {
+    connection.release();
+  }
+});
+
+// ─── DELETE /history/session/:sessionId ──────────────────────────────────
+// Deletes a completed workout session owned by the logged-in user:
+//   1. Verifies session exists, belongs to user, and is NOT in_progress.
+//   2. Deletes workout_log_sets rows for all workout_log rows in this session.
+//   3. Deletes workout_log rows for this session.
+//   4. Deletes the workout_log_sessions row.
+router.delete('/history/session/:sessionId', async (req, res) => {
+  if (!req.session?.user?.id) {
+    return res.status(401).json({ error: 'Unauthorized. Please log in.' });
+  }
+
+  const sessionId = Number(req.params.sessionId);
+  if (!sessionId || isNaN(sessionId)) {
+    return res.status(400).json({ error: 'Invalid sessionId.' });
+  }
+
+  const userId = req.session.user.id;
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // Verify session ownership and that it is not in_progress
+    const [[session]] = await connection.query(
+      `SELECT id, user_id, status FROM workout_log_sessions WHERE id = ? LIMIT 1`,
+      [sessionId]
+    );
+
+    if (!session) {
+      await connection.rollback();
+      return res.status(404).json({ error: 'Session not found.' });
+    }
+    if (session.user_id !== userId) {
+      await connection.rollback();
+      return res.status(403).json({ error: 'You do not have permission to delete this session.' });
+    }
+    if (session.status === 'in_progress') {
+      await connection.rollback();
+      return res.status(409).json({ error: 'Cannot delete an in-progress workout. Please complete or end it first.' });
+    }
+
+    // Get all workout_log IDs for this session
+    const [logRows] = await connection.query(
+      `SELECT WorkoutLogID FROM workout_log WHERE workout_log_session_id = ? AND UserID = ?`,
+      [sessionId, userId]
+    );
+    const logIds = logRows.map((r) => r.WorkoutLogID);
+
+    // Delete sets for those logs
+    if (logIds.length > 0) {
+      await connection.query(
+        `DELETE FROM workout_log_sets WHERE workout_log_id IN (?)`,
+        [logIds]
+      );
+    }
+
+    // Delete workout_log rows
+    await connection.query(
+      `DELETE FROM workout_log WHERE workout_log_session_id = ? AND UserID = ?`,
+      [sessionId, userId]
+    );
+
+    // Delete the session itself
+    await connection.query(
+      `DELETE FROM workout_log_sessions WHERE id = ? AND user_id = ?`,
+      [sessionId, userId]
+    );
+
+    await connection.commit();
+    return res.status(200).json({ message: 'Session deleted successfully.', sessionId });
+  } catch (err) {
+    try { await connection.rollback(); } catch (_) {}
+    console.error('❌ DELETE /history/session error:', err);
+    return res.status(500).json({ error: 'Failed to delete session.' });
+  } finally {
+    connection.release();
   }
 });
 
