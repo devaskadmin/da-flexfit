@@ -179,17 +179,16 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
           <span class="c3-col-set"></span>
           <span class="c3-col-info">Completed Exercise</span>
           <div class="c3-col-value c3-done-cell">
-            <label class="done-toggle" :class="{ active: set.done }">
-              <input
-                type="checkbox"
-                :checked="set.done"
-                @change="emit('update-set', exercise.id, idx, 'done', $event.target.checked)"
-              />
-              <span class="done-icon">
-                <i v-if="set.done" class="fa-solid fa-circle-check"></i>
-                <i v-else class="fa-regular fa-circle"></i>
-              </span>
-            </label>
+            <button
+              type="button"
+              class="c3-complete-btn"
+              :class="{ 'c3-complete-btn--done': set.done }"
+              @click="emit('update-set', exercise.id, idx, 'done', !set.done)"
+            >
+              <i v-if="set.done" class="fa-solid fa-circle-check"></i>
+              <i v-else class="fa-regular fa-circle"></i>
+              {{ set.done ? 'Completed' : 'Complete Exercise' }}
+            </button>
             <button
               type="button"
               class="remove-set-btn c3-rm-btn"
@@ -357,9 +356,8 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
   background: #fff;
 }
 
-/* ─── Cardio Table Wrapper (constrains width) */
+/* ─── Cardio Table Wrapper — full width, no cap */
 .cardio-table-wrap {
-  max-width: 900px;
   width: 100%;
 }
 
@@ -373,11 +371,11 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
   width: 100%;
 }
 
-/* Shared column grid: Set(30%) | Info(40%) | Value(30%) */
+/* Shared column grid: Set(20%) | Info(40%) | Value(40%) */
 .c3-head,
 .c3-row {
   display: grid;
-  grid-template-columns: 30% 40% 30%;
+  grid-template-columns: 20% 40% 40%;
   align-items: center;
   width: 100%;
 }
@@ -463,14 +461,14 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
   box-sizing: border-box;
 }
 
-/* Completed row — slight top separation */
+/* Completed row — light gray bg + top separator */
 .c3-row-done {
   border-top: 1px solid var(--border-color, #e5e7eb) !important;
-  background: none !important;
+  background: #f9fafb !important;
 }
 
 .c3-set-group.c3-set-done .c3-row-done {
-  background: rgba(34, 197, 94, 0.04) !important;
+  background: #f0fdf4 !important;
 }
 
 .c3-done-cell {
@@ -481,28 +479,38 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
 
 .c3-rm-btn {
   margin-left: auto;
+  flex-shrink: 0;
 }
 
-/* ─── Done Toggle ─────────────────────────── */
-.done-toggle {
-  display: flex;
+/* ─── Complete Exercise Button ───────────── */
+.c3-complete-btn {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 6px;
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+  white-space: nowrap;
 }
 
-.done-toggle input[type='checkbox'] {
-  display: none;
+.c3-complete-btn:hover {
+  background: #15803d;
 }
 
-.done-icon {
-  font-size: 1.2rem;
-  color: #d1d5db;
-  transition: color 0.15s ease;
+.c3-complete-btn--done {
+  background: #166534;
+  opacity: 0.85;
+  cursor: default;
 }
 
-.done-toggle.active .done-icon {
-  color: #22c55e;
+.c3-complete-btn--done:hover {
+  background: #166534;
 }
 
 /* ─── Remove Set ──────────────────────────── */
@@ -566,15 +574,9 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
 
 /* ─── Cardio Mobile ───────────────────────── */
 @media (max-width: 600px) {
-  .cardio-table-wrap {
-    max-width: 100%;
-  }
-
-  /* Columns stay percentage-based — no override needed */
-
   .c3-col-info {
     font-size: 0.78rem;
-    padding-right: 8px;
+    padding-right: 6px;
   }
 
   .c3-col-set {
@@ -592,6 +594,11 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
   .set-input {
     padding: 5px 6px;
     font-size: 0.82rem;
+  }
+
+  .c3-complete-btn {
+    padding: 5px 10px;
+    font-size: 0.78rem;
   }
 }
 </style>
