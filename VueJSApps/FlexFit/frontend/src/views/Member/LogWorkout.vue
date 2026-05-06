@@ -386,10 +386,11 @@ const completeWorkout = async () => {
     activeSession.value    = null;
     hasActiveWorkout.value = false;
 
-    setTimeout(() => {
+    setTimeout(async () => {
       saveMessage.value = '';
-      activeTab.value   = 'overview';
       selectedDay.value = '';
+      activeTab.value   = 'workoutHistory';
+      await loadWorkoutHistory();
     }, 2000);
   } catch (err) {
     saveError.value = err?.message || 'Failed to complete workout.';

@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.79] — Default Set Logic + Complete Workout Redirect
+
+### Part 1+2 — Default Set Logic (Frontend)
+Added `getDefaultSetCount(exercise)` helper in `LogWorkout.vue` used by `buildInitialSets()`:
+
+| Type | Default sets |
+|---|---|
+| Cardio | **1** (always) |
+| Other | **1** (always) |
+| Strength | Plan `Sets` value; fallback **3** if missing/null/blank/0 |
+| Unknown | Plan `Sets` value if valid; fallback **1** |
+
+Previously `exercise.sets \|\| 1` was used which caused Cardio exercises to inherit whatever `sets` value was on the exercise record (often 3), resulting in 3 cardio sets being created on Start Workout.
+
+### Part 3 — Backend Protection
+The backend `PUT /session/:sessionId/save-day` already uses `sets.length` from the payload (not a hardcoded default), so no backend change is needed — the correct set count flows from the frontend payload.
+
+### Part 4 — Complete Workout Redirect
+After **Complete Workout** saves successfully:
+- Previously: waited 2 s then switched to **Overview**.
+- Now: waits 2 s, clears day selection, switches to **Workout History**, and calls `loadWorkoutHistory()` so the completed session appears immediately.
+
+---
+
 ## [0.78.h] — Save Day Button + Fix History Exercise Images
 
 ### Part 1 — Save Day Button (Day Details Tab)
