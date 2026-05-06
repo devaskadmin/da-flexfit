@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.77.7b3] - 2026-05-06
+
+### Overview
+Improved cardio logging table column balance. Replaced fixed pixel widths with proportional percentage columns to eliminate the disconnected Value column and excessive right-side whitespace.
+
+### Changed — Frontend (`ExerciseSessionCard.vue`)
+- **Column widths** changed from fixed pixels (`70px / 1fr / 260px`) to percentage-based (`30% / 40% / 30%`):
+  - Set column: `30%`
+  - Info column: `40%`
+  - Value column: `30%`
+- Added `width: 100%` to the shared `.c3-head` / `.c3-row` grid rule so columns always fill the container.
+- **Row padding** tightened: `5px 12px` → `4px 12px` for denser, more readable rows.
+- **Mobile (≤ 600 px)**: Removed the fixed-pixel column override — percentage columns are naturally responsive, so no breakpoint override is needed. Added slight padding reduction (`3px 10px`) instead.
+
+### Not Changed
+- Template structure, data fields, Strength layout, backend, Add Set logic.
+
+---
+
 ## [0.77.7b2] - 2026-05-06
 
 ### Overview
