@@ -1,4 +1,6 @@
 <script setup>
+import { computed } from 'vue';
+
 const props = defineProps({
   exercise: {
     type: Object,
@@ -19,6 +21,20 @@ function completeExercise(exerciseId) {
     }
   });
 }
+
+const workoutType = computed(() => {
+  const raw = String(
+    props.exercise.WorkoutType ||
+    props.exercise.workoutType ||
+    ''
+  ).trim().toLowerCase();
+  if (raw === 'cardio') return 'cardio';
+  if (raw === 'other') return 'other';
+  if (raw === 'strength') return 'strength';
+  // Legacy fallback: honour the isCardio prop, default to strength
+  if (props.isCardio) return 'cardio';
+  return 'strength';
+});
 </script>
 
 <template>
@@ -48,63 +64,157 @@ function completeExercise(exerciseId) {
     </div>
 
     <!-- ── STRENGTH Sets Table ─────────────────────────────────────────── -->
-    <div v-if="!isCardio" class="sec-sets-table">
-      <div class="sec-sets-head">
-        <span class="col-set">Set</span>
-        <span class="col-weight">Weight (kg)</span>
-        <span class="col-reps">Reps</span>
-        <span class="col-done">Done</span>
-        <span class="col-rm"></span>
-      </div>
-      <div
-        v-for="(set, idx) in exercise.sessionSets"
-        :key="idx"
-        class="sec-set-row"
-        :class="{ 'set-done': set.done }"
-      >
-        <span class="col-set set-num">{{ set.setNum }}</span>
-        <input
-          type="number"
-          class="col-weight set-input"
-          :value="set.weight"
-          min="0"
-          step="0.5"
-          placeholder="0"
-          @input="emit('update-set', exercise.id, idx, 'weight', $event.target.value)"
-        />
-        <input
-          type="number"
-          class="col-reps set-input"
-          :value="set.reps"
-          min="0"
-          placeholder="0"
-          @input="emit('update-set', exercise.id, idx, 'reps', $event.target.value)"
-        />
-        <label class="col-done done-toggle" :class="{ active: set.done }">
-          <input
-            type="checkbox"
-            :checked="set.done"
-            @change="emit('update-set', exercise.id, idx, 'done', $event.target.checked)"
-          />
-          <span class="done-icon">
-            <i v-if="set.done" class="fa-solid fa-circle-check"></i>
-            <i v-else class="fa-regular fa-circle"></i>
-          </span>
-        </label>
-        <button
-          type="button"
-          class="col-rm remove-set-btn"
-          :disabled="exercise.sessionSets.length <= 1"
-          title="Remove set"
-          @click="emit('remove-set', exercise.id, idx)"
+    <div v-if="workoutType === 'strength'" class="cardio-table-wrap">
+      <div class="cardio-3col-table">
+        <div class="c3-head">
+          <span class="c3-col-set">Set</span>
+          <span class="c3-col-info">Info</span>
+          <span class="c3-col-value">Value</span>
+        </div>
+        <div
+          v-for="(set, idx) in exercise.sessionSets"
+          :key="idx"
+          class="c3-set-group"
+          :class="{ 'c3-set-done': set.done }"
         >
-          <i class="fa-solid fa-xmark"></i>
-        </button>
+          <!-- Weight row -->
+          <div class="c3-row">
+            <span class="c3-col-set c3-set-num">{{ set.setNum }}</span>
+            <span class="c3-col-info">Weight (kg)</span>
+            <div class="c3-col-value">
+              <input
+                type="number"
+                class="set-input"
+                :value="set.weight"
+                min="0"
+                step="0.5"
+                placeholder="0"
+                @input="emit('update-set', exercise.id, idx, 'weight', $event.target.value)"
+              />
+            </div>
+          </div>
+          <!-- Reps row -->
+          <div class="c3-row">
+            <span class="c3-col-set"></span>
+            <span class="c3-col-info">Reps</span>
+            <div class="c3-col-value">
+              <input
+                type="number"
+                class="set-input"
+                :value="set.reps"
+                min="0"
+                placeholder="0"
+                @input="emit('update-set', exercise.id, idx, 'reps', $event.target.value)"
+              />
+            </div>
+          </div>
+          <!-- Action row -->
+          <div class="c3-row c3-row-done">
+            <span class="c3-col-set"></span>
+            <div class="c3-col-info c3-info-action">
+              <button
+                v-if="exercise.sessionSets.length > 1"
+                type="button"
+                class="c3-rm-btn"
+                title="Remove this set"
+                @click="emit('remove-set', exercise.id, idx)"
+              >
+                <i class="fa-solid fa-minus"></i> Remove Set
+              </button>
+            </div>
+            <div class="c3-col-value c3-done-cell">
+              <button
+                type="button"
+                class="c3-complete-btn"
+                :class="{ 'c3-complete-btn--done': set.done }"
+                @click="emit('update-set', exercise.id, idx, 'done', !set.done)"
+              >
+                <i v-if="set.done" class="fa-solid fa-circle-check"></i>
+                <i v-else class="fa-regular fa-circle"></i>
+                {{ set.done ? 'Set Done' : 'Complete Set' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── OTHER Sets Table ──────────────────────────────────────────── -->
+    <div v-if="workoutType === 'other'" class="cardio-table-wrap">
+      <div class="cardio-3col-table">
+        <div class="c3-head">
+          <span class="c3-col-set">Set</span>
+          <span class="c3-col-info">Info</span>
+          <span class="c3-col-value">Value</span>
+        </div>
+        <div
+          v-for="(set, idx) in exercise.sessionSets"
+          :key="idx"
+          class="c3-set-group"
+          :class="{ 'c3-set-done': set.done }"
+        >
+          <!-- Duration row -->
+          <div class="c3-row">
+            <span class="c3-col-set c3-set-num">{{ set.setNum }}</span>
+            <span class="c3-col-info">Duration (min)</span>
+            <div class="c3-col-value">
+              <input
+                type="number"
+                class="set-input"
+                :value="set.duration ?? 0"
+                min="0"
+                placeholder="0"
+                @input="emit('update-set', exercise.id, idx, 'duration', $event.target.value)"
+              />
+            </div>
+          </div>
+          <!-- Notes row -->
+          <div class="c3-row">
+            <span class="c3-col-set"></span>
+            <span class="c3-col-info">Notes</span>
+            <div class="c3-col-value">
+              <input
+                type="text"
+                class="set-input set-input--text"
+                :value="set.notes ?? ''"
+                placeholder="Optional notes"
+                @input="emit('update-set', exercise.id, idx, 'notes', $event.target.value)"
+              />
+            </div>
+          </div>
+          <!-- Action row -->
+          <div class="c3-row c3-row-done">
+            <span class="c3-col-set"></span>
+            <div class="c3-col-info c3-info-action">
+              <button
+                v-if="exercise.sessionSets.length > 1"
+                type="button"
+                class="c3-rm-btn"
+                title="Remove this set"
+                @click="emit('remove-set', exercise.id, idx)"
+              >
+                <i class="fa-solid fa-minus"></i> Remove Set
+              </button>
+            </div>
+            <div class="c3-col-value c3-done-cell">
+              <button
+                type="button"
+                class="c3-complete-btn"
+                :class="{ 'c3-complete-btn--done': set.done }"
+                @click="emit('update-set', exercise.id, idx, 'done', !set.done)"
+              >
+                <i v-if="set.done" class="fa-solid fa-circle-check"></i>
+                <i v-else class="fa-regular fa-circle"></i>
+                {{ set.done ? 'Set Done' : 'Complete Set' }}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- ── CARDIO Sets Table ─────────────────────────────────────────── -->
-    <div v-if="isCardio" class="cardio-table-wrap">
+    <div v-if="workoutType === 'cardio'" class="cardio-table-wrap">
     <div class="cardio-3col-table">
       <!-- Header -->
       <div class="c3-head">
@@ -372,6 +482,10 @@ function completeExercise(exerciseId) {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
   background: #fff;
+}
+
+.set-input--text {
+  text-align: left;
 }
 
 /* ─── Cardio Table Wrapper — full width, no cap */
