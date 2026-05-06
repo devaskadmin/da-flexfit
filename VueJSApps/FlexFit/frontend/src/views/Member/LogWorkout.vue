@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import ExerciseSessionCard from '@/components/workout-session/ExerciseSessionCard.vue';
 import { API_BASE } from '@/config/env';
+import { getExerciseImageFromGallery } from '@/utils/exerciseImage';
 
 const router = useRouter();
 
@@ -50,6 +51,11 @@ const saving           = ref(false);
 const saveMessage      = ref('');
 const saveError        = ref('');
 const conflictMessage  = ref('');
+
+/* ─── Save Day state ────────────────────────────────────────────────────── */
+const savingDay      = ref(false);
+const saveDayMessage = ref('');
+const saveDayError   = ref('');
 
 /* ─── Accordion: active exercise ───────────────────────────────────── */
 const activeExerciseId = ref(null);
@@ -573,6 +579,59 @@ const saveHistoryWorkout = async (session) => {
   }
 };
 
+/* ─── Save Day helpers ───────────────────────────────────────────────────── */
+const toSafeNumber = (value) => {
+  if (value === null || value === undefined || value === '') return 0;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+};
+
+const saveDay = async () => {
+  if (!activeSession.value?.id) return;
+  savingDay.value      = true;
+  saveDayMessage.value = '';
+  saveDayError.value   = '';
+  try {
+    const payload = {
+      exercises: dayExercises.value.map((ex) => ({
+        exerciseId:    ex.exerciseId,
+        name:          ex.name,
+        workoutType:   ex.workoutType || 'Strength',
+        scheduleGroup: ex.scheduleGroup,
+        sets: ex.sessionSets.map((s) => ({
+          setNum:         s.setNum,
+          weight:         toSafeNumber(s.weight),
+          reps:           toSafeNumber(s.reps),
+          duration:       toSafeNumber(s.duration),
+          caloriesBurned: toSafeNumber(s.caloriesBurned),
+          distanceMiles:  toSafeNumber(s.distanceMiles),
+          speedMph:       toSafeNumber(s.speedMph),
+          done:           Boolean(s.done),
+        })),
+      })),
+    };
+    const res = await fetch(
+      `${API_BASE}/api/workout-log/session/${activeSession.value.id}/save-day`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        credentials: 'include',
+      }
+    );
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error(errBody?.error || 'Failed to save day.');
+    }
+    saveDayMessage.value = '\u2713 Day saved!';
+    setTimeout(() => { saveDayMessage.value = ''; }, 3000);
+  } catch (err) {
+    saveDayError.value = err?.message || 'Failed to save day.';
+  } finally {
+    savingDay.value = false;
+  }
+};
+
 /* ─── Lifecycle ──────────────────────────────────────────────────────────── */
 onMounted(async () => {
   await loadWorkoutLists();
@@ -962,7 +1021,12 @@ onMounted(async () => {
                 <!-- Exercise identity -->
                 <div class="wl-hist-ex-identity">
                   <div class="wl-hist-ex-thumb">
-                    <img v-if="ex.exerciseImage" :src="ex.exerciseImage" :alt="ex.exerciseName" class="wl-hist-thumb-img" />
+                    <img
+                      v-if="ex.exerciseImage"
+                      :src="getExerciseImageFromGallery(ex.exerciseImage)"
+                      :alt="ex.exerciseName"
+                      class="wl-hist-thumb-img"
+                    />
                     <i v-else class="fa-solid fa-dumbbell"></i>
                   </div>
                   <div class="wl-hist-ex-info">
@@ -1095,14 +1159,23 @@ onMounted(async () => {
     <!-- ── Sticky bottom bar (Day Details only) ───────────────────────────── -->
     <div v-if="activeTab === 'dayDetails' && selectedDay && dayExercises.length > 0 && !isPreviewMode" class="wl-bottom-bar">
       <div class="wl-bottom-bar__inner">
-        <span class="wl-bottom-bar__label">{{ totalCompleted }} / {{ totalSets }} sets done</span>
+        <div class="wl-bottom-bar__status">
+          <span class="wl-bottom-bar__label">{{ totalCompleted }} / {{ totalSets }} sets done</span>
+          <span v-if="saveDayMessage" class="wl-save-day-msg wl-save-day-msg--ok">{{ saveDayMessage }}</span>
+          <span v-if="saveDayError" class="wl-save-day-msg wl-save-day-msg--err">{{ saveDayError }}</span>
+        </div>
         <div class="wl-bottom-bar__actions">
           <button type="button" class="wl-btn-end" @click="endWithoutSaving">
             <i class="fa-solid fa-xmark"></i> End Workout
           </button>
-          <button type="button" class="wl-btn-complete" :disabled="saving" @click="completeWorkout">
+          <button type="button" class="wl-btn-save-day" :disabled="savingDay || saving" @click="saveDay">
+            <i v-if="savingDay" class="fa-solid fa-spinner fa-spin"></i>
+            <i v-else class="fa-solid fa-floppy-disk"></i>
+            {{ savingDay ? 'Saving\u2026' : 'Save Day' }}
+          </button>
+          <button type="button" class="wl-btn-complete" :disabled="saving || savingDay" @click="completeWorkout">
             <i class="fa-solid fa-flag-checkered"></i>
-            {{ saving ? 'Saving…' : 'Complete Workout' }}
+            {{ saving ? 'Saving\u2026' : 'Complete Workout' }}
           </button>
         </div>
       </div>
@@ -1423,8 +1496,22 @@ onMounted(async () => {
   max-width: 960px; margin: 0 auto;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
 }
+.wl-bottom-bar__status  { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .wl-bottom-bar__label   { font-size: 0.88rem; font-weight: 700; color: var(--text-color, #111827); }
-.wl-bottom-bar__actions { display: flex; gap: 10px; }
+.wl-bottom-bar__actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.wl-save-day-msg        { font-size: 0.82rem; font-weight: 600; }
+.wl-save-day-msg--ok    { color: #16a34a; }
+.wl-save-day-msg--err   { color: #dc2626; }
+
+.wl-btn-save-day {
+  background: #0ea5e9; border: none; color: #fff;
+  border-radius: 10px; padding: 10px 18px;
+  font-size: 0.88rem; font-weight: 800; cursor: pointer;
+  display: flex; align-items: center; gap: 7px; transition: background 0.15s;
+}
+.wl-btn-save-day:hover:not(:disabled) { background: #0284c7; }
+.wl-btn-save-day:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .wl-btn-complete {
   background: #22c55e; border: none; color: #fff;

@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.78.h] — Save Day Button + Fix History Exercise Images
+
+### Part 1 — Save Day Button (Day Details Tab)
+A **Save Day** button now appears in the sticky bottom bar alongside End Workout and Complete Workout, visible whenever an active in-progress workout day is open.
+
+- Clicking **Save Day** persists the current exercise/set values for the selected day without ending or completing the workout.
+- Shows `✓ Day saved!` success feedback (auto-clears after 3 s).
+- Shows inline error message if the save fails.
+- Both Save Day and Complete Workout disable while a save is in flight.
+
+### Part 2 — Null / Blank Value Handling
+A `toSafeNumber()` helper converts `null`, `undefined`, empty string, or `NaN` to `0` before sending any set value to the backend.
+
+Applied to all set fields: `weight`, `reps`, `duration`, `caloriesBurned`, `distanceMiles`, `speedMph`.
+
+Backend `PUT /session/:sessionId/save-day` also uses a `toSafe()` guard before every DB write.
+
+### Part 3 — Backend: `PUT /api/workout-log/session/:sessionId/save-day`
+New endpoint added to `backend/api/workout-log.js`:
+- Verifies the session is `in_progress` and belongs to the logged-in user.
+- Upserts `workout_log` rows per exercise (UPDATE if row exists for session+exercise, INSERT otherwise).
+- Upserts `workout_log_sets` rows via `ON DUPLICATE KEY UPDATE`.
+- Does **not** touch `status`, `started_at`, or `completed_at`.
+- Returns `{ message: 'Day saved successfully.', sessionId }`.
+
+### Part 4 — Fix Workout History Exercise Images
+Workout History exercise thumbnails were broken — the `exerciseImage` field from the DB contains a JSON array string like `["Elliptical_Trainer/0.jpg","Elliptical_Trainer/1.jpg"]` which was being used directly as an `<img src>`.
+
+Fix:
+- Imported the existing `getExerciseImageFromGallery` utility from `@/utils/exerciseImage`.
+- History template now calls `getExerciseImageFromGallery(ex.exerciseImage)` to parse the array, extract the first image, and build the correct asset path (`/assets/Excerises/<folder>/0.jpg`).
+- Falls back to the default image if the gallery is missing or unparseable.
+
+---
+
 ## [0.78.g1] — Fix Workout History 500 Error (Missing DB Columns)
 
 Resolved the `ER_BAD_FIELD_ERROR: Unknown column 'calories_burned' in 'SELECT'` 500 error on `GET /api/workout-log/history`.
