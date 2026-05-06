@@ -130,15 +130,16 @@ const buildInitialSets = (exercise) => {
   const count = Math.max(Number(exercise.sets || 1), 1);
   return Array.from({ length: count }, (_, i) => ({
     setNum: i + 1, weight: Number(exercise.weight || 0),
-    reps: Number(exercise.reps || 0), duration: Number(exercise.duration || 0), done: false,
+    reps: Number(exercise.reps || 0), duration: Number(exercise.duration || 0),
+    caloriesBurned: 0, distanceMiles: 0, speedMph: 0, done: false,
   }));
 };
 
 const addSet = (exerciseId) => {
   const ex = sessionExercises.value.find((e) => e.id === exerciseId);
   if (!ex) return;
-  const last = ex.sessionSets[ex.sessionSets.length - 1] || { weight: 0, reps: 0, duration: 0 };
-  ex.sessionSets.push({ setNum: ex.sessionSets.length + 1, weight: last.weight, reps: last.reps, duration: last.duration, done: false });
+  const last = ex.sessionSets[ex.sessionSets.length - 1] || { weight: 0, reps: 0, duration: 0, caloriesBurned: 0, distanceMiles: 0, speedMph: 0 };
+  ex.sessionSets.push({ setNum: ex.sessionSets.length + 1, weight: last.weight, reps: last.reps, duration: last.duration, caloriesBurned: last.caloriesBurned, distanceMiles: last.distanceMiles, speedMph: last.speedMph, done: false });
 };
 
 const removeSet = (exerciseId, setIndex) => {
