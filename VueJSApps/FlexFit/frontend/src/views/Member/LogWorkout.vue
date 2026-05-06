@@ -686,11 +686,11 @@ onMounted(async () => {
               :is-cardio="isCardio(exercise)"
               :is-expanded="activeExerciseId === exercise.id"
               :read-only="isPreviewMode"
-              @select="isPreviewMode ? null : selectExercise($event)"
-              @add-set="isPreviewMode ? null : addSet($event)"
-              @remove-set="isPreviewMode ? null : removeSet($event)"
-              @update-set="isPreviewMode ? null : updateSet($event)"
-              @exercise-completed="isPreviewMode ? null : onExerciseCompleted($event)"
+              @select="isPreviewMode ? null : selectExercise"
+              @add-set="isPreviewMode ? null : addSet"
+              @remove-set="isPreviewMode ? null : removeSet"
+              @update-set="isPreviewMode ? null : updateSet"
+              @exercise-completed="isPreviewMode ? null : onExerciseCompleted"
             />
           </div>
         </template>
