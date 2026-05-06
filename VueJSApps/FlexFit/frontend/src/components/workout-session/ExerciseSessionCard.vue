@@ -496,7 +496,7 @@ function completeExercise(exerciseId) {
 .c3-done-cell {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
 }
 
 /* ─── Remove Set Button ──────────────── */

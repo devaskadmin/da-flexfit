@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.77.7f]
+### Changed
+- Centered "Complete Set" button horizontally inside the Value column of the cardio set row
+- UI polish pass: refined cardio workout table structure and action button alignment
+- Improved responsive cardio set layout consistency
+- Enhanced workout progression workflow clarity (Remove Set / Complete Set / Complete Exercise hierarchy)
+
 ## [0.77.7e]
 ### Changed
 - Cardio exercise table: separated "Complete Set" (per-set) from "Complete Exercise" (entire exercise)
