@@ -190,13 +190,13 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
               {{ set.done ? 'Completed' : 'Complete Exercise' }}
             </button>
             <button
+              v-if="exercise.sessionSets.length > 1"
               type="button"
-              class="remove-set-btn c3-rm-btn"
-              :disabled="exercise.sessionSets.length <= 1"
-              title="Remove set"
+              class="c3-rm-btn"
+              title="Remove this set"
               @click="emit('remove-set', exercise.id, idx)"
             >
-              <i class="fa-solid fa-xmark"></i>
+              <i class="fa-solid fa-minus"></i> Remove Set
             </button>
           </div>
         </div>
@@ -474,12 +474,31 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
 .c3-done-cell {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
+/* ─── Remove Set Button ──────────────── */
 .c3-rm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+  border-radius: 7px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
   flex-shrink: 0;
+}
+
+.c3-rm-btn:hover {
+  background: #fef2f2;
+  border-color: #ef4444;
 }
 
 /* ─── Complete Exercise Button ───────────── */
