@@ -350,7 +350,8 @@ const allDone = computed(() => completedSets.value === totalSets.value && totalS
           </div>
         </div>
       </div>
-    </div>
+      </div><!-- end cardio-3col-table -->
+    </div><!-- end cardio-table-wrap -->
 
     <!-- Add Set -->
     <div class="sec-footer">
