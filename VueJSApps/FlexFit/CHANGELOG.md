@@ -1,5 +1,108 @@
 # Changelog
 
+---
+
+## [0.8] — Workout Session System + History + Save Flow
+
+**Release Type:** Major Milestone
+**Status:** Production Deployment Candidate
+**Deployment Target:** Render.com
+
+---
+
+### New Features
+
+#### Full Workout Session System
+- Users can now start live workout sessions from saved Workout Plans.
+- Sessions persist using the selected workout date.
+- Sessions remain locked to the selected date until ended or completed.
+
+#### Workout History Tab
+- New Workout History tab on the `/workouts` page.
+- Displays completed workouts grouped by session.
+- Shows: workout title, workout date, started/completed timestamps, exercise list, per-set data, and completion status.
+
+#### Save Day
+- New **Save Day** button in the Day Details sticky bottom bar.
+- Saves partial workout progress without ending or completing the session.
+- Preserves all entered values during the active workout.
+
+#### Workout In Progress
+- **Workouts In Progress** button in the hero toolbar.
+- Automatically restores saved workout sessions including selected date and entered values.
+
+#### Workout History Editing
+- Users can edit completed workout history entries inline.
+- Supports updating: reps, weight, duration, calories, distance, speed.
+- Full Save + Cancel flow with per-session edit state.
+
+#### Workout History Delete
+- Delete workout session support with confirmation modal.
+- Safely deletes the session and all linked workout set data in a transaction.
+
+---
+
+### Workout Logic Improvements
+
+- **Dynamic Set Generation** — Cardio → 1 set; Other → 1 set; Strength → plan value, fallback 3.
+- **Complete Workout Flow** — saves all logs, finalizes session, redirects to Workout History, reloads history automatically.
+- **Save Protection** — `null`, `undefined`, empty string, and `NaN` values safely convert to `0` before any DB write.
+
+---
+
+### UI / UX Improvements
+
+- Exercise accordion system with collapse/expand and auto-advance on completion.
+- Progress bars and set completion counters on Day Details.
+- Workout History session cards with detailed set tables, completion indicators, and edit states.
+- Exercise images: first image parsed from DB gallery array; fallback/default image handling.
+
+---
+
+### Backend Improvements
+
+- `PUT /api/workout-log/session/:sessionId/save-day` — save in-progress sets without completing.
+- `PUT /api/workout-log/history/session/:sessionId` — update completed history sets.
+- `DELETE /api/workout-log/history/session/:sessionId` — transactional cascade delete.
+- `GET /api/workout-log/history` — sessions-based history with per-set detail.
+- `POST /api/workout-log/session` — full session save with set-level data.
+- Ownership + status validation on all session endpoints.
+- Safer `NULL` handling and workout log aggregate recalculation.
+
+---
+
+### Bug Fixes
+
+- Fixed blank `/workouts` page.
+- Fixed non-working workout buttons.
+- Fixed Workout History 404 and 500 errors.
+- Fixed stale backend route loading.
+- Fixed completed workout redirect (now goes to History instead of Overview).
+- Fixed incorrect cardio set generation (was 3, now correctly 1).
+- Fixed Workout History exercise image rendering (was raw JSON array string).
+- Fixed session reload date mismatches.
+- Fixed exercise completion sync on accordion advance.
+
+---
+
+### Version Status
+
+| Item | Value |
+|---|---|
+| Version | **0.8** |
+| Status | ✅ Deployment Ready |
+| Next Phase | 0.81+ |
+
+**Planned 0.81+:**
+- Improved image management
+- User exercise uploads
+- Advanced workout analytics
+- Nutrition integration improvements
+- Mobile UX optimization
+- AI-assisted workout recommendations
+
+---
+
 ## [0.79.a] — Fix Cardio Still Creating 3 Sets
 
 ### Root Cause
