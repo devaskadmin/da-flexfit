@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.77.8]
+### Changed
+- `ExerciseSessionCard.vue` — unified all workout types to mobile-first 3-column table layout (Set | Info | Value)
+
+#### Strength exercises
+- Replaced wide flat row layout with vertical grouped 3-col table
+- Rows per set: Weight (kg) → Reps → Action (Remove Set / Complete Set)
+- Remove Set hidden when only 1 set exists
+- Complete Set marks individual set done (green, centered in Value column)
+
+#### Other exercises (WorkoutType = Other)
+- New 3-col table layout: Duration (min) → Notes → Action row
+- `duration` defaults to `0`, `notes` defaults to `''` if not present in set data (frontend-only, no backend change)
+- Notes field is left-aligned text input (`.set-input--text`)
+
+#### All workout types
+- Replaced `v-if="!isCardio"` / `v-if="isCardio"` branching with computed `workoutType`
+- `workoutType` normalises `exercise.WorkoutType || exercise.workoutType` to lowercase
+  - `'cardio'` → cardio table
+  - `'strength'` → strength table
+  - `'other'` → other table
+  - Unknown / missing → falls back to `isCardio` prop, then defaults to `'strength'`
+- All three layouts share the same `.c3-*` CSS classes (no duplication)
+- Footer row is shared: `[+ Add Set]` · `[X/Y sets completed]` · `[Complete Exercise]`
+- Added `.set-input--text` for left-aligned text inputs (Notes field)
+- Added `import { computed } from 'vue'` to script
+
 ## [0.77.7f]
 ### Changed
 - Centered "Complete Set" button horizontally inside the Value column of the cardio set row
