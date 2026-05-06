@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.77.9d]
+### Fixed
+- **`ExerciseSessionCard.vue`**: `cardio-table-wrap` div was left unclosed after 0.77.9c incorrectly removed its closing tag instead of the genuinely spurious extra div. Added the missing `</div>` to restore valid template structure and fix the Vite "Element is missing end tag" compile error that caused a blank page.
+
+## [0.77.9c]
+### Fixed
+- **`ExerciseSessionCard.vue`**: Corrected indentation of `<div class="cardio-3col-table">` inside the cardio block. Attempted to remove a spurious extra closing `</div>` but removed the wrong one — introduced the `cardio-table-wrap` unclosed-div regression fixed in 0.77.9d.
+
 ## [0.77.9b]
 ### Fixed
 - **Accordion default open state** — exercises were all collapsed when Day Details loaded
