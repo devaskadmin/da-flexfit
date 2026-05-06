@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.77.9]
+### Added
+- **Exercise accordion in Day Details** — only one exercise is expanded at a time
+
+#### `ExerciseSessionCard.vue`
+- Added `isExpanded` prop (default `true` for backward compat)
+- Added `select` emit — fired when header or "Select Exercise" button is clicked
+- Added `exercise-completed` emit — fired after "Complete Exercise" button marks all sets done
+- Header is now clickable (toggles accordion) with hover and active background states
+- Added **Select Exercise / Collapse** button in header right (chevron + label)
+- Added **sets completion summary** (`0 / 3`) in header, turns green when all sets done
+- Added `completedSets`, `totalSets`, `allDone` computed properties
+- All table rows + footer wrapped in `<div v-show="isExpanded" class="sec-body">` — hidden when collapsed
+- Active card: blue border + `box-shadow` ring (`session-exercise-card--active`)
+- Completed card: green border (`session-exercise-card--done`)
+- Active header: light blue background (`sec-header--active`)
+
+#### `LogWorkout.vue`
+- Added `watch` import
+- Added `activeExerciseId` ref — tracks which exercise is currently expanded
+- `watch(sessionExercises)` — auto-opens first incomplete exercise when exercises load; preserves selection if still valid
+- Added `selectExercise(id)` — toggle: clicking open exercise collapses it; clicking another opens it
+- Added `onExerciseCompleted(id)` — collapses completed exercise, auto-opens next incomplete one; if all done, collapses all
+- Passed `:is-expanded`, `@select`, `@exercise-completed` props/events to `ExerciseSessionCard`
+- Preview mode: `select` / `exercise-completed` events are no-ops (same pattern as existing)
+
 ## [0.77.8]
 ### Changed
 - `ExerciseSessionCard.vue` — unified all workout types to mobile-first 3-column table layout (Set | Info | Value)
