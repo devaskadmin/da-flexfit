@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.77.7b5] - 2026-05-06
+
+### Overview
+Centered the "Complete Exercise" button horizontally within the Value column of the cardio logging table.
+
+### Changed — Frontend (`ExerciseSessionCard.vue`)
+- Added `justify-content: center` to `.c3-done-cell` — the Complete Exercise button and Remove button are now centered within the Value column cell.
+- Removed `margin-left: auto` from `.c3-rm-btn` (no longer needed; centering is handled by the flex container).
+
+### Not Changed
+- Button color, behavior, size, or padding.
+- All other cardio rows, Strength layout, backend.
+
+---
+
 ## [0.77.7b4] - 2026-05-06
 
 ### Overview
