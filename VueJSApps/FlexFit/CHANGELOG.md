@@ -1,5 +1,279 @@
 # Changelog
 
+## [0.78.g] — Edit And Save Workout History
+
+Completed workout history records are now editable. Each history session card has an Edit button that switches the set table to editable inputs. Changes are saved via a new PUT endpoint and the history refreshes automatically.
+
+### Backend — `backend/api/workout-log.js`
+- Added `PUT /api/workout-log/history/session/:sessionId`.
+- Verifies session exists and belongs to the logged-in user (403 if not).
+- Rejects edits on `in_progress` sessions (409).
+- For each exercise in the payload, verifies the `workout_log` row belongs to the session + user.
+- Updates `workout_log_sets` rows: `reps`, `weight`, `duration_minutes`, `calories_burned`, `distance_miles`, `speed_mph`.
+- Re-computes and updates `workout_log` summary aggregates (Weight, Reps, Duration, Calories, Distance, Speed).
+- Runs transactionally; rolls back on error.
+- Returns `{ message, sessionId, updatedExercises }`.
+
+### Frontend — `Member/LogWorkout.vue`
+**New state refs:**
+- `editingHistorySessionId` — holds the `sessionId` currently in edit mode (null = read-only).
+- `historyEditDraft` — `{ [workoutLogId]: [...sets] }` deep clone of original set data for the active edit.
+- `savingHistoryWorkout` — disables Save/Cancel buttons during the PUT request.
+- `historySaveError` — inline error shown in the session header if the save fails.
+
+**New functions:**
+- `startEditHistoryWorkout(session)` — deep-clones all exercise sets into `historyEditDraft`, sets `editingHistorySessionId`.
+- `cancelEditHistoryWorkout()` — clears draft and exits edit mode without saving.
+- `updateHistoryDraft(workoutLogId, setIdx, field, value)` — mutates the in-memory draft on input change.
+- `saveHistoryWorkout(session)` — sends `PUT /api/workout-log/history/session/:sessionId`, calls `cancelEditHistoryWorkout` + `loadWorkoutHistory` on success.
+
+**Template changes:**
+- Session cards bind `:class` with `wl-history-session--editing` when in edit mode.
+- Session header meta area now shows **Edit + Delete** (read-only mode) or **Cancel + Save + inline error** (edit mode). Only one session can be edited at a time (Edit button is disabled on others).
+- Strength set rows: Weight and Reps cells render `<input type="number">` when editing, plain span otherwise.
+- Cardio/Other set rows: Duration, Calories, Distance, Speed cells render inputs when editing. Done column is always read-only.
+
+**CSS:**
+- `.wl-history-session--editing` — subtle blue-tinted border + background on the active edit card.
+- `.wl-hist-edit-btn` (blue), `.wl-hist-save-btn` (green), `.wl-hist-cancel-btn` (grey) — action buttons.
+- `.wl-hist-save-error` — inline red error text in the session header.
+- `.wl-hist-set-input` — compact number input styled to match the set table grid.
+
+ — Match Workout History Fields To Day Details (Cardio + Other)
+
+Workout History now displays the same per-set detail as Day Details for all exercise types — Cardio and Other show Duration, Calories Burned, Distance (mi), Speed (mph) and Done status per set.
+
+### Database Migration — `backend/migrations/002_workout_log_sets_cardio_fields.sql`
+- Added `calories_burned DECIMAL(7,2)`, `distance_miles DECIMAL(7,3)`, `speed_mph DECIMAL(6,2)` columns to `workout_log_sets`.
+- **Must run before deploying 0.78.f** — existing rows default to NULL.
+
+### Backend — `backend/api/workout-log.js`
+- `POST /api/workout-log/session`: Updated `INSERT INTO workout_log_sets` to store `calories_burned`, `distance_miles`, `speed_mph` from the incoming `caloriesBurned`, `distanceMiles`, `speedMph` set fields. Also updated `ON DUPLICATE KEY UPDATE` clause.
+- `GET /api/workout-log/history`: Added `calories_burned AS caloriesBurned`, `distance_miles AS distanceMiles`, `speed_mph AS speedMph` to the per-set SELECT query.
+
+### Frontend — `Member/LogWorkout.vue`
+**Template — Workout History per-set tables:**
+- **Strength**: unchanged — Set, Weight (kg), Reps, Done (4-column grid).
+- **Cardio + Other**: replaced the old 3-column Duration/Done table with a 6-column table showing Set, Duration (min), Calories (kcal), Distance (mi), Speed (mph), Done. Both `cardio` and `other` workoutTypes use this new layout.
+- Fixed bug where `other` type was incorrectly falling into the Strength table.
+- Removed the old aggregate `.wl-hist-cardio-stats` inline stats block (now superseded by per-set data).
+- Fallback (legacy records without sets): updated `cardio` condition to `['cardio','other'].includes(...)`.
+
+**CSS:**
+- Replaced single `.wl-hist-sets-head` / `.wl-hist-set-row` grid rules with modifier classes:
+  - `.wl-hist-sets-head--strength` + `.wl-hist-set-row--strength` → 4-column layout.
+  - `.wl-hist-sets-head--cardio` + `.wl-hist-set-row--cardio` → 6-column layout with `overflow-x: auto` on mobile.
+  - `.wl-hist-sets-table--cardio` for horizontal scroll wrapper.
+
+
+
+Adds a Delete button to each completed workout session card in the Workout History tab, with a confirmation modal before permanent deletion.
+
+### Backend — `backend/api/workout-log.js`
+- Added `DELETE /api/workout-log/history/session/:sessionId`.
+- Verifies the session exists and belongs to the logged-in user (403 if not).
+- Rejects deletion of `in_progress` sessions (409) — only completed/cancelled sessions can be deleted.
+- Runs a transactional delete in order: `workout_log_sets` → `workout_log` → `workout_log_sessions`.
+- Returns `{ message, sessionId }` on success or a descriptive error JSON on failure.
+
+### Frontend — `Member/LogWorkout.vue`
+**New state refs:**
+- `showDeleteHistoryModal` — controls modal visibility.
+- `workoutHistoryToDelete` — holds `{ sessionId, planName, workoutDate }` for the targeted session.
+- `deleteHistoryLoading` — disables buttons while the request is in flight.
+- `deleteHistoryError` — surfaces server errors inside the modal.
+
+**New functions:**
+- `openDeleteHistoryModal(session)` — populates `workoutHistoryToDelete` and opens the modal.
+- `closeDeleteHistoryModal()` — resets state and closes modal.
+- `confirmDeleteHistoryWorkout()` — calls `DELETE /api/workout-log/history/session/:sessionId`, then refreshes history via `loadWorkoutHistory()`.
+
+**Template changes:**
+- Added a red **Delete** button (`.wl-hist-delete-btn`) to the right side of every session header in the history list.
+- Added a `<Teleport to="body">` confirmation modal showing the plan name and workout date, with Cancel and Delete buttons.
+- Modal inline error banner shown if the delete request fails.
+
+**New CSS classes:**
+`.wl-hist-delete-btn`, `.wl-modal-overlay`, `.wl-modal`, `.wl-modal__header`, `.wl-modal__close`, `.wl-modal__body`, `.wl-modal__sub`, `.wl-modal__footer`, `.wl-btn-delete`, `@keyframes wl-modal-in`.
+
+## [0.78.d] — Workout In Progress Date Lock Fix
+
+Fixes the selected date not switching to the active workout's start date when clicking "Workouts In Progress", and fixes new workouts always being saved under today's date instead of the user's selected date.
+
+### Problem 1 — New workout always used `today()` regardless of selected date
+`startDayWorkout` hardcoded `workoutDate: today()` in the `/workout-sessions/start` POST body. If a user selected 2026-05-05 and started a workout, the session was stored under today's date instead.
+
+**Fix:** `startDayWorkout` now reads `selectedWorkoutDate.value` as the workout start date (falling back to `today()` only if it is blank), and after the session is created it locks `selectedWorkoutDate.value` to that start date.
+
+### Problem 2 — "Workouts In Progress" button didn't restore the session's date
+`goToInProgress` only set `selectedDay` and switched tabs — it never touched `selectedWorkoutDate`. A user who started a workout on May 5 and returned on May 6 would see the date picker showing May 6 while viewing a May 5 session.
+
+**Fix:** `goToInProgress` now reads `activeSession.value.workoutDate`, parses it safely, and sets `selectedWorkoutDate.value` before switching to the Day Details tab.
+
+### Problem 3 — On page load the date picker wasn't restored for in-progress sessions
+`checkActiveSession` fetched the active session and expanded the plan, but never restored `selectedWorkoutDate`. So on a fresh page load the date picker showed today even if the active session started on a previous day.
+
+**Fix:** `checkActiveSession` now sets `selectedWorkoutDate.value` from `data.session.workoutDate` whenever an active session is found.
+
+### No backend changes required
+The `/workout-sessions/start` route already accepts `workoutDate` from the request body and stores it directly in `workout_log_sessions.workout_date`. No SQL migration needed.
+
+### Files changed
+- `frontend/src/views/Member/LogWorkout.vue` — `startDayWorkout`, `checkActiveSession`, `goToInProgress`
+
+## [0.78.c] — Workout History SQL Column Fix (`MajorMuscle` → `MuscleGroup`)
+
+Fixes the 500 error that caused the Workout History tab to show "Failed to fetch workout history" after the 0.78.b backend restart.
+
+### Root Cause
+The `GET /api/workout-log/history` SQL query referenced `ex.MajorMuscle` — a column that does not exist in the `exercises` table. The actual column name (confirmed from `excerises.js` INSERT/UPDATE statements and the exercises schema) is `MuscleGroup`. MySQL threw `ER_BAD_FIELD_ERROR: Unknown column 'ex.MajorMuscle' in 'SELECT'`, resulting in a 500 response on every history request.
+
+### Fix — `backend/api/workout-log.js`
+- Changed `ex.MajorMuscle AS muscleGroup` → `ex.MuscleGroup AS muscleGroup` in the `/history` route SELECT query.
+- Backend restarted to load the corrected query.
+
+### No frontend changes required
+All frontend state, template, and CSS from 0.78/0.78.a/0.78.b remain intact.
+
+## [0.78.b] — Workout History 404 Fix (Backend Restart)
+
+Fixes the `Server error 404` displayed in the Workout History tab after the 0.78/0.78.a changes.
+
+### Root Cause
+The backend Node.js process (PID 16092) had been running since **5 May 2026 08:11 AM** — before the `GET /api/workout-log/history` route was written to `workout-log.js`. Node.js does not hot-reload; the route existed on disk but was never loaded into the running process. Every request to `/api/workout-log/history` fell through to Express's built-in 404 handler.
+
+### Fix
+- Identified the stale process using `Get-CimInstance Win32_Process` to match the `server.js` command line.
+- Stopped PID 16092 and restarted the backend with `node -r dotenv/config server.js` from the `backend/` directory.
+- The backend now serves the updated `workout-log.js` including the `/history` route added in 0.78/0.78.a.
+
+### No code changes required
+All backend logic (`workout-log.js`) and frontend logic (`LogWorkout.vue`) were already correct from 0.78 + 0.78.a. The sole fix was restarting the server process.
+
+### Empty state behaviour (confirmed working)
+- Empty results → no error banner; shows "No completed workouts found for **username** started on **date**."
+- Real server errors (non-2xx) → red error banner with the actual server message.
+- Console errors logged via `console.error` for debuggability.
+
+## [0.78.a] — Workout History Load Fix
+
+Fixes a 500 error that prevented the Workout History tab from loading any data.
+
+### Root Cause
+The `GET /api/workout-log/history` SQL query referenced `wls.workout_day_name`, a column that **does not exist** in the `workout_log_sessions` table. This caused MySQL to throw an error on every history request, returning a 500 response which the frontend caught as a generic "Unable to load workout history." banner.
+
+### Backend Fix — `backend/api/workout-log.js`
+- Removed `wls.workout_day_name AS workoutDayName` from the `/history` SELECT (column does not exist in `workout_log_sessions`).
+- The session's day label is now sourced from `wl.source_schedule_group_label` (already present in the query as `scheduleGroup`), which is set at log-write time and correctly identifies the schedule group/day the workout was performed under.
+- Updated session-map building to use `ex.scheduleGroup` as `workoutDayName`.
+
+### Frontend Fix — `Member/LogWorkout.vue`
+- Improved `loadWorkoutHistory` error handling: when the server returns a non-OK response, the actual server error message is read from the JSON body and surfaced to the user rather than a generic fallback.
+- `catch` block now logs the real error to the browser console (`console.error`) for easier future debugging.
+
+## [0.78] — Workout History Tab (Per-Set Detail, Sessions View)
+
+Version 0.78 completely rebuilds the Workout History tab on the `/workouts` page, replacing the old flat exercise list with a sessions-based, per-set detail view filtered by the date the workout was **started**.
+
+### What Changed
+
+#### Backend — `GET /api/workout-log/history`
+- Rewrote the route to return a `sessions[]` array instead of a flat `records[]` array.
+- Filters completed sessions using `wl.WorkoutDate = ?` (the started date) and `wls.status = 'completed'`.
+- JOINs `workout_log_sessions`, `workout_schedules`, and `exercises` to enrich each row.
+- Runs a second query to fetch all `workout_log_sets` rows for the returned log IDs, grouped per exercise.
+- Each session includes: `sessionId`, `workoutDate`, `workoutDayName`, `sessionStartedAt`, `sessionCompletedAt`, `planName`, and `exercises[]`.
+- Each exercise includes: `workoutLogId`, `exerciseName`, `exerciseImage`, `muscleGroup`, `equipment`, `workoutType`, aggregates (`totalSets`, `avgReps`, `avgWeight`, `totalDuration`, `calories`, `distance`, `speed`), and `sets[]`.
+- Each set includes: `workoutLogId`, `setNumber`, `weight`, `reps`, `duration`, `completed`.
+- Response shape: `{ date, username, sessions }`.
+
+#### Frontend — `Member/LogWorkout.vue`
+- **State**: Replaced `workoutHistoryRecords` / `isLoadingWorkoutHistory` with `historyWorkouts`, `historyLoading`, `historyError`, and `workoutHistoryUsername`.
+- **Removed**: `historyGrouped` computed property (no longer needed — grouping is done server-side into sessions).
+- **`loadWorkoutHistory`**: Updated to consume `data.sessions`; populates `historyWorkouts` and `workoutHistoryUsername`.
+- **Date watcher**: Added `watch(selectedWorkoutDate)` to auto-reload history when the selected date changes while the history tab is active.
+- **Template**: Replaced the old grouped flat-exercise display with:
+  - Date context bar with a Refresh button.
+  - Error banner (`historyError`).
+  - Loading spinner / empty-state card.
+  - Session cards (`wl-history-session`) each showing: session header (plan name, day name, started/completed timestamps) and a per-exercise grid with a per-set table (strength: Set / Weight / Reps / Done; cardio: Set / Duration / Done).
+  - Cardio exercises additionally show aggregate stats (calories, distance, speed).
+  - Exercises without set data fall back to legacy aggregate display.
+- **CSS**: Added 20+ new scoped classes for the history session cards, exercise identity rows, tag pills, set tables, and cardio stat bars.
+
+## [0.77.9.f3] — Workout Interaction Button Fixes
+
+0.77.9.f3 restores all broken workout interaction buttons on the `/workouts` page after the setup/order fixes completed in 0.77.9.f2.
+
+### Fixed
+- Fixed all broken workout interaction buttons on `/workouts`
+- Restored button click handlers after `0.77.9.f2` refactor
+- Fixed missing/misaligned Vue `@click` event bindings on `<ExerciseSessionCard>` in `Member/LogWorkout.vue`
+- Fixed missing handler functions that were silently never called due to a Vue 3 ternary-in-`v-on` compilation quirk
+- Fixed parameter passing for `exerciseId`, `setIndex`, and related exercise/set identifiers
+- Fixed exercise accordion interaction state updates
+- Fixed workout action event execution flow
+- Fixed collapsed exercise state synchronization
+- Fixed exercise selection state management
+- Fixed complete set state tracking
+- Fixed complete exercise state tracking
+- Fixed add/remove set interaction logic
+
+**Root cause:** Event bindings on `<ExerciseSessionCard>` used a ternary-returning-a-function-reference pattern:
+```vue
+@select="isPreviewMode ? null : selectExercise"
+```
+In Vue 3's template compiler, a complex expression in `v-on` is compiled as an inline handler: `$event => (isPreviewMode ? null : selectExercise)`. This evaluates the ternary and *returns* the function reference (or `null`) but **never calls it**. Every click fired an event but the handler was never invoked — silently discarding all user interaction.
+
+**Fixes in `LogWorkout.vue`:**
+- Replaced all five broken ternary bindings on `<ExerciseSessionCard>` with direct function references:
+  - `@select="selectExercise"`
+  - `@add-set="addSet"`
+  - `@remove-set="removeSet"`
+  - `@update-set="updateSet"`
+  - `@exercise-completed="onExerciseCompleted"`
+- Added `if (isPreviewMode.value) return` guards at the top of each of the five handlers (`selectExercise`, `onExerciseCompleted`, `addSet`, `removeSet`, `updateSet`) so preview mode is still fully respected without needing the broken ternary pattern
+
+### Working Features
+
+#### Workout Controls
+- **End Workout** button now works correctly
+- **Complete Workout** button now works correctly
+
+#### Exercise Controls
+- **Select Exercise** button now opens the selected exercise accordion
+- **Complete Exercise** button now:
+  - Marks all sets for that exercise as completed
+  - Collapses the exercise accordion
+  - Auto-advances focus to the next incomplete exercise
+
+#### Set Controls
+- **Add Set** button now dynamically appends a new set row (copying values from the last set)
+- **Remove Set** button now removes only the targeted set and re-numbers remaining sets
+- **Complete Set** button now marks only that individual set as complete
+
+#### Accordion Behavior
+- Exercise Collapse/Expand buttons now function properly
+- Workout day accordion state is preserved across interactions
+- Single-open exercise behavior fully restored
+
+### Stability Improvements
+- Added `isPreviewMode` guards inside all mutating handlers to prevent any state writes during preview-only mode
+- Prevented undefined function execution caused by the ternary-in-`v-on` pattern resolving to `null`
+- Prevented broken state updates from crashing exercise/set interactions
+- Reduced Vue runtime interaction errors during workout sessions
+
+## [0.77.9.f2]
+### Fixed
+- **`Member/LogWorkout.vue`**: Resolved `ReferenceError: Cannot access 'dayExercises' before initialization` (crash at line 58) that caused the `/workouts` page to be blank.
+
+**Root cause:** The `watch(() => dayExercises.value, ...)` call appeared in `<script setup>` *before* the `const dayExercises = computed(...)` declaration. In JavaScript `<script setup>`, `const` declarations are not hoisted — accessing them in a top-level expression before the declaration line is a Temporal Dead Zone (TDZ) violation.
+
+**Fix in `LogWorkout.vue`:**
+- Removed the premature `watch(() => dayExercises.value, ...)` block from its position at line 58 (before `dayExercises` existed)
+- Moved it to immediately *after* the `const dayExercises = computed(...)` declaration, preserving identical behavior
+- All 0.77.9 accordion features (workout day accordion, exercise accordion, Select Exercise, Complete Exercise, set marking) remain intact
+
 ## [0.77.9d]
 ### Fixed
 - **`ExerciseSessionCard.vue`**: `cardio-table-wrap` div was left unclosed after 0.77.9c incorrectly removed its closing tag instead of the genuinely spurious extra div. Added the missing `</div>` to restore valid template structure and fix the Vite "Element is missing end tag" compile error that caused a blank page.

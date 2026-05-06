@@ -13,9 +13,22 @@ const activeTab = ref('overview'); // 'overview' | 'dayDetails' | 'workoutHistor
 const selectedWorkoutDate = ref(new Date().toISOString().split('T')[0]);
 
 /* ─── Workout History state ───────────────────────────────────────────── */
-const workoutHistoryRecords    = ref([]);
-const isLoadingWorkoutHistory  = ref(false);
-const workoutHistoryUsername   = ref('');
+const historyWorkouts        = ref([]);
+const historyLoading         = ref(false);
+const historyError           = ref('');
+const workoutHistoryUsername = ref('');
+
+/* ─── Delete History state ────────────────────────────────────────────── */
+const showDeleteHistoryModal  = ref(false);
+const workoutHistoryToDelete  = ref(null);   // { sessionId, planName, workoutDate }
+const deleteHistoryLoading    = ref(false);
+const deleteHistoryError      = ref('');
+
+/* ─── Edit History state ──────────────────────────────────────────────── */
+const editingHistorySessionId = ref(null);  // sessionId currently being edited
+const historyEditDraft        = ref({});    // { [workoutLogId]: [...sets] }
+const savingHistoryWorkout    = ref(false);
+const historySaveError        = ref('');
 
 /* ─── Plan list state ────────────────────────────────────────────────────── */
 const loading       = ref(false);
@@ -53,23 +66,14 @@ watch(selectedDay, () => {
   activeExerciseId.value = null;
 });
 
-// Auto-open first incomplete exercise whenever the day exercise list is populated/rebuilt
-watch(
-  () => dayExercises.value,
-  (exercises) => {
-    // Only auto-open if nothing is currently selected for this day
-    if (activeExerciseId.value && exercises.some((e) => e.id === activeExerciseId.value)) return;
-    openFirstIncomplete(exercises);
-  },
-  { immediate: true },
-);
-
 const selectExercise = (exerciseId) => {
+  if (isPreviewMode.value) return;
   // Toggle: clicking the open exercise collapses it, clicking another opens it
   activeExerciseId.value = activeExerciseId.value === exerciseId ? null : exerciseId;
 };
 
 const onExerciseCompleted = (exerciseId) => {
+  if (isPreviewMode.value) return;
   // Mark all sets done then collapse and advance to next incomplete
   const exercises = dayExercises.value;
   const currentIdx = exercises.findIndex((e) => e.id === exerciseId);
@@ -104,23 +108,6 @@ const summaryStats = computed(() => {
   };
 });
 /* ─── Workout History grouped view ──────────────────────────────────────────── */
-const historyGrouped = computed(() => {
-  const map = new Map();
-  for (const row of workoutHistoryRecords.value) {
-    const key = `${row.planName || ''}__${row.workoutDayName || ''}`;
-    if (!map.has(key)) {
-      map.set(key, {
-        planName: row.planName || '',
-        dayName:  row.workoutDayName || '',
-        type:     row.WorkoutType || '',
-        exercises: [],
-      });
-    }
-    map.get(key).exercises.push(row);
-  }
-  return [...map.values()];
-});
-/* ─── Derived: expanded plan schedule ───────────────────────────────────── */
 const scheduleMode = computed(() => expandedPlanData.value?.scheduleMode || 'day');
 
 const groups = computed(() => {
@@ -153,6 +140,17 @@ const dayExercises = computed(() =>
   ),
 );
 
+// Auto-open first incomplete exercise whenever the day exercise list is populated/rebuilt
+watch(
+  () => dayExercises.value,
+  (exercises) => {
+    // Only auto-open if nothing is currently selected for this day
+    if (activeExerciseId.value && exercises.some((e) => e.id === activeExerciseId.value)) return;
+    openFirstIncomplete(exercises);
+  },
+  { immediate: true },
+);
+
 /* ─── Progress (selected day) ────────────────────────────────────────────── */
 const totalCompleted = computed(() =>
   dayExercises.value.reduce((acc, ex) => acc + ex.sessionSets.filter((s) => s.done).length, 0),
@@ -180,6 +178,7 @@ const buildInitialSets = (exercise) => {
 };
 
 const addSet = (exerciseId) => {
+  if (isPreviewMode.value) return;
   const ex = sessionExercises.value.find((e) => e.id === exerciseId);
   if (!ex) return;
   const last = ex.sessionSets[ex.sessionSets.length - 1] || { weight: 0, reps: 0, duration: 0, caloriesBurned: 0, distanceMiles: 0, speedMph: 0 };
@@ -187,6 +186,7 @@ const addSet = (exerciseId) => {
 };
 
 const removeSet = (exerciseId, setIndex) => {
+  if (isPreviewMode.value) return;
   const ex = sessionExercises.value.find((e) => e.id === exerciseId);
   if (!ex || ex.sessionSets.length <= 1) return;
   ex.sessionSets.splice(setIndex, 1);
@@ -194,6 +194,7 @@ const removeSet = (exerciseId, setIndex) => {
 };
 
 const updateSet = (exerciseId, setIndex, field, value) => {
+  if (isPreviewMode.value) return;
   const ex = sessionExercises.value.find((e) => e.id === exerciseId);
   if (!ex) return;
   ex.sessionSets[setIndex][field] = field === 'done' ? Boolean(value) : (Number(value) || 0);
@@ -252,6 +253,14 @@ const checkActiveSession = async () => {
     if (data.session) {
       activeSession.value    = data.session;
       hasActiveWorkout.value = true;
+      // Restore the date picker to the active session's start date so the
+      // page always shows the correct workout even when returning on a later day.
+      if (data.session.workoutDate) {
+        const d = new Date(data.session.workoutDate);
+        if (!isNaN(d)) {
+          selectedWorkoutDate.value = d.toISOString().split('T')[0];
+        }
+      }
       // Auto-expand the plan that has an active session
       const pid = String(data.session.workoutPlanId || '');
       if (pid && expandedPlanId.value !== pid) await togglePlan(pid);
@@ -298,11 +307,14 @@ const startDayWorkout = async (dayName) => {
     return;
   }
 
+  // Use the user's selected date as the workout start date; fall back to today only if unset.
+  const workoutStartDate = selectedWorkoutDate.value || today();
+
   try {
     const res  = await fetch(`${API_BASE}/api/workout-sessions/start`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ workoutPlanId: planId, workoutDayName: dayName, workoutDate: today() }),
+      body: JSON.stringify({ workoutPlanId: planId, workoutDayName: dayName, workoutDate: workoutStartDate }),
     });
     const data = await res.json();
 
@@ -315,6 +327,7 @@ const startDayWorkout = async (dayName) => {
 
     activeSession.value    = data.session;
     hasActiveWorkout.value = true;
+    selectedWorkoutDate.value = workoutStartDate; // lock the date picker to the start date
     selectedDay.value      = dayName;
     isPreviewMode.value    = false;
 
@@ -404,35 +417,162 @@ const openInBuilder = (planId) => {
 };
 
 const goToInProgress = () => {
-  if (hasActiveWorkout.value && expandedPlanId.value) {
-    selectedDay.value = activeSession.value?.workoutDayName || selectedDay.value;
+  if (hasActiveWorkout.value && activeSession.value) {
+    // Restore the date picker to the locked workout start date.
+    if (activeSession.value.workoutDate) {
+      const d = new Date(activeSession.value.workoutDate);
+      if (!isNaN(d)) {
+        selectedWorkoutDate.value = d.toISOString().split('T')[0];
+      }
+    }
+    selectedDay.value = activeSession.value.workoutDayName || selectedDay.value;
     activeTab.value   = 'dayDetails';
   }
 };
-/* ─── Workout History loader ────────────────────────────────────────────── */
+/* ─── Workout History loader ───────────────────────────────────────────── */
 const loadWorkoutHistory = async () => {
-  isLoadingWorkoutHistory.value = true;
-  workoutHistoryRecords.value   = [];
+  historyLoading.value  = true;
+  historyError.value    = '';
+  historyWorkouts.value = [];
   try {
-    const res  = await fetch(
+    const res = await fetch(
       `${API_BASE}/api/workout-log/history?date=${encodeURIComponent(selectedWorkoutDate.value)}`,
       { credentials: 'include' },
     );
-    if (!res.ok) throw new Error('Failed to load workout history.');
+    if (!res.ok) {
+      let serverMsg = '';
+      try { const e = await res.json(); serverMsg = e?.error || ''; } catch (_) {}
+      throw new Error(serverMsg || `Server error ${res.status}`);
+    }
     const data = await res.json();
-    workoutHistoryRecords.value  = Array.isArray(data.records) ? data.records : [];
+    historyWorkouts.value        = Array.isArray(data.sessions) ? data.sessions : [];
     workoutHistoryUsername.value = data.username || '';
-  } catch (_) {
-    workoutHistoryRecords.value = [];
+  } catch (err) {
+    console.error('[WorkoutHistory] load failed:', err);
+    historyError.value    = err.message || 'Unable to load workout history.';
+    historyWorkouts.value = [];
   } finally {
-    isLoadingWorkoutHistory.value = false;
+    historyLoading.value = false;
   }
 };
+
+// Auto-reload history when the date picker changes while history tab is open
+watch(selectedWorkoutDate, () => {
+  if (activeTab.value === 'workoutHistory') {
+    loadWorkoutHistory();
+  }
+});
 
 const openHistoryTab = () => {
   activeTab.value = 'workoutHistory';
   loadWorkoutHistory();
 };
+
+/* ─── Delete history session ─────────────────────────────────────────── */
+const openDeleteHistoryModal = (session) => {
+  workoutHistoryToDelete.value = {
+    sessionId:   session.sessionId,
+    planName:    session.planName || 'Workout',
+    workoutDate: session.workoutDate || selectedWorkoutDate.value,
+  };
+  deleteHistoryError.value  = '';
+  showDeleteHistoryModal.value = true;
+};
+
+const closeDeleteHistoryModal = () => {
+  showDeleteHistoryModal.value = false;
+  workoutHistoryToDelete.value = null;
+  deleteHistoryError.value     = '';
+};
+
+const confirmDeleteHistoryWorkout = async () => {
+  if (!workoutHistoryToDelete.value) return;
+  deleteHistoryLoading.value = true;
+  deleteHistoryError.value   = '';
+  try {
+    const { sessionId } = workoutHistoryToDelete.value;
+    const endpoint = sessionId != null
+      ? `${API_BASE}/api/workout-log/history/session/${sessionId}`
+      : null;
+    if (!endpoint) throw new Error('Cannot identify session to delete.');
+    const res = await fetch(endpoint, { method: 'DELETE', credentials: 'include' });
+    if (!res.ok) {
+      let msg = '';
+      try { const e = await res.json(); msg = e?.error || ''; } catch (_) {}
+      throw new Error(msg || `Server error ${res.status}`);
+    }
+    closeDeleteHistoryModal();
+    await loadWorkoutHistory();
+  } catch (err) {
+    console.error('[DeleteHistory]', err);
+    deleteHistoryError.value = err.message || 'Failed to delete workout.';
+  } finally {
+    deleteHistoryLoading.value = false;
+  }
+};
+/* ─── Edit history session ──────────────────────────────────────────────── */
+const startEditHistoryWorkout = (session) => {
+  historySaveError.value        = '';
+  editingHistorySessionId.value = session.sessionId;
+  const draft = {};
+  for (const ex of session.exercises) {
+    draft[ex.workoutLogId] = ex.sets.map((s) => ({ ...s }));
+  }
+  historyEditDraft.value = draft;
+};
+
+const cancelEditHistoryWorkout = () => {
+  editingHistorySessionId.value = null;
+  historyEditDraft.value        = {};
+  historySaveError.value        = '';
+};
+
+const updateHistoryDraft = (workoutLogId, setIdx, field, value) => {
+  const sets = historyEditDraft.value[workoutLogId];
+  if (!sets || !sets[setIdx]) return;
+  sets[setIdx][field] = Number(value) || 0;
+};
+
+const saveHistoryWorkout = async (session) => {
+  savingHistoryWorkout.value = true;
+  historySaveError.value     = '';
+  try {
+    const exercises = session.exercises.map((ex) => ({
+      workoutLogId: ex.workoutLogId,
+      sets: (historyEditDraft.value[ex.workoutLogId] || ex.sets).map((s) => ({
+        setNumber:      s.setNumber,
+        weight:         s.weight,
+        reps:           s.reps,
+        duration:       s.duration,
+        caloriesBurned: s.caloriesBurned,
+        distanceMiles:  s.distanceMiles,
+        speedMph:       s.speedMph,
+      })),
+    }));
+    const res = await fetch(
+      `${API_BASE}/api/workout-log/history/session/${session.sessionId}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ exercises }),
+        credentials: 'include',
+      }
+    );
+    if (!res.ok) {
+      let msg = '';
+      try { const e = await res.json(); msg = e?.error || ''; } catch (_) {}
+      throw new Error(msg || `Server error ${res.status}`);
+    }
+    cancelEditHistoryWorkout();
+    await loadWorkoutHistory();
+  } catch (err) {
+    console.error('[SaveHistory]', err);
+    historySaveError.value = err.message || 'Failed to save changes.';
+  } finally {
+    savingHistoryWorkout.value = false;
+  }
+};
+
 /* ─── Lifecycle ──────────────────────────────────────────────────────────── */
 onMounted(async () => {
   await loadWorkoutLists();
@@ -698,12 +838,11 @@ onMounted(async () => {
               :exercise="exercise"
               :is-cardio="isCardio(exercise)"
               :is-expanded="activeExerciseId === exercise.id"
-              :read-only="isPreviewMode"
-              @select="isPreviewMode ? null : selectExercise"
-              @add-set="isPreviewMode ? null : addSet"
-              @remove-set="isPreviewMode ? null : removeSet"
-              @update-set="isPreviewMode ? null : updateSet"
-              @exercise-completed="isPreviewMode ? null : onExerciseCompleted"
+              @select="selectExercise"
+              @add-set="addSet"
+              @remove-set="removeSet"
+              @update-set="updateSet"
+              @exercise-completed="onExerciseCompleted"
             />
           </div>
         </template>
@@ -720,65 +859,234 @@ onMounted(async () => {
 
         <!-- Date context bar -->
         <div class="wl-history-datebar">
-          <span><i class="fa-solid fa-calendar-day"></i> Showing records for <strong>{{ selectedWorkoutDate }}</strong></span>
+          <span><i class="fa-solid fa-calendar-day"></i> Workouts started on <strong>{{ selectedWorkoutDate }}</strong></span>
           <button type="button" class="wl-btn-preview" style="padding:7px 12px;font-size:0.8rem" @click="loadWorkoutHistory">
             <i class="fa-solid fa-arrows-rotate"></i> Refresh
           </button>
         </div>
 
+        <!-- Error -->
+        <div v-if="historyError" class="wl-banner wl-banner--error" style="margin-bottom:12px">
+          <i class="fa-solid fa-circle-xmark"></i> {{ historyError }}
+        </div>
+
         <!-- Loading -->
-        <div v-if="isLoadingWorkoutHistory" class="wl-empty"><p>Loading history…</p></div>
+        <div v-if="historyLoading" class="wl-empty"><p>Loading history…</p></div>
 
         <!-- Empty -->
-        <div v-else-if="workoutHistoryRecords.length === 0" class="wl-empty app-section-card">
+        <div v-else-if="!historyError && historyWorkouts.length === 0" class="wl-empty app-section-card">
           <i class="fa-solid fa-calendar-xmark wl-empty-icon"></i>
           <h6>No exercises recorded</h6>
           <p v-if="workoutHistoryUsername">
-            No exercises recorded for <strong>{{ workoutHistoryUsername }}</strong> on <strong>{{ selectedWorkoutDate }}</strong>.
+            No completed workouts found for <strong>{{ workoutHistoryUsername }}</strong> started on <strong>{{ selectedWorkoutDate }}</strong>.
           </p>
-          <p v-else>No exercises recorded on <strong>{{ selectedWorkoutDate }}</strong>.</p>
+          <p v-else>No completed workouts started on <strong>{{ selectedWorkoutDate }}</strong>.</p>
         </div>
 
-        <!-- History cards -->
-        <div v-else class="wl-history-list">
-          <!-- Group by plan/day -->
-          <template v-for="(group, gidx) in historyGrouped" :key="gidx">
-            <div class="wl-history-group">
-              <div class="wl-history-group__header">
-                <div class="wl-history-group__title">
-                  <i class="fa-solid fa-circle-check" style="color:#22c55e"></i>
-                  <span class="wl-history-group__plan">{{ group.planName || 'Workout' }}</span>
-                  <span v-if="group.dayName" class="wl-history-group__day">{{ group.dayName }}</span>
-                </div>
-                <span class="wl-history-group__type wl-plan__tag">{{ group.type }}</span>
+        <!-- Session list -->
+        <div v-else-if="!historyLoading" class="wl-history-list">
+          <div
+            v-for="(session, sidx) in historyWorkouts"
+            :key="session.sessionId != null ? session.sessionId : sidx"
+            :class="['wl-history-session', editingHistorySessionId === session.sessionId ? 'wl-history-session--editing' : '']"
+          >
+            <!-- Session header -->
+            <div class="wl-history-session__header">
+              <div class="wl-history-session__title">
+                <i class="fa-solid fa-circle-check wl-hist-check-icon"></i>
+                <span class="wl-history-group__plan">{{ session.planName || 'Workout' }}</span>
+                <span v-if="session.workoutDayName" class="wl-history-group__day">{{ session.workoutDayName }}</span>
               </div>
-
-              <div class="wl-history-exercises">
-                <div
-                  v-for="(ex, eidx) in group.exercises"
-                  :key="eidx"
-                  class="wl-history-ex"
-                >
-                  <div class="wl-history-ex__name">{{ ex.exerciseName }}</div>
-                  <div class="wl-history-ex__stats">
-                    <!-- Cardio -->
-                    <template v-if="ex.WorkoutType === 'Cardio' || ex.WorkoutType === 'cardio'">
-                      <span v-if="ex.Duration"><i class="fa-solid fa-clock"></i> {{ ex.Duration }} min</span>
-                      <span v-if="ex.Distance"><i class="fa-solid fa-road"></i> {{ ex.Distance }} mi</span>
-                      <span v-if="ex.Calories"><i class="fa-solid fa-fire"></i> {{ ex.Calories }} kcal</span>
-                    </template>
-                    <!-- Strength -->
-                    <template v-else>
-                      <span v-if="ex.Sets"><i class="fa-solid fa-layer-group"></i> {{ ex.Sets }} sets</span>
-                      <span v-if="ex.Reps"><i class="fa-solid fa-repeat"></i> {{ ex.Reps }} reps</span>
-                      <span v-if="ex.Weight"><i class="fa-solid fa-weight-hanging"></i> {{ ex.Weight }} lb</span>
-                    </template>
-                    <span class="wl-history-ex__type">{{ ex.WorkoutType }}</span>
-                  </div>
-                </div>
+              <div class="wl-history-session__meta">
+                <span v-if="session.sessionStartedAt">
+                  <i class="fa-solid fa-play"></i>
+                  Started: {{ new Date(session.sessionStartedAt).toLocaleString() }}
+                </span>
+                <span v-if="session.sessionCompletedAt">
+                  <i class="fa-solid fa-flag-checkered"></i>
+                  Completed: {{ new Date(session.sessionCompletedAt).toLocaleString() }}
+                </span>
+                <!-- Edit mode: Save + Cancel -->
+                <template v-if="editingHistorySessionId === session.sessionId">
+                  <span v-if="historySaveError" class="wl-hist-save-error">
+                    <i class="fa-solid fa-circle-xmark"></i> {{ historySaveError }}
+                  </span>
+                  <button
+                    type="button"
+                    class="wl-hist-cancel-btn"
+                    :disabled="savingHistoryWorkout"
+                    @click="cancelEditHistoryWorkout"
+                  >
+                    <i class="fa-solid fa-xmark"></i> Cancel
+                  </button>
+                  <button
+                    type="button"
+                    class="wl-hist-save-btn"
+                    :disabled="savingHistoryWorkout"
+                    @click="saveHistoryWorkout(session)"
+                  >
+                    <i v-if="savingHistoryWorkout" class="fa-solid fa-spinner fa-spin"></i>
+                    <i v-else class="fa-solid fa-floppy-disk"></i>
+                    {{ savingHistoryWorkout ? 'Saving\u2026' : 'Save' }}
+                  </button>
+                </template>
+                <!-- Read-only mode: Edit + Delete -->
+                <template v-else>
+                  <button
+                    type="button"
+                    class="wl-hist-edit-btn"
+                    :disabled="editingHistorySessionId !== null"
+                    @click="startEditHistoryWorkout(session)"
+                  >
+                    <i class="fa-solid fa-pen-to-square"></i> Edit
+                  </button>
+                  <button
+                    type="button"
+                    class="wl-hist-delete-btn"
+                    title="Delete this workout record"
+                    @click="openDeleteHistoryModal(session)"
+                  >
+                    <i class="fa-solid fa-trash"></i> Delete
+                  </button>
+                </template>
               </div>
             </div>
-          </template>
+
+            <!-- Exercises in this session -->
+            <div class="wl-history-exercises wl-history-exercises--detailed">
+              <div
+                v-for="(ex, eidx) in session.exercises"
+                :key="ex.workoutLogId != null ? ex.workoutLogId : eidx"
+                class="wl-hist-ex-card"
+              >
+                <!-- Exercise identity -->
+                <div class="wl-hist-ex-identity">
+                  <div class="wl-hist-ex-thumb">
+                    <img v-if="ex.exerciseImage" :src="ex.exerciseImage" :alt="ex.exerciseName" class="wl-hist-thumb-img" />
+                    <i v-else class="fa-solid fa-dumbbell"></i>
+                  </div>
+                  <div class="wl-hist-ex-info">
+                    <strong class="wl-hist-ex-name">{{ ex.exerciseName }}</strong>
+                    <div class="wl-hist-ex-tags">
+                      <span v-if="ex.muscleGroup" class="wl-hist-tag">{{ ex.muscleGroup }}</span>
+                      <span v-if="ex.equipment" class="wl-hist-tag">{{ ex.equipment }}</span>
+                      <span class="wl-hist-tag wl-hist-tag--type">{{ ex.workoutType || 'Strength' }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Per-set table -->
+                <template v-if="ex.sets && ex.sets.length > 0">
+                  <!-- Strength -->
+                  <template v-if="String(ex.workoutType || '').toLowerCase() === 'strength'">
+                    <div class="wl-hist-sets-table">
+                      <div class="wl-hist-sets-head wl-hist-sets-head--strength">
+                        <span>Set</span><span>Weight (kg)</span><span>Reps</span><span>Done</span>
+                      </div>
+                      <div
+                        v-for="(set, setIdx) in ex.sets" :key="set.setNumber"
+                        :class="['wl-hist-set-row', 'wl-hist-set-row--strength', set.completed ? 'wl-hist-set-row--done' : '']"
+                      >
+                        <span class="wl-hist-set-num">{{ set.setNumber }}</span>
+                        <!-- Weight -->
+                        <input
+                          v-if="editingHistorySessionId === session.sessionId"
+                          type="number" class="wl-hist-set-input" min="0" step="0.5"
+                          :value="historyEditDraft[ex.workoutLogId]?.[setIdx]?.weight ?? set.weight ?? 0"
+                          @input="updateHistoryDraft(ex.workoutLogId, setIdx, 'weight', $event.target.value)"
+                        />
+                        <span v-else>{{ set.weight ?? '&mdash;' }}</span>
+                        <!-- Reps -->
+                        <input
+                          v-if="editingHistorySessionId === session.sessionId"
+                          type="number" class="wl-hist-set-input" min="0"
+                          :value="historyEditDraft[ex.workoutLogId]?.[setIdx]?.reps ?? set.reps ?? 0"
+                          @input="updateHistoryDraft(ex.workoutLogId, setIdx, 'reps', $event.target.value)"
+                        />
+                        <span v-else>{{ set.reps ?? '&mdash;' }}</span>
+                        <!-- Done (always read-only) -->
+                        <span>
+                          <i v-if="set.completed" class="fa-solid fa-circle-check" style="color:#22c55e"></i>
+                          <i v-else class="fa-regular fa-circle" style="color:#d1d5db"></i>
+                        </span>
+                      </div>
+                    </div>
+                  </template>
+                  <!-- Cardio + Other: Duration, Calories, Distance, Speed, Done -->
+                  <template v-else>
+                    <div class="wl-hist-sets-table wl-hist-sets-table--cardio">
+                      <div class="wl-hist-sets-head wl-hist-sets-head--cardio">
+                        <span>Set</span>
+                        <span>Duration<br><small>(min)</small></span>
+                        <span>Calories<br><small>(kcal)</small></span>
+                        <span>Distance<br><small>(mi)</small></span>
+                        <span>Speed<br><small>(mph)</small></span>
+                        <span>Done</span>
+                      </div>
+                      <div
+                        v-for="(set, setIdx) in ex.sets" :key="set.setNumber"
+                        :class="['wl-hist-set-row', 'wl-hist-set-row--cardio', set.completed ? 'wl-hist-set-row--done' : '']"
+                      >
+                        <span class="wl-hist-set-num">{{ set.setNumber }}</span>
+                        <!-- Duration -->
+                        <input
+                          v-if="editingHistorySessionId === session.sessionId"
+                          type="number" class="wl-hist-set-input" min="0"
+                          :value="historyEditDraft[ex.workoutLogId]?.[setIdx]?.duration ?? set.duration ?? 0"
+                          @input="updateHistoryDraft(ex.workoutLogId, setIdx, 'duration', $event.target.value)"
+                        />
+                        <span v-else>{{ set.duration != null && set.duration !== 0 ? set.duration : '&mdash;' }}</span>
+                        <!-- Calories -->
+                        <input
+                          v-if="editingHistorySessionId === session.sessionId"
+                          type="number" class="wl-hist-set-input" min="0"
+                          :value="historyEditDraft[ex.workoutLogId]?.[setIdx]?.caloriesBurned ?? set.caloriesBurned ?? 0"
+                          @input="updateHistoryDraft(ex.workoutLogId, setIdx, 'caloriesBurned', $event.target.value)"
+                        />
+                        <span v-else>{{ set.caloriesBurned != null && set.caloriesBurned !== 0 ? set.caloriesBurned : '&mdash;' }}</span>
+                        <!-- Distance -->
+                        <input
+                          v-if="editingHistorySessionId === session.sessionId"
+                          type="number" class="wl-hist-set-input" min="0" step="0.01"
+                          :value="historyEditDraft[ex.workoutLogId]?.[setIdx]?.distanceMiles ?? set.distanceMiles ?? 0"
+                          @input="updateHistoryDraft(ex.workoutLogId, setIdx, 'distanceMiles', $event.target.value)"
+                        />
+                        <span v-else>{{ set.distanceMiles != null && set.distanceMiles !== 0 ? set.distanceMiles : '&mdash;' }}</span>
+                        <!-- Speed -->
+                        <input
+                          v-if="editingHistorySessionId === session.sessionId"
+                          type="number" class="wl-hist-set-input" min="0" step="0.1"
+                          :value="historyEditDraft[ex.workoutLogId]?.[setIdx]?.speedMph ?? set.speedMph ?? 0"
+                          @input="updateHistoryDraft(ex.workoutLogId, setIdx, 'speedMph', $event.target.value)"
+                        />
+                        <span v-else>{{ set.speedMph != null && set.speedMph !== 0 ? set.speedMph : '&mdash;' }}</span>
+                        <!-- Done (always read-only) -->
+                        <span>
+                          <i v-if="set.completed" class="fa-solid fa-circle-check" style="color:#22c55e"></i>
+                          <i v-else class="fa-regular fa-circle" style="color:#d1d5db"></i>
+                        </span>
+                      </div>
+                    </div>
+                  </template>
+                </template>
+
+                <!-- Fallback: legacy record without per-set data -->
+                <div v-else class="wl-history-ex__stats">
+                  <template v-if="['cardio','other'].includes(String(ex.workoutType || '').toLowerCase())">
+                    <span v-if="ex.totalDuration"><i class="fa-solid fa-clock"></i> {{ ex.totalDuration }} min</span>
+                    <span v-if="ex.distance"><i class="fa-solid fa-road"></i> {{ ex.distance }} mi</span>
+                    <span v-if="ex.calories"><i class="fa-solid fa-fire"></i> {{ ex.calories }} kcal</span>
+                  </template>
+                  <template v-else>
+                    <span v-if="ex.totalSets"><i class="fa-solid fa-layer-group"></i> {{ ex.totalSets }} sets</span>
+                    <span v-if="ex.avgReps"><i class="fa-solid fa-repeat"></i> {{ ex.avgReps }} reps</span>
+                    <span v-if="ex.avgWeight"><i class="fa-solid fa-weight-hanging"></i> {{ ex.avgWeight }} lb</span>
+                  </template>
+                </div>
+
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -799,6 +1107,36 @@ onMounted(async () => {
         </div>
       </div>
     </div>
+    <!-- ── Delete History Confirmation Modal ────────────────────────────── -->
+    <Teleport to="body">
+      <div v-if="showDeleteHistoryModal" class="wl-modal-overlay" @click.self="closeDeleteHistoryModal">
+        <div class="wl-modal" role="dialog" aria-modal="true" aria-labelledby="del-hist-title">
+          <div class="wl-modal__header">
+            <h5 id="del-hist-title"><i class="fa-solid fa-trash"></i> Delete Exercise</h5>
+            <button type="button" class="wl-modal__close" @click="closeDeleteHistoryModal" aria-label="Close">&times;</button>
+          </div>
+          <div class="wl-modal__body">
+            <p v-if="workoutHistoryToDelete">
+              Are you sure you want to delete
+              <strong>&ldquo;{{ workoutHistoryToDelete.planName }}&rdquo;</strong>
+              from <strong>{{ workoutHistoryToDelete.workoutDate }}</strong>?
+            </p>
+            <p class="wl-modal__sub">This will permanently remove all exercises and sets recorded in this session.</p>
+            <div v-if="deleteHistoryError" class="wl-banner wl-banner--error" style="margin-top:10px">
+              <i class="fa-solid fa-circle-xmark"></i> {{ deleteHistoryError }}
+            </div>
+          </div>
+          <div class="wl-modal__footer">
+            <button type="button" class="wl-btn-preview" @click="closeDeleteHistoryModal" :disabled="deleteHistoryLoading">Cancel</button>
+            <button type="button" class="wl-btn-delete" @click="confirmDeleteHistoryWorkout" :disabled="deleteHistoryLoading">
+              <i class="fa-solid fa-trash"></i>
+              {{ deleteHistoryLoading ? 'Deleting…' : 'Delete' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
   </div>
 </template>
 
@@ -1168,6 +1506,223 @@ onMounted(async () => {
   border-radius: 999px; padding: 1px 9px;
   font-size: 0.72rem; font-weight: 700;
 }
+
+/* ── History session cards (0.78) ────────────────────────────────────────── */
+.wl-history-session {
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 14px; background: #fff; overflow: hidden;
+  margin-bottom: 0; transition: border-color 0.15s, box-shadow 0.15s;
+}
+.wl-history-session--editing {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+}
+.wl-history-session__header {
+  display: flex; flex-wrap: wrap; align-items: flex-start;
+  justify-content: space-between; gap: 10px;
+  padding: 14px 18px; background: var(--panel-bg, #f8fafc);
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+.wl-history-session__title { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.wl-hist-check-icon { color: #22c55e; flex-shrink: 0; }
+.wl-history-session__meta {
+  display: flex; flex-wrap: wrap; gap: 14px;
+  font-size: 0.78rem; color: var(--text-color-secondary, #6b7280);
+}
+.wl-history-session__meta i { color: #3b82f6; margin-right: 4px; }
+.wl-history-exercises--detailed { padding: 12px 18px; display: grid; gap: 14px; }
+.wl-hist-ex-card {
+  border: 1px solid var(--border-color, #f3f4f6);
+  border-radius: 10px; padding: 12px; display: grid; gap: 10px;
+}
+.wl-hist-ex-identity { display: flex; align-items: center; gap: 12px; }
+.wl-hist-ex-thumb {
+  width: 44px; height: 44px; border-radius: 8px;
+  background: #f1f5f9; display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0; overflow: hidden;
+  color: #94a3b8; font-size: 1.1rem;
+}
+.wl-hist-thumb-img { width: 100%; height: 100%; object-fit: cover; }
+.wl-hist-ex-info { display: grid; gap: 4px; min-width: 0; }
+.wl-hist-ex-name { font-size: 0.92rem; color: var(--text-color, #111827); }
+.wl-hist-ex-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.wl-hist-tag {
+  background: #f1f5f9; color: #475569;
+  border-radius: 999px; padding: 1px 9px;
+  font-size: 0.72rem; font-weight: 600;
+}
+.wl-hist-tag--type { background: #dbeafe; color: #1e40af; }
+.wl-hist-sets-table {
+  display: grid; gap: 0;
+  border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;
+  font-size: 0.82rem;
+}
+/* Strength: 4 columns */
+.wl-hist-sets-head--strength,
+.wl-hist-set-row--strength {
+  display: grid;
+  grid-template-columns: 48px 1fr 1fr 36px;
+  padding: 7px 12px;
+  align-items: center;
+}
+.wl-hist-sets-head--strength {
+  background: #f8fafc;
+  font-weight: 700; font-size: 0.75rem;
+  color: var(--text-color-secondary, #6b7280);
+  border-bottom: 1px solid #e5e7eb;
+}
+/* Cardio/Other: 6 columns */
+.wl-hist-sets-table--cardio { overflow-x: auto; }
+.wl-hist-sets-head--cardio,
+.wl-hist-set-row--cardio {
+  display: grid;
+  grid-template-columns: 40px 1fr 1fr 1fr 1fr 36px;
+  padding: 6px 10px;
+  align-items: center;
+  min-width: 380px;
+}
+.wl-hist-sets-head--cardio {
+  background: #f0f9ff;
+  font-weight: 700; font-size: 0.73rem;
+  color: var(--text-color-secondary, #6b7280);
+  border-bottom: 1px solid #e5e7eb;
+  line-height: 1.2;
+}
+.wl-hist-sets-head--cardio small { font-size: 0.65rem; font-weight: 400; display: block; }
+/* Shared row styles */
+.wl-hist-set-row {
+  border-bottom: 1px solid #f3f4f6;
+  color: var(--text-color, #111827);
+  transition: background 0.12s;
+}
+.wl-hist-set-row:last-child { border-bottom: none; }
+.wl-hist-set-row--done { background: #f0fdf4; }
+.wl-hist-set-num { font-weight: 700; color: #6b7280; }
+
+/* ── History delete button ──────────────────────────────────────────────── */
+.wl-hist-delete-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-left: auto;
+  padding: 4px 10px; border-radius: 6px;
+  border: 1px solid #fca5a5; background: #fff1f1;
+  color: #dc2626; font-size: 0.76rem; font-weight: 600;
+  cursor: pointer; transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap; flex-shrink: 0;
+}
+.wl-hist-delete-btn:hover { background: #fee2e2; border-color: #f87171; }
+
+/* ── History edit / save / cancel buttons ────────────────────────────── */
+.wl-hist-edit-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 6px;
+  border: 1px solid #bfdbfe; background: #eff6ff;
+  color: #2563eb; font-size: 0.76rem; font-weight: 600;
+  cursor: pointer; transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap; flex-shrink: 0;
+}
+.wl-hist-edit-btn:hover:not(:disabled) { background: #dbeafe; border-color: #93c5fd; }
+.wl-hist-edit-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.wl-hist-save-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 12px; border-radius: 6px;
+  border: 1px solid #86efac; background: #f0fdf4;
+  color: #16a34a; font-size: 0.76rem; font-weight: 600;
+  cursor: pointer; transition: background 0.15s;
+  white-space: nowrap; flex-shrink: 0;
+}
+.wl-hist-save-btn:hover:not(:disabled) { background: #dcfce7; border-color: #4ade80; }
+.wl-hist-save-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.wl-hist-cancel-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 6px;
+  border: 1px solid #d1d5db; background: #f9fafb;
+  color: #374151; font-size: 0.76rem; font-weight: 600;
+  cursor: pointer; transition: background 0.15s;
+  white-space: nowrap; flex-shrink: 0;
+}
+.wl-hist-cancel-btn:hover:not(:disabled) { background: #f3f4f6; border-color: #9ca3af; }
+.wl-hist-cancel-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.wl-hist-save-error {
+  font-size: 0.76rem; color: #dc2626;
+  display: inline-flex; align-items: center; gap: 4px;
+  flex-shrink: 1; min-width: 0; word-break: break-word;
+}
+
+/* ── History set edit input ──────────────────────────────────────────── */
+.wl-hist-set-input {
+  width: 100%; max-width: 80px;
+  padding: 3px 6px; border-radius: 5px;
+  border: 1px solid #93c5fd; background: #eff6ff;
+  color: #1e3a8a; font-size: 0.82rem; font-weight: 500;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.wl-hist-set-input:focus {
+  outline: none; border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59,130,246,.2);
+}
+.wl-hist-set-input::-webkit-outer-spin-button,
+.wl-hist-set-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* ── Confirmation Modal ─────────────────────────────────────────────────── */
+.wl-modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+}
+.wl-modal {
+  background: #fff; border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  width: 100%; max-width: 440px;
+  display: flex; flex-direction: column;
+  animation: wl-modal-in .18s ease;
+}
+@keyframes wl-modal-in {
+  from { opacity: 0; transform: translateY(-12px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+.wl-modal__header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+.wl-modal__header h5 {
+  margin: 0; font-size: 1rem; color: #dc2626;
+  display: flex; align-items: center; gap: 8px;
+}
+.wl-modal__close {
+  background: none; border: none; font-size: 1.4rem;
+  line-height: 1; cursor: pointer; color: #9ca3af;
+  padding: 0 4px;
+}
+.wl-modal__close:hover { color: #374151; }
+.wl-modal__body {
+  padding: 16px 20px;
+  font-size: 0.92rem; color: var(--text-color, #111827);
+  line-height: 1.55;
+}
+.wl-modal__sub {
+  margin-top: 8px;
+  font-size: 0.8rem; color: var(--text-color-secondary, #6b7280);
+}
+.wl-modal__footer {
+  display: flex; gap: 10px; justify-content: flex-end;
+  padding: 12px 20px 16px;
+  border-top: 1px solid #f3f4f6;
+}
+.wl-btn-delete {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 18px; border-radius: 8px;
+  background: #dc2626; color: #fff;
+  border: none; font-weight: 600; font-size: 0.88rem;
+  cursor: pointer; transition: background 0.15s;
+}
+.wl-btn-delete:hover:not(:disabled) { background: #b91c1c; }
+.wl-btn-delete:disabled { opacity: .6; cursor: not-allowed; }
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
