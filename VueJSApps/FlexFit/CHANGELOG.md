@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.77.9a]
+### Fixed
+- **Critical bug**: `@update-set`, `@remove-set`, `@add-set`, `@select`, `@exercise-completed` event bindings in `LogWorkout.vue` were using `handler($event)` syntax which only passes the **first** emitted argument
+  - `updateSet(exerciseId, setIndex, field, value)` — `setIndex`, `field`, `value` were always `undefined`
+  - `removeSet(exerciseId, setIndex)` — `setIndex` was always `undefined` (always removed set 0)
+  - Changed all bindings from `handler($event)` → `handler` (function reference), which correctly forwards all emitted arguments
+  - This fixes: Complete Exercise, Complete Set, Remove Set, Add Set, and accordion Select all now function correctly
+
 ## [0.77.9]
 ### Added
 - **Exercise accordion in Day Details** — only one exercise is expanded at a time
