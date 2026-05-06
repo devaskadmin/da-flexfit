@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.77.7b] - 2026-05-06
+
+### Overview
+Replaced the complex multi-row/multi-column cardio layout from 0.77.7a with a simple, mobile-friendly **3-column Set / Info / Value** table.
+
+### Changed — Frontend (`ExerciseSessionCard.vue`)
+- Removed the wide two-row-per-set desktop layout and all associated cardio mobile breakpoint rules.
+- New cardio table structure: **Set | Info | Value** — 3 columns, clean and responsive.
+- Each cardio set renders as a grouped block of 5 rows:
+  - `Set N` | Duration (min) | [input]
+  - *(blank)* | Calories Burned | [input]
+  - *(blank)* | Distance (Miles) | [input]
+  - *(blank)* | Speed (Mph) | [input]
+  - *(blank)* | Completed Exercise | [checkbox + remove button]
+- Sets separated by a 2px border; rows within a set separated by a 1px hairline.
+- Completed sets highlighted with a green `#f0fdf4` background tint on the full group.
+- Inputs are full-width inside the Value column.
+- Table has a border + border-radius container so it looks distinct from the strength table.
+- Mobile (≤ 575 px): columns tighten slightly (`32px / 1fr / 90px`), font sizes reduce — no horizontal overflow.
+- **Strength exercise layout is unchanged.**
+
+### Not Changed
+- `caloriesBurned`, `distanceMiles`, `speedMph`, `duration`, `done` field names (added in 0.77.7a) — preserved as-is.
+- `LogWorkout.vue` set helpers — no changes needed.
+- Backend, Workout Builder, Overview tab, History tab, Preview mode.
+
+---
+
 ## [0.77.7a] - 2026-05-06
 
 ### Overview
