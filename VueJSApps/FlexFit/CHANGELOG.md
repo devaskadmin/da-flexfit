@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.77.7b4] - 2026-05-06
+
+### Overview
+Full-width cardio table, rebalanced columns, gray completed row background, and a proper green **Complete Exercise** button replacing the small circle checkbox.
+
+### Changed — Frontend (`ExerciseSessionCard.vue`)
+- **Table full width**: Removed `max-width: 900px` from `.cardio-table-wrap`. The cardio table now stretches the full available width of the exercise card.
+- **Column widths** rebalanced: `30% / 40% / 30%` → `20% / 40% / 40%`:
+  - Set column: `20%` (narrower — just holds the set number)
+  - Info column: `40%` (field label)
+  - Value column: `40%` (wider — more room for inputs and the complete button)
+- **Completed Exercise row** — light gray background (`#f9fafb`) with a `border-top` separator, turning `#f0fdf4` green when the set is done. No longer `background: none`.
+- **Complete Exercise button** — replaced the small circle `done-toggle` checkbox with a full green button:
+  - Default: green (`#16a34a`) — label "Complete Exercise" with circle icon.
+  - Completed: dark green (`#166534`) — label changes to "Completed" with check icon.
+  - Clicking toggles `done` state (same `update-set` emit, `!set.done`).
+- **Removed `.done-toggle` CSS** — no longer used in the cardio layout (strength layout was never using it anyway; strength uses its own `.done-toggle` inside `.col-done` which is unaffected).
+- **Remove button** (`c3-rm-btn`) — `flex-shrink: 0` added; `margin-left: auto` pushes it to the right edge of the done cell.
+- **Mobile (≤ 600 px)**: Removed stale `.cardio-table-wrap` max-width override (no longer needed). Added `.c3-complete-btn` padding reduction for small screens.
+
+### Not Changed
+- Strength exercise layout — completely untouched.
+- Cardio field data (`duration`, `caloriesBurned`, `distanceMiles`, `speedMph`, `done`).
+- Backend, Add Set logic, Workout History tab.
+
+---
+
 ## [0.77.7b3] - 2026-05-06
 
 ### Overview
