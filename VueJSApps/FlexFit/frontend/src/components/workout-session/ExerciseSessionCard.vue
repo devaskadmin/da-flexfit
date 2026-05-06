@@ -177,7 +177,17 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
         <!-- Completed row -->
         <div class="c3-row c3-row-done">
           <span class="c3-col-set"></span>
-          <span class="c3-col-info">Completed Exercise</span>
+          <div class="c3-col-info c3-info-action">
+            <button
+              v-if="exercise.sessionSets.length > 1"
+              type="button"
+              class="c3-rm-btn"
+              title="Remove this set"
+              @click="emit('remove-set', exercise.id, idx)"
+            >
+              <i class="fa-solid fa-minus"></i> Remove Set
+            </button>
+          </div>
           <div class="c3-col-value c3-done-cell">
             <button
               type="button"
@@ -188,15 +198,6 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
               <i v-if="set.done" class="fa-solid fa-circle-check"></i>
               <i v-else class="fa-regular fa-circle"></i>
               {{ set.done ? 'Completed' : 'Complete Exercise' }}
-            </button>
-            <button
-              v-if="exercise.sessionSets.length > 1"
-              type="button"
-              class="c3-rm-btn"
-              title="Remove this set"
-              @click="emit('remove-set', exercise.id, idx)"
-            >
-              <i class="fa-solid fa-minus"></i> Remove Set
             </button>
           </div>
         </div>
@@ -471,11 +472,14 @@ const emit = defineEmits(['add-set', 'remove-set', 'update-set']);
   background: #f0fdf4 !important;
 }
 
+.c3-info-action {
+  display: flex;
+  align-items: center;
+}
 .c3-done-cell {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: center;
 }
 
 /* ─── Remove Set Button ──────────────── */
