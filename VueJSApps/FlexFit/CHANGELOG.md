@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.81] — Major Mobile UI Enhancement Pass
+## [0.81.1] — Major Mobile UI Enhancement Pass
 
 Full mobile responsiveness audit and implementation across all 7 major pages. No backend changes. Desktop behavior fully preserved. Targets iPhone, Android, Safari mobile, and Chrome mobile at 768px / 640px / 480px breakpoints.
 
