@@ -136,6 +136,9 @@ const recentActivity = [
   display: block;
   padding-top: 0 !important;
   margin-top: 5px;
+  overflow-x: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dashboard-canvas {
@@ -204,8 +207,8 @@ const recentActivity = [
 
 .dashboard-stats {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .stat-card {
@@ -386,19 +389,71 @@ const recentActivity = [
 }
 
 /* ─────────────────────────────────────────────────────────────────── */
+/* MOBILE (≤ 768px) — stack header, tighten gaps, compact cards        */
+/* ─────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .dashboard-canvas {
+    gap: 12px;
+  }
+
+  .header-content {
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px 16px;
+  }
+
+  .header-picker {
+    width: 100%;
+  }
+
+  .dashboard-focus-card {
+    padding: 12px 14px;
+  }
+
+  .dashboard-focus-card h3 {
+    font-size: 0.95rem;
+  }
+
+  .dashboard-focus-card p {
+    font-size: 0.86rem;
+  }
+
+  .panel-header {
+    padding: 12px 14px;
+  }
+
+  .panel-body {
+    padding: 12px 14px;
+  }
+
+  .stat-card :deep(.metric-card) {
+    min-height: unset;
+    padding: 12px;
+  }
+
+  .stat-card :deep(.metric-card__right i) {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+  }
+
+  .activity-row {
+    flex-wrap: wrap;
+  }
+
+  .activity-row .time {
+    min-width: 56px;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────── */
 /* SMALL MOBILE (≤ 640px) — compact cards, 2-col stats, full picker   */
 /* ─────────────────────────────────────────────────────────────────── */
 
 @media (max-width: 640px) {
   .dashboard-header h2 {
     font-size: 1.2rem;
-  }
-
-  /* Stats: show 2-col on phones instead of 1-col so they don't take
-     up the whole viewport vertically. */
-  .dashboard-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
   }
 
   /* Date picker stretches to full width below the greeting */
@@ -441,13 +496,7 @@ const recentActivity = [
   }
 
   .dashboard-header h2 {
-    font-size: 1.1rem;
-  }
-
-  /* Drop to single column on very small phones */
-  .dashboard-stats {
-    grid-template-columns: 1fr;
-    gap: 8px;
+    font-size: 1.05rem;
   }
 
   .dashboard-focus-card {

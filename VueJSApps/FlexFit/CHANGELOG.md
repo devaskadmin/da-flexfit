@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.81.2] — Dashboard Mobile Optimization
+
+Targeted mobile rendering pass for `HomeDashboard.vue` only. No backend changes. No other pages affected. Desktop layout fully preserved.
+
+### Dashboard (`HomeDashboard.vue`)
+- **Header hero card** — stacks vertically at `≤ 768px` (`flex-direction: column`, `gap: 8px`). Date picker stretches to full width below the greeting on all phones.
+- **Stats grid** — changed to `repeat(2, minmax(0, 1fr))` as the mobile-first base. Removed the `≤ 480px` single-column override — metric cards always show 2-across on phones.
+- **Container overflow** — added `overflow-x: hidden; box-sizing: border-box` to `.dashboard-container` to prevent horizontal scroll bleed.
+- **Canvas gap** — reduced to `12px` at `≤ 768px` (was 16px) for tighter vertical rhythm on phones.
+- **Focus card** — `≤ 768px`: padding `12px 14px`, heading `0.95rem`, body text `0.86rem`.
+- **Panel headers/bodies** — compressed to `12px 14px` padding at `≤ 768px`.
+- **Metric card deep overrides** — at `≤ 768px`: `min-height: unset`, `padding: 12px`, icon badge `32px` (down from `36px`).
+- **Activity rows** — `flex-wrap: wrap` at `≤ 768px` so long action text doesn't clip.
+- Added new `@media (max-width: 768px)` block consolidating all phone-specific rules above the existing `≤ 640px` block.
+
+---
+
 ## [0.81.1] — Major Mobile UI Enhancement Pass
 
 Full mobile responsiveness audit and implementation across all 7 major pages. No backend changes. Desktop behavior fully preserved. Targets iPhone, Android, Safari mobile, and Chrome mobile at 768px / 640px / 480px breakpoints.
