@@ -2357,14 +2357,23 @@ textarea {
     gap: 12px;
   }
   .exercise-img {
-    max-width: 100%;
-    width: 100%;
+    width: 50%;
+    max-width: 180px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 12px;
   }
   .exercise-img img {
     width: 100%;
     height: auto;
-    max-height: 200px;
     border-radius: 12px;
+  }
+  .exercise-card .exercise-image {
+    width: 50%;
+    max-width: 180px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 12px;
   }
   .exercise-actions {
     display: grid;
@@ -2373,7 +2382,7 @@ textarea {
   }
   .exercise-actions .btn {
     width: 100%;
-    min-height: 36px;
+    min-height: 44px;
   }
 }
 
@@ -2474,21 +2483,33 @@ textarea {
     padding: 10px 12px 10px;
   }
 
-  /* â”€ Result cards: full width, single col â”€ */
   .exercise-row {
     grid-template-columns: 1fr;
-    padding: 12px;
-    gap: 10px;
+    padding: 10px;
+    gap: 8px;
   }
   .exercise-img {
-    width: 100%;
-    max-width: 100%;
+    width: 50%;
+    max-width: 180px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 12px;
   }
   .exercise-img img {
     width: 100%;
     height: auto;
-    max-height: 220px;
     border-radius: 12px;
+  }
+  .exercise-card .exercise-image {
+    width: 50%;
+    max-width: 180px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 12px;
+  }
+  .exercise-card {
+    padding-top: 10px;
+    padding-bottom: 10px;
   }
   .exercise-actions {
     display: flex;
@@ -2497,7 +2518,7 @@ textarea {
   }
   .exercise-actions .btn {
     width: 100%;
-    min-height: 44px;
+    min-height: 46px;
     font-size: 0.9rem;
   }
 
@@ -2542,5 +2563,23 @@ textarea {
   .ex-tab i {
     display: none; /* hide icons on very small screens to save space */
   }
+  .exercise-img {
+    width: 50%;
+    max-width: 150px;
+    margin-bottom: 10px;
+  }
+  .exercise-card .exercise-image {
+    width: 50%;
+    max-width: 150px;
+    margin-bottom: 10px;
+  }
+  .exercise-row {
+    padding: 8px;
+    gap: 6px;
+  }
+  .exercise-actions .btn {
+    min-height: 44px;
+  }
 }
 </style>
+
