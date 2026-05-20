@@ -1734,4 +1734,111 @@ onMounted(async () => {
   .wl-bottom-bar__inner { flex-direction: column; align-items: stretch; }
   .wl-bottom-bar__actions { justify-content: flex-end; }
 }
+
+/* ── Small mobile (≤ 640px) — toolbar, tabs, stats ──────────────────────── */
+@media (max-width: 640px) {
+  /* Toolbar: two buttons side-by-side, reduced height */
+  .wl-toolbar {
+    justify-content: stretch;
+    gap: 8px;
+  }
+  .wl-toolbar .wl-btn {
+    flex: 1 1 calc(50% - 8px);
+    justify-content: center;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+    min-width: 0;
+  }
+
+  /* Tabs: horizontal scroll, no wrapping */
+  .wl-tabs {
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .wl-tabs::-webkit-scrollbar { display: none; }
+  .wl-tab {
+    flex-shrink: 0;
+    padding: 10px 12px;
+    font-size: 0.82rem;
+  }
+
+  /* Stats cards: compact 3-col — reduce internal padding */
+  .wl-stat-card {
+    padding: 10px 10px;
+    gap: 4px;
+  }
+  .wl-stat-card strong { font-size: 1.05rem; }
+  .wl-stat-card span   { font-size: 0.76rem; }
+
+  /* History session header: meta wraps vertically */
+  .wl-history-session__meta {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* History date bar: stack on mobile */
+  .wl-history-datebar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+    font-size: 0.82rem;
+  }
+
+  /* Day cards: footer buttons full-width */
+  .wl-day-card__footer {
+    flex-direction: column;
+  }
+  .wl-btn-preview,
+  .wl-btn-start,
+  .wl-btn-resume {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Bottom bar: buttons share row */
+  .wl-bottom-bar__actions {
+    gap: 8px;
+  }
+  .wl-btn-end,
+  .wl-btn-complete {
+    flex: 1;
+    justify-content: center;
+    font-size: 0.82rem;
+    padding: 9px 12px;
+  }
+}
+
+/* ── Tiny mobile (≤ 480px) ──────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  /* Stats: drop to single col on very narrow phones */
+  .wl-stats {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  /* Hero text: compress */
+  .builder-hero__text h2 { font-size: 1.2rem; }
+  .builder-hero__subtitle { font-size: 0.82rem; }
+
+  /* Toolbar: full-width stacked */
+  .wl-toolbar {
+    flex-direction: column;
+  }
+  .wl-toolbar .wl-btn {
+    flex: 1 1 100%;
+  }
+
+  /* Plan header: always stacked */
+  .wl-plan__header {
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  /* Cardio set table: allow horizontal scroll inside */
+  .wl-hist-sets-table--cardio {
+    overflow-x: auto;
+  }
+}
 </style>

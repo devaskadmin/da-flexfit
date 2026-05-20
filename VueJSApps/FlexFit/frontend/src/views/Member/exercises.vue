@@ -2370,6 +2370,75 @@ Please Select an excerise
     min-height: 36px;
   }
 }
+
+/* ── Tablet (≤ 768px) — tab bar scroll, filter grid 2-col ───────── */
+@media (max-width: 768px) {
+  /* Tab bar: horizontal scroll — prevents 3 tabs from overflowing */
+  .ex-tab-bar {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    border-radius: 10px 10px 0 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ex-tab-bar::-webkit-scrollbar { display: none; }
+  .ex-tab {
+    flex-shrink: 0;
+    padding: 12px 16px 11px;
+    font-size: 0.86rem;
+  }
+
+  /* Filter grid: 2-col on tablet */
+  .search-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Actions row: equal-width buttons */
+  .search-filter-actions {
+    gap: 8px;
+  }
+  .search-filter-actions .btn {
+    flex: 1 1 calc(50% - 8px);
+    min-height: 40px;
+  }
+
+  /* Exercise results: single-column cards */
+  .exercise-list {
+    gap: 8px;
+  }
+
+  /* Reduce outer body padding */
+  .ex-page-body {
+    padding: 10px;
+  }
+}
+
+/* ── Small mobile (≤ 480px) — single column everything ──────────── */
+@media (max-width: 480px) {
+  /* Tabs even more compact */
+  .ex-tab {
+    padding: 11px 12px 10px;
+    font-size: 0.8rem;
+  }
+
+  /* Filter grid: 1-col */
+  .search-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Action buttons: full-width stack */
+  .search-filter-actions {
+    flex-direction: column;
+  }
+  .search-filter-actions .btn {
+    width: 100%;
+  }
+
+  /* Edit form columns: single col */
+  .col-md-6 {
+    grid-column: 1 / -1;
+  }
+}
 .list-group-item.d-flex.align-items-center > .flex-grow-1 > div.row > .col {
   padding: 2px 6px !important;
   margin: 0 !important;

@@ -482,4 +482,69 @@ onMounted(async () => {
   .search-controls, .add-edit-grid, .form-grid { grid-template-columns: 1fr; }
   .builder-hero__meta { width: 100%; justify-content: flex-start; }
 }
+
+/* ── Mobile (≤ 768px) — nutrition-specific fixes ─────────────────── */
+@media (max-width: 768px) {
+  /* Hero: prevent date control overflow */
+  .builder-hero {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .builder-hero__content { width: 100%; }
+  .builder-hero__meta {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  /* Tab bar: horizontal scroll, no wrap */
+  .workspace-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    gap: 6px;
+  }
+  .workspace-tabs::-webkit-scrollbar { display: none; }
+  .workspace-tabs button {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* Search controls: full-width stack */
+  .search-controls {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .btn-search {
+    width: 100%;
+    padding: 10px;
+  }
+
+  /* Add/Edit form: single-col */
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Food grid: single col */
+  .food-grid {
+    gap: 8px;
+  }
+
+  /* Workspace main: reduce padding */
+  .workspace-main {
+    padding: 10px;
+  }
+}
+
+/* ── Small mobile (≤ 480px) — 2×2 macro summary layout ─────────── */
+@media (max-width: 480px) {
+  .workspace-tabs button {
+    padding: 5px 10px;
+    font-size: 0.78rem;
+  }
+
+  .builder-hero h2 { font-size: 1.2rem; }
+  .builder-hero p  { font-size: 0.82rem; }
+}
 </style>

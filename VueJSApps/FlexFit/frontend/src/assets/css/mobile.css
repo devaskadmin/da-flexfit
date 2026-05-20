@@ -1,0 +1,188 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   FlexFit — Mobile Utility Classes  (v0.81)
+   Reusable responsive helpers consumed across all pages.
+   Desktop (≥ 769px) behavior is entirely preserved — these classes
+   only activate within the specified mobile breakpoints.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── mobile-stack ────────────────────────────────────────────────────
+   Forces a flex container's children to stack vertically on mobile. */
+@media (max-width: 768px) {
+  .mobile-stack {
+    flex-direction: column !important;
+  }
+}
+
+/* ── mobile-grid ─────────────────────────────────────────────────────
+   Collapses multi-column grids gracefully:
+   768px → 2 cols,  480px → 1 col. */
+@media (max-width: 768px) {
+  .mobile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+@media (max-width: 480px) {
+  .mobile-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── mobile-scroll ───────────────────────────────────────────────────
+   Turns any container into a touch-friendly horizontal scroll area.
+   Hides the scrollbar visually (still scrollable). */
+.mobile-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+@media (max-width: 768px) {
+  .mobile-scroll {
+    overflow-x: auto !important;
+    overflow-y: visible;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+  }
+  .mobile-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .mobile-scroll > * {
+    scroll-snap-align: start;
+  }
+}
+
+/* ── mobile-card ─────────────────────────────────────────────────────
+   Compresses card padding and border-radius for small screens. */
+@media (max-width: 768px) {
+  .mobile-card {
+    padding: 12px 14px !important;
+    border-radius: 10px !important;
+  }
+}
+@media (max-width: 480px) {
+  .mobile-card {
+    padding: 10px 12px !important;
+    border-radius: 8px !important;
+  }
+}
+
+/* ── mobile-actions ──────────────────────────────────────────────────
+   Action-button rows: wrap and distribute into 2-across grid at 640px,
+   then full-width stack at 480px. */
+@media (max-width: 640px) {
+  .mobile-actions {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  .mobile-actions > * {
+    flex: 1 1 calc(50% - 8px) !important;
+    min-width: 0 !important;
+    justify-content: center !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+}
+@media (max-width: 360px) {
+  .mobile-actions > * {
+    flex: 1 1 100% !important;
+  }
+}
+
+/* ── mobile-tabs ─────────────────────────────────────────────────────
+   Tab bars: enable horizontal scroll and prevent tab-item wrapping. */
+@media (max-width: 768px) {
+  .mobile-tabs {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .mobile-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .mobile-tabs > * {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* ── mobile-form ─────────────────────────────────────────────────────
+   Collapses multi-column form grids to single column. */
+@media (max-width: 768px) {
+  .mobile-form {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── mobile-table ────────────────────────────────────────────────────
+   Converts <table> into stacked card rows on mobile.
+   Requires data-label="Column Name" on each <td> for labeled display. */
+@media (max-width: 768px) {
+  .mobile-table .table-responsive {
+    overflow-x: unset !important;
+  }
+  .mobile-table table {
+    display: block !important;
+    width: 100% !important;
+  }
+  .mobile-table thead {
+    display: none !important;
+  }
+  .mobile-table tbody {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+  .mobile-table tr {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    border: 1px solid var(--border-color, #e5e7eb) !important;
+    border-radius: 12px !important;
+    padding: 12px 14px !important;
+    background: #fff !important;
+    gap: 8px !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05) !important;
+  }
+  .mobile-table td {
+    display: flex !important;
+    flex-direction: column !important;
+    border: none !important;
+    padding: 2px 0 !important;
+    font-size: 0.88rem !important;
+    text-align: left !important;
+  }
+  .mobile-table td::before {
+    content: attr(data-label);
+    font-size: 0.68rem !important;
+    font-weight: 800 !important;
+    color: var(--text-color-secondary, #6b7280) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    margin-bottom: 2px !important;
+  }
+  /* Actions column: row layout for action buttons */
+  .mobile-table td[data-label="Actions"],
+  .mobile-table td[data-label="Action"] {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+    padding-top: 6px !important;
+    border-top: 1px solid var(--border-color, #f3f4f6) !important;
+    margin-top: 4px !important;
+  }
+  .mobile-table td[data-label="Actions"]::before,
+  .mobile-table td[data-label="Action"]::before {
+    display: none !important;
+  }
+}
+/* Dark theme support for mobile-table */
+@media (max-width: 768px) {
+  :global(body.dark-theme) .mobile-table tr {
+    background: var(--main-color, #1e293b) !important;
+    border-color: rgba(255,255,255,0.12) !important;
+  }
+}

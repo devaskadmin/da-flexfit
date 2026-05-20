@@ -874,10 +874,12 @@ watch(
 
           <div class="schedule-hub-head__actions">
             <button type="button" class="btn-create-plan" @click="createWorkoutPlan">
-              Create Workout Plan
+              <span class="btn-label-full">Create Workout Plan</span>
+              <span class="btn-label-short">Create Plan</span>
             </button>
             <button type="button" class="btn-ai-suggest" @click="showAiSuggestionPlaceholder">
-              Suggest with AI
+              <span class="btn-label-full">Suggest with AI</span>
+              <span class="btn-label-short">AI Suggest</span>
             </button>
           </div>
         </div>
@@ -894,10 +896,12 @@ watch(
           <p>Create your first workout plan to start building a guided schedule.</p>
           <div class="schedule-hub-empty__actions">
             <button type="button" class="btn-create-plan" @click="createWorkoutPlan">
-              Create Workout Plan
+              <span class="btn-label-full">Create Workout Plan</span>
+              <span class="btn-label-short">Create Plan</span>
             </button>
             <button type="button" class="btn-ai-suggest" @click="showAiSuggestionPlaceholder">
-              Suggest with AI
+              <span class="btn-label-full">Suggest with AI</span>
+              <span class="btn-label-short">AI Suggest</span>
             </button>
           </div>
         </div>
@@ -2191,16 +2195,62 @@ watch(
   }
 }
 
+/* ── Short / long label toggle ───────────────────────────────────── */
+.btn-label-short { display: none; }
+
 @media (max-width: 639px) {
+  /* Show short labels, hide long ones */
+  .btn-label-full  { display: none; }
+  .btn-label-short { display: inline; }
+
+  /* Side-by-side instead of stacked */
   .schedule-hub-head__actions,
   .schedule-hub-empty__actions {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
   }
 
   .btn-create-plan,
   .btn-ai-suggest {
     width: 100%;
+    padding: 0 10px;
+    font-size: 0.83rem;
+  }
+
+  /* Tab bar: horizontal scroll so 3 tabs never overflow */
+  .builder-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+  .builder-tabs::-webkit-scrollbar { display: none; }
+  .builder-tab {
+    flex-shrink: 0;
+    min-width: 0;
+    font-size: 0.82rem;
+    padding: 0 8px;
+  }
+
+  /* Hero stats: allow horizontal scroll when screen is very narrow */
+  .builder-hero__stats {
+    overflow-x: auto;
+    scrollbar-width: none;
+    grid-template-columns: repeat(3, minmax(80px, 1fr));
+  }
+  .builder-hero__stats::-webkit-scrollbar { display: none; }
+
+  /* Footer: stack label above save button */
+  .builder-footer {
+    grid-template-columns: 1fr;
+  }
+  .btn-save {
+    width: 100%;
+  }
+
+  /* Day actions: wrap on very small phones */
+  .day-actions {
+    flex-wrap: wrap;
   }
 }
 </style>

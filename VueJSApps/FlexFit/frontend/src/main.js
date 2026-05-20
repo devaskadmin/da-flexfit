@@ -9,6 +9,7 @@ import '@/assets/vendor/css/dropzone.min.css'
 import '@/assets/vendor/css/material-icon.css'
 import 'vue-datepicker-next/index.css';
 import '@/assets/css/style.css'
+import '@/assets/css/mobile.css'
 // import '@/assets/scss/style.scss'
 
 import VueSweetalert2 from 'vue-sweetalert2';

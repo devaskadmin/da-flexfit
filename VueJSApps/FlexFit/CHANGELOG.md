@@ -1,6 +1,85 @@
 # Changelog
 
-## [0.78.g] — Edit And Save Workout History
+## [0.81] — Major Mobile UI Enhancement Pass
+
+Full mobile responsiveness audit and implementation across all 7 major pages. No backend changes. Desktop behavior fully preserved. Targets iPhone, Android, Safari mobile, and Chrome mobile at 768px / 640px / 480px breakpoints.
+
+### New Global Asset — `frontend/src/assets/css/mobile.css`
+Introduced **8 reusable mobile utility classes** now importable across all Vue components and pages:
+
+| Class | Purpose |
+|---|---|
+| `.mobile-stack` | Forces flex children vertical on mobile |
+| `.mobile-grid` | 2-col → 1-col responsive grid collapse |
+| `.mobile-scroll` | Touch-friendly horizontal scroll area |
+| `.mobile-card` | Compressed card padding on mobile |
+| `.mobile-actions` | 2-across action button row at 640px |
+| `.mobile-tabs` | Horizontally scrollable tab bar |
+| `.mobile-form` | Single-column form on mobile |
+| `.mobile-table` | Table → stacked card rows on mobile |
+
+Imported in `main.js` after `style.css`.
+
+### Dashboard (`HomeDashboard.vue`)
+- Added 640px breakpoint: metric cards switch to **2-column grid**, compressed padding, date picker stretches to full width.
+- Added 480px breakpoint: single-column stats, minimal padding across all cards and panels.
+- Activity feed rows compressed on small screens.
+
+### Workout Builder (`WorkoutBuilder.vue`)
+- **Buttons** — "Create Workout Plan" / "Suggest with AI" now show short labels ("Create Plan" / "AI Suggest") on mobile via `<span class="btn-label-full/short">` visibility toggle.
+- Buttons placed **side-by-side** at `≤ 639px` (`grid-template-columns: 1fr 1fr`) instead of stacking.
+- Tab bar (`builder-tabs`) gains `overflow-x: auto` + `flex-wrap: nowrap` — 3 tabs never overflow the screen.
+- Hero stats row (`builder-hero__stats`) allows horizontal scroll at narrow widths.
+- Save footer stacks full-width at `≤ 639px`.
+
+### Workout Log (`LogWorkout.vue`)
+- Toolbar buttons side-by-side, reduced height, `font-size: 0.8rem` at `≤ 640px`.
+- Tab bar: `flex-wrap: nowrap` + `overflow-x: auto` — prevents 3 tabs from wrapping.
+- Stat cards: reduced inner padding on mobile.
+- History session meta block stacks vertically.
+- Date bar stacks below date text on mobile.
+- Day-card footer buttons go full-width on mobile.
+- Bottom bar: End / Complete buttons share a row at `≤ 640px`.
+- At `≤ 480px`: stats collapse to single column, toolbar stacks fully, hero text compressed.
+
+### Exercise Database (`exercises.vue`)
+- Tab bar (`ex-tab-bar`): `overflow-x: auto` + `flex-wrap: nowrap` — 3 dark-background tabs scroll without overflow.
+- Filter grid: 4-col (desktop) → 2-col (768px) → 1-col (480px).
+- Action buttons (Add Exercise / Clear Filters) stretch 50%/50% at tablet, full-width at 480px.
+- Outer body padding reduced on mobile.
+
+### Nutrition Workspace (`NutritionWorkspace.vue`)
+- Hero row: `flex-direction: column` on mobile — date control no longer overflows.
+- Tab bar: `overflow-x: auto` + `flex-wrap: nowrap` prevents overflow.
+- Search controls: full-width stack at 768px (was already present, now explicitly enforced).
+- Search button full-width on mobile.
+- Workspace main padding reduced.
+- At 480px: tab text smaller, hero text compressed.
+
+### Account Settings (`UserSettings.vue`)
+- Layout: `settings-layout` switches to `flex-direction: column` — side nav stacks above content on mobile.
+- Side nav becomes **horizontally scrollable icon+label tab row** on mobile (`flex-direction: row; overflow-x: auto`).
+- At `≤ 480px`: nav labels hidden — icon-only for minimal footprint.
+- Save Changes button stretches to full width on mobile.
+- Header stacks vertically.
+- Panels, avatar area, and goal chips all get reduced padding/spacing.
+
+### Admin Roles (`AdminRoles.vue`)
+- Added `.mobile-table` class to the roles table wrapper — triggers global card-view CSS at `≤ 768px`.
+- Added `data-label` attributes to all `<td>` elements: `Name`, `Slug`, `Description`, `Status`, `Actions`.
+- Role creation form collapses to single-column fields on mobile.
+- Form save/reset buttons stretch to fill the row.
+- Action buttons (Edit / Delete) displayed in a flex row within the card view.
+- Horizontal scroll fully prevented on mobile.
+
+### Version
+- `VITE_APP_VERSION` updated to `0.81`.
+
+---
+
+## [0.8] — Major Milestone Release
+
+
 
 Completed workout history records are now editable. Each history session card has an Edit button that switches the set table to editable inputs. Changes are saved via a new PUT endpoint and the history refreshes automatically.
 

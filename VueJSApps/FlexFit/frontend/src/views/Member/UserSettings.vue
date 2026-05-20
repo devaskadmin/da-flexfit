@@ -1234,4 +1234,97 @@ textarea::placeholder {
   .ff-field.full-width { grid-column: 1; }
   .theme-tiles { flex-direction: column; }
 }
+
+/* ── Mobile (≤ 768px) — settings layout, nav, panels ───────────── */
+@media (max-width: 768px) {
+  /* Page canvas: reduce gap */
+  .settings-canvas { gap: 12px; }
+
+  /* Header: stack heading and save button vertically */
+  .settings-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+  .ff-btn-save {
+    width: 100%;
+    justify-content: center;
+    padding: 11px 20px;
+  }
+
+  /* Nav: horizontal scrollable row on mobile */
+  .ff-settings-nav {
+    flex-direction: row !important;
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none;
+    padding: 6px 8px;
+    width: 100% !important;
+    gap: 4px;
+    border-radius: 10px;
+  }
+  .ff-settings-nav::-webkit-scrollbar { display: none; }
+  .s-nav-item {
+    flex: 0 0 auto !important;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 12px;
+    align-items: center;
+    font-size: 0.78rem;
+    border-radius: 8px;
+    text-align: center;
+  }
+  .s-nav-icon {
+    width: 26px;
+    height: 26px;
+    font-size: 0.74rem;
+  }
+
+  /* Content panel: reduce padding */
+  .s-panel {
+    padding: 16px 16px;
+  }
+  .s-panel-head {
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+  }
+
+  /* Avatar row: compact */
+  .avatar-row {
+    gap: 12px;
+  }
+  .avatar-circle {
+    width: 56px;
+    height: 56px;
+  }
+
+  /* Goal chips: tighter */
+  .goal-chip {
+    padding: 6px 12px;
+    font-size: 0.78rem;
+  }
+
+  /* Danger zone: stack */
+  .danger-inner {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .btn-delete-account {
+    width: 100%;
+  }
+}
+
+/* ── Small mobile (≤ 480px) — single-column forms ──────────────── */
+@media (max-width: 480px) {
+  .settings-title  { font-size: 1.2rem; }
+  .settings-header { padding: 12px 14px; }
+  .s-panel         { padding: 12px; }
+
+  .s-nav-item {
+    padding: 6px 10px;
+    font-size: 0.72rem;
+  }
+  .s-nav-label { display: none; }   /* icon-only on tiny phones */
+}
 </style>

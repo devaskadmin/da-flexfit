@@ -384,4 +384,79 @@ const recentActivity = [
     padding: 14px 16px;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────── */
+/* SMALL MOBILE (≤ 640px) — compact cards, 2-col stats, full picker   */
+/* ─────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .dashboard-header h2 {
+    font-size: 1.2rem;
+  }
+
+  /* Stats: show 2-col on phones instead of 1-col so they don't take
+     up the whole viewport vertically. */
+  .dashboard-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  /* Date picker stretches to full width below the greeting */
+  .header-picker {
+    width: 100%;
+  }
+
+  /* Tighten card padding for smaller screens */
+  .dashboard-focus-card {
+    padding: 14px 16px;
+  }
+
+  .panel-header {
+    padding: 12px 14px;
+  }
+
+  .panel-body {
+    padding: 12px 14px;
+  }
+
+  /* Compress activity feed rows */
+  .activity-row {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .activity-row .time {
+    min-width: 60px;
+    font-size: 0.74rem;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────── */
+/* TINY MOBILE (≤ 480px) — single column stats, minimal padding        */
+/* ─────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .dashboard-canvas {
+    gap: 10px;
+  }
+
+  .dashboard-header h2 {
+    font-size: 1.1rem;
+  }
+
+  /* Drop to single column on very small phones */
+  .dashboard-stats {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .dashboard-focus-card {
+    padding: 12px;
+  }
+
+  .panel-body,
+  .panel-header {
+    padding: 10px 12px;
+  }
+}
 </style>
