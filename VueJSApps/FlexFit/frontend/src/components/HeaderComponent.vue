@@ -189,8 +189,8 @@ onUnmounted(() => {
     <div class="navbar-right">
       <!-- Admin-only tools: visible only for admin/administrator role -->
       <div v-if="isAdmin" class="admin-tools">
-        <!-- Search -->
-        <form class="navbar-search">
+        <!-- Search (desktop only – moves to row 2 on mobile) -->
+        <form v-if="!isMobile" class="navbar-search">
           <input type="search" placeholder="Search..." required>
           <button type="submit" aria-label="Search">
             <i class="fa-solid fa-magnifying-glass"></i>
@@ -287,6 +287,15 @@ onUnmounted(() => {
         />
       </div>
     </div>
+  <!-- Mobile: full-width search row (row 2) -->
+  <div v-if="isMobile && isAdmin" class="navbar-mobile-search-row">
+    <form class="navbar-search navbar-search-mobile" @submit.prevent>
+      <input type="search" placeholder="Search..." required>
+      <button type="submit" aria-label="Search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+      </button>
+    </form>
+  </div>
   </header>
 </template>
 
@@ -574,6 +583,73 @@ onUnmounted(() => {
 
 .message-dropdown .show-all-btn:hover {
   background-color: #f1f5f9;
+}
+
+/* ======== Mobile Header (≤768px) ======== */
+.navbar-mobile-search-row {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .top-navbar {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 56px;
+    padding: 8px 12px;
+    row-gap: 6px;
+    align-items: center;
+  }
+
+  .navbar-left {
+    height: 48px;
+    gap: 12px;
+  }
+
+  .navbar-logo {
+    min-width: unset;
+    height: 48px;
+  }
+
+  .navbar-logo img,
+  .navbar-logo-img {
+    height: 36px;
+  }
+
+  .navbar-spacer {
+    flex: 1;
+    min-width: 8px;
+  }
+
+  .navbar-right {
+    flex-shrink: 1;
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .admin-tools {
+    gap: 8px;
+  }
+
+  /* Mobile search row 2 */
+  .navbar-mobile-search-row {
+    display: flex;
+    width: 100%;
+    flex: 0 0 100%;
+    padding: 0 0 4px;
+  }
+
+  .navbar-search-mobile {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .navbar-search-mobile input {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+  }
 }
 
 /* Light theme overrides (if needed) */

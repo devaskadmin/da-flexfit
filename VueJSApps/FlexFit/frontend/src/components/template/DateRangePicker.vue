@@ -115,6 +115,21 @@ const shortcuts = [
   font-size: 14px;
 }
 
+/* ── Mobile: full-width date picker ── */
+@media (max-width: 768px) {
+  .full-datepicker {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    font-size: 13px;
+  }
+
+  .input-group.dashboard-filter {
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
+}
+
 /* Flex popup layout */
 :deep(.mx-datepicker-popup) {
   display: flex;

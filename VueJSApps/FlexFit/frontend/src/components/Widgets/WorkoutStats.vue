@@ -29,4 +29,48 @@ const stats = [
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+/* ── Mobile metric cards ── */
+@media (max-width: 768px) {
+  /* 2-column grid: Workouts | Streak / Calories | Points */
+  .row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  /* Reset Bootstrap col classes inside the grid */
+  .col-lg-3,
+  .col-6,
+  .col-xs-12 {
+    width: auto !important;
+    max-width: 100% !important;
+    flex: unset !important;
+    padding: 0 !important;
+  }
+
+  /* Compact card */
+  .dashboard-top-box {
+    padding: 14px 12px !important;
+    min-height: unset !important;
+    height: auto !important;
+  }
+
+  /* Keep metric value prominent */
+  .dashboard-top-box h3 {
+    font-size: 1.35rem !important;
+    margin-bottom: 4px !important;
+  }
+
+  .dashboard-top-box p {
+    font-size: 0.78rem !important;
+    margin-bottom: 0 !important;
+    line-height: 1.2;
+  }
+
+  /* Smaller icon */
+  .dashboard-top-box .fa {
+    font-size: 1.6rem !important;
+  }
+}
+</style>
