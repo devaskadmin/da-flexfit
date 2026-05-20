@@ -2351,38 +2351,65 @@ textarea {
     flex: 1 1 calc(50% - 6px);
     min-height: 38px;
   }
+  /* Dual-column card layout */
   .exercise-row {
-    grid-template-columns: 1fr;
-    padding: 12px;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 10px;
     gap: 12px;
   }
   .exercise-img {
-    width: 50%;
-    max-width: 180px;
-    margin-left: auto;
-    margin-right: auto;
-    margin-bottom: 12px;
+    width: 40%;
+    max-width: 140px;
+    flex-shrink: 0;
+    margin: 0;
   }
   .exercise-img img {
     width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 16px;
     height: auto;
-    border-radius: 12px;
+  }
+  .exercise-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .exercise-card {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px;
   }
   .exercise-card .exercise-image {
-    width: 50%;
-    max-width: 180px;
-    margin-left: auto;
-    margin-right: auto;
-    margin-bottom: 12px;
+    width: 40%;
+    max-width: 140px;
+    flex-shrink: 0;
+    margin: 0;
+  }
+  .exercise-card .exercise-image img {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 16px;
+    height: auto;
+  }
+  .exercise-card .exercise-content {
+    flex: 1;
+    min-width: 0;
   }
   .exercise-actions {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: 8px;
+    margin-top: 6px;
   }
   .exercise-actions .btn {
     width: 100%;
     min-height: 44px;
+    font-size: 0.82rem;
   }
 }
 
@@ -2483,70 +2510,65 @@ textarea {
     padding: 10px 12px 10px;
   }
 
+  /* Dual-column card layout */
   .exercise-row {
-    grid-template-columns: 1fr;
-    padding: 10px;
-    gap: 8px;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 8px;
+    gap: 10px;
   }
   .exercise-img {
-    width: 50%;
-    max-width: 180px;
-    margin-left: auto;
-    margin-right: auto;
-    margin-bottom: 12px;
+    width: 40%;
+    max-width: 130px;
+    flex-shrink: 0;
+    margin: 0;
   }
   .exercise-img img {
     width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 14px;
     height: auto;
-    border-radius: 12px;
   }
-  .exercise-card .exercise-image {
-    width: 50%;
-    max-width: 180px;
-    margin-left: auto;
-    margin-right: auto;
-    margin-bottom: 12px;
+  .exercise-info {
+    flex: 1;
+    min-width: 0;
   }
   .exercise-card {
-    padding-top: 10px;
-    padding-bottom: 10px;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px;
+  }
+  .exercise-card .exercise-image {
+    width: 40%;
+    max-width: 130px;
+    flex-shrink: 0;
+    margin: 0;
+  }
+  .exercise-card .exercise-image img {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 14px;
+    height: auto;
+  }
+  .exercise-card .exercise-content {
+    flex: 1;
+    min-width: 0;
   }
   .exercise-actions {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 8px;
+    margin-top: 4px;
   }
   .exercise-actions .btn {
     width: 100%;
-    min-height: 46px;
-    font-size: 0.9rem;
-  }
-
-  /* Reduce outer padding */
-  .ex-page-body {
-    padding: 8px;
-  }
-
-  /* Results closer to filters */
-  .row.g-3.mt-2 {
-    margin-top: 8px !important;
-  }
-  .results-header-row {
-    margin-bottom: 6px;
-    padding-top: 6px;
-  }
-
-  /* Workout log: stack columns on mobile */
-  .list-group-item.d-flex.align-items-start {
-    flex-direction: column !important;
-    gap: 8px;
-  }
-  .list-group-item.d-flex.align-items-start > div[style*="flex-basis: 20%"],
-  .list-group-item.d-flex.align-items-start > div[style*="flex-basis: 70%"],
-  .list-group-item.d-flex.align-items-start > div[style*="flex-basis: 10%"] {
-    flex-basis: 100% !important;
-    max-width: 100% !important;
-    padding-left: 0 !important;
+    min-height: 44px;
+    font-size: 0.85rem;
   }
 }
 
@@ -2563,23 +2585,10 @@ textarea {
   .ex-tab i {
     display: none; /* hide icons on very small screens to save space */
   }
-  .exercise-img {
-    width: 50%;
-    max-width: 150px;
-    margin-bottom: 10px;
-  }
-  .exercise-card .exercise-image {
-    width: 50%;
-    max-width: 150px;
-    margin-bottom: 10px;
-  }
-  .exercise-row {
-    padding: 8px;
-    gap: 6px;
-  }
-  .exercise-actions .btn {
-    min-height: 44px;
-  }
+  .exercise-img { max-width: 110px; }
+  .exercise-card .exercise-image { max-width: 110px; }
+  .exercise-row { padding: 8px; gap: 8px; }
+  .exercise-actions .btn { min-height: 44px; font-size: 0.8rem; }
 }
 </style>
 
