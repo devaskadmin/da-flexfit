@@ -2355,56 +2355,74 @@ textarea {
   .exercise-row {
     display: flex;
     flex-direction: row;
-    align-items: flex-start;
-    padding: 10px;
-    gap: 12px;
+    align-items: center;
+    padding: 16px;
+    gap: 16px;
+    min-height: 150px;
   }
   .exercise-img {
-    width: 40%;
-    max-width: 140px;
+    width: 120px;
+    height: 120px;
     flex-shrink: 0;
     margin: 0;
   }
   .exercise-img img {
-    width: 100%;
-    aspect-ratio: 1 / 1;
+    width: 120px;
+    height: 120px;
     object-fit: cover;
-    border-radius: 16px;
-    height: auto;
+    border-radius: 12px;
+    display: block;
   }
   .exercise-info {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .exercise-info .exercise-title {
+    margin-bottom: 8px;
+  }
+  .exercise-info .exercise-meta {
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .exercise-info .exercise-actions {
+    margin-top: auto;
   }
   .exercise-card {
     display: flex;
     flex-direction: row;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 10px;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    min-height: 150px;
   }
   .exercise-card .exercise-image {
-    width: 40%;
-    max-width: 140px;
+    width: 120px;
+    height: 120px;
     flex-shrink: 0;
     margin: 0;
   }
   .exercise-card .exercise-image img {
-    width: 100%;
-    aspect-ratio: 1 / 1;
+    width: 120px;
+    height: 120px;
     object-fit: cover;
-    border-radius: 16px;
-    height: auto;
+    border-radius: 12px;
+    display: block;
   }
   .exercise-card .exercise-content {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
   }
   .exercise-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
-    margin-top: 6px;
+    margin-top: auto;
   }
   .exercise-actions .btn {
     width: 100%;
@@ -2514,56 +2532,74 @@ textarea {
   .exercise-row {
     display: flex;
     flex-direction: row;
-    align-items: flex-start;
-    padding: 8px;
-    gap: 10px;
+    align-items: center;
+    padding: 14px;
+    gap: 14px;
+    min-height: 140px;
   }
   .exercise-img {
-    width: 40%;
-    max-width: 130px;
+    width: 110px;
+    height: 110px;
     flex-shrink: 0;
     margin: 0;
   }
   .exercise-img img {
-    width: 100%;
-    aspect-ratio: 1 / 1;
+    width: 110px;
+    height: 110px;
     object-fit: cover;
-    border-radius: 14px;
-    height: auto;
+    border-radius: 12px;
+    display: block;
   }
   .exercise-info {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .exercise-info .exercise-title {
+    margin-bottom: 6px;
+  }
+  .exercise-info .exercise-meta {
+    gap: 5px;
+    margin-bottom: 6px;
+  }
+  .exercise-info .exercise-actions {
+    margin-top: auto;
   }
   .exercise-card {
     display: flex;
     flex-direction: row;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 8px;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    min-height: 140px;
   }
   .exercise-card .exercise-image {
-    width: 40%;
-    max-width: 130px;
+    width: 110px;
+    height: 110px;
     flex-shrink: 0;
     margin: 0;
   }
   .exercise-card .exercise-image img {
-    width: 100%;
-    aspect-ratio: 1 / 1;
+    width: 110px;
+    height: 110px;
     object-fit: cover;
-    border-radius: 14px;
-    height: auto;
+    border-radius: 12px;
+    display: block;
   }
   .exercise-card .exercise-content {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
   }
   .exercise-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
-    margin-top: 4px;
+    margin-top: auto;
   }
   .exercise-actions .btn {
     width: 100%;
@@ -2585,10 +2621,12 @@ textarea {
   .ex-tab i {
     display: none; /* hide icons on very small screens to save space */
   }
-  .exercise-img { max-width: 110px; }
-  .exercise-card .exercise-image { max-width: 110px; }
-  .exercise-row { padding: 8px; gap: 8px; }
-  .exercise-actions .btn { min-height: 44px; font-size: 0.8rem; }
+  .exercise-img { width: 90px; height: 90px; }
+  .exercise-img img { width: 90px; height: 90px; border-radius: 10px; }
+  .exercise-card .exercise-image { width: 90px; height: 90px; }
+  .exercise-card .exercise-image img { width: 90px; height: 90px; border-radius: 10px; }
+  .exercise-row { padding: 10px; gap: 10px; min-height: 120px; }
+  .exercise-actions .btn { min-height: 40px; font-size: 0.78rem; }
 }
 </style>
 
