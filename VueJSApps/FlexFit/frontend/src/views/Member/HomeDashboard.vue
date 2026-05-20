@@ -394,13 +394,13 @@ const recentActivity = [
 
 @media (max-width: 768px) {
   .dashboard-canvas {
-    gap: 12px;
+    gap: 8px;
   }
 
   .header-content {
     flex-direction: column;
-    gap: 8px;
-    padding: 14px 16px;
+    gap: 6px;
+    padding: 10px 12px;
   }
 
   .header-picker {
@@ -408,23 +408,23 @@ const recentActivity = [
   }
 
   .dashboard-focus-card {
-    padding: 12px 14px;
+    padding: 10px 12px;
   }
 
   .dashboard-focus-card h3 {
-    font-size: 0.95rem;
+    font-size: 0.92rem;
   }
 
   .dashboard-focus-card p {
-    font-size: 0.86rem;
+    font-size: 0.83rem;
   }
 
   .panel-header {
-    padding: 12px 14px;
+    padding: 10px 12px;
   }
 
   .panel-body {
-    padding: 12px 14px;
+    padding: 10px 12px;
   }
 
   .stat-card :deep(.metric-card) {
@@ -492,20 +492,20 @@ const recentActivity = [
 
 @media (max-width: 480px) {
   .dashboard-canvas {
-    gap: 10px;
+    gap: 6px;
   }
 
   .dashboard-header h2 {
-    font-size: 1.05rem;
+    font-size: 1.0rem;
   }
 
   .dashboard-focus-card {
-    padding: 12px;
+    padding: 8px 10px;
   }
 
   .panel-body,
   .panel-header {
-    padding: 10px 12px;
+    padding: 8px 10px;
   }
 }
 </style>

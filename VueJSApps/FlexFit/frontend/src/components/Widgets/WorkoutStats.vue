@@ -36,7 +36,7 @@ const stats = [
   .row {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    gap: 8px;
   }
 
   /* Reset Bootstrap col classes inside the grid */
@@ -51,26 +51,26 @@ const stats = [
 
   /* Compact card */
   .dashboard-top-box {
-    padding: 14px 12px !important;
+    padding: 10px 10px !important;
     min-height: unset !important;
     height: auto !important;
   }
 
   /* Keep metric value prominent */
   .dashboard-top-box h3 {
-    font-size: 1.35rem !important;
-    margin-bottom: 4px !important;
+    font-size: 1.15rem !important;
+    margin-bottom: 2px !important;
   }
 
   .dashboard-top-box p {
-    font-size: 0.78rem !important;
+    font-size: 0.74rem !important;
     margin-bottom: 0 !important;
     line-height: 1.2;
   }
 
   /* Smaller icon */
   .dashboard-top-box .fa {
-    font-size: 1.6rem !important;
+    font-size: 1.1rem !important;
   }
 }
 </style>

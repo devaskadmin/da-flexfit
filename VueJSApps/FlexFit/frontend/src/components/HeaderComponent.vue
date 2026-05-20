@@ -594,40 +594,40 @@ onUnmounted(() => {
   .top-navbar {
     flex-wrap: wrap;
     height: auto;
-    min-height: 56px;
-    padding: 8px 12px;
-    row-gap: 6px;
+    min-height: 44px;
+    padding: 5px 10px;
+    row-gap: 4px;
     align-items: center;
   }
 
   .navbar-left {
-    height: 48px;
-    gap: 12px;
+    height: 40px;
+    gap: 8px;
   }
 
   .navbar-logo {
     min-width: unset;
-    height: 48px;
+    height: 40px;
   }
 
   .navbar-logo img,
   .navbar-logo-img {
-    height: 36px;
+    height: 28px;
   }
 
   .navbar-spacer {
     flex: 1;
-    min-width: 8px;
+    min-width: 6px;
   }
 
   .navbar-right {
     flex-shrink: 1;
     min-width: 0;
-    gap: 8px;
+    gap: 6px;
   }
 
   .admin-tools {
-    gap: 8px;
+    gap: 6px;
   }
 
   /* Mobile search row 2 */
@@ -649,6 +649,8 @@ onUnmounted(() => {
     flex: 1;
     min-width: 0;
     width: 100%;
+    height: 34px;
+    padding: 5px 10px;
   }
 }
 
