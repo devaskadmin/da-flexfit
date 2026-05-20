@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
    //Import libaries
    import { ref, reactive, computed, onMounted, watch, nextTick } from "vue";
    import DateDropDown from "@/components/DropDownDate.vue"; // not template folder
@@ -15,7 +15,7 @@
    const searchExercise = ref("");
    const workoutList = ref([]);
    const activeTab = ref('search-exercises'); // default tab
-   const filtersOpen = ref(false); // mobile accordion – collapsed by default
+   const filtersOpen = ref(false); // mobile accordion â€“ collapsed by default
    const existingLogs = ref([]);
   const exercisesLoadError = ref("");
   const exerciseView = ref('all');
@@ -284,7 +284,7 @@ const saveWorkout = async () => {
   if (errors.length > 0) {
     alert('Some logs failed to save:\n' + errors.join('\n'));
   } else {
-    alert('✅ All workout logs saved!');
+    alert('âœ… All workout logs saved!');
     workoutList.value = [];
     await loadWorkoutLogs();
   }
@@ -320,7 +320,7 @@ const saveWorkout = async () => {
     }));
 
   } catch (err) {
-    console.error("❌ Failed to load workout logs:", err);
+    console.error("âŒ Failed to load workout logs:", err);
   }
 };
 
@@ -354,7 +354,7 @@ const loadWorkoutLogs = async () => {
         }))
       : [];
   } catch (err) {
-    console.error("❌ Failed to fetch workout logs:", err);
+    console.error("âŒ Failed to fetch workout logs:", err);
     existingLogs.value = [];
   }
 };
@@ -414,7 +414,7 @@ const loadExercisesLibrary = async () => {
     });
     favoriteExerciseIds.value = nextFavoriteIds;
   } catch (err) {
-    console.error('❌ Failed to load exercises:', err);
+    console.error('âŒ Failed to load exercises:', err);
     allExercises.value = [];
     favoriteExerciseIds.value = new Set();
     exercisesLoadError.value = 'Could not load exercises right now.';
@@ -728,7 +728,7 @@ const selectedImage = computed(() => {
        const result = await response.json();
 
        if (!response.ok) {
-         console.error(`❌ API Error (${response.status}):`, result);
+         console.error(`âŒ API Error (${response.status}):`, result);
          throw new Error(result.error || result.message || (isUpdate ? 'Update failed' : 'Insert failed'));
        }
 
@@ -749,7 +749,7 @@ const selectedImage = computed(() => {
        }, 2000);
 
      } catch (err) {
-       console.error('❌ Error updating/inserting exercise:', err);
+       console.error('âŒ Error updating/inserting exercise:', err);
        
        // Show specific error message
        if (err.message.includes('fetch')) {
@@ -894,7 +894,7 @@ const AddWorkout = async () => {
     if (!res.ok) throw new Error(result.error || 'Failed to add exercise');
     // Refresh the list
     await loadExercisesLibrary();
-    alert('✅ New exercise added!');
+    alert('âœ… New exercise added!');
     showAddForm.value = false;
     // Reset form and images
     Object.assign(newExercise, {
@@ -911,7 +911,7 @@ const AddWorkout = async () => {
     existingImages.value = [];
     imagesToDelete.value = [];
   } catch (err) {
-    console.error('❌ Add failed:', err);
+    console.error('âŒ Add failed:', err);
     addFormError.value = 'Error adding exercise.';
   }
 };
@@ -1042,7 +1042,7 @@ const deleteExercise = async (exercise) => {
     if (!res.ok) throw new Error('Failed to delete exercise');
     // Refresh exercise list
     await loadExercisesLibrary();
-    alert('✅ Exercise deleted!');
+    alert('âœ… Exercise deleted!');
     showEditForm.value = false;
   } catch (err) {
     alert('Failed to delete exercise.');
@@ -1191,7 +1191,7 @@ const clearFilters = () => {
 
                       <div class="search-filter-actions">
                         <button class="btn btn-success add-exercise-centered" @click="showAddForm = !showAddForm">
-                          {{ showAddForm ? 'Cancel' : '➕ Add New Exercise' }}
+                          {{ showAddForm ? 'Cancel' : 'âž• Add New Exercise' }}
                         </button>
                         <button class="btn btn-outline-secondary clear-filters-btn" @click="clearFilters" title="Reset filters">Clear Filters</button>
                       </div>
@@ -1835,7 +1835,7 @@ Please Select an excerise
     <button v-if="rowEditState[idx]" @click="updateLog(log, idx)" class="btn btn-sm mb-2 log-action-btn" title="Save" style="background-color: #e53935; border-color: #e53935; color: #fff;">
       <i class="fas fa-save log-action-icon"></i>
     </button>
-    <button @click="removeLog(log, idx)" class="btn btn-sm btn-danger log-action-btn"><span class="log-action-icon" style="display:inline-block; line-height:1;">🗑️</span></button>
+    <button @click="removeLog(log, idx)" class="btn btn-sm btn-danger log-action-btn"><span class="log-action-icon" style="display:inline-block; line-height:1;">ðŸ—‘ï¸</span></button>
   </div>
 </div>
 <!-- End of Log -->
@@ -1867,9 +1867,9 @@ Please Select an excerise
   </div>
 </template>
 <style scoped>
-/* ────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    BASE / DESKTOP
-──────────────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .exercises-page {
   display: block;
   overflow-x: hidden;
@@ -2130,7 +2130,7 @@ textarea {
   cursor: pointer;
 }
 
-/* ── Tab bar ── */
+/* â”€â”€ Tab bar â”€â”€ */
 .ex-page-body {
   width: 100%;
   padding: 14px;
@@ -2194,11 +2194,11 @@ textarea {
 .ex-tab i,
 .ex-tab span { color: inherit; }
 
-/* Short/full label logic – desktop: show full only */
+/* Short/full label logic â€“ desktop: show full only */
 .tab-label-short { display: none; }
 .tab-label-full  { display: inline; }
 
-/* ── Filter card ── */
+/* â”€â”€ Filter card â”€â”€ */
 .search-filter-card {
   border-radius: 12px;
   border: 1px solid #dbe4ef;
@@ -2218,7 +2218,7 @@ textarea {
   padding: 8px 14px 8px;
 }
 
-/* Mobile accordion toggle – hidden on desktop */
+/* Mobile accordion toggle â€“ hidden on desktop */
 .filter-accordion-toggle {
   display: none;
 }
@@ -2337,9 +2337,9 @@ textarea {
   line-height: 1;
 }
 
-/* ────────────────────────────────────────────────────
-   RESPONSIVE – 991px
-──────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   RESPONSIVE â€“ 991px
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media (max-width: 991px) {
   .search-filter-grid {
     grid-template-columns: 1fr;
@@ -2377,11 +2377,11 @@ textarea {
   }
 }
 
-/* ────────────────────────────────────────────────────
-   RESPONSIVE – 768px (Tablet / large phone)
-──────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   RESPONSIVE â€“ 768px (Tablet / large phone)
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media (max-width: 768px) {
-  /* ─ Hero banner ─ */
+  /* â”€ Hero banner â”€ */
   :deep(.builder-hero),
   .builder-hero {
     padding: 16px !important;
@@ -2389,7 +2389,7 @@ textarea {
     border-radius: 16px !important;
   }
 
-  /* ─ Overflow guard ─ */
+  /* â”€ Overflow guard â”€ */
   .exercises-page,
   .exercises-canvas,
   .ex-page-body,
@@ -2406,7 +2406,7 @@ textarea {
     height: auto;
   }
 
-  /* ─ Tab bar: scrollable, compact ─ */
+  /* â”€ Tab bar: scrollable, compact â”€ */
   .ex-tab-bar {
     overflow-x: auto;
     flex-wrap: nowrap;
@@ -2428,7 +2428,7 @@ textarea {
   .tab-label-full  { display: none; }
   .tab-label-short { display: inline; }
 
-  /* ─ Accordion toggle visible on mobile ─ */
+  /* â”€ Accordion toggle visible on mobile â”€ */
   .filter-accordion-toggle {
     display: flex;
     align-items: center;
@@ -2451,13 +2451,13 @@ textarea {
     display: none !important;
   }
 
-  /* ─ Filter grid: 1-col on mobile ─ */
+  /* â”€ Filter grid: 1-col on mobile â”€ */
   .search-filter-grid {
     grid-template-columns: 1fr;
     gap: 8px 0;
   }
 
-  /* ─ Action buttons: stacked, full-width, 48px ─ */
+  /* â”€ Action buttons: stacked, full-width, 48px â”€ */
   .search-filter-actions {
     flex-direction: column;
     gap: 8px;
@@ -2474,7 +2474,7 @@ textarea {
     padding: 10px 12px 10px;
   }
 
-  /* ─ Result cards: full width, single col ─ */
+  /* â”€ Result cards: full width, single col â”€ */
   .exercise-row {
     grid-template-columns: 1fr;
     padding: 12px;
@@ -2529,9 +2529,9 @@ textarea {
   }
 }
 
-/* ────────────────────────────────────────────────────
-   RESPONSIVE – 480px (Small phones)
-──────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   RESPONSIVE â€“ 480px (Small phones)
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media (max-width: 480px) {
   .ex-tab {
     min-width: 90px;
@@ -2542,623 +2542,5 @@ textarea {
   .ex-tab i {
     display: none; /* hide icons on very small screens to save space */
   }
-}
-</style>
-
-.exercises-canvas {
-  display: grid;
-  gap: 16px;
-}
-
-.dashboard-breadcrumb {
-  margin-bottom: 0;
-  border-radius: 18px;
-  border: 1px solid rgba(37, 99, 235, 0.3);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
-}
-
-.dashboard-breadcrumb h2 {
-  margin: 0;
-  color: #ffffff;
-  font-weight: 800;
-  letter-spacing: -0.015em;
-}
-
-.header-meta {
-  color: #cbd5e1;
-  font-weight: 600;
-  margin-right: 10px;
-}
-
-.panel {
-  border: 1px solid #e5ecf5;
-  border-radius: 16px;
-  padding: 15px;
-  background: #ffffff;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.045);
-}
-
-.panel-header h4 {
-  margin: 0;
-  color: #0f172a;
-  font-weight: 800;
-}
-
-.panel-body {
-  color: #334155;
-}
-
-.exercise-card {
-  min-height: 120px;
-  background-color: #fff;
-  border-radius: 12px;
-}
-.exercise-card .exercise-image {
-  width: 75%;
-  margin: 0 auto;
-}
-.exercise-card .exercise-image img {
-  width: 100%;
-  height: auto;
-  border-radius: 10px;
-  display: block;
-}
-   .image-box {
-   flex-shrink: 0;
-   }
-  .exercise-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  }
-  .exercise-row {
-  display: grid;
-  grid-template-columns: 132px minmax(0, 1fr);
-  gap: 14px;
-  padding: 10px 12px;
-  border: 1px solid #dbe4ef;
-  background: #ffffff;
-  border-radius: 16px;
-  align-items: center;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.035);
-  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
-  }
-  .exercise-row:hover {
-  transform: translateY(-1px);
-  border-color: #93c5fd;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
-  }
-  .exercise-img img {
-  width: 132px;
-  height: 132px;
-  object-fit: cover;
-  border-radius: 14px;
-  }
-  .exercise-img {
-  width: 132px;
-  flex-shrink: 0;
-  }
-  .exercise-info {
-  min-width: 0;
-  display: grid;
-  gap: 8px;
-  }
-  .exercise-title {
-  font-weight: 800;
-  font-size: 1rem;
-  color: #0f172a;
-  margin: 0 0 6px 0;
-  padding: 0;
-  border: 0;
-  }
-  .exercise-meta {
-  display: grid;
-  gap: 2px;
-  margin-bottom: 8px;
-  }
-  .exercise-meta p {
-  margin: 0;
-  color: #64748b;
-  font-size: 0.86rem;
-  line-height: 1.35;
-  }
-  .exercise-meta p span {
-  color: #334155;
-  font-weight: 800;
-  margin-right: 0;
-  }
-  .exercise-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 0;
-  }
-  .exercise-actions .btn {
-  padding: 5px 10px;
-  font-size: 0.8rem;
-  border-radius: 7px;
-  margin: 0;
-  }
-
-.btn-fav {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  color: #475569;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-.btn-fav:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
-  color: #334155;
-}
-.btn-fav--active {
-  background: #fee2e2;
-  border-color: #fecaca;
-  color: #991b1b;
-}
-.btn-fav--active .fa-heart {
-  color: #dc2626;
-}
-.btn-fav--active:hover {
-  background: #fecaca;
-  border-color: #fca5a5;
-  color: #7f1d1d;
-}
-
-/* Edit Exercise Panel */
-.edit-exercise-panel {
-  border: 1px solid #dbe4ef;
-  border-radius: 16px;
-  padding: 22px 24px;
-  background: #ffffff;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
-  margin-top: 20px !important;
-}
-
-.edit-exercise-panel .panel-header {
-  padding-bottom: 12px;
-  margin-bottom: 16px;
-  border-bottom: 1px dashed #cbd5e1;
-}
-
-.edit-exercise-panel .panel-header h4 {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: #0f172a;
-  margin: 0;
-}
-
-.edit-exercise-panel .form-label {
-  font-size: 0.76rem;
-  font-weight: 700;
-  color: #64748b;
-  margin-bottom: 5px;
-}
-
-.edit-exercise-panel .form-control,
-.edit-exercise-panel .form-select {
-  min-height: 38px;
-  border: 1px solid #d6dee9;
-  background: #ffffff;
-  color: #334155;
-  font-size: 0.9rem;
-}
-
-.edit-exercise-panel .form-control:focus,
-.edit-exercise-panel .form-select:focus {
-  border-color: #93c5fd;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
-}
-
-.edit-exercise-panel .instructions {
-  min-height: 150px;
-}
-
-.edit-exercise-panel .panel-body {
-  padding: 0;
-}
-
-   .instructions{
-   min-height: 250px;
-   }
-  .container-block{
-   margin-top:0;
-  }
-  .container.container-block {
-   max-width: 100% !important;
-   width: 100% !important;
-   padding-left: 0 !important;
-   padding-right: 0 !important;
-  }
-   .workout-log-img{
-    height: 200px;
-    width:350px;
-   }
-   .sel-ex-input{
-    min-width: 100px;
-    padding-bottom: 10px;    
-   }
-   textarea {
-  resize: vertical;
-}
-.btn{
-  margin:2px
-}
-
-.summary-img {
-  width: 80px;
-  height: 80px;
-  object-fit: cover;
-  border-radius: 8px;
-}
-
-.clickable {
-  cursor: pointer;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-.ex-page-body {
-  width: 100%;
-  padding: 14px;
-  margin: 0;
-  background: #ffffff;
-  border: 1px solid #e5ecf5;
-  border-radius: 18px;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.045);
-}
-
-.ex-tab-bar {
-  display: flex;
-  align-items: stretch;
-  background: #1e293b;
-  border-radius: 14px 14px 0 0;
-  padding: 0 6px;
-  gap: 2px;
-  margin-bottom: 0;
-}
-
-.ex-tab {
-  flex: 1;
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.62);
-  font-size: 0.92rem;
-  font-weight: 600;
-  padding: 15px 20px 14px;
-  cursor: pointer;
-  transition: color 0.2s ease, background-color 0.2s ease;
-  white-space: nowrap;
-}
-
-.ex-tab::after {
-  content: "";
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: -1px;
-  height: 3px;
-  border-radius: 999px;
-  background: #f97316;
-  transform: scaleX(0);
-  transform-origin: center;
-  transition: transform 0.22s ease;
-  z-index: 2;
-}
-
-.ex-tab:hover {
-  color: rgba(255, 255, 255, 0.92);
-}
-
-.ex-tab--active {
-  color: #ffffff;
-  font-weight: 700;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.ex-tab--active::after {
-  transform: scaleX(1);
-}
-
-.ex-tab i {
-  color: inherit;
-}
-
-.ex-tab span {
-  color: inherit;
-}
-
-.search-filter-card {
-  border-radius: 12px;
-  border: 1px solid #dbe4ef;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.03);
-  padding: 0;
-}
-
-.search-filter-head {
-  display: none;
-}
-
-.search-filter-head h4 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 800;
-  color: #0f172a;
-}
-
-.search-filter-body {
-  padding: 8px 14px 8px;
-}
-
-.search-filter-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px 10px;
-  align-items: end;
-}
-
-.search-filter-field.full-width {
-  grid-column: 1 / -1;
-}
-
-.search-filter-field .form-label {
-  margin-bottom: 2px;
-  font-size: 0.76rem;
-  font-weight: 700;
-  color: #64748b;
-}
-
-.search-filter-field .form-control,
-.search-filter-field .form-select {
-  min-height: 34px;
-  padding: 5px 10px;
-  font-size: 0.9rem;
-  border: 1px solid #dbe4ef;
-  background: #f8fafc;
-  color: #334155;
-}
-
-.search-filter-field .form-control:focus,
-.search-filter-field .form-select:focus {
-  border-color: #93c5fd;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
-}
-
-.search-filter-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-top: 8px;
-  flex-wrap: wrap;
-}
-
-.search-filter-divider {
-  display: none;
-}
-
-.results-header-row {
-  border-top: 1px solid #e7edf5;
-  padding-top: 8px;
-  margin-top: 0;
-  margin-bottom: 8px;
-}
-
-.results-header-row h5 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  color: #334155;
-}
-
-.results-header-row p {
-  margin: 2px 0 0;
-  font-size: 0.84rem;
-  color: #64748b;
-}
-
-.tab-content {
-  background: #ffffff;
-  border: 1px solid #dbe4ef;
-  border-top: none;
-  border-radius: 0 0 14px 14px;
-  margin-top: 0;
-  padding: 0;
-  line-height: 1.6;
-}
-
-.tab-content > div {
-  margin-top: 0;
-}
-
-.tab-content .container.container-block {
-  margin-top: 0 !important;
-}
-
-.tab-content .panel {
-  margin-top: 0;
-  border-top: 0;
-  border-radius: 0 0 14px 14px;
-}
-
-.exercise-results-panel {
-  padding-top: 0;
-}
-
-@media (max-width: 991px) {
-  .search-filter-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .search-filter-actions {
-    width: 100%;
-  }
-
-  .search-filter-actions .btn {
-    flex: 1 1 calc(50% - 6px);
-    min-height: 38px;
-  }
-
-  .exercise-row {
-    grid-template-columns: 1fr;
-    padding: 12px;
-    gap: 12px;
-  }
-
-  .exercise-img {
-    max-width: 100%;
-    width: 100%;
-  }
-
-  .exercise-img img {
-    width: 100%;
-    height: auto;
-    max-height: 200px;
-    border-radius: 12px;
-  }
-
-  .exercise-actions {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  .exercise-actions .btn {
-    width: 100%;
-    min-height: 36px;
-  }
-}
-
-/* ── Tablet (≤ 768px) — tab bar scroll, filter grid 2-col ───────── */
-@media (max-width: 768px) {
-  /* Tab bar: horizontal scroll — prevents 3 tabs from overflowing */
-  .ex-tab-bar {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    scrollbar-width: none;
-    border-radius: 10px 10px 0 0;
-    -webkit-overflow-scrolling: touch;
-  }
-  .ex-tab-bar::-webkit-scrollbar { display: none; }
-  .ex-tab {
-    flex-shrink: 0;
-    padding: 12px 16px 11px;
-    font-size: 0.86rem;
-  }
-
-  /* Filter grid: 2-col on tablet */
-  .search-filter-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  /* Actions row: equal-width buttons */
-  .search-filter-actions {
-    gap: 8px;
-  }
-  .search-filter-actions .btn {
-    flex: 1 1 calc(50% - 8px);
-    min-height: 40px;
-  }
-
-  /* Exercise results: single-column cards */
-  .exercise-list {
-    gap: 8px;
-  }
-
-  /* Reduce outer body padding */
-  .ex-page-body {
-    padding: 10px;
-  }
-}
-
-/* ── Small mobile (≤ 480px) — single column everything ──────────── */
-@media (max-width: 480px) {
-  /* Tabs even more compact */
-  .ex-tab {
-    padding: 11px 12px 10px;
-    font-size: 0.8rem;
-  }
-
-  /* Filter grid: 1-col */
-  .search-filter-grid {
-    grid-template-columns: 1fr;
-  }
-
-  /* Action buttons: full-width stack */
-  .search-filter-actions {
-    flex-direction: column;
-  }
-  .search-filter-actions .btn {
-    width: 100%;
-  }
-
-  /* Edit form columns: single col */
-  .col-md-6 {
-    grid-column: 1 / -1;
-  }
-}
-.list-group-item.d-flex.align-items-center > .flex-grow-1 > div.row > .col {
-  padding: 2px 6px !important;
-  margin: 0 !important;
-}
-
-/* Add more left padding to the info (middle) column in the workout log */
-/* Add more left padding to the info (middle) column in the workout log */
-.list-group-item.d-flex.align-items-start > div[style*="flex-basis: 70%"],
-.list-group-item.d-flex.align-items-start > div[style*="max-width: 70%"] {
-  padding-left: 37px !important;
-}
-.list-group-item.d-flex.align-items-start {
-  margin-bottom: 32px !important;
-  margin-top: 16px !important;
-  padding-top: 18px !important;
-  padding-bottom: 18px !important;
-}
-.panel-body {
-  margin-bottom: 0;
-}
-.list-group-item.d-flex.align-items-center {
-  padding-top: 6px !important;
-  padding-bottom: 6px !important;
-  margin-bottom: 2px !important;
-}
-/* 10% bigger icons and buttons for log actions */
-.log-action-btn {
-  width: 33px;
-  height: 33px;
-  min-width: 33px;
-  min-height: 33px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-  padding: 0;
-}
-.log-action-icon {
-  font-size: 1.32em !important;
-  vertical-align: middle;
-  line-height: 1;
 }
 </style>
