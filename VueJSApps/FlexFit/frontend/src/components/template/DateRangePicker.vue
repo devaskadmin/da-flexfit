@@ -122,11 +122,88 @@ const shortcuts = [
     width: 100% !important;
     max-width: 100% !important;
     font-size: 13px;
+    box-sizing: border-box;
+    overflow: hidden;
   }
 
   .input-group.dashboard-filter {
     width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden;
+    box-sizing: border-box;
     justify-content: flex-start !important;
+  }
+
+  /* Actual input field */
+  :deep(.mx-input-wrapper) {
+    width: 100%;
+    max-width: 100%;
+    position: relative;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  :deep(.mx-input) {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 32px !important;
+    line-height: 32px !important;
+    padding-left: 10px !important;
+    padding-right: 36px !important;
+    font-size: 0.78rem !important;
+    box-sizing: border-box !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Calendar icon — pin to right, do not clip */
+  :deep(.mx-icon-calendar),
+  :deep(.mx-icon-clear) {
+    right: 8px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    position: absolute !important;
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  :deep(.mx-input) {
+    height: 30px !important;
+    line-height: 30px !important;
+    font-size: 0.73rem !important;
+    padding-left: 8px !important;
+    padding-right: 32px !important;
+  }
+
+  :deep(.mx-icon-calendar),
+  :deep(.mx-icon-clear) {
+    right: 6px !important;
+    font-size: 12px !important;
+    width: 18px !important;
+    height: 18px !important;
+  }
+}
+
+@media (max-width: 390px) {
+  :deep(.mx-input) {
+    height: 28px !important;
+    line-height: 28px !important;
+    font-size: 0.69rem !important;
+    padding-left: 7px !important;
+    padding-right: 30px !important;
+  }
+
+  :deep(.mx-icon-calendar),
+  :deep(.mx-icon-clear) {
+    right: 5px !important;
+    font-size: 11px !important;
+    width: 16px !important;
+    height: 16px !important;
   }
 }
 

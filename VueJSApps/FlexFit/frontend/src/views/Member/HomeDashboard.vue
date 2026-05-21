@@ -200,6 +200,9 @@ const recentActivity = [
 
 .header-picker {
   margin-top: 2px;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* ─────────────────────────────────────────────────────────────────── */
@@ -436,6 +439,10 @@ const recentActivity = [
 
   .header-picker {
     width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+    margin-top: 0;
   }
 
   /* date picker compact */
