@@ -292,6 +292,11 @@ router.post('/login', async (req, res) => {
           diagnostics: {
             loginSucceeded: true,
             sessionVerificationPassed: true,
+            cookieDetected: Boolean(req.headers.cookie),
+            cookieSentBack: true,
+            corsPassed: Boolean(req.headers.origin),
+            sameSiteValue: req.session?.cookie?.sameSite || null,
+            secureFlag: Boolean(req.session?.cookie?.secure),
           },
         });
       });
@@ -307,6 +312,15 @@ router.post('/login', async (req, res) => {
 router.post('/logout', (req, res) => {
     req.session.destroy(err => {
       if (err) return res.status(500).send("Logout failed");
+      // Explicitly clear the session cookie on the client for all browsers including Safari
+      const isProduction = process.env.NODE_ENV === 'production';
+      const secureFlag = isProduction || String(process.env.SESSION_COOKIE_SECURE || '').toLowerCase() === 'true';
+      res.clearCookie('flexfit_session', {
+        path: '/',
+        httpOnly: true,
+        secure: secureFlag,
+        sameSite: secureFlag ? 'none' : 'lax',
+      });
       res.json({ message: "Logged out successfully" });
     });
   });
@@ -314,15 +328,25 @@ router.post('/logout', (req, res) => {
 //Get Session
 router.get('/session', async (req, res) => {
     const rawCookie = String(req.headers?.cookie || '');
-    const hasSessionCookie = /connect\.sid=/.test(rawCookie);
+    const hasSessionCookie = /flexfit_session=/.test(rawCookie);
+    const cookieSentBack = Boolean(req.headers.cookie);
     const hasUserSession = Boolean(req.session?.user);
+
+    // Compute cookie config for diagnostics
+    const isProduction = process.env.NODE_ENV === 'production';
+    const secureFlag = isProduction || String(process.env.SESSION_COOKIE_SECURE || '').toLowerCase() === 'true';
+    const sameSiteValue = secureFlag ? 'none' : 'lax';
+    const corsPassed = Boolean(req.headers.origin);
 
     if (isDebugEnabled) {
       console.log('🧪 [auth/session] diagnostics:', {
         origin: req.headers.origin || null,
         hasSessionCookie,
+        cookieSentBack,
         hasUserSession,
         sessionId: req.sessionID || null,
+        secureFlag,
+        sameSiteValue,
       });
     }
 
@@ -351,6 +375,11 @@ router.get('/session', async (req, res) => {
         user: req.session.user,
         requiresPasswordReset: Boolean(req.session.mustResetPassword),
         diagnostics: {
+          cookieDetected: hasSessionCookie,
+          cookieSentBack,
+          corsPassed,
+          sameSiteValue,
+          secureFlag,
           hasSessionCookie,
           loginSucceeded: true,
           sessionCookiePersisted: hasSessionCookie,
@@ -361,6 +390,11 @@ router.get('/session', async (req, res) => {
     res.json({
       loggedIn: false,
       diagnostics: {
+        cookieDetected: hasSessionCookie,
+        cookieSentBack,
+        corsPassed,
+        sameSiteValue,
+        secureFlag,
         hasSessionCookie,
         loginSucceeded: false,
         sessionCookiePersisted: hasSessionCookie,

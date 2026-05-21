@@ -64,6 +64,11 @@ const buildLoginDiagnostics = ({
   loginSucceeded = false,
   sessionCookiePersisted = null,
   sessionVerificationPassed = false,
+  cookieDetected = null,
+  cookieSentBack = null,
+  corsPassed = null,
+  sameSiteValue = null,
+  secureFlag = null,
 } = {}) => {
   const userAgent = navigator.userAgent || 'unknown';
   const origin = window.location.origin || 'unknown';
@@ -81,6 +86,11 @@ const buildLoginDiagnostics = ({
     `- loginSucceeded: ${loginSucceeded}`,
     `- sessionCookiePersisted: ${sessionCookiePersisted === null ? 'unknown' : sessionCookiePersisted}`,
     `- sessionVerificationPassed: ${sessionVerificationPassed}`,
+    `- cookieDetected: ${cookieDetected === null ? 'unknown' : cookieDetected}`,
+    `- cookieSentBack: ${cookieSentBack === null ? 'unknown' : cookieSentBack}`,
+    `- corsPassed: ${corsPassed === null ? 'unknown' : corsPassed}`,
+    `- sameSiteValue: ${sameSiteValue ?? 'unknown'}`,
+    `- secureFlag: ${secureFlag === null ? 'unknown' : secureFlag}`,
     `- Reason: ${reason || 'none'}`,
     `- Server Message: ${apiMessage || 'none'}`,
     `- Network Message: ${networkMessage || 'none'}`,
@@ -178,6 +188,7 @@ const waitForSessionReady = async (maxAttempts = 5, waitMs = 250) => {
   let lastStatus = null;
   let lastNote = '';
   let lastHasSessionCookie = null;
+  let lastDiagnostics = {};
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
@@ -195,6 +206,7 @@ const waitForSessionReady = async (maxAttempts = 5, waitMs = 250) => {
       lastStatus = sessionRes?.status ?? null;
       lastHasSessionCookie = sessionRes?.data?.diagnostics?.hasSessionCookie ?? null;
       lastNote = sessionRes?.data?.diagnostics?.note || '';
+      lastDiagnostics = sessionRes?.data?.diagnostics || {};
 
       if (sessionRes?.data?.loggedIn === true) {
         return {
@@ -202,12 +214,14 @@ const waitForSessionReady = async (maxAttempts = 5, waitMs = 250) => {
           status: sessionRes?.status ?? null,
           hasSessionCookie: sessionRes?.data?.diagnostics?.hasSessionCookie ?? true,
           note: sessionRes?.data?.diagnostics?.note || 'Session verification succeeded.',
+          diagnostics: lastDiagnostics,
         };
       }
     } catch (err) {
       lastStatus = err?.response?.status ?? null;
       lastHasSessionCookie = err?.response?.data?.diagnostics?.hasSessionCookie ?? lastHasSessionCookie;
       lastNote = err?.response?.data?.diagnostics?.note || err?.message || lastNote;
+      lastDiagnostics = err?.response?.data?.diagnostics || lastDiagnostics;
 
       // Retry until attempts are exhausted.
     }
@@ -221,6 +235,7 @@ const waitForSessionReady = async (maxAttempts = 5, waitMs = 250) => {
     status: lastStatus,
     hasSessionCookie: lastHasSessionCookie,
     note: lastNote || 'Session verification did not pass after login.',
+    diagnostics: lastDiagnostics,
   };
 };
 
@@ -260,6 +275,7 @@ const login = async () => {
       devLog('Login requires password reset');
       const sessionState = await waitForSessionReady();
       if (!sessionState?.passed) {
+        const d = sessionState?.diagnostics || {};
         setLoginError({
           fallbackMessage: 'Login succeeded, but the session cookie was not available for follow-up requests.',
           reason: 'Session persistence issue after successful authentication.',
@@ -268,6 +284,11 @@ const login = async () => {
           loginSucceeded: true,
           sessionCookiePersisted: sessionState?.hasSessionCookie,
           sessionVerificationPassed: false,
+          cookieDetected: d.cookieDetected ?? null,
+          cookieSentBack: d.cookieSentBack ?? null,
+          corsPassed: d.corsPassed ?? null,
+          sameSiteValue: d.sameSiteValue ?? null,
+          secureFlag: d.secureFlag ?? null,
           safariDetailed: true,
         });
         return;
@@ -280,6 +301,7 @@ const login = async () => {
       devLog('Login successful response received');
       const sessionState = await waitForSessionReady();
       if (!sessionState?.passed) {
+        const d = sessionState?.diagnostics || {};
         setLoginError({
           fallbackMessage: 'Login succeeded, but the session cookie was not available for follow-up requests.',
           reason: 'Session persistence issue after successful authentication.',
@@ -288,6 +310,11 @@ const login = async () => {
           loginSucceeded: true,
           sessionCookiePersisted: sessionState?.hasSessionCookie,
           sessionVerificationPassed: false,
+          cookieDetected: d.cookieDetected ?? null,
+          cookieSentBack: d.cookieSentBack ?? null,
+          corsPassed: d.corsPassed ?? null,
+          sameSiteValue: d.sameSiteValue ?? null,
+          secureFlag: d.secureFlag ?? null,
           safariDetailed: true,
         });
         return;

@@ -42,11 +42,17 @@ const isPrivateDevOrigin = (origin) => {
 };
 
 console.log(`🚀 FRONTEND_URL=${FRONTEND_URL || '(not set)'}`);
+console.log(`🌐 Allowed CORS origins: ${[...allowedOrigins].join(', ') || '(none configured)'}`);
+
+// ✅ Trust proxy always — Render (and most cloud hosts) terminate TLS at the
+// load balancer and forward requests via HTTP internally. Without this,
+// express-session marks cookies secure=false which Safari silently drops.
+app.set('trust proxy', 1);
 
 // ✅ Use CORS (must come before session)
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, etc.)
+    // Allow requests with no origin (like mobile apps, curl, server-to-server)
     if (!origin) return callback(null, true);
 
     if (allowedOrigins.has(origin)) {
@@ -58,22 +64,28 @@ app.use(cors({
       return callback(null, true);
     }
 
+    console.warn(`🚫 CORS blocked origin: ${origin}`);
     return callback(new Error('Not allowed by CORS'));
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
 
 // ✅ Configure session (only once)
-const sessionCookieSecure = String(process.env.SESSION_COOKIE_SECURE || '').toLowerCase() === 'true' || isProduction;
+// secure=true required for SameSite=None; derive from NODE_ENV so Render
+// production deployments are always correct even if SESSION_COOKIE_SECURE is unset.
+const sessionCookieSecure = isProduction || String(process.env.SESSION_COOKIE_SECURE || '').toLowerCase() === 'true';
+// SameSite=None is required for cross-origin cookies (Safari + all modern browsers).
+// SameSite=Lax breaks cross-origin POST (login) on Safari / iOS.
 const sessionCookieSameSite = sessionCookieSecure ? 'none' : 'lax';
 
-if (sessionCookieSecure) {
-  app.set('trust proxy', 1);
-}
+console.log(`🍪 Session cookie: name=flexfit_session secure=${sessionCookieSecure} sameSite=${sessionCookieSameSite}`);
 
 if (isDebugEnabled) {
   console.log('🧪 Session/CORS debug:', {
     nodeEnv: process.env.NODE_ENV,
+    isProduction,
     frontendUrl: FRONTEND_URL || null,
     corsOrigins: [...allowedOrigins],
     sessionCookieSecure,
@@ -82,29 +94,34 @@ if (isDebugEnabled) {
 }
 
 app.use(session({
-  name: 'connect.sid',
+  name: 'flexfit_session',
   secret: process.env.SESSION_SECRET || 'dev-only-session-secret',
   resave: false,
   saveUninitialized: false,
-  proxy: sessionCookieSecure,
+  proxy: true, // always true — Render always reverse-proxies
   cookie: {
     httpOnly: true,
     secure: sessionCookieSecure,
     sameSite: sessionCookieSameSite,
-    maxAge: 1800000 // 30 min
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days default; auth.js overrides per login
   }
 }));
 
 // ✅ Debug session logging
 app.use((req, res, next) => {
   if (isDebugEnabled) {
+    const rawCookie = String(req.headers?.cookie || '');
     console.log('🧠 Session inbound:', {
       method: req.method,
       path: req.path,
       origin: req.headers.origin || null,
       hasCookieHeader: Boolean(req.headers.cookie),
+      cookieDetected: /flexfit_session=/.test(rawCookie),
       sessionId: req.sessionID || null,
       hasUserSession: Boolean(req.session?.user),
+      secureFlag: sessionCookieSecure,
+      sameSiteValue: sessionCookieSameSite,
     });
   }
   next();
