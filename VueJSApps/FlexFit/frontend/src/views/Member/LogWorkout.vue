@@ -581,7 +581,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="app-page-shell wl-page">
+  <div class="app-page-shell wl-page workout-log-mobile">
     <div class="app-page-canvas app-inner-shell">
 
       <!-- ── Hero header ─────────────────────────────────────────────────── -->
@@ -1724,6 +1724,108 @@ onMounted(async () => {
 .wl-btn-delete:hover:not(:disabled) { background: #b91c1c; }
 .wl-btn-delete:disabled { opacity: .6; cursor: not-allowed; }
 
+/* ── v0.81.6 Global density utility ──────────────────────────────────────── */
+.workout-log-mobile { /* defined here; used in template root */ }
+
+/* ── v0.81.6 Mobile 768px — Workout Log Compression ─────────────────────── */
+@media (max-width: 768px) {
+  /* §9 Global density */
+  .workout-log-mobile .app-page-canvas { gap: 8px; }
+  .wl-exercise-list { gap: 8px; }
+  .wl-accordion      { gap: 8px; }
+  .wl-history-list   { gap: 8px; }
+  .wl-day-grid       { gap: 8px; }
+
+  /* §1 Hero compression */
+  .builder-hero {
+    --ff-page-header-padding: 10px 14px;
+    --ff-page-header-radius: 14px;
+  }
+  .builder-hero__content { gap: 8px; }
+  .builder-hero__subtitle { font-size: 0.82rem; }
+  .wl-date-input {
+    height: 32px;
+    padding: 4px 10px;
+    font-size: 0.82rem;
+  }
+  .wl-toolbar { margin-top: 8px; gap: 8px; }
+  .wl-toolbar .wl-btn {
+    height: 36px;
+    padding: 0 12px;
+    font-size: 0.8rem;
+  }
+
+  /* §2 Stats cards — 3 columns, 70px compact cards */
+  .wl-stats {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .wl-stat-card {
+    padding: 8px 10px;
+    gap: 3px;
+    min-height: 70px;
+    align-content: center;
+  }
+  .wl-stat-card span   { font-size: 0.7rem; }
+  .wl-stat-card strong { font-size: 1rem; }
+
+  /* §8 History tabs — horizontal scroll, reduced height */
+  .wl-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    gap: 2px;
+    margin-bottom: 12px;
+  }
+  .wl-tabs::-webkit-scrollbar { display: none; }
+  .wl-tab {
+    flex-shrink: 0;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    gap: 5px;
+  }
+  .wl-tab-badge { font-size: 0.67rem; padding: 1px 7px; }
+
+  /* Plan accordion */
+  .wl-plan__header  { padding: 12px 14px; }
+  .wl-plan__name    { font-size: 0.9rem; }
+  .wl-plan__meta    { font-size: 0.74rem; gap: 8px; }
+  .wl-plan__body    { padding: 10px 12px; }
+
+  /* Day cards */
+  .wl-day-card          { padding: 12px; gap: 8px; }
+  .wl-day-card__title h4 { font-size: 0.9rem; }
+  .wl-day-card__meta    { font-size: 0.74rem; gap: 8px; }
+  .wl-day-card__ex-row  { font-size: 0.78rem; }
+
+  /* §3 Global font reduction — secondary labels */
+  .wl-ex-detail { font-size: 0.72rem; }
+  .wl-plan__meta span { font-size: 0.72rem; }
+  .wl-history-session__meta { font-size: 0.72rem; }
+  .wl-hist-tag  { font-size: 0.66rem; padding: 1px 7px; }
+
+  /* Day detail header */
+  .wl-day-detail-header { padding: 12px; gap: 8px; margin-bottom: 10px; }
+
+  /* History */
+  .wl-history-session__header     { padding: 10px 14px; gap: 8px; }
+  .wl-history-exercises--detailed { padding: 10px 14px; gap: 10px; }
+  .wl-hist-ex-card    { padding: 10px; gap: 8px; }
+  .wl-hist-ex-thumb   { width: 36px; height: 36px; font-size: 0.9rem; }
+  .wl-hist-ex-name    { font-size: 0.85rem; }
+  .wl-history-datebar { padding: 8px 12px; font-size: 0.8rem; margin-bottom: 10px; }
+
+  /* Bottom bar */
+  .wl-bottom-bar { padding: 8px 12px; }
+  .wl-btn-complete,
+  .wl-btn-end {
+    padding: 8px 12px;
+    font-size: 0.82rem;
+    border-radius: 8px;
+  }
+}
+
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .wl-stats { grid-template-columns: repeat(3, 1fr); }
@@ -1812,33 +1914,44 @@ onMounted(async () => {
 
 /* ── Tiny mobile (≤ 480px) ──────────────────────────────────────────────── */
 @media (max-width: 480px) {
-  /* Stats: drop to single col on very narrow phones */
-  .wl-stats {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
+  /* Stats: keep 3-col, shrink further */
+  .wl-stats { gap: 6px; }
+  .wl-stat-card { padding: 7px 8px; min-height: 60px; }
+  .wl-stat-card span   { font-size: 0.66rem; }
+  .wl-stat-card strong { font-size: 0.92rem; }
 
   /* Hero text: compress */
-  .builder-hero__text h2 { font-size: 1.2rem; }
-  .builder-hero__subtitle { font-size: 0.82rem; }
+  .builder-hero__text h2  { font-size: 1.1rem; }
+  .builder-hero__subtitle { font-size: 0.78rem; }
 
   /* Toolbar: full-width stacked */
-  .wl-toolbar {
-    flex-direction: column;
-  }
-  .wl-toolbar .wl-btn {
-    flex: 1 1 100%;
-  }
+  .wl-toolbar { flex-direction: column; }
+  .wl-toolbar .wl-btn { flex: 1 1 100%; }
+
+  /* Tabs smaller */
+  .wl-tab { padding: 7px 10px; font-size: 0.76rem; }
 
   /* Plan header: always stacked */
-  .wl-plan__header {
-    gap: 10px;
-    padding: 12px 14px;
+  .wl-plan__header { gap: 10px; padding: 10px 12px; }
+
+  /* Day cards */
+  .wl-day-card { padding: 10px; }
+
+  /* History edit buttons smaller */
+  .wl-hist-edit-btn, .wl-hist-save-btn, .wl-hist-cancel-btn, .wl-hist-delete-btn {
+    padding: 3px 8px; font-size: 0.7rem;
   }
 
   /* Cardio set table: allow horizontal scroll inside */
-  .wl-hist-sets-table--cardio {
-    overflow-x: auto;
-  }
+  .wl-hist-sets-table--cardio { overflow-x: auto; }
+}
+
+/* ── Narrow mobile (≤ 390px) ─────────────────────────────────────────────── */
+@media (max-width: 390px) {
+  .wl-stat-card { padding: 6px; }
+  .wl-stat-card span   { font-size: 0.62rem; }
+  .wl-stat-card strong { font-size: 0.86rem; }
+  .wl-tab { padding: 6px 8px; font-size: 0.72rem; }
+  .wl-toolbar .wl-btn  { font-size: 0.74rem; height: 32px; }
 }
 </style>

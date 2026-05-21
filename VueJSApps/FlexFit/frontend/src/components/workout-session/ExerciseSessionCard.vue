@@ -865,33 +865,119 @@ const allDone = computed(() => completedSets.value === totalSets.value && totalS
   color: var(--text-color-secondary, #6b7280);
 }
 
-/* ─── Cardio Mobile ───────────────────────── */
-@media (max-width: 600px) {
-  .c3-col-info {
-    font-size: 0.78rem;
-    padding-right: 6px;
+/* ─── v0.81.6 Mobile 768px — Exercise Card Compression ───────── */
+@media (max-width: 768px) {
+  /* Card compression */
+  .session-exercise-card {
+    padding: 10px 12px;
+    gap: 10px;
+    border-radius: 12px;
   }
 
-  .c3-col-set {
-    font-size: 0.78rem;
+  /* §4 Exercise header — 40px image, compact badge, 32px collapse button */
+  .sec-thumb,
+  .sec-thumb-placeholder {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+  }
+  .sec-meta h5   { font-size: 0.84rem; }
+  .sec-meta p    { font-size: 0.7rem; }
+  .sec-type-chip { font-size: 0.62rem; padding: 2px 6px; }
+  .sec-sets-summary { font-size: 0.68rem; }
+  .sec-select-btn {
+    height: 32px;
+    padding: 0 9px;
+    font-size: 0.68rem;
+    border-radius: 7px;
   }
 
-  .c3-head {
-    padding: 6px 10px;
-  }
+  /* §5 Cardio set layout — 2-column grid (Duration|Calories / Distance|Speed) */
+  /* Hide the Set|Info|Value table header — labels are inline per cell */
+  .c3-head { display: none; }
 
+  /* Each set group becomes a 2-col grid */
+  .c3-set-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 2px solid var(--border-color, #e5e7eb);
+  }
+  .c3-set-group:last-child { border-bottom: none; }
+
+  /* Each field row: stacked label + input (fills one grid cell) */
   .c3-row {
-    padding: 3px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 8px;
+    border-bottom: none;
+    background: transparent !important;
   }
 
+  /* Hide set number column (redundant in 2-col layout) */
+  .c3-col-set { display: none; }
+
+  /* Label above the input */
+  .c3-col-info {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #64748b;
+    padding: 0;
+  }
+  .c3-col-value { padding: 0; }
+
+  /* §5 Field height 36px */
   .set-input {
-    padding: 5px 6px;
+    min-height: 36px;
+    height: 36px;
+    padding: 0 8px;
     font-size: 0.82rem;
+    box-sizing: border-box;
+    text-align: left;
   }
 
-  .c3-complete-btn {
-    padding: 5px 10px;
-    font-size: 0.78rem;
+  /* §6 Set actions — action row spans both columns, 30px buttons */
+  .c3-row-done {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 7px 8px;
+    border-top: 1px solid var(--border-color, #e5e7eb) !important;
+    background: #f9fafb !important;
   }
+
+  .c3-rm-btn {
+    font-size: 0.68rem;
+    padding: 0 8px;
+    height: 30px;
+    white-space: nowrap;
+  }
+  .c3-complete-btn {
+    font-size: 0.7rem;
+    padding: 0 10px;
+    height: 30px;
+    white-space: nowrap;
+  }
+
+  /* Footer: compress */
+  .sec-footer { gap: 6px; flex-wrap: wrap; }
+  .add-set-btn   { font-size: 0.72rem; padding: 5px 10px; }
+  .c3-finish-btn { font-size: 0.76rem; padding: 6px 12px; }
+  .sec-summary   { font-size: 0.7rem; }
+}
+
+/* ─── v0.81.6 Mobile 480px — further compression ──────────────── */
+@media (max-width: 480px) {
+  .session-exercise-card { padding: 8px 10px; gap: 8px; }
+  .sec-thumb, .sec-thumb-placeholder { width: 36px; height: 36px; }
+  .sec-meta h5 { font-size: 0.8rem; }
+  .set-input { min-height: 34px; height: 34px; font-size: 0.78rem; }
+  .c3-rm-btn      { font-size: 0.64rem; padding: 0 6px; height: 28px; }
+  .c3-complete-btn { font-size: 0.66rem; padding: 0 8px; height: 28px; }
+
+  /* Cardio table info labels smaller */
+  .c3-col-info { font-size: 0.65rem; }
 }
 </style>
