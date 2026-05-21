@@ -161,9 +161,9 @@ const updateField = (field, value, isNumeric = false) => {
         </select>
       </label>
 
-      <!-- STRENGTH fields -->
+      <!-- STRENGTH fields: Sets | Reps on row 1, Weight full-width on row 2 -->
       <template v-if="isStrength || isOther">
-        <label>
+        <label class="field-half">
           <span>Sets</span>
           <input
             :value="exercise.sets"
@@ -174,7 +174,7 @@ const updateField = (field, value, isNumeric = false) => {
           />
         </label>
 
-        <label>
+        <label class="field-half">
           <span>Reps</span>
           <input
             :value="exercise.reps"
@@ -185,7 +185,7 @@ const updateField = (field, value, isNumeric = false) => {
           />
         </label>
 
-        <label>
+        <label class="field-full">
           <span>Weight (lbs)</span>
           <input
             :value="exercise.weight"
@@ -198,9 +198,9 @@ const updateField = (field, value, isNumeric = false) => {
 
       </template>
 
-      <!-- CARDIO fields -->
+      <!-- CARDIO fields: Time | Distance on row 1, Calories full-width on row 2 -->
       <template v-if="isCardio">
-        <label>
+        <label class="field-half">
           <span>Targeted Time (Mins)</span>
           <input
             :value="exercise.duration"
@@ -211,7 +211,7 @@ const updateField = (field, value, isNumeric = false) => {
           />
         </label>
 
-        <label>
+        <label class="field-half">
           <span>Targeted Distance (Miles)</span>
           <input
             :value="exercise.distance"
@@ -222,7 +222,7 @@ const updateField = (field, value, isNumeric = false) => {
           />
         </label>
 
-        <label>
+        <label class="field-full">
           <span>Targeted Calories</span>
           <input
             :value="exercise.calories"
@@ -234,9 +234,9 @@ const updateField = (field, value, isNumeric = false) => {
         </label>
       </template>
 
-      <!-- OTHER (non-strength, non-cardio) fields -->
+      <!-- OTHER: Duration | Distance on row 1, Speed | Calories on row 2 -->
       <template v-if="isOther">
-        <label>
+        <label class="field-half">
           <span>Duration (min)</span>
           <input
             :value="exercise.duration"
@@ -247,7 +247,7 @@ const updateField = (field, value, isNumeric = false) => {
           />
         </label>
 
-        <label>
+        <label class="field-half">
           <span>Distance (miles)</span>
           <input
             :value="exercise.distance"
@@ -258,7 +258,7 @@ const updateField = (field, value, isNumeric = false) => {
           />
         </label>
 
-        <label>
+        <label class="field-half">
           <span>Speed (mph)</span>
           <input
             :value="exercise.speed"
@@ -269,7 +269,7 @@ const updateField = (field, value, isNumeric = false) => {
           />
         </label>
 
-        <label>
+        <label class="field-half">
           <span>Calories</span>
           <input
             :value="exercise.calories"
@@ -281,8 +281,8 @@ const updateField = (field, value, isNumeric = false) => {
         </label>
       </template>
 
-      <!-- Notes (always visible) -->
-      <label class="field-notes">
+      <!-- Notes (always full width) -->
+      <label class="field-notes field-full">
         <span>Notes</span>
         <input
           :value="exercise.notes"
@@ -476,11 +476,12 @@ const updateField = (field, value, isNumeric = false) => {
 @media (max-width: 768px) {
   /* Compact card */
   .exercise-block {
-    padding: 9px 10px;
+    padding: 10px 12px;
     border-radius: 10px;
+    margin-bottom: 0;
   }
 
-  /* Head: flex row — image left, info+actions right */
+  /* Head: stack identity + actions */
   .exercise-block__head {
     flex-direction: column;
     align-items: flex-start;
@@ -488,7 +489,7 @@ const updateField = (field, value, isNumeric = false) => {
     margin-bottom: 8px;
   }
 
-  /* Identity: image left, text right */
+  /* Identity: image left (56px), text right */
   .exercise-block__identity {
     width: 100%;
     flex-direction: row;
@@ -497,92 +498,65 @@ const updateField = (field, value, isNumeric = false) => {
   }
 
   .exercise-block__identity img {
-    width: 72px;
-    height: 72px;
+    width: 56px;
+    height: 56px;
     flex-shrink: 0;
     border-radius: 8px;
   }
 
-  .exercise-block__identity h4 {
-    font-size: 0.86rem;
-  }
+  .exercise-block__identity h4 { font-size: 0.85rem; margin: 1px 0 2px; }
+  .exercise-block__identity p { font-size: 0.72rem; margin-top: 0; line-height: 1.3; }
+  .exercise-block__badge, .type-badge { font-size: 0.62rem; padding: 1px 5px; margin-bottom: 2px; margin-left: 0; }
+  .type-badge { margin-left: 3px; }
 
-  .exercise-block__identity p {
-    font-size: 0.74rem;
-    margin-top: 2px;
-  }
-
-  .exercise-block__badge,
-  .type-badge {
-    font-size: 0.65rem;
-    padding: 2px 6px;
-  }
-
-  /* Actions: full-width compact row */
+  /* Actions: full-width single row, 34px height */
   .exercise-block__actions {
     width: 100%;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    gap: 4px;
-  }
-
-  .exercise-block__actions button {
-    flex: 1 1 auto;
-    min-height: 30px;
-    padding: 0 8px;
-    font-size: 0.74rem;
-    border-radius: 7px;
-  }
-
-  /* Fields: 2-col on mobile */
-  .exercise-block__fields {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    flex-wrap: nowrap;
+    justify-content: stretch;
     gap: 6px;
   }
 
-  .field-notes,
-  .field-full {
-    grid-column: span 2;
+  .exercise-block__actions button {
+    flex: 1;
+    min-height: 34px;
+    height: 34px;
+    padding: 0 6px;
+    font-size: 0.72rem;
+    border-radius: 7px;
+    white-space: nowrap;
   }
 
-  .exercise-block__fields span {
-    font-size: 0.72rem;
+  /* Field grid: 2-col with explicit span control */
+  .exercise-block__fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
   }
+
+  .field-half { grid-column: span 1; }
+  .field-full, .field-notes { grid-column: 1 / -1; }
+
+  .exercise-block__fields label { gap: 3px; }
+  .exercise-block__fields span { font-size: 0.7rem; font-weight: 600; color: #64748b; }
 
   .exercise-block__fields input,
   .exercise-block__fields select {
-    min-height: 34px;
-    padding: 6px 8px;
-    font-size: 0.8rem;
+    min-height: 36px;
+    height: 36px;
+    padding: 0 10px;
+    font-size: 0.82rem;
     border-radius: 8px;
+    box-sizing: border-box;
   }
 }
 
 @media (max-width: 480px) {
-  .exercise-block {
-    padding: 7px 8px;
-  }
-
-  .exercise-block__identity img {
-    width: 60px;
-    height: 60px;
-  }
-
-  .exercise-block__identity h4 {
-    font-size: 0.8rem;
-  }
-
-  .exercise-block__actions button {
-    min-height: 26px;
-    font-size: 0.68rem;
-    padding: 0 6px;
-  }
-
-  .exercise-block__fields input,
-  .exercise-block__fields select {
-    min-height: 30px;
-    padding: 5px 7px;
-    font-size: 0.75rem;
-  }
+  .exercise-block { padding: 8px 10px; }
+  .exercise-block__identity img { width: 48px; height: 48px; }
+  .exercise-block__identity h4 { font-size: 0.8rem; }
+  .exercise-block__actions button { min-height: 30px; height: 30px; font-size: 0.67rem; padding: 0 4px; }
+  .exercise-block__fields input, .exercise-block__fields select { min-height: 34px; height: 34px; font-size: 0.78rem; }
+  .exercise-block__fields span { font-size: 0.66rem; }
 }
 </style>
