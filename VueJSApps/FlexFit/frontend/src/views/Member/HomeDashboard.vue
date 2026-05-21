@@ -148,6 +148,16 @@ const recentActivity = [
   box-sizing: border-box;
 }
 
+/* Ultra-compact mode for densest mobile layouts */
+.dashboard-mobile-ultra-compact {
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  gap: 8px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
 .dashboard-canvas {
   display: grid;
   gap: 16px;
@@ -401,67 +411,99 @@ const recentActivity = [
 
 @media (max-width: 768px) {
   .dashboard-canvas {
-    gap: 6px;
+    gap: 5px;
   }
 
   .header-content {
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
     padding: 8px 10px;
+  }
+
+  .dashboard-header h2 {
+    margin-bottom: 3px;
   }
 
   .header-picker {
     width: 100%;
   }
 
+  /* date picker compact */
+  .header-picker :deep(.full-datepicker) {
+    font-size: 0.8rem;
+  }
+
   .dashboard-focus-card {
-    padding: 8px 10px;
+    padding: 7px 10px;
     margin-bottom: 0;
+    border-radius: 10px;
   }
 
   .dashboard-focus-card h3 {
-    font-size: 0.9rem;
+    font-size: 0.88rem;
+    margin-bottom: 2px;
   }
 
   .dashboard-focus-card p {
-    font-size: 0.8rem;
-    margin-top: 4px;
+    font-size: 0.77rem;
+    margin-top: 2px;
+  }
+
+  .dashboard-stats {
+    gap: 5px;
   }
 
   .panel-header {
-    padding: 8px 10px;
+    padding: 7px 10px;
+  }
+
+  .panel-header h5 {
+    font-size: 0.88rem;
   }
 
   .panel-body {
-    padding: 8px 10px;
+    padding: 7px 10px;
   }
 
   .dashboard-main-row {
-    gap: 6px;
+    gap: 5px;
     margin-top: 0;
   }
 
   .stat-card :deep(.metric-card) {
     min-height: unset;
-    padding: 8px;
+    padding: 7px 8px;
   }
 
   .stat-card :deep(.metric-card__right i) {
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    font-size: 0.75rem;
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+    font-size: 0.7rem;
   }
 
   .activity-row {
     flex-wrap: wrap;
-    padding: 8px 10px;
-    gap: 8px;
+    padding: 7px 10px;
+    gap: 7px;
   }
 
   .activity-row .time {
-    min-width: 50px;
-    font-size: 0.7rem;
+    min-width: 48px;
+    font-size: 0.68rem;
+  }
+
+  /* Training progress: compact week/month/year buttons */
+  .panel-body :deep(.btn-box) {
+    display: flex;
+    gap: 4px;
+  }
+
+  .panel-body :deep(.btn-box .btn) {
+    height: 28px;
+    padding: 2px 7px;
+    font-size: 0.72rem;
+    line-height: 1.2;
   }
 }
 
@@ -471,7 +513,7 @@ const recentActivity = [
 
 @media (max-width: 640px) {
   .dashboard-header h2 {
-    font-size: 1.1rem;
+    font-size: 1rem;
   }
 
   .header-picker {
@@ -479,25 +521,25 @@ const recentActivity = [
   }
 
   .dashboard-focus-card {
-    padding: 8px 10px;
+    padding: 6px 9px;
   }
 
   .panel-header {
-    padding: 7px 10px;
+    padding: 6px 9px;
   }
 
   .panel-body {
-    padding: 7px 10px;
+    padding: 6px 9px;
   }
 
   .activity-row {
-    padding: 7px 10px;
-    gap: 8px;
+    padding: 6px 9px;
+    gap: 7px;
   }
 
   .activity-row .time {
-    min-width: 52px;
-    font-size: 0.7rem;
+    min-width: 48px;
+    font-size: 0.67rem;
   }
 }
 
@@ -507,25 +549,31 @@ const recentActivity = [
 
 @media (max-width: 480px) {
   .dashboard-canvas {
-    gap: 5px;
+    gap: 4px;
   }
 
   .dashboard-header h2 {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
   }
 
   .dashboard-focus-card {
-    padding: 7px 9px;
+    padding: 6px 8px;
     border-radius: 8px;
   }
 
   .panel-body,
   .panel-header {
-    padding: 7px 9px;
+    padding: 6px 8px;
   }
 
   .dashboard-panel {
     border-radius: 8px;
+  }
+
+  .panel-body :deep(.btn-box .btn) {
+    height: 26px;
+    padding: 1px 6px;
+    font-size: 0.68rem;
   }
 }
 
@@ -535,40 +583,51 @@ const recentActivity = [
 
 @media (max-width: 430px) {
   .dashboard-canvas {
-    gap: 5px;
+    gap: 4px;
   }
 
   .header-content {
-    padding: 6px 8px;
-    gap: 3px;
+    padding: 5px 7px;
+    gap: 2px;
   }
 
   .dashboard-header h2 {
-    font-size: 0.9rem;
-  }
-
-  .dashboard-focus-card {
-    padding: 6px 8px;
-  }
-
-  .dashboard-focus-card h3 {
     font-size: 0.85rem;
   }
 
+  .dashboard-focus-card {
+    padding: 5px 7px;
+  }
+
+  .dashboard-focus-card h3 {
+    font-size: 0.82rem;
+  }
+
+  .dashboard-focus-card p {
+    font-size: 0.72rem;
+    margin-top: 1px;
+  }
+
   .panel-header {
-    padding: 6px 8px;
+    padding: 5px 7px;
   }
 
   .panel-body {
-    padding: 6px 8px;
+    padding: 5px 7px;
   }
 
   .dashboard-stats {
-    gap: 5px;
+    gap: 4px;
   }
 
   .stat-card :deep(.metric-card) {
-    padding: 6px 8px;
+    padding: 5px 7px;
+  }
+
+  .panel-body :deep(.btn-box .btn) {
+    height: 24px;
+    padding: 1px 5px;
+    font-size: 0.65rem;
   }
 }
 
@@ -578,32 +637,46 @@ const recentActivity = [
 
 @media (max-width: 390px) {
   .dashboard-canvas {
-    gap: 4px;
+    gap: 3px;
   }
 
   .header-content {
-    padding: 5px 7px;
+    padding: 4px 6px;
   }
 
   .dashboard-header h2 {
-    font-size: 0.85rem;
+    font-size: 0.82rem;
   }
 
   .dashboard-focus-card {
-    padding: 5px 7px;
+    padding: 4px 6px;
+  }
+
+  .dashboard-focus-card h3 {
+    font-size: 0.79rem;
+  }
+
+  .dashboard-focus-card p {
+    font-size: 0.69rem;
   }
 
   .panel-header,
   .panel-body {
-    padding: 5px 7px;
+    padding: 4px 6px;
   }
 
   .dashboard-stats {
-    gap: 4px;
+    gap: 3px;
   }
 
   .stat-card :deep(.metric-card) {
-    padding: 5px 7px;
+    padding: 4px 6px;
+  }
+
+  .panel-body :deep(.btn-box .btn) {
+    height: 22px;
+    padding: 1px 4px;
+    font-size: 0.62rem;
   }
 }
 </style>

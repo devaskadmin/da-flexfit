@@ -125,6 +125,37 @@ const balanceOverviewOptions = ref({
 
 <style scoped>
 .panel {
-  margin-bottom: 20px;
+  margin-bottom: 8px;
+}
+
+/* Compact Week/Month/Year buttons on mobile */
+@media (max-width: 768px) {
+  .btn-box {
+    display: flex;
+    gap: 4px;
+  }
+
+  .btn-box .btn {
+    height: 28px;
+    padding: 2px 8px;
+    font-size: 0.72rem;
+    line-height: 1.2;
+  }
+}
+
+@media (max-width: 480px) {
+  .btn-box .btn {
+    height: 26px;
+    padding: 1px 6px;
+    font-size: 0.68rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .btn-box .btn {
+    height: 24px;
+    padding: 1px 5px;
+    font-size: 0.64rem;
+  }
 }
 </style>
