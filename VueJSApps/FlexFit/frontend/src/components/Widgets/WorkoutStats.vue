@@ -36,7 +36,7 @@ const stats = [
   .row {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    gap: 6px;
   }
 
   /* Reset Bootstrap col classes inside the grid */
@@ -49,28 +49,49 @@ const stats = [
     padding: 0 !important;
   }
 
-  /* Compact card */
+  /* Compact card — target 120–140px tall */
   .dashboard-top-box {
-    padding: 10px 10px !important;
+    padding: 8px 10px !important;
     min-height: unset !important;
     height: auto !important;
   }
 
-  /* Keep metric value prominent */
   .dashboard-top-box h3 {
-    font-size: 1.15rem !important;
-    margin-bottom: 2px !important;
+    font-size: 1.1rem !important;
+    margin-bottom: 1px !important;
   }
 
   .dashboard-top-box p {
-    font-size: 0.74rem !important;
+    font-size: 0.7rem !important;
     margin-bottom: 0 !important;
     line-height: 1.2;
   }
 
-  /* Smaller icon */
+  /* Icon ~50% smaller than base */
   .dashboard-top-box .fa {
-    font-size: 1.1rem !important;
+    font-size: 0.95rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .row {
+    gap: 5px;
+  }
+
+  .dashboard-top-box {
+    padding: 7px 8px !important;
+  }
+
+  .dashboard-top-box h3 {
+    font-size: 1rem !important;
+  }
+
+  .dashboard-top-box p {
+    font-size: 0.67rem !important;
+  }
+
+  .dashboard-top-box .fa {
+    font-size: 0.85rem !important;
   }
 }
 </style>

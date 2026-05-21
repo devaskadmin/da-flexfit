@@ -595,39 +595,65 @@ onUnmounted(() => {
     flex-wrap: wrap;
     height: auto;
     min-height: 44px;
-    padding: 5px 10px;
-    row-gap: 4px;
+    max-height: 80px;
+    padding: 4px 8px;
+    row-gap: 3px;
     align-items: center;
+    overflow: hidden;
   }
 
   .navbar-left {
-    height: 40px;
-    gap: 8px;
+    height: 36px;
+    gap: 6px;
   }
 
   .navbar-logo {
     min-width: unset;
-    height: 40px;
+    height: 36px;
   }
 
   .navbar-logo img,
   .navbar-logo-img {
-    height: 28px;
+    height: 26px;
   }
 
   .navbar-spacer {
     flex: 1;
-    min-width: 6px;
+    min-width: 4px;
   }
 
   .navbar-right {
     flex-shrink: 1;
     min-width: 0;
-    gap: 6px;
+    gap: 4px;
   }
 
+  /* Admin tool row — keep single row, shrink everything */
   .admin-tools {
-    gap: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* All icon buttons: tight padding */
+  .navbar-btn {
+    font-size: 0.85rem;
+    padding: 4px 5px;
+  }
+
+  .navbar-btn .badge {
+    min-width: 14px;
+    height: 14px;
+    font-size: 0.6rem;
+    top: -1px;
+    right: -1px;
+  }
+
+  /* Language dropdown — compact */
+  .lang-select select {
+    font-size: 0.75rem;
+    padding: 3px 6px;
+    max-width: 70px;
   }
 
   /* Mobile search row 2 */
@@ -635,7 +661,7 @@ onUnmounted(() => {
     display: flex;
     width: 100%;
     flex: 0 0 100%;
-    padding: 0 0 4px;
+    padding: 0 0 3px;
   }
 
   .navbar-search-mobile {
@@ -649,8 +675,40 @@ onUnmounted(() => {
     flex: 1;
     min-width: 0;
     width: 100%;
-    height: 34px;
-    padding: 5px 10px;
+    height: 30px;
+    padding: 4px 8px;
+    font-size: 0.82rem;
+  }
+}
+
+/* ≤480px: further compress */
+@media (max-width: 480px) {
+  .top-navbar {
+    padding: 3px 6px;
+    row-gap: 2px;
+    max-height: 76px;
+  }
+
+  .navbar-logo img,
+  .navbar-logo-img {
+    height: 22px;
+  }
+
+  .navbar-btn {
+    font-size: 0.78rem;
+    padding: 3px 4px;
+  }
+
+  .lang-select select {
+    font-size: 0.7rem;
+    padding: 2px 4px;
+    max-width: 58px;
+  }
+
+  .navbar-search-mobile input {
+    height: 26px;
+    padding: 3px 7px;
+    font-size: 0.78rem;
   }
 }
 

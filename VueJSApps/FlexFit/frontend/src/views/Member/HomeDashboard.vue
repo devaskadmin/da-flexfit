@@ -141,6 +141,13 @@ const recentActivity = [
   box-sizing: border-box;
 }
 
+/* Global compact mode helper */
+.dashboard-mobile-compact {
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
 .dashboard-canvas {
   display: grid;
   gap: 16px;
@@ -394,13 +401,13 @@ const recentActivity = [
 
 @media (max-width: 768px) {
   .dashboard-canvas {
-    gap: 8px;
+    gap: 6px;
   }
 
   .header-content {
     flex-direction: column;
-    gap: 6px;
-    padding: 10px 12px;
+    gap: 4px;
+    padding: 8px 10px;
   }
 
   .header-picker {
@@ -408,42 +415,53 @@ const recentActivity = [
   }
 
   .dashboard-focus-card {
-    padding: 10px 12px;
+    padding: 8px 10px;
+    margin-bottom: 0;
   }
 
   .dashboard-focus-card h3 {
-    font-size: 0.92rem;
+    font-size: 0.9rem;
   }
 
   .dashboard-focus-card p {
-    font-size: 0.83rem;
+    font-size: 0.8rem;
+    margin-top: 4px;
   }
 
   .panel-header {
-    padding: 10px 12px;
+    padding: 8px 10px;
   }
 
   .panel-body {
-    padding: 10px 12px;
+    padding: 8px 10px;
+  }
+
+  .dashboard-main-row {
+    gap: 6px;
+    margin-top: 0;
   }
 
   .stat-card :deep(.metric-card) {
     min-height: unset;
-    padding: 12px;
+    padding: 8px;
   }
 
   .stat-card :deep(.metric-card__right i) {
-    width: 32px;
-    height: 32px;
-    border-radius: 9px;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    font-size: 0.75rem;
   }
 
   .activity-row {
     flex-wrap: wrap;
+    padding: 8px 10px;
+    gap: 8px;
   }
 
   .activity-row .time {
-    min-width: 56px;
+    min-width: 50px;
+    font-size: 0.7rem;
   }
 }
 
@@ -453,36 +471,33 @@ const recentActivity = [
 
 @media (max-width: 640px) {
   .dashboard-header h2 {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
   }
 
-  /* Date picker stretches to full width below the greeting */
   .header-picker {
     width: 100%;
   }
 
-  /* Tighten card padding for smaller screens */
   .dashboard-focus-card {
-    padding: 14px 16px;
+    padding: 8px 10px;
   }
 
   .panel-header {
-    padding: 12px 14px;
+    padding: 7px 10px;
   }
 
   .panel-body {
-    padding: 12px 14px;
+    padding: 7px 10px;
   }
 
-  /* Compress activity feed rows */
   .activity-row {
-    padding: 10px 12px;
-    gap: 10px;
+    padding: 7px 10px;
+    gap: 8px;
   }
 
   .activity-row .time {
-    min-width: 60px;
-    font-size: 0.74rem;
+    min-width: 52px;
+    font-size: 0.7rem;
   }
 }
 
@@ -492,20 +507,103 @@ const recentActivity = [
 
 @media (max-width: 480px) {
   .dashboard-canvas {
-    gap: 6px;
+    gap: 5px;
   }
 
   .dashboard-header h2 {
-    font-size: 1.0rem;
+    font-size: 0.95rem;
   }
 
   .dashboard-focus-card {
-    padding: 8px 10px;
+    padding: 7px 9px;
+    border-radius: 8px;
   }
 
   .panel-body,
   .panel-header {
-    padding: 8px 10px;
+    padding: 7px 9px;
+  }
+
+  .dashboard-panel {
+    border-radius: 8px;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────── */
+/* 430px — iPhone Pro Max natural width                                */
+/* ─────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 430px) {
+  .dashboard-canvas {
+    gap: 5px;
+  }
+
+  .header-content {
+    padding: 6px 8px;
+    gap: 3px;
+  }
+
+  .dashboard-header h2 {
+    font-size: 0.9rem;
+  }
+
+  .dashboard-focus-card {
+    padding: 6px 8px;
+  }
+
+  .dashboard-focus-card h3 {
+    font-size: 0.85rem;
+  }
+
+  .panel-header {
+    padding: 6px 8px;
+  }
+
+  .panel-body {
+    padding: 6px 8px;
+  }
+
+  .dashboard-stats {
+    gap: 5px;
+  }
+
+  .stat-card :deep(.metric-card) {
+    padding: 6px 8px;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────── */
+/* 390px — iPhone 14/15 natural width                                  */
+/* ─────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 390px) {
+  .dashboard-canvas {
+    gap: 4px;
+  }
+
+  .header-content {
+    padding: 5px 7px;
+  }
+
+  .dashboard-header h2 {
+    font-size: 0.85rem;
+  }
+
+  .dashboard-focus-card {
+    padding: 5px 7px;
+  }
+
+  .panel-header,
+  .panel-body {
+    padding: 5px 7px;
+  }
+
+  .dashboard-stats {
+    gap: 4px;
+  }
+
+  .stat-card :deep(.metric-card) {
+    padding: 5px 7px;
   }
 }
 </style>

@@ -244,6 +244,20 @@ onUnmounted(() => {
   display: block;
 }
 
+@media (max-width: 768px) {
+  .profile-dropdown-btn {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-dropdown-btn {
+    width: 28px;
+    height: 28px;
+  }
+}
+
 /* Dropdown Menu */
 .profile-dropdown-menu {
   position: absolute;
