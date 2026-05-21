@@ -125,37 +125,69 @@ const balanceOverviewOptions = ref({
 
 <style scoped>
 .panel {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 /* Compact Week/Month/Year buttons on mobile */
 @media (max-width: 768px) {
+  .panel-header {
+    padding: 6px 8px;
+  }
+
+  .panel-body {
+    padding: 5px 6px;
+  }
+
   .btn-box {
     display: flex;
     gap: 4px;
   }
 
   .btn-box .btn {
-    height: 28px;
-    padding: 2px 8px;
-    font-size: 0.72rem;
+    height: 26px;
+    padding: 1px 7px;
+    font-size: 0.7rem;
     line-height: 1.2;
   }
 }
 
 @media (max-width: 480px) {
+  .panel-header {
+    padding: 5px 6px;
+  }
+
+  .panel-body {
+    padding: 4px 5px;
+  }
+
   .btn-box .btn {
-    height: 26px;
-    padding: 1px 6px;
-    font-size: 0.68rem;
+    height: 24px;
+    padding: 1px 5px;
+    font-size: 0.66rem;
+  }
+}
+
+@media (max-width: 430px) {
+  .btn-box .btn {
+    height: 23px;
+    padding: 0px 4px;
+    font-size: 0.62rem;
   }
 }
 
 @media (max-width: 390px) {
+  .panel-header {
+    padding: 3px 5px;
+  }
+
+  .panel-body {
+    padding: 3px 4px;
+  }
+
   .btn-box .btn {
-    height: 24px;
-    padding: 1px 5px;
-    font-size: 0.64rem;
+    height: 21px;
+    padding: 0px 3px;
+    font-size: 0.58rem;
   }
 }
 </style>

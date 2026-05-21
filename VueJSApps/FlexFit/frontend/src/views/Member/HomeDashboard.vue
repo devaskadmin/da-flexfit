@@ -158,6 +158,16 @@ const recentActivity = [
   margin-bottom: 8px;
 }
 
+/* Dense mode — removes leftover whitespace */
+.dashboard-mobile-dense {
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  gap: 6px;
+  padding: 6px;
+  margin-bottom: 6px;
+}
+
 .dashboard-canvas {
   display: grid;
   gap: 16px;
@@ -416,12 +426,12 @@ const recentActivity = [
 
   .header-content {
     flex-direction: column;
-    gap: 3px;
-    padding: 8px 10px;
+    gap: 2px;
+    padding: 6px 10px;
   }
 
   .dashboard-header h2 {
-    margin-bottom: 3px;
+    margin-bottom: 2px;
   }
 
   .header-picker {
@@ -431,22 +441,24 @@ const recentActivity = [
   /* date picker compact */
   .header-picker :deep(.full-datepicker) {
     font-size: 0.8rem;
+    height: 30px;
+    line-height: 30px;
   }
 
   .dashboard-focus-card {
-    padding: 7px 10px;
+    padding: 5px 8px;
     margin-bottom: 0;
     border-radius: 10px;
   }
 
   .dashboard-focus-card h3 {
     font-size: 0.88rem;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
   }
 
   .dashboard-focus-card p {
     font-size: 0.77rem;
-    margin-top: 2px;
+    margin-top: 0;
   }
 
   .dashboard-stats {
@@ -454,15 +466,15 @@ const recentActivity = [
   }
 
   .panel-header {
-    padding: 7px 10px;
+    padding: 6px 8px;
   }
 
   .panel-header h5 {
-    font-size: 0.88rem;
+    font-size: 0.86rem;
   }
 
   .panel-body {
-    padding: 7px 10px;
+    padding: 6px 8px;
   }
 
   .dashboard-main-row {
@@ -472,25 +484,26 @@ const recentActivity = [
 
   .stat-card :deep(.metric-card) {
     min-height: unset;
-    padding: 7px 8px;
+    padding: 5px 6px;
   }
 
   .stat-card :deep(.metric-card__right i) {
-    width: 22px;
-    height: 22px;
-    border-radius: 5px;
-    font-size: 0.7rem;
+    width: 19px;
+    height: 19px;
+    border-radius: 4px;
+    font-size: 0.62rem;
+    margin-right: 1px;
   }
 
   .activity-row {
     flex-wrap: wrap;
-    padding: 7px 10px;
-    gap: 7px;
+    padding: 6px 8px;
+    gap: 6px;
   }
 
   .activity-row .time {
-    min-width: 48px;
-    font-size: 0.68rem;
+    min-width: 46px;
+    font-size: 0.67rem;
   }
 
   /* Training progress: compact week/month/year buttons */
@@ -500,9 +513,9 @@ const recentActivity = [
   }
 
   .panel-body :deep(.btn-box .btn) {
-    height: 28px;
-    padding: 2px 7px;
-    font-size: 0.72rem;
+    height: 26px;
+    padding: 1px 7px;
+    font-size: 0.7rem;
     line-height: 1.2;
   }
 }
@@ -513,7 +526,7 @@ const recentActivity = [
 
 @media (max-width: 640px) {
   .dashboard-header h2 {
-    font-size: 1rem;
+    font-size: 0.95rem;
   }
 
   .header-picker {
@@ -521,25 +534,25 @@ const recentActivity = [
   }
 
   .dashboard-focus-card {
-    padding: 6px 9px;
+    padding: 5px 7px;
   }
 
   .panel-header {
-    padding: 6px 9px;
+    padding: 5px 7px;
   }
 
   .panel-body {
-    padding: 6px 9px;
+    padding: 5px 7px;
   }
 
   .activity-row {
-    padding: 6px 9px;
-    gap: 7px;
+    padding: 5px 7px;
+    gap: 6px;
   }
 
   .activity-row .time {
-    min-width: 48px;
-    font-size: 0.67rem;
+    min-width: 46px;
+    font-size: 0.66rem;
   }
 }
 
@@ -549,31 +562,41 @@ const recentActivity = [
 
 @media (max-width: 480px) {
   .dashboard-canvas {
-    gap: 4px;
+    gap: 3px;
   }
 
   .dashboard-header h2 {
-    font-size: 0.9rem;
+    font-size: 0.88rem;
   }
 
   .dashboard-focus-card {
-    padding: 6px 8px;
+    padding: 5px 7px;
     border-radius: 8px;
   }
 
   .panel-body,
   .panel-header {
-    padding: 6px 8px;
+    padding: 5px 7px;
   }
 
   .dashboard-panel {
     border-radius: 8px;
   }
 
+  .stat-card :deep(.metric-card) {
+    padding: 5px 6px;
+  }
+
+  .stat-card :deep(.metric-card__right i) {
+    width: 17px;
+    height: 17px;
+    font-size: 0.58rem;
+  }
+
   .panel-body :deep(.btn-box .btn) {
-    height: 26px;
-    padding: 1px 6px;
-    font-size: 0.68rem;
+    height: 24px;
+    padding: 1px 5px;
+    font-size: 0.66rem;
   }
 }
 
@@ -583,51 +606,59 @@ const recentActivity = [
 
 @media (max-width: 430px) {
   .dashboard-canvas {
-    gap: 4px;
+    gap: 3px;
   }
 
   .header-content {
-    padding: 5px 7px;
-    gap: 2px;
+    padding: 5px 6px;
+    gap: 1px;
   }
 
   .dashboard-header h2 {
-    font-size: 0.85rem;
+    font-size: 0.84rem;
+    margin-bottom: 1px;
   }
 
   .dashboard-focus-card {
-    padding: 5px 7px;
+    padding: 4px 6px;
   }
 
   .dashboard-focus-card h3 {
-    font-size: 0.82rem;
+    font-size: 0.8rem;
+    margin-bottom: 0;
   }
 
   .dashboard-focus-card p {
-    font-size: 0.72rem;
-    margin-top: 1px;
+    font-size: 0.7rem;
+    margin-top: 0;
   }
 
   .panel-header {
-    padding: 5px 7px;
+    padding: 4px 6px;
   }
 
   .panel-body {
-    padding: 5px 7px;
+    padding: 4px 6px;
   }
 
   .dashboard-stats {
-    gap: 4px;
+    gap: 3px;
   }
 
   .stat-card :deep(.metric-card) {
-    padding: 5px 7px;
+    padding: 4px 5px;
+  }
+
+  .stat-card :deep(.metric-card__right i) {
+    width: 16px;
+    height: 16px;
+    font-size: 0.55rem;
   }
 
   .panel-body :deep(.btn-box .btn) {
-    height: 24px;
-    padding: 1px 5px;
-    font-size: 0.65rem;
+    height: 23px;
+    padding: 1px 4px;
+    font-size: 0.63rem;
   }
 }
 
@@ -637,46 +668,56 @@ const recentActivity = [
 
 @media (max-width: 390px) {
   .dashboard-canvas {
-    gap: 3px;
+    gap: 2px;
   }
 
   .header-content {
-    padding: 4px 6px;
+    padding: 4px 5px;
+    gap: 1px;
   }
 
   .dashboard-header h2 {
-    font-size: 0.82rem;
+    font-size: 0.8rem;
+    margin-bottom: 0;
   }
 
   .dashboard-focus-card {
-    padding: 4px 6px;
+    padding: 3px 5px;
   }
 
   .dashboard-focus-card h3 {
-    font-size: 0.79rem;
+    font-size: 0.77rem;
+    margin-bottom: 0;
   }
 
   .dashboard-focus-card p {
-    font-size: 0.69rem;
+    font-size: 0.66rem;
+    margin-top: 0;
   }
 
   .panel-header,
   .panel-body {
-    padding: 4px 6px;
+    padding: 3px 5px;
   }
 
   .dashboard-stats {
-    gap: 3px;
+    gap: 2px;
   }
 
   .stat-card :deep(.metric-card) {
-    padding: 4px 6px;
+    padding: 3px 4px;
+  }
+
+  .stat-card :deep(.metric-card__right i) {
+    width: 15px;
+    height: 15px;
+    font-size: 0.52rem;
   }
 
   .panel-body :deep(.btn-box .btn) {
-    height: 22px;
-    padding: 1px 4px;
-    font-size: 0.62rem;
+    height: 21px;
+    padding: 0px 4px;
+    font-size: 0.6rem;
   }
 }
 </style>
