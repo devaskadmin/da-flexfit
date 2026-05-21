@@ -6,6 +6,7 @@ dotenv.config({ path: path.resolve(__dirname, '.env.local'), override: true });
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
+const MySQLStore = require('express-mysql-session')(session);
 
 const app = express();
 app.use(express.json());
@@ -93,12 +94,41 @@ if (isDebugEnabled) {
   });
 }
 
+// ✅ Persist sessions in MySQL so they survive Render cold starts / restarts.
+// Falls back to in-memory store when DB config is absent (local dev without DB).
+let sessionStore;
+try {
+  if (process.env.DB_HOST && process.env.DB_USER && process.env.DB_DATABASE) {
+    sessionStore = new MySQLStore({
+      host: process.env.DB_HOST,
+      port: Number(process.env.DB_PORT || 3306),
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_DATABASE,
+      clearExpired: true,
+      checkExpirationInterval: 15 * 60 * 1000, // prune expired sessions every 15 min
+      expiration: 7 * 24 * 60 * 60 * 1000,     // match cookie maxAge
+      createDatabaseTable: true,                // auto-create sessions table if missing
+      schema: {
+        tableName: 'sessions',
+        columnNames: { session_id: 'session_id', expires: 'expires', data: 'data' },
+      },
+    });
+    console.log('🗄️  Session store: MySQL (persistent across restarts)');
+  } else {
+    console.warn('⚠️  Session store: in-memory (DB env vars not set — sessions lost on restart)');
+  }
+} catch (storeErr) {
+  console.error('❌ Failed to init MySQL session store:', storeErr?.message || storeErr);
+}
+
 app.use(session({
   name: 'flexfit_session',
   secret: process.env.SESSION_SECRET || 'dev-only-session-secret',
   resave: false,
   saveUninitialized: false,
   proxy: true, // always true — Render always reverse-proxies
+  store: sessionStore,  // undefined = in-memory fallback
   cookie: {
     httpOnly: true,
     secure: sessionCookieSecure,
