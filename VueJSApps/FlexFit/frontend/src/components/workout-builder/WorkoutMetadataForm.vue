@@ -231,4 +231,78 @@ const toggleWorkoutGoal = () => {
     padding: 16px;
   }
 }
+
+/* ── Mobile: 2-col grid + compact fields ── */
+@media (max-width: 768px) {
+  .builder-metadata-layout {
+    gap: 10px;
+  }
+
+  .builder-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  /* Wide fields stay full-width */
+  .builder-field--wide {
+    grid-column: span 2;
+  }
+
+  .builder-field {
+    gap: 4px;
+  }
+
+  .builder-field span {
+    font-size: 0.78rem;
+  }
+
+  .builder-field input,
+  .builder-field select {
+    min-height: 36px;
+    padding: 7px 10px;
+    font-size: 0.82rem;
+    border-radius: 9px;
+  }
+
+  .builder-field textarea {
+    min-height: 70px;
+    padding: 7px 10px;
+    font-size: 0.82rem;
+    border-radius: 9px;
+  }
+
+  .workout-goal-panel {
+    border-radius: 10px;
+  }
+
+  .workout-goal-panel__header {
+    padding: 9px 11px;
+  }
+
+  .workout-goal-panel__title {
+    font-size: 0.82rem;
+  }
+
+  .workout-goal-panel__body {
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .builder-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .builder-field input,
+  .builder-field select {
+    min-height: 34px;
+    font-size: 0.78rem;
+    padding: 6px 8px;
+  }
+
+  .builder-field span {
+    font-size: 0.73rem;
+  }
+}
 </style>

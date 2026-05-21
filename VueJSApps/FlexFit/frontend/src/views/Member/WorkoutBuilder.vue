@@ -2253,4 +2253,364 @@ watch(
     flex-wrap: wrap;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   MOBILE COMPRESSION  ≤ 768px
+   v0.81.5 — Workout Builder Mobile Compression
+   CSS only — no logic/API/auth changes
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Global density helper */
+.workout-builder-mobile {
+  gap: 8px;
+  padding: 8px;
+  margin: 6px;
+}
+
+@media (max-width: 768px) {
+  /* ── Canvas ── */
+  .workout-builder-canvas {
+    gap: 8px;
+  }
+
+  /* ── Hero compression ── */
+  .builder-hero {
+    padding: 10px 12px;
+    gap: 8px;
+    border-radius: 14px;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .builder-hero h2 {
+    font-size: 1rem;
+    margin: 0;
+  }
+
+  .builder-hero p {
+    font-size: 0.78rem;
+    margin-top: 2px;
+  }
+
+  /* Stats: 3-col, 60px target height */
+  .builder-hero__stats {
+    gap: 6px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .builder-hero__stats div {
+    padding: 6px 8px;
+    border-radius: 8px;
+    gap: 2px;
+    min-height: 0;
+  }
+
+  .builder-hero__stats strong {
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+
+  .builder-hero__stats span {
+    font-size: 0.65rem;
+  }
+
+  /* ── Tab bar ── */
+  .builder-tabs {
+    padding: 4px;
+    border-radius: 10px;
+  }
+
+  .builder-tab {
+    min-height: 34px;
+    font-size: 0.78rem;
+    padding: 0 7px;
+    gap: 5px;
+    border-radius: 7px;
+  }
+
+  .builder-tab i {
+    font-size: 0.74rem;
+  }
+
+  /* ── Sections ── */
+  .builder-section,
+  .planner-section,
+  .collapsible-panel {
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  /* ── Day card header ── */
+  .workout-day-header {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .day-title-group {
+    gap: 5px;
+  }
+
+  .day-title-group strong {
+    font-size: 0.85rem;
+  }
+
+  .selected-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .exercise-count {
+    font-size: 11px;
+  }
+
+  /* Day actions — two rows on mobile */
+  .day-actions {
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: flex-end;
+  }
+
+  .day-action-btn {
+    min-height: 28px;
+    padding: 0 8px;
+    font-size: 0.73rem;
+    border-radius: 6px;
+  }
+
+  .chevron-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+  }
+
+  /* ── Day panel ── */
+  .workout-day-panel {
+    padding: 8px 10px;
+  }
+
+  .day-exercises-list {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  /* ── Add Exercise button ── */
+  .btn-add-exercise-day {
+    padding: 8px 16px;
+    min-height: 36px;
+    font-size: 0.82rem;
+    border-radius: 10px;
+  }
+
+  /* ── Planner tools ── */
+  .planner-tools {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .planner-mode-btn {
+    min-height: 34px;
+    font-size: 0.82rem;
+    padding: 4px 8px;
+  }
+
+  .planner-group-editor input {
+    min-height: 36px;
+    padding: 7px 10px;
+    font-size: 0.82rem;
+    border-radius: 10px;
+  }
+
+  .planner-group-add,
+  .planner-group-save {
+    min-height: 36px;
+    font-size: 0.82rem;
+    padding: 0 12px;
+    border-radius: 10px;
+  }
+
+  /* ── Schedule list ── */
+  .schedule-hub-list {
+    gap: 8px;
+  }
+
+  /* ── Create/AI buttons ── */
+  .btn-create-plan,
+  .btn-ai-suggest {
+    min-height: 36px;
+    font-size: 0.8rem;
+    padding: 0 12px;
+    border-radius: 10px;
+  }
+
+  /* ── Empty states ── */
+  .planner-empty {
+    padding: 16px 12px;
+    min-height: 120px;
+    gap: 6px;
+  }
+
+  .planner-empty__icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+
+  .planner-empty h4 {
+    font-size: 0.9rem;
+  }
+
+  .planner-empty p {
+    font-size: 0.8rem;
+  }
+
+  /* ── Collapsible header ── */
+  .collapsible-header {
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+
+  .collapsible-header__text strong {
+    font-size: 0.9rem;
+  }
+
+  .collapsible-header__text small {
+    font-size: 0.76rem;
+  }
+
+  .collapsible-panel__body {
+    margin-top: 10px;
+  }
+
+  /* ── Footer ── */
+  .builder-footer {
+    padding: 10px;
+    gap: 8px;
+    border-radius: 10px;
+  }
+
+  .btn-save {
+    min-height: 40px;
+    font-size: 0.88rem;
+  }
+
+  /* ── Heading groups ── */
+  .planner-heading-group h3 {
+    font-size: 0.9rem;
+  }
+
+  .planner-heading-group p {
+    font-size: 0.77rem;
+  }
+
+  .builder-section__head h3 {
+    font-size: 0.9rem;
+  }
+
+  .builder-section__head p {
+    font-size: 0.77rem;
+  }
+
+  /* ── Workout day accordion ── */
+  .workout-day-accordion {
+    gap: 6px;
+  }
+
+  .workout-day-card {
+    border-radius: 10px;
+  }
+
+  /* ── Empty day state ── */
+  .empty-day-state {
+    padding: 14px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+
+  .empty-day-state p {
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .workout-builder-canvas {
+    gap: 6px;
+  }
+
+  .builder-hero {
+    padding: 8px 10px;
+  }
+
+  .builder-hero h2 {
+    font-size: 0.92rem;
+  }
+
+  .builder-hero__stats div {
+    padding: 5px 6px;
+  }
+
+  .builder-hero__stats strong {
+    font-size: 0.88rem;
+  }
+
+  .builder-hero__stats span {
+    font-size: 0.6rem;
+  }
+
+  .builder-tab {
+    min-height: 30px;
+    font-size: 0.74rem;
+    padding: 0 5px;
+  }
+
+  .day-action-btn {
+    min-height: 26px;
+    padding: 0 6px;
+    font-size: 0.68rem;
+  }
+
+  .builder-section,
+  .planner-section,
+  .collapsible-panel {
+    padding: 8px;
+    border-radius: 10px;
+  }
+}
+
+@media (max-width: 390px) {
+  .workout-builder-canvas {
+    gap: 5px;
+  }
+
+  .builder-hero {
+    padding: 7px 9px;
+  }
+
+  .builder-hero h2 {
+    font-size: 0.88rem;
+  }
+
+  .builder-hero__stats strong {
+    font-size: 0.82rem;
+  }
+
+  .builder-tab {
+    min-height: 28px;
+    font-size: 0.7rem;
+    gap: 4px;
+  }
+
+  .builder-tab i {
+    font-size: 0.68rem;
+  }
+
+  .day-action-btn {
+    min-height: 24px;
+    padding: 0 5px;
+    font-size: 0.65rem;
+  }
+
+  .workout-day-header {
+    padding: 6px 8px;
+  }
+}
 </style>

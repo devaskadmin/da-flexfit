@@ -474,18 +474,115 @@ const updateField = (field, value, isNumeric = false) => {
 }
 
 @media (max-width: 768px) {
+  /* Compact card */
+  .exercise-block {
+    padding: 9px 10px;
+    border-radius: 10px;
+  }
+
+  /* Head: flex row — image left, info+actions right */
   .exercise-block__head {
     flex-direction: column;
     align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
   }
 
+  /* Identity: image left, text right */
+  .exercise-block__identity {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .exercise-block__identity img {
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+    border-radius: 8px;
+  }
+
+  .exercise-block__identity h4 {
+    font-size: 0.86rem;
+  }
+
+  .exercise-block__identity p {
+    font-size: 0.74rem;
+    margin-top: 2px;
+  }
+
+  .exercise-block__badge,
+  .type-badge {
+    font-size: 0.65rem;
+    padding: 2px 6px;
+  }
+
+  /* Actions: full-width compact row */
   .exercise-block__actions {
     width: 100%;
+    flex-wrap: wrap;
     justify-content: flex-start;
+    gap: 4px;
   }
 
   .exercise-block__actions button {
-    flex: 1 1 30%;
+    flex: 1 1 auto;
+    min-height: 30px;
+    padding: 0 8px;
+    font-size: 0.74rem;
+    border-radius: 7px;
+  }
+
+  /* Fields: 2-col on mobile */
+  .exercise-block__fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .field-notes,
+  .field-full {
+    grid-column: span 2;
+  }
+
+  .exercise-block__fields span {
+    font-size: 0.72rem;
+  }
+
+  .exercise-block__fields input,
+  .exercise-block__fields select {
+    min-height: 34px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+    border-radius: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .exercise-block {
+    padding: 7px 8px;
+  }
+
+  .exercise-block__identity img {
+    width: 60px;
+    height: 60px;
+  }
+
+  .exercise-block__identity h4 {
+    font-size: 0.8rem;
+  }
+
+  .exercise-block__actions button {
+    min-height: 26px;
+    font-size: 0.68rem;
+    padding: 0 6px;
+  }
+
+  .exercise-block__fields input,
+  .exercise-block__fields select {
+    min-height: 30px;
+    padding: 5px 7px;
+    font-size: 0.75rem;
   }
 }
 </style>
