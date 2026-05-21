@@ -427,29 +427,40 @@ const recentActivity = [
     gap: 5px;
   }
 
+  /* Hero: 2-column grid — title left, date picker right */
   .header-content {
-    flex-direction: column;
-    gap: 2px;
-    padding: 6px 10px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    flex-wrap: unset;
+    flex-direction: unset;
   }
 
   .dashboard-header h2 {
-    margin-bottom: 2px;
+    margin: 0;
+    font-size: 0.95rem;
+    white-space: normal;
+    line-height: 1.25;
   }
 
   .header-picker {
-    width: 100%;
-    max-width: 100%;
+    width: auto;
+    min-width: 150px;
+    max-width: 185px;
     overflow: hidden;
     box-sizing: border-box;
     margin-top: 0;
+    flex-shrink: 0;
   }
 
   /* date picker compact */
   .header-picker :deep(.full-datepicker) {
-    font-size: 0.8rem;
-    height: 30px;
-    line-height: 30px;
+    font-size: 0.73rem;
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 185px !important;
   }
 
   .dashboard-focus-card {
@@ -617,13 +628,18 @@ const recentActivity = [
   }
 
   .header-content {
-    padding: 5px 6px;
-    gap: 1px;
+    padding: 6px 8px;
+    gap: 8px;
+  }
+
+  .header-picker {
+    min-width: 140px;
+    max-width: 165px;
   }
 
   .dashboard-header h2 {
-    font-size: 0.84rem;
-    margin-bottom: 1px;
+    font-size: 0.83rem;
+    margin-bottom: 0;
   }
 
   .dashboard-focus-card {
@@ -679,12 +695,17 @@ const recentActivity = [
   }
 
   .header-content {
-    padding: 4px 5px;
-    gap: 1px;
+    padding: 5px 7px;
+    gap: 7px;
+  }
+
+  .header-picker {
+    min-width: 130px;
+    max-width: 155px;
   }
 
   .dashboard-header h2 {
-    font-size: 0.8rem;
+    font-size: 0.79rem;
     margin-bottom: 0;
   }
 
@@ -725,6 +746,30 @@ const recentActivity = [
     height: 21px;
     padding: 0px 4px;
     font-size: 0.6rem;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────── */
+/* <360px — very narrow: stack hero vertically                         */
+/* ─────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 360px) {
+  .header-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 5px 7px;
+  }
+
+  .header-picker {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .header-picker :deep(.full-datepicker) {
+    max-width: 100% !important;
+    width: 100% !important;
   }
 }
 </style>
