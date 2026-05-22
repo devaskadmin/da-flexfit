@@ -58,7 +58,7 @@ export const sidebarMenus = ref([
         menus: [
             {
                 name: 'View Progress',
-                link_name: 'dashboard_index',
+                link_name: 'progress_stats',
                 icon: 'fa-solid fa-chart-line'
             },
             {

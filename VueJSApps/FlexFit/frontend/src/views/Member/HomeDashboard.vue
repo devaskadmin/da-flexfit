@@ -170,7 +170,7 @@ const recentActivity = [
 
 .dashboard-canvas {
   display: grid;
-  gap: 16px;
+  gap: 14px;
   padding-block: 4px !important;
 }
 
@@ -210,11 +210,11 @@ const recentActivity = [
 /* ─────────────────────────────────────────────────────────────────── */
 
 .dashboard-focus-card {
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border: 1px solid rgba(120, 130, 150, 0.32);
+  border-radius: 16px;
   padding: 18px 20px;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 6px rgba(20, 30, 50, 0.05);
 }
 
 .dashboard-focus-card h3 {
@@ -238,7 +238,7 @@ const recentActivity = [
 .dashboard-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 .stat-card {
@@ -258,7 +258,7 @@ const recentActivity = [
 .dashboard-main-row {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 20px;
+  gap: 14px;
 }
 
 .training-progress-section,
@@ -279,16 +279,17 @@ const recentActivity = [
 /* ─────────────────────────────────────────────────────────────────── */
 
 .dashboard-panel {
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(120, 130, 150, 0.32);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 6px rgba(20, 30, 50, 0.05);
+  overflow: hidden;
 }
 
 .panel-header {
-  padding: 16px 18px;
-  border-bottom: 1px solid #f1f5f9;
-  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.03);
+  padding: 14px 18px;
+  background: rgba(235, 240, 248, 0.65);
+  border-bottom: 1px solid rgba(120, 130, 150, 0.25);
 }
 
 .panel-header h5 {
@@ -312,13 +313,13 @@ const recentActivity = [
 }
 
 .activity-row {
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border: 1px solid rgba(120, 130, 150, 0.28);
+  border-radius: 8px;
   padding: 12px 14px;
   display: flex;
   gap: 12px;
-  background: #ffffff;
-  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.03);
+  background: #f8fafc;
+  box-shadow: 0 1px 3px rgba(20, 30, 50, 0.04);
 }
 
 .activity-row .time {
@@ -345,7 +346,7 @@ const recentActivity = [
 
 @media (min-width: 768px) {
   .dashboard-canvas {
-    gap: 16px;
+    gap: 14px;
     padding: 0;
   }
 
@@ -359,17 +360,17 @@ const recentActivity = [
   }
 
   .panel-header {
-    padding: 16px 20px;
+    padding: 14px 20px;
   }
 
   .dashboard-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 20px;
+    gap: 14px;
   }
 
   .dashboard-main-row {
     grid-template-columns: 1fr 1fr;
-    gap: 24px;
+    gap: 14px;
   }
 }
 
@@ -379,7 +380,7 @@ const recentActivity = [
 
 @media (min-width: 1024px) {
   .dashboard-canvas {
-    gap: 16px;
+    gap: 14px;
     padding: 0;
   }
 
@@ -393,28 +394,28 @@ const recentActivity = [
 
   .dashboard-stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 24px;
+    gap: 14px;
   }
 
   .dashboard-main-row {
     grid-template-columns: 1.5fr 1fr;
-    gap: 28px;
-  }
-
-  .panel-body {
-    padding: 24px;
-  }
-
-  .panel-header {
-    padding: 18px 24px;
-  }
-
-  .activity-feed {
     gap: 14px;
   }
 
+  .panel-body {
+    padding: 20px;
+  }
+
+  .panel-header {
+    padding: 14px 20px;
+  }
+
+  .activity-feed {
+    gap: 12px;
+  }
+
   .activity-row {
-    padding: 14px 16px;
+    padding: 12px 14px;
   }
 }
 

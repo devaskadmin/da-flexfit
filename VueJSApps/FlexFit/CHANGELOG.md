@@ -1,5 +1,247 @@
 # Changelog
 
+## [0.82.10] — Dashboard Visual Refresh + Shared Module System
+
+**UI only — no backend, API, SQL, layout, or feature changes.**
+
+**Unified module border system applied to HomeDashboard:**
+- All panels, focus card, and stat cards now use `border: 1px solid rgba(120,130,150,.32)`, `background: rgba(255,255,255,.85)`, `box-shadow: 0 2px 6px rgba(20,30,50,.05)` — identical to Progress page
+- `dashboard-panel` radius upgraded from `12px` → `16px` with `overflow: hidden` for clean inner content clipping
+
+**Panel headers tinted — Training Progress, Activity Feed, Nutrition Trend:**
+- `panel-header` background: `rgba(235,240,248,.65)`, border-bottom: `1px solid rgba(120,130,150,.25)` — matches Progress `ps-card__header` exactly
+- Removed old `box-shadow: inset 0 -1px 0 ...` in favour of the tinted border system
+
+**Focus card upgraded:**
+- Border, background, shadow raised to full module system strength
+- `border-radius: 16px` (was 12px)
+
+**Activity feed cards stronger:**
+- Each `activity-row` now: `border: 1px solid rgba(120,130,150,.28)`, `border-radius: 8px`, `background: #f8fafc`, `box-shadow: 0 1px 3px rgba(20,30,50,.04)` — visually distinct from the panel wrapper
+
+**FitnessMetricCard upgraded (Workouts This Week, Current Streak, Calories Burned, Protein Today):**
+- `metric-card` border: `rgba(120,130,150,.32)`, background: `rgba(255,255,255,.85)`, shadow: `0 2px 6px rgba(20,30,50,.05)`
+- Hover shadow deepened: `0 6px 16px rgba(20,30,50,.10)`
+
+**Spacing tightened to match Progress page:**
+- `dashboard-canvas` gap: `14px` (was `16px`)
+- `dashboard-stats` gap: `14px` (was `12px` / `20px` / `24px` across breakpoints)
+- `dashboard-main-row` gap: `14px` (was `20px` / `24px` / `28px` across breakpoints)
+- Desktop `panel-header` padding normalised to `14px 20px`; `panel-body` to `20px`
+
+---
+
+## [0.82.9a] — Enhanced Module Contrast
+
+**UI only — no backend, API, SQL, chart logic, or layout changes.**
+
+**Section panel borders strengthened:**
+- `ps-section-panel` border opacity raised from `.18` → `.32`: `rgba(120,130,150,.32)`
+- Background lifted from `rgba(255,255,255,.65)` → `rgba(255,255,255,.82)` for cleaner module backgrounds
+- Shadow deepened: `0 2px 6px rgba(20,30,50,.05)` (was `0 1px 2px rgba(0,0,0,.03)`)
+
+**Base card contrast increased:**
+- `ps-card` border changed from `#e5e7eb` → `rgba(120,130,150,.32)` for consistent system
+- `ps-card` shadow raised to `0 2px 6px rgba(20,30,50,.05)` matching panel depth
+- Inner cards inside panels (analytics row + row3) use `rgba(120,130,150,.28)` border (was `.14`)
+
+**Card header tinting — all modules:**
+- `ps-card__header` background: `rgba(235,240,248,.65)` (Exercises Logged, Workout Summary, Quick Insights, Chart)
+- `ps-card__header` bottom border: `1px solid rgba(120,130,150,.25)` (was `#f1f5f9`)
+- Filter bar header row matches via `.ps-filter-toggle { background: rgba(235,240,248,.65) }`
+- Hover state: `rgba(220,228,242,.75)` for a perceptible but soft lift
+
+**Inner row dividers strengthened:**
+- `ps-insight-row` border-bottom: `rgba(120,130,150,.20)` (was `#f1f5f9`) — affects Sessions, Average, Peak, Best Day, Trend rows in both Summary and Quick Insights cards
+
+---
+
+## [0.82.9] — Dashboard Section Borders + Module Grouping
+
+**UI only — no backend, API, SQL, chart logic, or filter behaviour changes.**
+
+**Soft `ps-section-panel` wrappers added around all three main page regions:**
+- Filter bar, analytics row (chart + mini widgets), and row 3 (exercises / summary / insights) each wrapped in `<div class="ps-section-panel">`
+- Panel style: `border: 1px solid rgba(120,130,150,.18)`, `background: rgba(255,255,255,.65)`, `border-radius: 16px`, `padding: 14px`, `box-shadow: 0 1px 2px rgba(0,0,0,.03)`
+
+**`ps-section-panel--filter` variant for the filter bar:**
+- Tinted background: `rgba(240,244,250,.5)`, `padding: 0`, `overflow: hidden` to let the inner `ps-filter-card` fill the panel cleanly
+- Inner `ps-filter-card` border and shadow removed (`border: none`, `box-shadow: none`, `background: transparent`) to avoid double-border against the panel
+
+**Inner card border softening:**
+- Cards nested inside any `ps-section-panel` have their border colour lightened to `rgba(120,130,150,.14)` and shadow removed to visually recede behind the panel frame
+
+---
+
+## [0.82.8] — Shared Dashboard Date Styling
+
+**UI only — no backend, API, SQL, or chart calculation changes.**
+
+**DateRangePicker component extended (non-breaking):**
+- Added `defineEmits(['change'])` and a `watch` on the internal `date` ref
+- Emits `change([startISO, endISO])` as YYYY-MM-DD strings whenever the user picks a range
+- Home Dashboard behaviour unchanged (it doesn't listen to the event)
+
+**Progress page hero date replaced:**
+- Removed custom `ps-hero-date` HTML and all associated scoped CSS (`ps-hero-date`, `ps-hero-date__field`, `ps-hero-date__input`, `ps-hero-date__sep`, `ps-hero-date__spin`)
+- Now uses `<DateRangePicker @change="onDateChange" />` inside `<div class="header-picker">` — identical markup to HomeDashboard
+- `onDateChange([start, end])` handler updates `startDate` and `endDate` refs, triggering existing chart watchers automatically
+
+**`header-picker` CSS in Progress:**
+- Single rule matching HomeDashboard exactly: `margin-top: 2px`, `max-width: 100%`, `box-sizing: border-box`, `overflow: hidden`
+- Mobile (≤768px): `grid-template-columns: 1fr auto` hero layout, `header-picker` capped at `185px`, picker font shrinks to `0.73rem` — identical to HomeDashboard mobile behaviour
+
+---
+
+## [0.82.7] — Dashboard Style Progress Refactor
+
+**UI only — no backend, API, SQL, filtering logic, or chart calculation changes.**
+
+**Date range moved to hero header:**
+- Start Date + End Date inputs removed from filter card
+- Now live in `ps-hero-date` pill on right of hero banner (matching Home Dashboard style)
+- Frosted glass styling on dark hero background; hidden on mobile (≤768px)
+- Chart still auto-refreshes on date change via existing watchers
+
+**Filter card reduced to single row (4 cols: Exercise | Workout Type | Metric | Reset):**
+- Old 2-row 3×2 grid collapsed to `2fr 1.4fr 2fr auto` single row
+- Order: Exercise → Workout Type → Y-Axis Metric → Reset
+- Padding reduced to `12px 18px`
+
+**Row 2 layout — Chart + 3 mini widgets:**
+- Grid: `2.5fr 1fr`, gap `14px`
+- Left col (`ps-left-col`): Chart card ONLY
+- Right col (`ps-right-col`): Workouts This Week + Current Streak + Calories Burned (stacked)
+- Workout Summary and Quick Insights removed from right rail
+
+**Row 3 — 3-column bottom row:**
+- `ps-row3`: `repeat(3, 1fr)` grid, gap `14px`
+- Col 1: Exercises Logged (compact chip grid, "Exercises Logged" header, "Click to filter chart" subhead)
+- Col 2: Workout Summary (Sessions, Avg, Peak, Total)
+- Col 3: Quick Insights (Best Day, Trend, Most Active Exercise)
+- Stacks to 2-col at ≤1100px, single col at ≤768px
+
+---
+
+## [0.82.6] — Analytics Side Rail Layout
+
+**UI only — no backend, API, SQL, or logic changes.**
+
+**Top widget row removed:** Workouts This Week, Current Streak, Calories Burned no longer occupy a full-width row above the filters.
+
+**New two-column analytics layout (`2.4fr 1fr`, 16px gap):**
+- Left column (`ps-left-col`): Chart card stacked above Exercises Logged
+- Right side rail (`ps-right-col`): 3 mini stat widgets → Workout Summary → Quick Insights
+
+**Mini stat widgets (side rail top):**
+- Compact card with icon + label + large value + subtitle
+- Workouts This Week (blue icon), Current Streak (orange fire), Calories Burned (green bolt)
+- Padding `14px`, border-radius `12px`, gap `12px`
+
+**Filter compression — 2-row flat grid:**
+- Old: 3 labelled sections with nested pairs
+- New: `ps-filter-grid` — `repeat(3, 1fr)` × 2 rows, gap `10px`, padding `14px 18px`
+- Row 1: Start Date | End Date | Workout Type
+- Row 2: Exercise | Y-Axis Metric | Reset (inline, aligned to bottom)
+- Input heights reduced to `38px`
+
+**Chart:** Desktop height 300px (sparse ≤3 pts → 240px). Responsive: 260px tablet, 220px mobile.
+
+**Responsive breakpoints:** Stacks at 1024px (right rail wraps), 768px (filter → 2 cols), 480px (single column everything).
+
+---
+
+## [0.82.5] — Progress Final Balance Pass
+
+**UI only — no backend, API, SQL, or logic changes.**
+
+**Right column split into two stacked cards:**
+- Top: Workout Summary (Sessions, Average, Peak, Total)
+- Bottom: Quick Insights (Best Day, Trend direction, Active Exercise)
+
+**Chart column wider:** `2.3fr 1fr` (was `2fr 1fr`)
+
+**Chart header:** title now appends "Trend" (e.g. "Calories Burned Trend"), subtitle uses `•` separator
+
+**Dynamic chart height:** collapses to 240px when ≤3 data points, 320px otherwise
+
+**Quick Insights panel (new):**
+- Best Day label
+- Trend: Increasing / Stable / Decreasing (derived from first vs second half avg)
+- Active Exercise (when exercise filter is set)
+
+**Personal Best badge:** 🔥 PB shown in Workout Summary header when peak ≥ 2× average
+
+**Filter card compacted:** padding `14px`, gap `10px`, less vertical space
+
+**Exercise cards:** active glow effect — `box-shadow` with colour-matched outer glow
+
+**Tablet (960px):** right column switches to side-by-side (two cards in a row)
+
+**Mobile (560px):** right column stacks vertically
+
+---
+
+## [0.82.4] — Split Analytics Layout
+
+**UI only — no backend, API, SQL, or logic changes.**
+
+**New page order:** Hero → Widgets → Filters → Analytics Row (Chart + Insights) → Exercises
+
+**Analytics Row — 2-column grid:**
+- Left (2fr): Chart card (same chart, reduced height 320px desktop / 260px tablet / 220px mobile, max 340px)
+- Right (1fr): New "Workout Summary" insights panel
+- Stacks vertically below 960px
+
+**Insights panel (right column):**
+- Sessions count, Average, Peak (highlighted), Best Day, Total metric value
+- Total shown in a blue gradient summary block at the bottom
+- Derived from existing `chartData` (no API call)
+
+**Filters moved above analytics row:**
+- Expanded by default (`filtersOpen = true`)
+- Collapsible toggle with live "Updating…" indicator in toggle bar
+- Compact 3-column layout (stacks on tablet)
+- Chips row removed (toggle bar shows loading state instead)
+
+**Widgets grid fix:**
+- `minmax(240px, 1fr)` — equal heights, no overflow
+
+---
+
+## [0.82.3] — Chart-First Progress Page Redesign
+
+**UI only — no backend, API, SQL, or logic changes.**
+
+**New page order:**
+- Hero → Summary Widgets → Main Chart → Filters (collapsed) → Logged Exercises
+
+**Chart card (dashboard style):**
+- Moved to top as primary focus — above all filters
+- Header: metric name (e.g. "Calories Burned") + Daily/Monthly/Yearly view subtitle
+- Top-right: `[Week] [Month] [Year]` quick group-by buttons (wired to `groupBy` state)
+- Bar/Line toggle (area chart removed)
+- Default chart type changed from `line` → `bar`
+- Bar fill: blue gradient (`#3b82f6 → #60a5fa`), rounded corners (borderRadius 6)
+- Heights: desktop 340px · tablet 300px · mobile 240px · max 380px (ApexCharts responsive array)
+
+**Removed completely:**
+- Points / AVG / Peak / Total mini-stats row
+- Limited data notice banner
+- `chartMiniStats` computed
+- `isLimitedData` computed
+
+**Filters card — collapsible:**
+- "Progress Filters ▼" toggle button header
+- Default: collapsed
+- Auto-apply on change preserved, no Apply button
+- Group By moved out of filters into chart Week/Month/Year buttons
+- Reset button inline within filter body
+
+**Logged Exercises** moved below filters (unchanged functionality).
+
+---
+
 ## [0.81.9b] — Session Persistence Root Cause Investigation & Fix
 
 **Audit findings:**

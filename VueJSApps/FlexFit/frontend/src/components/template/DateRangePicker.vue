@@ -1,9 +1,19 @@
 <script setup>
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import DatePicker from "vue-datepicker-next";
+
+const emit = defineEmits(['change']);
 
 // Reactive date range (default today)
 const date = ref([new Date(), new Date()]);
+
+// Emit ISO date strings whenever range changes
+watch(date, (val) => {
+  if (Array.isArray(val) && val[0] && val[1]) {
+    const fmt = (d) => d.toISOString().slice(0, 10);
+    emit('change', [fmt(val[0]), fmt(val[1])]);
+  }
+});
 
 // Custom formatter for d/m/yyyy
 const formatter = {

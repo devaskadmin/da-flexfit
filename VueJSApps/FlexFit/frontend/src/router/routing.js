@@ -236,6 +236,12 @@ export const pagesRoutes = [
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {
+        path: '/progress',
+        component: () => import('@/views/Member/ProgressStats.vue'),
+        name: 'progress_stats',
+        meta: { layout: 'AppLayout', isPartials: true },
+    },
+    {
         path: '/settings',
         component: () => import('@/views/Member/UserSettings.vue'),
         name: 'user_settings',
