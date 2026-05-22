@@ -431,12 +431,13 @@ watch(
   <div class="settings-page">
 
     <!-- Header -->
-    <div class="settings-header ff-page-header app-header-gradient mb-25">
+    <div class="settings-header ff-page-header app-header-gradient">
       <div>
         <h2 class="settings-title">Account Settings</h2>
         <p class="settings-subtitle">Manage your profile, fitness data and preferences</p>
       </div>
-      <button class="ff-btn-save" :class="{ saving: saveStatus==='saving', saved: saveStatus==='saved' }" @click="save">
+      <!-- Desktop save in header -->
+      <button class="ff-btn-save ff-btn-save-desktop" :class="{ saving: saveStatus==='saving', saved: saveStatus==='saved' }" @click="save">
         <i v-if="saveStatus==='saving'" class="fa-solid fa-spinner fa-spin"></i>
         <i v-else-if="saveStatus==='saved'" class="fa-solid fa-check"></i>
         <i v-else class="fa-solid fa-floppy-disk"></i>
@@ -493,72 +494,103 @@ watch(
 
         <!-- PROFILE TAB -->
         <section v-if="activeTab==='profile'" class="s-panel panel-bg">
-          <div class="s-panel-head">
-            <h4 class="s-panel-title">Public Profile</h4>
-            <p class="s-panel-sub">This information is visible on your athlete card</p>
-          </div>
-          <div class="avatar-row mb-25">
+
+          <!-- Centered profile header -->
+          <div class="profile-header">
             <div class="avatar-circle has-image">
-              <img :src="getAvatarUrl()" alt="Profile avatar" class="avatar-image" />
+              <img :src="getAvatarUrl()" alt="Profile avatar" class="profile-avatar" />
               <button class="avatar-cam" @click="openAvatarModal" title="Change avatar">
                 <i class="fa-solid fa-camera"></i>
               </button>
             </div>
-            <div>
-              <div class="avatar-name">{{ profile.firstName }} {{ profile.lastName }}</div>
-              <div class="avatar-handle">@{{ profile.username }}</div>
-              <span class="member-badge"><i class="fa-solid fa-crown"></i> Elite Member</span>
-              <button @click="openAvatarModal" class="change-avatar-btn">
-                <i class="fa-solid fa-image"></i> Change Avatar
-              </button>
-            </div>
+            <div class="avatar-name">{{ profile.firstName }} {{ profile.lastName }}</div>
+            <div class="avatar-handle">@{{ profile.username }}</div>
+            <span class="member-badge"><i class="fa-solid fa-crown"></i> Elite Member</span>
+            <button @click="openAvatarModal" class="change-avatar-btn">
+              <i class="fa-solid fa-image"></i> Change Avatar
+            </button>
           </div>
-          <div class="ff-form-grid">
-            <div class="ff-field">
-              <label class="ff-label">First Name</label>
-              <input v-model="profile.firstName" class="form-control ff-field-needs-update" type="text" placeholder="First name" />
-            </div>
-            <div class="ff-field">
-              <label class="ff-label">Last Name</label>
-              <input v-model="profile.lastName" class="form-control ff-field-needs-update" type="text" placeholder="Last name" />
-            </div>
-            <div class="ff-field">
-              <label class="ff-label">Username</label>
-              <div class="input-group">
-                <span class="input-group-text">@</span>
-                <input v-model="profile.username" class="form-control ff-field-needs-update" type="text" placeholder="username" />
+
+          <!-- Basic Information -->
+          <div class="settings-section">
+            <h5 class="section-label">Basic Information</h5>
+            <div class="settings-grid">
+              <div class="ff-field">
+                <label class="ff-label">First Name</label>
+                <input v-model="profile.firstName" class="form-control ff-field-needs-update" type="text" placeholder="First name" />
+              </div>
+              <div class="ff-field">
+                <label class="ff-label">Last Name</label>
+                <input v-model="profile.lastName" class="form-control ff-field-needs-update" type="text" placeholder="Last name" />
               </div>
             </div>
-            <div class="ff-field">
-              <label class="ff-label">Email Address</label>
-              <input v-model="profile.email" class="form-control ff-field-needs-update" type="email" placeholder="email@example.com" />
+          </div>
+
+          <!-- Account Information -->
+          <div class="settings-section">
+            <h5 class="section-label">Account Information</h5>
+            <div class="settings-grid">
+              <div class="ff-field">
+                <label class="ff-label">Username</label>
+                <div class="input-group">
+                  <span class="input-group-text">@</span>
+                  <input v-model="profile.username" class="form-control ff-field-needs-update" type="text" placeholder="username" />
+                </div>
+              </div>
+              <div class="ff-field">
+                <label class="ff-label">Email Address</label>
+                <input v-model="profile.email" class="form-control ff-field-needs-update" type="email" placeholder="email@example.com" />
+              </div>
             </div>
-            <div class="ff-field">
-              <label class="ff-label">Phone Number</label>
-              <input v-model="profile.phone" class="form-control ff-field-needs-update" type="tel" placeholder="+1 (555) 000-0000" />
+          </div>
+
+          <!-- Personal Information -->
+          <div class="settings-section">
+            <h5 class="section-label">Personal Information</h5>
+            <div class="settings-grid">
+              <div class="ff-field">
+                <label class="ff-label">Phone Number</label>
+                <input v-model="profile.phone" class="form-control ff-field-needs-update" type="tel" placeholder="+1 (555) 000-0000" />
+              </div>
+              <div class="ff-field">
+                <label class="ff-label">Location</label>
+                <input v-model="profile.location" class="form-control" type="text" placeholder="City, Country" />
+              </div>
+              <div class="ff-field">
+                <label class="ff-label">Gender</label>
+                <select v-model="profile.gender" class="form-select ff-field-needs-update">
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                  <option value="prefer_not">Prefer not to say</option>
+                </select>
+              </div>
+              <div class="ff-field">
+                <label class="ff-label">Date of Birth</label>
+                <input v-model="profile.dateOfBirth" class="form-control ff-field-needs-update" type="date" />
+              </div>
             </div>
-            <div class="ff-field">
-              <label class="ff-label">Location</label>
-              <input v-model="profile.location" class="form-control" type="text" placeholder="City, Country" />
-            </div>
-            <div class="ff-field">
-              <label class="ff-label">Gender</label>
-              <select v-model="profile.gender" class="form-select ff-field-needs-update">
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-                <option value="prefer_not">Prefer not to say</option>
-              </select>
-            </div>
-            <div class="ff-field">
-              <label class="ff-label">Date of Birth</label>
-              <input v-model="profile.dateOfBirth" class="form-control ff-field-needs-update" type="date" />
-            </div>
-            <div class="ff-field full-width">
+          </div>
+
+          <!-- About Me -->
+          <div class="settings-section">
+            <h5 class="section-label">About Me</h5>
+            <div class="ff-field bio-field">
               <label class="ff-label">Bio</label>
               <textarea v-model="profile.bio" class="form-control" rows="3" placeholder="Tell your coach and training partners about yourself..."></textarea>
             </div>
           </div>
+
+          <!-- Mobile sticky save -->
+          <div class="account-save-mobile">
+            <button class="ff-btn-save" :class="{ saving: saveStatus==='saving', saved: saveStatus==='saved' }" @click="save">
+              <i v-if="saveStatus==='saving'" class="fa-solid fa-spinner fa-spin"></i>
+              <i v-else-if="saveStatus==='saved'" class="fa-solid fa-check"></i>
+              <i v-else class="fa-solid fa-floppy-disk"></i>
+              {{ saveStatus==='saving' ? 'Saving...' : saveStatus==='saved' ? 'Saved!' : 'Save Changes' }}
+            </button>
+          </div>
+
         </section>
 
         <!-- FITNESS TAB -->
@@ -840,8 +872,10 @@ watch(
 
 .settings-header {
   display: flex; align-items: center; justify-content: space-between;
-  flex-wrap: wrap; gap: 12px;
+  flex-wrap: wrap; gap: 10px;
   border: 1.5px solid var(--ff-border-strong);
+  padding: 14px 18px;
+  min-height: auto;
 }
 .settings-title { font-size: 1.45rem; font-weight: 700; margin: 0; color: #ffffff !important; }
 .settings-subtitle { font-size: .83rem; opacity: .92; margin: 3px 0 0; color: #cbd5e1 !important; font-weight: 500; }
@@ -958,7 +992,109 @@ watch(
 .ff-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 22px; }
 .ff-field  { display: flex; flex-direction: column; gap: 6px; }
 .ff-field.full-width { grid-column: 1 / -1; }
-.ff-label  { font-size: .73rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; opacity: 1; color: var(--text-color); }
+.ff-label  { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; opacity: .75; color: var(--text-color); margin-bottom: 4px; }
+
+/* ── Centered profile header ── */
+.profile-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding-bottom: 16px;
+  margin-bottom: 4px;
+  border-bottom: 1.5px solid var(--ff-border-soft);
+}
+
+.profile-avatar {
+  width: 76px;
+  height: 76px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.profile-header .avatar-circle {
+  width: 76px;
+  height: 76px;
+}
+
+.profile-header .member-badge {
+  margin-top: 2px;
+}
+
+.profile-header .change-avatar-btn {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  padding: 5px 14px;
+}
+
+/* ── Settings sections (grouped cards) ── */
+.settings-section {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--ff-border-soft);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.settings-section:last-of-type {
+  margin-bottom: 0;
+}
+
+.section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #2563eb;
+  margin: 0 0 10px;
+  opacity: 0.9;
+}
+
+/* ── Settings grid (2-col desktop, 1-col mobile) ── */
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.bio-field {
+  grid-column: 1 / -1;
+}
+
+/* ── Sticky mobile save ── */
+.account-save-mobile {
+  margin-top: 16px;
+  width: 100%;
+}
+
+.account-save-mobile .ff-btn-save {
+  width: 100%;
+  height: 48px;
+  justify-content: center;
+  border-radius: 12px;
+  font-size: 0.95rem;
+}
+
+/* Desktop: hide account-save-mobile, show header save */
+@media (min-width: 769px) {
+  .account-save-mobile { display: none; }
+  .ff-btn-save-desktop { display: inline-flex; }
+}
+
+/* Mobile: hide desktop save, show sticky bottom */
+@media (max-width: 768px) {
+  .ff-btn-save-desktop { display: none !important; }
+  .account-save-mobile {
+    position: sticky;
+    bottom: 12px;
+    z-index: 20;
+    background: transparent;
+  }
+  .account-save-mobile .ff-btn-save {
+    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
+  }
+}
 
 .ff-check-row {
   display: flex;
@@ -1236,6 +1372,13 @@ watch(
   background: #dbeafe !important;
 }
 
+:global(body.light-theme) .settings-section {
+  background: rgba(0,0,0,0.02);
+  border-color: rgba(15, 23, 42, .18);
+}
+
+:global(body.light-theme) .ff-label { opacity: .65; color: #374151; }
+
 :global(body.light-theme) .s-panel-head { border-bottom-color: rgba(15, 23, 42, .24); }
 :global(body.light-theme) .s-nav-icon   { background: rgba(0,0,0,.06); }
 :global(body.light-theme) .goal-chip    { border-color: rgba(0,0,0,.2); background: #fff; }
@@ -1385,23 +1528,35 @@ textarea::placeholder {
     gap: 12px;
   }
 
-  /* Header: compact, round, stack save btn */
+  /* Header: compact */
   .settings-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 10px;
-    padding: 14px 16px;
-    border-radius: 16px;
-    margin-bottom: 12px;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    margin-bottom: 10px;
   }
-  .settings-title    { font-size: 1.35rem; }
-  .settings-subtitle { font-size: 0.85rem; }
-  .ff-btn-save {
-    width: 100%;
-    height: 42px;
-    justify-content: center;
-    padding: 0 20px;
-    border-radius: 12px;
+  .settings-title    { font-size: 1.25rem; }
+  .settings-subtitle { font-size: 0.82rem; }
+
+  /* Settings grid: single column on mobile */
+  .settings-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  /* Settings sections: tighter */
+  .settings-section {
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+  }
+
+  /* Profile header: tighter gap */
+  .profile-header {
+    gap: 5px;
+    padding-bottom: 14px;
   }
 
   /* Content panels: reduce padding */
