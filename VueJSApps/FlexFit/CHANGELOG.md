@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.81.8] — DB Connection Exhaustion Fix & Login Diagnostics Improvements
+
+- Reduced app DB connection pool to `connectionLimit: 5` (was 10) to prevent `ER_TOO_MANY_USER_CONNECTIONS` on shared hosting
+- Added `maxIdle: 3`, `idleTimeout: 60000`, `enableKeepAlive` to app DB pool for resilient idle connections
+- Reduced express-mysql-session pool to `connectionLimit: 2` — total DB budget: app(5) + session(2) = 7
+- Added startup logs showing pool sizes for both app and session stores
+- Added `ER_TOO_MANY_USER_CONNECTIONS` detection in login error handler with user-friendly message
+- Auto-opens diagnostics modal when connection limit error is detected
+- Added connection-limit specific panel in diagnostics modal with suggestions
+- Updated diagnostics button styling: visible dark-blue background, white text, bold
+
+---
+
 ## [0.81.2] — Dashboard Mobile Optimization
 
 Targeted mobile rendering pass for `HomeDashboard.vue` only. No backend changes. No other pages affected. Desktop layout fully preserved.

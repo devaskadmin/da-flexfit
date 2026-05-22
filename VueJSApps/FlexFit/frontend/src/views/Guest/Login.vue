@@ -18,6 +18,7 @@ const loginDiagnostics = ref("");
 const diagnosticsCopied = ref(false);
 const showDiagnosticsModal = ref(false);
 const isSubmitting = ref(false);
+const isConnectionLimitError = ref(false);
 const appVersion = import.meta.env.VITE_APP_VERSION || '0.69.0';
 const isDev = import.meta.env.DEV;
 
@@ -98,6 +99,10 @@ const buildLoginDiagnostics = ({
 };
 
 const buildCompactLoginMessage = ({ status, fallbackMessage } = {}) => {
+  if (String(fallbackMessage || '').includes('ER_TOO_MANY_USER_CONNECTIONS')) {
+    return 'FlexFit database connection limit reached. The hosting provider rejected additional database connections. Please wait a minute and retry.';
+  }
+
   if (fallbackMessage) {
     const lowerFallback = String(fallbackMessage).toLowerCase();
     if (lowerFallback.includes('login succeeded') || lowerFallback.includes('session cookie')) {
@@ -253,6 +258,7 @@ const login = async () => {
   loginDiagnostics.value = "";
   diagnosticsCopied.value = false;
   showDiagnosticsModal.value = false;
+  isConnectionLimitError.value = false;
 
   const safeUsername = String(username.value || "").trim();
   const safePassword = String(password.value || "");
@@ -343,17 +349,26 @@ const login = async () => {
       error?.response?.data?.message ||
       error?.response?.data?.error ||
       'Sign-in request failed before authentication could complete.';
+    const isConnLimit = String(apiMessage).includes('ER_TOO_MANY_USER_CONNECTIONS');
+    if (isConnLimit) {
+      isConnectionLimitError.value = true;
+    }
     setLoginError({
       fallbackMessage: apiMessage,
-      reason: 'Browser could not complete sign-in request.',
+      reason: isConnLimit
+        ? 'Database connection limit reached on hosting provider.'
+        : 'Browser could not complete sign-in request.',
       status: error?.response?.status,
       apiMessage,
       networkMessage: error?.message,
       loginSucceeded: false,
       sessionCookiePersisted: null,
       sessionVerificationPassed: false,
-      safariDetailed: true,
+      safariDetailed: !isConnLimit,
     });
+    if (isConnLimit) {
+      openDiagnosticsModal();
+    }
   } finally {
     isSubmitting.value = false;
   }
@@ -475,6 +490,17 @@ const demoLogin = async (role) => {
             <button type="button" class="btn-close btn-close-white" aria-label="Close" @click="closeDiagnosticsModal"></button>
           </div>
           <div class="login-diagnostics-body">
+            <div v-if="isConnectionLimitError" class="login-diag-conn-limit">
+              <p class="login-diag-conn-title">Database server connection limit reached.</p>
+              <p class="login-diag-conn-sub">FlexFit login succeeded but database resources were unavailable.</p>
+              <p class="login-diag-conn-error">Error: <code>ER_TOO_MANY_USER_CONNECTIONS</code></p>
+              <p class="login-diag-conn-suggestions">Suggestions:</p>
+              <ul class="login-diag-conn-list">
+                <li>Wait 1–2 minutes</li>
+                <li>Retry login</li>
+                <li>Contact administrator</li>
+              </ul>
+            </div>
             <pre class="login-diagnostics-pre">{{ loginDiagnostics }}</pre>
           </div>
           <div class="login-diagnostics-footer">
@@ -693,7 +719,16 @@ const demoLogin = async (role) => {
 }
 
 .auth-button-outline {
-  margin-bottom: 10px;
+  width: 100%;
+  min-height: 44px;
+  background: #243f78;
+  color: white;
+  border: 1px solid #4f79d9;
+  font-weight: 600;
+  border-radius: 10px;
+  margin-top: 10px;
+  margin-bottom: 14px;
+  opacity: 1;
 }
 
 .auth-button-secondary {
@@ -822,6 +857,50 @@ const demoLogin = async (role) => {
   line-height: 1.38;
   color: #d7e4ff;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.login-diag-conn-limit {
+  background: rgba(220, 80, 60, 0.12);
+  border: 1px solid rgba(220, 80, 60, 0.4);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.login-diag-conn-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #ff8a7a;
+  margin: 0 0 4px;
+}
+.login-diag-conn-sub {
+  font-size: 0.83rem;
+  color: #d7e4ff;
+  margin: 0 0 6px;
+}
+.login-diag-conn-error {
+  font-size: 0.82rem;
+  color: #d7e4ff;
+  margin: 0 0 8px;
+}
+.login-diag-conn-error code {
+  background: rgba(255,255,255,0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: #ffb3ab;
+}
+.login-diag-conn-suggestions {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #a9c4ff;
+  margin: 0 0 4px;
+}
+.login-diag-conn-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.82rem;
+  color: #d7e4ff;
+  line-height: 1.7;
 }
 
 </style>

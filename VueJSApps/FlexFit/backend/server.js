@@ -106,9 +106,9 @@ try {
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
 
-      // Connection pool settings — resilient against Render idle disconnects
+      // ✅ Session pool strictly limited to 2 — total DB budget: app(5) + session(2) = 7
       waitForConnections: true,
-      connectionLimit: 10,
+      connectionLimit: 2,
       queueLimit: 0,
 
       // Keep connections alive so MySQL doesn't ECONNRESET after idle periods
@@ -119,7 +119,7 @@ try {
 
       // Release idle connections quickly to avoid stale socket errors
       idleTimeout: 60000,
-      maxIdle: 5,
+      maxIdle: 2,
     };
 
     sessionStore = new MySQLStore({
@@ -140,7 +140,8 @@ try {
       // log only — DO NOT throw or call process.exit()
     });
 
-    console.log('🗄️  Session store: MySQL (persistent across restarts)');
+    console.log('🗄️  Session store: MySQL (persistent across restarts) | pool connectionLimit=2');
+    console.log('📊 DB budget: app=5 + session=2 = 7 max connections');
   } else {
     console.warn('⚠️  Session store: in-memory (DB env vars not set — sessions lost on restart)');
   }
