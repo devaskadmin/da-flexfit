@@ -10,15 +10,15 @@ const config = {
   database: process.env.DB_DATABASE,
   port: parseInt(process.env.DB_PORT, 10) || 3306,
   waitForConnections: true,
-  connectionLimit: 5,   // ✅ Capped to avoid ER_TOO_MANY_USER_CONNECTIONS on shared hosting
-  maxIdle: 3,           // ✅ Release idle connections faster
-  idleTimeout: 60000,
+  connectionLimit: 2,   // ✅ Reduced: 2 app + 1 session = 3 total budget
+  maxIdle: 1,           // ✅ Release idle connections aggressively
+  idleTimeout: 30000,   // ✅ 30 s idle timeout to free connections faster
   queueLimit: 0,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
 };
 
-console.log('📊 App DB pool: connectionLimit=5, maxIdle=3');
+console.log('📊 App DB pool: connectionLimit=2, maxIdle=1, idleTimeout=30s');
 
 const missingEnvKeys = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_DATABASE']
   .filter((key) => !String(process.env[key] || '').trim());

@@ -112,7 +112,7 @@ try {
       user:              process.env.DB_USER,
       password:          process.env.DB_PASSWORD,
       database:          process.env.DB_DATABASE,
-      connectionLimit:   2,   // 1 read (middleware) + 1 write (session.save)
+      connectionLimit:   1,   // 1 connection for session store (read + write share one slot)
       waitForConnections: true,
       queueLimit:        0,
       enableKeepAlive:   true,
@@ -124,7 +124,7 @@ try {
     console.log('[SESSION DEBUG]', {
       hasQuery:   typeof sessionPool.query,
       hasExecute: typeof sessionPool.execute,
-      limit:      2,
+      limit:      1,
     });
 
     sessionStore = new MySQLStore({
@@ -143,8 +143,13 @@ try {
       console.error('⚠️  Session store error (non-fatal):', err.message);
     });
 
-    console.log('🗄️  Session store: MySQL (persistent across restarts) | pool connectionLimit=2');
-    console.log('📊 DB budget: app=5 + session=2 = 7 max connections');
+    // ✅ Prevent idle session pool connections from crashing Node on ECONNRESET.
+    sessionPool.on('error', (err) => {
+      console.error('[SESSION POOL ERROR]', err.code || err.message, err);
+    });
+
+    console.log('🗄️  Session store: MySQL (persistent across restarts) | pool connectionLimit=1');
+    console.log('📊 DB budget: app=2 + session=1 = 3 max connections');
     console.log('[SESSION STORE]', { store: 'mysql', ready: true });
   } else {
     console.warn('⚠️  Session store: in-memory (DB env vars not set — sessions lost on restart)');
@@ -190,6 +195,13 @@ app.use((req, res, next) => {
 
 // ✅ DB Connect
 const pool = require('./db.js');
+
+// ✅ Prevent idle app pool connections from emitting unhandled 'error' events.
+// mysql2 emits 'error' on the pool when an idle connection is reset by the server
+// (ECONNRESET). Without this handler the default EventEmitter behaviour crashes Node.
+pool.on('error', (err) => {
+  console.error('[APP POOL ERROR]', err.code || err.message, err);
+});
 
 // ✅ Serve static avatar images
 app.use('/images/avatar', express.static(path.join(__dirname, 'src/images/avatar')));
@@ -257,6 +269,27 @@ app.use((err, req, res, next) => {
     });
   }
 });
+
+// ✅ Process-level guards — keep Node alive on unexpected errors.
+// These catch anything that escapes route handlers and pool error handlers.
+process.on('unhandledRejection', (err) => {
+  console.error('[UNHANDLED REJECTION]', err);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[UNCAUGHT EXCEPTION]', err);
+});
+
+// ✅ DB heartbeat — ping every 5 minutes to prevent idle connection resets.
+// mysql2 keepAlive works at the TCP layer but some cloud proxies still reset
+// idle sockets; a periodic SELECT 1 keeps the logical connection active.
+setInterval(async () => {
+  try {
+    await pool.query('SELECT 1');
+  } catch (err) {
+    console.error('[DB HEARTBEAT]', err.code || err.message, err);
+  }
+}, 300000); // 5 minutes
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => {
