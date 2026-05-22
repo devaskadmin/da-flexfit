@@ -1,23 +1,17 @@
-<script setup>
+﻿<script setup>
 import { computed, onMounted, ref } from 'vue';
 import DateDropDown from '@/components/DropDownDate.vue';
 import NutritionFoodCard from '@/components/nutrition-workspace/NutritionFoodCard.vue';
-import NutritionMacroSummary from '@/components/nutrition-workspace/NutritionMacroSummary.vue';
 import NutritionLogList from '@/components/nutrition-workspace/NutritionLogList.vue';
 
 const STORAGE_KEY_LOG = 'flexfit_nutrition_log';
 const STORAGE_KEY_FAV = 'flexfit_nutrition_favorites';
 const STORAGE_KEY_CUSTOM = 'flexfit_nutrition_custom_foods';
 
-const tabs = [
-  { key: 'search', label: 'Food Search' },
-  { key: 'addEdit', label: 'Add/Edit Food' },
-  { key: 'log', label: 'My Nutrition Log' },
-  { key: 'favorites', label: 'Favorite Foods' },
-];
-
-const activeTab = ref('search');
 const selectedDateRaw = ref(new Date());
+const logOpen = ref(true);
+const favoritesOpen = ref(false);
+const addEditOpen = ref(false);
 
 const selectedDateISO = computed(() => {
   const d = selectedDateRaw.value instanceof Date ? selectedDateRaw.value : new Date(selectedDateRaw.value);
@@ -216,7 +210,7 @@ const openEdit = (food) => {
     carbs: Number(food.carbs || 0),
     fat: Number(food.fat || 0),
   };
-  activeTab.value = 'addEdit';
+  addEditOpen.value = true;
 };
 
 const resetAddEdit = () => {
@@ -253,7 +247,7 @@ const saveCustomFood = () => {
 
   saveStorage();
   resetAddEdit();
-  activeTab.value = 'search';
+  addEditOpen.value = false;
 };
 
 const removeCustomFood = (id) => {
@@ -266,152 +260,171 @@ onMounted(async () => {
   await Promise.all([loadCategories(), loadBrands()]);
 });
 </script>
-
 <template>
   <div class="app-page-shell">
   <div class="app-page-canvas app-inner-shell">
-
-
-
-
-
-
   <div class="nutrition-workspace">
 
-
-
-
-
-    
+    <!-- ── Hero: title + inline macro cards + date ── -->
     <section class="builder-hero ff-page-header app-header-gradient">
+      <h2>Nutrition Workspace</h2>
 
-
-      <div class="builder-hero__content">
-        <h2>Nutrition Workspace</h2>
+      <div class="hero-macro-grid">
+        <div class="hero-macro-card hero-macro-calories">
+          <span class="hero-macro-icon">🔥</span>
+          <div>
+            <strong>{{ macroSummary.calories || 0 }}</strong>
+            <span>Calories</span>
+          </div>
+        </div>
+        <div class="hero-macro-card hero-macro-protein">
+          <span class="hero-macro-icon">🥩</span>
+          <div>
+            <strong>{{ macroSummary.protein || 0 }}g</strong>
+            <span>Protein</span>
+          </div>
+        </div>
+        <div class="hero-macro-card hero-macro-carbs">
+          <span class="hero-macro-icon">🌾</span>
+          <div>
+            <strong>{{ macroSummary.carbs || 0 }}g</strong>
+            <span>Carbs</span>
+          </div>
+        </div>
+        <div class="hero-macro-card hero-macro-fat">
+          <span class="hero-macro-icon">🥑</span>
+          <div>
+            <strong>{{ macroSummary.fat || 0 }}g</strong>
+            <span>Fat</span>
+          </div>
+        </div>
       </div>
-      <div class="builder-hero__meta">
+
+      <div class="hero-date-row">
         <DateDropDown v-model="selectedDateRaw" compact />
       </div>
     </section>
 
-    <div class="workspace-layout">
-      <main class="workspace-main panel-bg">
-        <nav class="workspace-tabs">
-          <button
-            v-for="tab in tabs"
-            :key="tab.key"
-            type="button"
-            :class="{ active: activeTab === tab.key }"
-            @click="activeTab = tab.key"
-          >
-            {{ tab.label }}
-          </button>
-        </nav>
-
-        <section v-if="activeTab === 'search'" class="workspace-section">
-          <div class="search-card">
-            <div class="search-controls">
-              <input v-model="foodSearchQuery" type="text" placeholder="Search food by name" @keyup.enter="searchFood" />
-              <select v-model="selectedCategory">
-                <option v-for="category in categories" :key="category" :value="category">{{ category }}</option>
-              </select>
-              <select v-model="selectedBrand">
-                <option v-for="brand in brands" :key="brand" :value="brand">{{ brand }}</option>
-              </select>
-              <button type="button" class="btn-search" @click="searchFood"><i class="fa-solid fa-magnifying-glass"></i> Search Foods</button>
-            </div>
-          </div>
-
-          <p v-if="searchError" class="state-msg err">{{ searchError }}</p>
-          <p v-if="searchLoading" class="state-msg">Searching foods...</p>
-          <p v-if="didSearch && !searchLoading && filteredResults.length === 0" class="state-msg">No foods found.</p>
-
-          <div class="food-grid" v-if="filteredResults.length">
-            <NutritionFoodCard
-              v-for="food in filteredResults"
-              :key="food.id"
-              :food="food"
-              :is-favorite="isFavorite(food.id)"
-              @add="addFoodToLog"
-              @edit="openEdit"
-              @favorite="toggleFavorite"
-              @details="openDetails"
-            />
-          </div>
-        </section>
-
-        <section v-else-if="activeTab === 'addEdit'" class="workspace-section">
-          <div class="add-edit-grid">
-            <article class="form-card">
-              <h3>Add / Edit Food</h3>
-              <p>Create custom food entries or edit copied API entries.</p>
-
-              <div class="form-grid">
-                <label><span>Food Name</span><input v-model="addEditForm.name" type="text" placeholder="e.g., Greek Yogurt" /></label>
-                <label><span>Brand</span><input v-model="addEditForm.brand" type="text" placeholder="e.g., Chobani" /></label>
-                <label><span>Image URL</span><input v-model="addEditForm.image" type="text" placeholder="https://..." /></label>
-                <label><span>Calories</span><input v-model.number="addEditForm.calories" type="number" min="0" /></label>
-                <label><span>Protein (g)</span><input v-model.number="addEditForm.protein" type="number" min="0" /></label>
-                <label><span>Carbs (g)</span><input v-model.number="addEditForm.carbs" type="number" min="0" /></label>
-                <label><span>Fat (g)</span><input v-model.number="addEditForm.fat" type="number" min="0" /></label>
-              </div>
-
-              <div class="form-actions">
-                <button type="button" class="btn-save" @click="saveCustomFood">Save Food</button>
-                <button type="button" class="btn-clear" @click="resetAddEdit">Clear</button>
-              </div>
-            </article>
-
-            <article class="form-card">
-              <h3>Custom Foods</h3>
-              <p>Saved entries for quick reuse.</p>
-              <div v-if="customFoods.length === 0" class="state-msg">No custom foods yet.</div>
-              <div v-else class="custom-list">
-                <NutritionFoodCard
-                  v-for="food in customFoods"
-                  :key="food.id"
-                  :food="food"
-                  compact
-                  :is-favorite="isFavorite(food.id)"
-                  @add="addFoodToLog"
-                  @edit="openEdit"
-                  @favorite="toggleFavorite"
-                  @details="openDetails"
-                />
-                <button v-for="food in customFoods" :key="`remove-${food.id}`" type="button" class="btn-remove-custom" @click="removeCustomFood(food.id)">
-                  Remove {{ food.name }}
-                </button>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <section v-else-if="activeTab === 'log'" class="workspace-section">
-          <NutritionLogList :entries="selectedDateLogs" @remove="removeLogEntry" />
-        </section>
-
-        <section v-else class="workspace-section">
-          <div v-if="favoriteFoods.length === 0" class="state-msg">No favorite foods yet.</div>
-          <div v-else class="food-grid">
-            <NutritionFoodCard
-              v-for="food in favoriteFoods"
-              :key="food.id"
-              :food="food"
-              :is-favorite="true"
-              @add="addFoodToLog"
-              @edit="openEdit"
-              @favorite="toggleFavorite"
-              @details="openDetails"
-            />
-          </div>
-        </section>
-      </main>
-
-      <aside class="workspace-side">
-        <NutritionMacroSummary :total="macroSummary" />
-      </aside>
+    <!-- ── Search card ── -->
+    <div class="search-card">
+      <div class="search-controls">
+        <input v-model="foodSearchQuery" type="text" placeholder="Search food by name..." @keyup.enter="searchFood" />
+        <select v-model="selectedCategory">
+          <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+        </select>
+        <select v-model="selectedBrand">
+          <option v-for="brand in brands" :key="brand" :value="brand">{{ brand }}</option>
+        </select>
+        <button type="button" class="btn-search" @click="searchFood">
+          <i class="fa-solid fa-magnifying-glass"></i> Search Foods
+        </button>
+      </div>
     </div>
 
+    <p v-if="searchError" class="state-msg err">{{ searchError }}</p>
+    <p v-if="searchLoading" class="state-msg">Searching foods...</p>
+    <p v-if="didSearch && !searchLoading && filteredResults.length === 0" class="state-msg">No foods found.</p>
+
+    <div v-if="filteredResults.length" class="food-grid">
+      <NutritionFoodCard
+        v-for="food in filteredResults"
+        :key="food.id"
+        :food="food"
+        :is-favorite="isFavorite(food.id)"
+        @add="addFoodToLog"
+        @edit="openEdit"
+        @favorite="toggleFavorite"
+        @details="openDetails"
+      />
+    </div>
+
+    <!-- ── Today's Log (collapsible) ── -->
+    <div class="collapsible-section">
+      <button type="button" class="section-toggle" @click="logOpen = !logOpen">
+        <span>📋 Today's Entries<small v-if="selectedDateLogs.length"> ({{ selectedDateLogs.length }})</small></span>
+        <i :class="logOpen ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
+      </button>
+      <div v-show="logOpen" class="section-body">
+        <NutritionLogList :entries="selectedDateLogs" @remove="removeLogEntry" />
+      </div>
+    </div>
+
+    <!-- ── Favorite Foods (collapsible) ── -->
+    <div class="collapsible-section">
+      <button type="button" class="section-toggle" @click="favoritesOpen = !favoritesOpen">
+        <span>⭐ Favorite Foods<small v-if="favoriteFoods.length"> ({{ favoriteFoods.length }})</small></span>
+        <i :class="favoritesOpen ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
+      </button>
+      <div v-show="favoritesOpen" class="section-body">
+        <div v-if="favoriteFoods.length === 0" class="state-msg">No favorite foods yet.</div>
+        <div v-else class="food-grid">
+          <NutritionFoodCard
+            v-for="food in favoriteFoods"
+            :key="food.id"
+            :food="food"
+            :is-favorite="true"
+            @add="addFoodToLog"
+            @edit="openEdit"
+            @favorite="toggleFavorite"
+            @details="openDetails"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Add / Edit Custom Food (collapsible) ── -->
+    <div class="collapsible-section">
+      <button type="button" class="section-toggle" @click="addEditOpen = !addEditOpen">
+        <span>✏️ {{ addEditForm.id ? 'Edit Food' : 'Add Custom Food' }}</span>
+        <i :class="addEditOpen ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
+      </button>
+      <div v-show="addEditOpen" class="section-body">
+        <div class="add-edit-grid">
+          <article class="form-card">
+            <div class="form-grid">
+              <label><span>Food Name</span><input v-model="addEditForm.name" type="text" placeholder="e.g., Greek Yogurt" /></label>
+              <label><span>Brand</span><input v-model="addEditForm.brand" type="text" placeholder="e.g., Chobani" /></label>
+              <label><span>Image URL</span><input v-model="addEditForm.image" type="text" placeholder="https://..." /></label>
+              <label><span>Calories</span><input v-model.number="addEditForm.calories" type="number" min="0" /></label>
+              <label><span>Protein (g)</span><input v-model.number="addEditForm.protein" type="number" min="0" /></label>
+              <label><span>Carbs (g)</span><input v-model.number="addEditForm.carbs" type="number" min="0" /></label>
+              <label><span>Fat (g)</span><input v-model.number="addEditForm.fat" type="number" min="0" /></label>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn-save" @click="saveCustomFood">Save Food</button>
+              <button type="button" class="btn-clear" @click="resetAddEdit">Clear</button>
+            </div>
+          </article>
+          <article v-if="customFoods.length" class="form-card">
+            <h3>Custom Foods</h3>
+            <div class="custom-list">
+              <NutritionFoodCard
+                v-for="food in customFoods"
+                :key="food.id"
+                :food="food"
+                compact
+                :is-favorite="isFavorite(food.id)"
+                @add="addFoodToLog"
+                @edit="openEdit"
+                @favorite="toggleFavorite"
+                @details="openDetails"
+              />
+              <button
+                v-for="food in customFoods"
+                :key="`remove-${food.id}`"
+                type="button"
+                class="btn-remove-custom"
+                @click="removeCustomFood(food.id)"
+              >
+                Remove {{ food.name }}
+              </button>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Details modal ── -->
     <div v-if="detailsOpen" class="details-overlay" @click.self="detailsOpen = false">
       <article class="details-modal panel-bg">
         <h3>{{ detailsFood?.name }}</h3>
@@ -425,6 +438,7 @@ onMounted(async () => {
         <button type="button" @click="detailsOpen = false">Close</button>
       </article>
     </div>
+
   </div>
   </div>
   </div>
@@ -437,189 +451,382 @@ onMounted(async () => {
   display: grid;
   gap: 14px;
 }
-.builder-hero { border: 1.5px solid var(--ff-border-strong); border-radius: 16px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
-.builder-hero h2 { margin: 0; color: #ffffff; font-size: 1.45rem; font-weight: 700; }
-.builder-hero__meta { display: flex; align-items: center; justify-content: flex-end; }
-.workspace-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; }
-.workspace-main { border: 1.5px solid var(--ff-border-strong); border-radius: 16px; padding: 14px; }
-.workspace-tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1.5px solid var(--ff-border-soft); padding-bottom: 10px; }
-.workspace-tabs button { border: 1px solid #d9e2ef; background: #fff; color: #374151; border-radius: 999px; padding: 0 14px; height: 38px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all .18s; }
-.workspace-tabs button.active { border-color: #2f6df6; background: #eef4ff; color: #1d4ed8; font-weight: 700; }
-.workspace-section { margin-top: 12px; }
-.search-card { background: #fff; border: 1px solid #e2eaf3; border-radius: 16px; padding: 14px; box-shadow: 0 4px 12px rgba(0,0,0,.05); margin-bottom: 12px; }
-.search-controls { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 8px; }
-.search-controls input, .search-controls select { border: 1.5px solid var(--ff-border-soft); background: var(--main-color); color: var(--text-color); border-radius: 10px; padding: 9px 10px; }
-.btn-search { border: none; background: #2563eb; color: #fff; border-radius: 12px; padding: 9px 16px; font-weight: 700; font-size: 0.95rem; height: 46px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
-.food-grid { margin-top: 12px; display: grid; gap: 10px; }
-.state-msg { margin-top: 12px; border: 1.5px dashed var(--ff-border-soft); border-radius: 10px; color: var(--text-color-secondary); padding: 12px; }
-.state-msg.err { color: #fca5a5; border-color: #7f1d1d; }
-.add-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.form-card { border: 1.5px solid var(--ff-border-soft); border-radius: 12px; padding: 12px; }
-.form-card h3 { margin: 0; color: var(--text-color); font-size: 1rem; }
-.form-card p { margin: 4px 0 10px; color: var(--text-color-secondary); font-size: 0.82rem; }
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* ── Hero ── */
+.builder-hero {
+  border: 1.5px solid var(--ff-border-strong);
+  border-radius: 18px;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.builder-hero h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.45rem;
+  font-weight: 700;
+}
+
+.hero-macro-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.hero-macro-card {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-left: 4px solid rgba(255, 255, 255, 0.25);
+}
+
+.hero-macro-calories { border-left-color: #ff8a00; }
+.hero-macro-protein  { border-left-color: #3a86ff; }
+.hero-macro-carbs    { border-left-color: #43aa8b; }
+.hero-macro-fat      { border-left-color: #ff5d73; }
+
+.hero-macro-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.hero-macro-card strong {
+  display: block;
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.hero-macro-card span {
+  display: block;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hero-date-row {
+  display: flex;
+  align-items: center;
+}
+
+/* ── Search card ── */
+.search-card {
+  background: var(--main-color, #fff);
+  border: 1.5px solid var(--ff-border-strong);
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.search-controls {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 8px;
+}
+
+.search-controls input,
+.search-controls select {
+  border: 1.5px solid var(--ff-border-soft);
+  background: var(--main-color);
+  color: var(--text-color);
+  border-radius: 10px;
+  padding: 9px 10px;
+  height: 44px;
+  font-size: 0.88rem;
+}
+
+.btn-search {
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 12px;
+  padding: 0 18px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  height: 44px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.btn-search:hover { background: #1d4ed8; }
+
+/* ── Food grid ── */
+.food-grid {
+  display: grid;
+  gap: 10px;
+}
+
+/* ── State messages ── */
+.state-msg {
+  border: 1.5px dashed var(--ff-border-soft);
+  border-radius: 10px;
+  color: var(--text-color-secondary);
+  padding: 12px;
+  font-size: 0.88rem;
+}
+
+.state-msg.err {
+  color: #fca5a5;
+  border-color: #7f1d1d;
+}
+
+/* ── Collapsible sections ── */
+.collapsible-section {
+  background: var(--main-color, #fff);
+  border: 1.5px solid var(--ff-border-strong);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.section-toggle {
+  width: 100%;
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-color);
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.section-toggle:hover { background: rgba(0, 0, 0, 0.02); }
+
+.section-toggle small {
+  font-weight: 500;
+  color: var(--text-color-secondary);
+  margin-left: 4px;
+}
+
+.section-toggle i {
+  color: #64748b;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.section-body {
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--ff-border-soft);
+}
+
+/* ── Add / Edit form ── */
+.add-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding-top: 12px;
+}
+
+.form-card {
+  border: 1.5px solid var(--ff-border-soft);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.form-card h3 {
+  margin: 0 0 10px;
+  color: var(--text-color);
+  font-size: 0.95rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
 .form-grid label { display: grid; gap: 4px; }
-.form-grid span { color: var(--text-color-secondary); font-size: 0.74rem; }
-.form-grid input { border: 1.5px solid var(--ff-border-soft); background: var(--main-color); color: var(--text-color); border-radius: 8px; padding: 8px 9px; }
-.form-actions { margin-top: 10px; display: flex; gap: 8px; }
-.btn-save, .btn-clear { border: none; border-radius: 8px; padding: 8px 12px; font-weight: 700; }
-.btn-save { background: #16a34a; color: #fff; }
+
+.form-grid span {
+  color: var(--text-color-secondary);
+  font-size: 0.74rem;
+}
+
+.form-grid input {
+  border: 1.5px solid var(--ff-border-soft);
+  background: var(--main-color);
+  color: var(--text-color);
+  border-radius: 8px;
+  padding: 8px 9px;
+  height: 38px;
+}
+
+.form-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.btn-save, .btn-clear {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.btn-save  { background: #16a34a; color: #fff; }
 .btn-clear { background: #374151; color: #fff; }
+
 .custom-list { display: grid; gap: 8px; }
-.btn-remove-custom { border: 1px dashed #fca5a5; background: transparent; color: #fca5a5; border-radius: 8px; padding: 7px 10px; text-align: left; }
-.workspace-side { display: grid; align-content: start; gap: 10px; }
-.details-overlay { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.65); display: grid; place-items: center; padding: 16px; z-index: 1200; }
-.details-modal { width: min(460px, 100%); border: 1.5px solid var(--ff-border-strong); border-radius: 14px; padding: 14px; }
+
+.btn-remove-custom {
+  border: 1px dashed #fca5a5;
+  background: transparent;
+  color: #fca5a5;
+  border-radius: 8px;
+  padding: 7px 10px;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+
+/* ── Details modal ── */
+.details-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.65);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  z-index: 1200;
+}
+
+.details-modal {
+  width: min(460px, 100%);
+  border: 1.5px solid var(--ff-border-strong);
+  border-radius: 14px;
+  padding: 16px;
+}
+
 .details-modal h3 { margin: 0; color: var(--text-color); }
-.details-modal p { margin: 4px 0 10px; color: var(--text-color-secondary); }
-.details-macros { display: grid; gap: 6px; color: var(--text-color); }
-.details-modal button { margin-top: 12px; border: none; background: #374151; color: #fff; border-radius: 8px; padding: 8px 12px; }
+.details-modal p  { margin: 4px 0 10px; color: var(--text-color-secondary); }
+
+.details-macros {
+  display: grid;
+  gap: 6px;
+  color: var(--text-color);
+}
+
+.details-modal button {
+  margin-top: 12px;
+  border: none;
+  background: #374151;
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
 :global(body.light-theme) .nutrition-workspace {
   --ff-border-strong: rgba(15, 23, 42, 0.28);
   --ff-border-soft: rgba(15, 23, 42, 0.22);
 }
-@media (max-width: 1100px) { .workspace-layout { grid-template-columns: 1fr; } .workspace-side { order: -1; } }
-/* ─────────────────────────────────────────────────────
-   RESPONSIVE - 768px  (v0.81.10 mobile optimization)
-───────────────────────────────────────────────────── */
+
+/* ──────────────────────────────────────────────────
+   MOBILE ≤ 768px  (v0.81.15 Nutrition Mobile Cleanup)
+────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  /* ─ Global spacing compression ─ */
   .nutrition-workspace {
-    gap: 12px;
+    gap: 10px;
   }
 
-  /* ─ Hero: compact ─ */
+  /* Hero: compact */
   .builder-hero {
-    flex-direction: column;
-    gap: 8px;
+    min-height: 90px;
     padding: 16px !important;
-    border-radius: 18px !important;
-    margin-bottom: 14px !important;
-    min-height: auto !important;
-  }
-  .builder-hero h2 {
-    font-size: 1.45rem !important;
-    font-weight: 700 !important;
-    line-height: 1.2 !important;
-    margin: 0 !important;
-  }
-  .builder-hero__content { width: 100%; }
-  .builder-hero__meta {
-    width: 100%;
-    justify-content: flex-start;
-    position: relative;
-    top: auto;
-    left: auto;
-    transform: none;
-    margin-top: 0;
-    z-index: 1;
-  }
-
-  /* ─ Workspace layout: single column, side goes on top ─ */
-  .workspace-layout {
+    border-radius: 16px !important;
     gap: 12px;
   }
 
-  /* ─ Workspace main: reduce padding ─ */
-  .workspace-main {
-    padding: 10px;
-    border-radius: 14px;
+  .builder-hero h2 {
+    font-size: 1.3rem !important;
   }
 
-  /* ─ Tab bar: horizontal scroll pill bar ─ */
-  .workspace-tabs {
-    display: flex;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    white-space: nowrap;
+  /* Macros: 2×2 grid */
+  .hero-macro-grid {
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 4px;
-    border-bottom: 1.5px solid var(--ff-border-soft);
-  }
-  .workspace-tabs::-webkit-scrollbar { display: none; }
-  .workspace-tabs button {
-    flex-shrink: 0;
-    white-space: nowrap;
-    height: 38px;
-    padding-left: 14px;
-    padding-right: 14px;
-    font-size: 0.82rem;
-    border-radius: 999px;
   }
 
-  /* ─ Search card ─ */
+  .hero-macro-card {
+    padding: 8px 10px;
+    border-radius: 10px;
+    gap: 8px;
+  }
+
+  .hero-macro-icon { font-size: 1.15rem; }
+
+  .hero-macro-card strong { font-size: 1.05rem; }
+
+  .hero-macro-card span { font-size: 0.65rem; }
+
+  /* Search: stacked column */
   .search-card {
     padding: 12px;
     border-radius: 14px;
-    margin-bottom: 10px;
   }
 
-  /* ─ Search controls: stacked, compressed ─ */
   .search-controls {
     grid-template-columns: 1fr;
     gap: 8px;
   }
+
   .search-controls input,
   .search-controls select {
     height: 42px;
     font-size: 0.88rem;
-    border-radius: 10px;
-    padding: 8px 10px;
   }
+
   .btn-search {
     width: 100%;
     height: 46px;
-    font-size: 0.95rem;
-    font-weight: 700;
-    border-radius: 12px;
     justify-content: center;
   }
 
-  /* ─ Search section: normal flow (no overlap) ─ */
-  .workspace-section {
-    position: relative;
-    margin-top: 10px;
+  /* Collapsible sections */
+  .section-toggle {
+    padding: 12px 14px;
+    font-size: 0.9rem;
   }
 
-  /* ─ Add/Edit + form grids: single col ─ */
+  .section-body {
+    padding: 0 12px 12px;
+  }
+
+  /* Add/Edit: single column */
   .add-edit-grid,
   .form-grid {
     grid-template-columns: 1fr;
   }
 
-  /* ─ Food grid: tighter gap ─ */
-  .food-grid {
-    gap: 8px;
-    margin-top: 8px;
-  }
-
-  /* ─ State messages: less top margin ─ */
-  .state-msg {
-    margin-top: 8px;
-    padding: 10px;
-  }
+  /* Food grid: tighter */
+  .food-grid { gap: 8px; }
 }
 
-/* ─────────────────────────────────────────────────────
-   RESPONSIVE - 480px  (small phones)
-───────────────────────────────────────────────────── */
+/* ──────────────────────────────────────────────────
+   SMALL PHONES ≤ 480px
+────────────────────────────────────────────────── */
 @media (max-width: 480px) {
-  .builder-hero h2 {
-    font-size: 1.2rem !important;
-  }
-  .builder-hero p {
-    font-size: 0.8rem !important;
-  }
-  .workspace-tabs button {
-    height: 34px;
-    padding-left: 10px;
-    padding-right: 10px;
-    font-size: 0.75rem;
-  }
-  .workspace-main {
-    padding: 8px;
-  }
+  .builder-hero h2  { font-size: 1.15rem !important; }
+  .hero-macro-card strong { font-size: 0.95rem; }
+  .hero-macro-icon  { font-size: 1rem; }
 }
 </style>
