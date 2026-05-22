@@ -288,7 +288,6 @@ onMounted(async () => {
 
       <div class="builder-hero__content">
         <h2>Nutrition Workspace</h2>
-        <p>Search, review, and log foods in one workflow.</p>
       </div>
       <div class="builder-hero__meta">
         <DateDropDown v-model="selectedDateRaw" compact />
@@ -310,15 +309,17 @@ onMounted(async () => {
         </nav>
 
         <section v-if="activeTab === 'search'" class="workspace-section">
-          <div class="search-controls">
-            <input v-model="foodSearchQuery" type="text" placeholder="Search food by name" @keyup.enter="searchFood" />
-            <select v-model="selectedCategory">
-              <option v-for="category in categories" :key="category" :value="category">{{ category }}</option>
-            </select>
-            <select v-model="selectedBrand">
-              <option v-for="brand in brands" :key="brand" :value="brand">{{ brand }}</option>
-            </select>
-            <button type="button" class="btn-search" @click="searchFood">Search</button>
+          <div class="search-card">
+            <div class="search-controls">
+              <input v-model="foodSearchQuery" type="text" placeholder="Search food by name" @keyup.enter="searchFood" />
+              <select v-model="selectedCategory">
+                <option v-for="category in categories" :key="category" :value="category">{{ category }}</option>
+              </select>
+              <select v-model="selectedBrand">
+                <option v-for="brand in brands" :key="brand" :value="brand">{{ brand }}</option>
+              </select>
+              <button type="button" class="btn-search" @click="searchFood"><i class="fa-solid fa-magnifying-glass"></i> Search Foods</button>
+            </div>
           </div>
 
           <p v-if="searchError" class="state-msg err">{{ searchError }}</p>
@@ -437,18 +438,18 @@ onMounted(async () => {
   gap: 14px;
 }
 .builder-hero { border: 1.5px solid var(--ff-border-strong); border-radius: 16px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
-.builder-hero h2 { margin: 0; color: #ffffff; }
-.builder-hero p { margin: 4px 0 0; color: #cbd5e1; }
+.builder-hero h2 { margin: 0; color: #ffffff; font-size: 1.45rem; font-weight: 700; }
 .builder-hero__meta { display: flex; align-items: center; justify-content: flex-end; }
 .workspace-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; }
 .workspace-main { border: 1.5px solid var(--ff-border-strong); border-radius: 16px; padding: 14px; }
 .workspace-tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1.5px solid var(--ff-border-soft); padding-bottom: 10px; }
-.workspace-tabs button { border: 1.5px solid var(--ff-border-soft); background: transparent; color: var(--text-color); border-radius: 999px; padding: 6px 12px; font-size: 0.82rem; font-weight: 600; }
-.workspace-tabs button.active { border-color: #4f46e5; color: #a5b4fc; background: rgba(79, 70, 229, 0.18); }
+.workspace-tabs button { border: 1px solid #d9e2ef; background: #fff; color: #374151; border-radius: 999px; padding: 0 14px; height: 38px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all .18s; }
+.workspace-tabs button.active { border-color: #2f6df6; background: #eef4ff; color: #1d4ed8; font-weight: 700; }
 .workspace-section { margin-top: 12px; }
+.search-card { background: #fff; border: 1px solid #e2eaf3; border-radius: 16px; padding: 14px; box-shadow: 0 4px 12px rgba(0,0,0,.05); margin-bottom: 12px; }
 .search-controls { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 8px; }
 .search-controls input, .search-controls select { border: 1.5px solid var(--ff-border-soft); background: var(--main-color); color: var(--text-color); border-radius: 10px; padding: 9px 10px; }
-.btn-search { border: none; background: #2563eb; color: #fff; border-radius: 10px; padding: 9px 12px; font-weight: 700; }
+.btn-search { border: none; background: #2563eb; color: #fff; border-radius: 12px; padding: 9px 16px; font-weight: 700; font-size: 0.95rem; height: 46px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
 .food-grid { margin-top: 12px; display: grid; gap: 10px; }
 .state-msg { margin-top: 12px; border: 1.5px dashed var(--ff-border-soft); border-radius: 10px; color: var(--text-color-secondary); padding: 12px; }
 .state-msg.err { color: #fca5a5; border-color: #7f1d1d; }
@@ -487,35 +488,25 @@ onMounted(async () => {
     gap: 12px;
   }
 
-  /* ─ Hero: compact height, no overlap with search ─ */
+  /* ─ Hero: compact ─ */
   .builder-hero {
     flex-direction: column;
     gap: 8px;
-    padding-top: 16px !important;
-    padding-bottom: 16px !important;
-    padding-left: 14px !important;
-    padding-right: 14px !important;
+    padding: 16px !important;
     border-radius: 18px !important;
-    margin-bottom: 12px !important;
+    margin-bottom: 14px !important;
     min-height: auto !important;
   }
   .builder-hero h2 {
-    font-size: 1.35rem !important;
+    font-size: 1.45rem !important;
     font-weight: 700 !important;
     line-height: 1.2 !important;
     margin: 0 !important;
-  }
-  .builder-hero p {
-    font-size: 0.82rem !important;
-    opacity: 0.9;
-    margin-top: 4px !important;
-    margin-bottom: 0 !important;
   }
   .builder-hero__content { width: 100%; }
   .builder-hero__meta {
     width: 100%;
     justify-content: flex-start;
-    /* ensure date control never overlaps the hero card */
     position: relative;
     top: auto;
     left: auto;
@@ -535,7 +526,7 @@ onMounted(async () => {
     border-radius: 14px;
   }
 
-  /* ─ Tab bar: horizontal scroll, compact pills ─ */
+  /* ─ Tab bar: horizontal scroll pill bar ─ */
   .workspace-tabs {
     display: flex;
     overflow-x: auto;
@@ -551,18 +542,24 @@ onMounted(async () => {
   .workspace-tabs button {
     flex-shrink: 0;
     white-space: nowrap;
-    height: 36px;
-    padding-left: 12px;
-    padding-right: 12px;
-    font-size: 0.8rem;
-    border-radius: 18px;
+    height: 38px;
+    padding-left: 14px;
+    padding-right: 14px;
+    font-size: 0.82rem;
+    border-radius: 999px;
+  }
+
+  /* ─ Search card ─ */
+  .search-card {
+    padding: 12px;
+    border-radius: 14px;
+    margin-bottom: 10px;
   }
 
   /* ─ Search controls: stacked, compressed ─ */
   .search-controls {
     grid-template-columns: 1fr;
     gap: 8px;
-    padding: 10px 0 0;
   }
   .search-controls input,
   .search-controls select {
@@ -573,10 +570,11 @@ onMounted(async () => {
   }
   .btn-search {
     width: 100%;
-    height: 42px;
-    font-size: 0.9rem;
+    height: 46px;
+    font-size: 0.95rem;
+    font-weight: 700;
     border-radius: 12px;
-    padding: 0 12px;
+    justify-content: center;
   }
 
   /* ─ Search section: normal flow (no overlap) ─ */

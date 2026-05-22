@@ -11,24 +11,23 @@ const props = defineProps({
   <section class="macro-summary panel panel-bg">
     <div class="macro-summary__head">
       <h3>Daily Summary</h3>
-      <p>Visible at all times, but secondary to your workflow.</p>
     </div>
 
     <div class="macro-summary__grid">
-      <article>
-        <span>Calories</span>
+      <article class="macro-calories">
+        <span><span class="macro-emoji">🔥</span> Calories</span>
         <strong>{{ total.calories || 0 }}</strong>
       </article>
-      <article>
-        <span>Protein</span>
+      <article class="macro-protein">
+        <span><span class="macro-emoji">🥩</span> Protein</span>
         <strong>{{ total.protein || 0 }}g</strong>
       </article>
-      <article>
-        <span>Carbs</span>
+      <article class="macro-carbs">
+        <span><span class="macro-emoji">🌾</span> Carbs</span>
         <strong>{{ total.carbs || 0 }}g</strong>
       </article>
-      <article>
-        <span>Fat</span>
+      <article class="macro-fat">
+        <span><span class="macro-emoji">🥑</span> Fat</span>
         <strong>{{ total.fat || 0 }}g</strong>
       </article>
     </div>
