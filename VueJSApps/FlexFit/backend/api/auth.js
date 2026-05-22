@@ -178,6 +178,43 @@ router.get('/debug/ping', (req, res) => {
   });
 });
 
+// GET /api/debug/login-diagnostics
+// Returns safe server diagnostics when DEBUG=true; contact-admin fallback otherwise.
+// NEVER exposes passwords, secrets, tokens, or connection strings.
+const debugEnabled = String(process.env.DEBUG || '').toLowerCase() === 'true';
+
+router.get('/debug/login-diagnostics', (req, res) => {
+  if (!debugEnabled) {
+    return res.json({
+      enabled: false,
+      message: 'Contact administrator for details.',
+    });
+  }
+
+  return res.json({
+    enabled: true,
+    environment: {
+      nodeEnv: process.env.NODE_ENV || 'unknown',
+      debug: process.env.DEBUG || 'false',
+      frontendConfigured: !!process.env.FRONTEND_URL,
+      corsConfigured: !!process.env.CORS_ORIGINS,
+      sessionCookieSecure: process.env.SESSION_COOKIE_SECURE || 'not set',
+    },
+    database: {
+      hostConfigured: !!process.env.DB_HOST,
+      databaseConfigured: !!process.env.DB_DATABASE,
+      userConfigured: !!process.env.DB_USER,
+      port: process.env.DB_PORT || '3306 (default)',
+    },
+    server: {
+      timestamp: new Date().toISOString(),
+      uptime: Math.round(process.uptime()),
+      memory: process.memoryUsage(),
+      platform: process.platform,
+    },
+  });
+});
+
 // POST /api/login
 router.post('/login', async (req, res) => {
     try {

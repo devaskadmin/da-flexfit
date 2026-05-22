@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.81.9] — Controlled Debug Diagnostics System
+
+- Added `GET /api/debug/login-diagnostics` backend endpoint — returns safe structured data only when `DEBUG=true`; returns `"Contact administrator for details."` otherwise
+- Endpoint never exposes passwords, secrets, tokens, or connection strings
+- Frontend fetches server diagnostics on diagnostics modal open
+- Modal shows structured Environment / Database / Server sections when `DEBUG=true`
+- Modal shows contact-admin message when `DEBUG=false` (production default)
+- Client-side diagnostics moved into collapsible `<details>` block
+- Diagnostics button restyled: amber `#fff8e1` background, `#ffb300` border, dark amber text — clearly visible on glass card
+- Button wrapped in `.login-diagnostics-row` flex centering container
+- Button only shown after a login/server error (behaviour unchanged)
+
+---
+
 ## [0.81.8a] — Login Diagnostics Button Visibility Fix
 
 - Removed `btn-outline-light` Bootstrap class from diagnostics button (root cause of invisible styling)

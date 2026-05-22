@@ -129,12 +129,29 @@ const buildCompactLoginMessage = ({ status, fallbackMessage } = {}) => {
   return fallbackMessage || `Sign-in failed (${status}).`;
 };
 
+const serverDiagnostics = ref(null);
+const diagnosticsLoading = ref(false);
+
+const fetchServerDiagnostics = async () => {
+  diagnosticsLoading.value = true;
+  try {
+    const res = await axios.get(`${API_BASE}/api/debug/login-diagnostics`, { withCredentials: true });
+    serverDiagnostics.value = res.data || null;
+  } catch {
+    serverDiagnostics.value = { enabled: false, message: 'Contact administrator for details.' };
+  } finally {
+    diagnosticsLoading.value = false;
+  }
+};
+
 const openDiagnosticsModal = () => {
   showDiagnosticsModal.value = true;
+  fetchServerDiagnostics();
 };
 
 const closeDiagnosticsModal = () => {
   showDiagnosticsModal.value = false;
+  serverDiagnostics.value = null;
 };
 
 const setLoginError = ({
@@ -433,14 +450,15 @@ const demoLogin = async (role) => {
               <div class="small mt-1">Login diagnostics available.</div>
             </div>
 
-            <button
-              v-if="errorMsg"
-              type="button"
-              class="btn w-100 auth-button auth-button-outline"
-              @click="openDiagnosticsModal"
-            >
-              View Login Diagnostics
-            </button>
+            <div v-if="errorMsg" class="login-diagnostics-row">
+              <button
+                type="button"
+                class="btn auth-button auth-button-outline"
+                @click="openDiagnosticsModal"
+              >
+                <i class="fa-regular fa-magnifying-glass me-1"></i> View Login Diagnostics
+              </button>
+            </div>
 
             <button class="btn btn-primary w-100 login-btn auth-button" :disabled="isSubmitting">
               {{ isSubmitting ? 'Signing in...' : 'Sign in' }}
@@ -490,6 +508,7 @@ const demoLogin = async (role) => {
             <button type="button" class="btn-close btn-close-white" aria-label="Close" @click="closeDiagnosticsModal"></button>
           </div>
           <div class="login-diagnostics-body">
+            <!-- Connection limit banner -->
             <div v-if="isConnectionLimitError" class="login-diag-conn-limit">
               <p class="login-diag-conn-title">Database server connection limit reached.</p>
               <p class="login-diag-conn-sub">FlexFit login succeeded but database resources were unavailable.</p>
@@ -501,7 +520,51 @@ const demoLogin = async (role) => {
                 <li>Contact administrator</li>
               </ul>
             </div>
-            <pre class="login-diagnostics-pre">{{ loginDiagnostics }}</pre>
+
+            <!-- Server diagnostics -->
+            <div v-if="diagnosticsLoading" class="login-diag-loading">Loading diagnostics…</div>
+
+            <template v-else-if="serverDiagnostics">
+              <!-- DEBUG disabled: show contact message only -->
+              <div v-if="!serverDiagnostics.enabled" class="login-diag-contact">
+                <i class="fa-regular fa-circle-info login-diag-contact-icon"></i>
+                {{ serverDiagnostics.message || 'Contact administrator for details.' }}
+              </div>
+
+              <!-- DEBUG enabled: structured sections -->
+              <template v-else>
+                <div class="login-diag-section">
+                  <div class="login-diag-section-title">Environment</div>
+                  <div class="login-diag-row"><span>Node Mode</span><code>{{ serverDiagnostics.environment?.nodeEnv }}</code></div>
+                  <div class="login-diag-row"><span>Debug Enabled</span><code>{{ serverDiagnostics.environment?.debug }}</code></div>
+                  <div class="login-diag-row"><span>Frontend Configured</span><code>{{ serverDiagnostics.environment?.frontendConfigured }}</code></div>
+                  <div class="login-diag-row"><span>CORS Configured</span><code>{{ serverDiagnostics.environment?.corsConfigured }}</code></div>
+                  <div class="login-diag-row"><span>Secure Cookies</span><code>{{ serverDiagnostics.environment?.sessionCookieSecure }}</code></div>
+                </div>
+
+                <div class="login-diag-section">
+                  <div class="login-diag-section-title">Database</div>
+                  <div class="login-diag-row"><span>Host Configured</span><code>{{ serverDiagnostics.database?.hostConfigured }}</code></div>
+                  <div class="login-diag-row"><span>DB Configured</span><code>{{ serverDiagnostics.database?.databaseConfigured }}</code></div>
+                  <div class="login-diag-row"><span>User Configured</span><code>{{ serverDiagnostics.database?.userConfigured }}</code></div>
+                  <div class="login-diag-row"><span>Port</span><code>{{ serverDiagnostics.database?.port }}</code></div>
+                </div>
+
+                <div class="login-diag-section">
+                  <div class="login-diag-section-title">Server</div>
+                  <div class="login-diag-row"><span>Timestamp</span><code>{{ serverDiagnostics.server?.timestamp }}</code></div>
+                  <div class="login-diag-row"><span>Uptime</span><code>{{ serverDiagnostics.server?.uptime }}s</code></div>
+                  <div class="login-diag-row"><span>Heap Used</span><code>{{ Math.round((serverDiagnostics.server?.memory?.heapUsed || 0) / 1024 / 1024) }} MB</code></div>
+                  <div class="login-diag-row"><span>Platform</span><code>{{ serverDiagnostics.server?.platform }}</code></div>
+                </div>
+              </template>
+            </template>
+
+            <!-- Client-side diagnostics (always shown for copy) -->
+            <details class="login-diag-client-details">
+              <summary>Client diagnostics</summary>
+              <pre class="login-diagnostics-pre">{{ loginDiagnostics }}</pre>
+            </details>
           </div>
           <div class="login-diagnostics-footer">
             <button type="button" class="btn btn-outline-light btn-sm" @click="copyLoginDiagnostics">
@@ -718,31 +781,35 @@ const demoLogin = async (role) => {
   margin-top: 8px;
 }
 
-/* ── Login diagnostics button — Bootstrap overrides defeated ── */
+/* ── Login diagnostics button row ── */
+.login-diagnostics-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+/* ── Diagnostics button — amber, defeats Bootstrap ── */
 button.auth-button-outline,
 .auth-button-outline {
-  background: #1e3a6d !important;
-  color: #ffffff !important;
-  border: 2px solid #4f79d9 !important;
+  background: #fff8e1 !important;
+  color: #8a5300 !important;
+  border: 2px solid #ffb300 !important;
   opacity: 1 !important;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  min-height: 46px;
+  min-height: 44px;
   font-weight: 700;
   border-radius: 10px;
-  margin-top: 12px;
-  margin-bottom: 14px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
-  transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+  padding: 8px 20px;
+  transition: background 0.2s ease, transform 0.2s ease;
 }
 
 button.auth-button-outline:hover,
 .auth-button-outline:hover {
-  background: #294d91 !important;
+  background: #fff3c4 !important;
   transform: translateY(-1px);
-  border-color: #6d95ff !important;
 }
 
 button.auth-button-outline:disabled,
@@ -876,6 +943,88 @@ button.auth-button-outline:disabled,
   line-height: 1.38;
   color: #d7e4ff;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+/* ── Diagnostics modal: loading / contact-admin ── */
+.login-diag-loading {
+  color: #a9c4ff;
+  font-size: 0.84rem;
+  padding: 10px 0;
+  text-align: center;
+}
+
+.login-diag-contact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #d7e4ff;
+  font-size: 0.86rem;
+  margin-bottom: 10px;
+}
+
+.login-diag-contact-icon {
+  color: #7ba8ff;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* ── Diagnostics modal: structured sections ── */
+.login-diag-section {
+  margin-bottom: 14px;
+}
+
+.login-diag-section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #7ba8ff;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.login-diag-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 0.81rem;
+  color: #c5d6f5;
+}
+
+.login-diag-row span {
+  color: #8aa8d8;
+  flex-shrink: 0;
+}
+
+.login-diag-row code {
+  background: rgba(255,255,255,0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  color: #d7e4ff;
+  word-break: break-all;
+}
+
+/* ── Client diagnostics collapsible ── */
+.login-diag-client-details {
+  margin-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 8px;
+}
+
+.login-diag-client-details summary {
+  font-size: 0.78rem;
+  color: #7ba8ff;
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 6px;
 }
 
 .login-diag-conn-limit {
