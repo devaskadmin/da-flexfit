@@ -300,7 +300,8 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div class="hero-date-row">
+      <div class="nutrition-date-wrapper">
+        <span class="nutrition-date-label">Select Date</span>
         <DateDropDown v-model="selectedDateRaw" compact />
       </div>
     </section>
@@ -513,9 +514,58 @@ onMounted(async () => {
   letter-spacing: 0.04em;
 }
 
-.hero-date-row {
+.nutrition-date-wrapper {
+  width: 100%;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 6px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.nutrition-date-label {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Constrain the third-party datepicker to fit inside the hero */
+.nutrition-date-wrapper :deep(.input-group) {
+  width: 100% !important;
+  max-width: 100% !important;
+  justify-content: flex-start !important;
+  flex-wrap: nowrap !important;
+  overflow: hidden !important;
+}
+
+.nutrition-date-wrapper :deep(.full-datepicker) {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.nutrition-date-wrapper :deep(.mx-datepicker) {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.nutrition-date-wrapper :deep(.mx-input) {
+  width: 100% !important;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  padding: 0 14px;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+}
+
+.nutrition-date-wrapper :deep(.mx-icon-calendar),
+.nutrition-date-wrapper :deep(.mx-icon-clear) {
+  color: rgba(255, 255, 255, 0.75);
 }
 
 /* ── Search card ── */
@@ -750,14 +800,41 @@ onMounted(async () => {
 
   /* Hero: compact */
   .builder-hero {
-    min-height: 90px;
+    min-height: auto;
     padding: 16px !important;
     border-radius: 16px !important;
     gap: 12px;
+    overflow: hidden;
   }
 
   .builder-hero h2 {
     font-size: 1.3rem !important;
+  }
+
+  /* Date wrapper: full-width, no overflow */
+  .nutrition-date-wrapper {
+    width: 100%;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .nutrition-date-wrapper :deep(.input-group) {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex-wrap: nowrap !important;
+    overflow: hidden !important;
+  }
+
+  .nutrition-date-wrapper :deep(.full-datepicker),
+  .nutrition-date-wrapper :deep(.mx-datepicker) {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .nutrition-date-wrapper :deep(.mx-input) {
+    height: 48px;
+    font-size: 0.88rem;
   }
 
   /* Macros: 2×2 grid */
