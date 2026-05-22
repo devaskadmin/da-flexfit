@@ -1226,41 +1226,54 @@ textarea::placeholder {
   opacity: 1;
 }
 
-@media (max-width: 768px) {
-  .settings-layout { flex-direction: column; }
-  .ff-settings-nav { flex-direction: row; flex-wrap: wrap; width: 100%; }
-  .s-nav-item { flex: 1 1 auto; justify-content: center; }
-  .ff-form-grid { grid-template-columns: 1fr; }
-  .ff-field.full-width { grid-column: 1; }
-  .theme-tiles { flex-direction: column; }
-}
-
 /* ── Mobile (≤ 768px) — settings layout, nav, panels ───────────── */
 @media (max-width: 768px) {
+  /* Prevent horizontal overflow */
+  .settings-page,
+  .settings-canvas,
+  .settings-layout,
+  .s-panel {
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   /* Page canvas: reduce gap */
   .settings-canvas { gap: 12px; }
 
-  /* Header: stack heading and save button vertically */
+  /* Layout: stack vertically */
+  .settings-layout {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Header: compact, round, stack save btn */
   .settings-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: 10px;
     padding: 14px 16px;
+    border-radius: 16px;
+    margin-bottom: 12px;
   }
+  .settings-title    { font-size: 1.35rem; }
+  .settings-subtitle { font-size: 0.85rem; }
   .ff-btn-save {
     width: 100%;
+    height: 42px;
     justify-content: center;
-    padding: 11px 20px;
+    padding: 0 20px;
+    border-radius: 12px;
   }
 
-  /* Nav: horizontal scrollable row on mobile */
+  /* Nav: horizontal scrollable pill bar */
   .ff-settings-nav {
     flex-direction: row !important;
-    overflow-x: auto;
     flex-wrap: nowrap !important;
+    overflow-x: auto;
     scrollbar-width: none;
-    padding: 6px 8px;
     width: 100% !important;
+    padding: 6px 8px;
     gap: 4px;
     border-radius: 10px;
   }
@@ -1268,12 +1281,16 @@ textarea::placeholder {
   .s-nav-item {
     flex: 0 0 auto !important;
     flex-direction: column;
-    gap: 4px;
-    padding: 8px 12px;
     align-items: center;
-    font-size: 0.78rem;
-    border-radius: 8px;
+    justify-content: center;
+    gap: 3px;
+    height: 38px;
+    padding: 0 14px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    flex-shrink: 0;
     text-align: center;
+    white-space: nowrap;
   }
   .s-nav-icon {
     width: 26px;
@@ -1281,23 +1298,56 @@ textarea::placeholder {
     font-size: 0.74rem;
   }
 
-  /* Content panel: reduce padding */
+  /* Content panels: reduce padding */
   .s-panel {
-    padding: 16px 16px;
+    padding: 14px;
+    width: 100%;
   }
   .s-panel-head {
     margin-bottom: 14px;
     padding-bottom: 12px;
   }
 
-  /* Avatar row: compact */
+  /* Avatar row: compact, row layout */
   .avatar-row {
+    flex-direction: row;
+    align-items: center;
     gap: 12px;
   }
   .avatar-circle {
     width: 56px;
     height: 56px;
+    flex-shrink: 0;
   }
+  .avatar-info .btn-avatar {
+    height: 30px;
+    font-size: 0.75rem;
+    padding: 0 12px;
+  }
+
+  /* Form inputs: mobile-friendly height */
+  .form-control,
+  .form-select {
+    height: 40px;
+    font-size: 0.88rem;
+    border-radius: 10px;
+    padding: 8px 10px;
+  }
+  textarea.form-control {
+    height: auto;
+    min-height: 80px;
+  }
+  .ff-label {
+    font-size: 0.75rem;
+    margin-bottom: 4px;
+  }
+
+  /* Two-column grid on ≥ 430px, single below */
+  .ff-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .ff-field.full-width { grid-column: 1 / -1; }
 
   /* Goal chips: tighter */
   .goal-chip {
@@ -1305,25 +1355,43 @@ textarea::placeholder {
     font-size: 0.78rem;
   }
 
+  /* Theme tiles: stack */
+  .theme-tiles { flex-direction: column; }
+
   /* Danger zone: stack */
   .danger-inner {
     flex-direction: column;
     gap: 12px;
   }
-  .btn-delete-account {
+  .btn-delete-account { width: 100%; }
+
+  /* Sticky save bar at bottom on mobile */
+  .ff-btn-save-sticky {
+    position: sticky;
+    bottom: 12px;
+    z-index: 20;
     width: 100%;
+    height: 44px;
+    border-radius: 12px;
+    margin-top: 8px;
   }
 }
 
-/* ── Small mobile (≤ 480px) — single-column forms ──────────────── */
-@media (max-width: 480px) {
-  .settings-title  { font-size: 1.2rem; }
-  .settings-header { padding: 12px 14px; }
-  .s-panel         { padding: 12px; }
+/* ── Small mobile (≤ 430px) — single-column forms ──────────────── */
+@media (max-width: 430px) {
+  .ff-form-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Tiny mobile (≤ 390px) ──────────────────────────────────────── */
+@media (max-width: 390px) {
+  .settings-title  { font-size: 1.15rem; }
+  .settings-header { padding: 12px 12px; }
+  .s-panel         { padding: 10px; }
 
   .s-nav-item {
-    padding: 6px 10px;
-    font-size: 0.72rem;
+    padding: 0 10px;
+    font-size: 0.75rem;
+    height: 34px;
   }
   .s-nav-label { display: none; }   /* icon-only on tiny phones */
 }
