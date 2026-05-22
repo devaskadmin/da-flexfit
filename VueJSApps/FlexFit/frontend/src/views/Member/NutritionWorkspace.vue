@@ -1,6 +1,5 @@
 ﻿<script setup>
 import { computed, onMounted, ref } from 'vue';
-import DateDropDown from '@/components/DropDownDate.vue';
 import NutritionFoodCard from '@/components/nutrition-workspace/NutritionFoodCard.vue';
 import NutritionLogList from '@/components/nutrition-workspace/NutritionLogList.vue';
 
@@ -18,6 +17,14 @@ const selectedDateISO = computed(() => {
   const month = `${d.getMonth() + 1}`.padStart(2, '0');
   const day = `${d.getDate()}`.padStart(2, '0');
   return `${d.getFullYear()}-${month}-${day}`;
+});
+
+const selectedDateInput = computed({
+  get: () => selectedDateISO.value,
+  set: (val) => {
+    const d = new Date(val + 'T00:00:00');
+    if (!isNaN(d.getTime())) selectedDateRaw.value = d;
+  },
 });
 
 const foodSearchQuery = ref('');
@@ -302,7 +309,11 @@ onMounted(async () => {
 
       <div class="nutrition-date-wrapper">
         <span class="nutrition-date-label">Select Date</span>
-        <DateDropDown v-model="selectedDateRaw" compact />
+        <input
+          type="date"
+          v-model="selectedDateInput"
+          class="nutrition-date-input"
+        />
       </div>
     </section>
 
@@ -520,7 +531,6 @@ onMounted(async () => {
   flex-direction: column;
   gap: 6px;
   box-sizing: border-box;
-  overflow: hidden;
 }
 
 .nutrition-date-label {
@@ -531,41 +541,27 @@ onMounted(async () => {
   letter-spacing: 0.05em;
 }
 
-/* Constrain the third-party datepicker to fit inside the hero */
-.nutrition-date-wrapper :deep(.input-group) {
-  width: 100% !important;
-  max-width: 100% !important;
-  justify-content: flex-start !important;
-  flex-wrap: nowrap !important;
-  overflow: hidden !important;
-}
-
-.nutrition-date-wrapper :deep(.full-datepicker) {
-  min-width: 0 !important;
-  max-width: 100% !important;
-  width: 100% !important;
-}
-
-.nutrition-date-wrapper :deep(.mx-datepicker) {
-  width: 100% !important;
-  max-width: 100% !important;
-}
-
-.nutrition-date-wrapper :deep(.mx-input) {
-  width: 100% !important;
-  height: 44px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  color: #fff;
+.nutrition-date-input {
+  width: 100%;
+  max-width: 320px;
+  height: 48px;
   padding: 0 14px;
-  font-size: 0.9rem;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid #d6dce8;
   box-sizing: border-box;
+  appearance: auto;
+  -webkit-appearance: auto;
+  opacity: 1;
+  cursor: pointer;
 }
 
-.nutrition-date-wrapper :deep(.mx-icon-calendar),
-.nutrition-date-wrapper :deep(.mx-icon-clear) {
-  color: rgba(255, 255, 255, 0.75);
+.nutrition-date-input::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  cursor: pointer;
 }
 
 /* ── Search card ── */
@@ -811,28 +807,14 @@ onMounted(async () => {
     font-size: 1.3rem !important;
   }
 
-  /* Date wrapper: full-width, no overflow */
+  /* Date wrapper: full-width on mobile */
   .nutrition-date-wrapper {
     width: 100%;
-    padding: 0;
-    overflow: hidden;
   }
 
-  .nutrition-date-wrapper :deep(.input-group) {
-    width: 100% !important;
-    max-width: 100% !important;
-    flex-wrap: nowrap !important;
-    overflow: hidden !important;
-  }
-
-  .nutrition-date-wrapper :deep(.full-datepicker),
-  .nutrition-date-wrapper :deep(.mx-datepicker) {
-    min-width: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  .nutrition-date-wrapper :deep(.mx-input) {
+  .nutrition-date-input {
+    max-width: 100%;
+    width: 100%;
     height: 48px;
     font-size: 0.88rem;
   }
