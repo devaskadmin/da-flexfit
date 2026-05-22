@@ -1,5 +1,5 @@
 ﻿<script setup>
-import { ref, reactive, onMounted, watch, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, watch, computed } from 'vue'
 import { API_BASE } from '@/config/env';
 import { useAuth } from '@/composable/useAuth';
 import AvatarModal from '@/components/AvatarModal.vue';
@@ -138,6 +138,18 @@ const visibleTabs = computed(() => {
   if (isAdmin.value) return tabs
   return tabs.filter((tab) => tab.id !== 'display')
 })
+
+// Mobile navigation
+const isMobile = ref(typeof window !== 'undefined' && window.innerWidth <= 768)
+const mobileMenuOpen = ref(false)
+const tabEmoji = {
+  profile:       '👤',
+  fitness:       '🏋️',
+  notifications: '🔔',
+  display:       '🖥️',
+  security:      '🛡️',
+}
+const handleResize = () => { isMobile.value = window.innerWidth <= 768 }
 
 const goalOptions = [
   { value: 'lose_weight',         label: 'Lose Weight',   icon: 'fa-solid fa-scale-unbalanced-flip' },
@@ -379,6 +391,11 @@ onMounted(() => {
   authStore.fetchUser()
   loadDisplayFromLocalStorage();
   loadUserSettings();
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 
 watch(
@@ -432,8 +449,8 @@ watch(
 
     <div class="settings-layout">
 
-      <!-- Sidebar nav -->
-      <nav class="ff-settings-nav panel-bg">
+      <!-- Desktop sidebar nav -->
+      <nav v-if="!isMobile" class="ff-settings-nav panel-bg">
         <button v-for="tab in visibleTabs" :key="tab.id"
           class="s-nav-item"
           :class="{ active: activeTab === tab.id, inactive: activeTab !== tab.id }"
@@ -445,6 +462,31 @@ watch(
           <span class="s-nav-label">{{ tab.label }}</span>
         </button>
       </nav>
+
+      <!-- Mobile dropdown nav -->
+      <div v-if="isMobile" class="mobile-nav-dropdown">
+        <button
+          class="mobile-nav-trigger"
+          :class="{ open: mobileMenuOpen }"
+          @click="mobileMenuOpen = !mobileMenuOpen">
+          <span class="mobile-nav-selected">
+            <span class="mobile-nav-emoji">{{ tabEmoji[activeTab] }}</span>
+            <span class="mobile-nav-label">{{ visibleTabs.find(t => t.id === activeTab)?.label }}</span>
+          </span>
+          <i class="fa-solid fa-chevron-down mobile-nav-chevron" :class="{ rotated: mobileMenuOpen }"></i>
+        </button>
+        <div class="mobile-nav-menu" :class="{ open: mobileMenuOpen }">
+          <button
+            v-for="(tab, idx) in visibleTabs"
+            :key="tab.id"
+            class="mobile-nav-item"
+            :class="{ active: activeTab === tab.id, 'no-border': idx === visibleTabs.length - 1 }"
+            @click="activeTab = tab.id; mobileMenuOpen = false">
+            <span class="mobile-nav-item-emoji">{{ tabEmoji[tab.id] }}</span>
+            <span>{{ tab.label }}</span>
+          </button>
+        </div>
+      </div>
 
       <!-- Main content -->
       <div class="settings-content">
@@ -1226,7 +1268,103 @@ textarea::placeholder {
   opacity: 1;
 }
 
-/* ── Mobile (≤ 768px) — settings layout, nav, panels ───────────── */
+/* ── Mobile dropdown nav ───────────────────────────────────────── */
+.mobile-nav-dropdown {
+  width: 100%;
+  position: relative;
+  margin-bottom: 4px;
+}
+.mobile-nav-trigger {
+  width: 100%;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: #fff;
+  border: 1px solid #dbe5f3;
+  border-radius: 14px;
+  box-shadow: 0 3px 10px rgba(0,0,0,.05);
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.mobile-nav-trigger.open {
+  background: #eef4ff;
+  border-color: #2f6df6;
+}
+:global(body.dark-theme) .mobile-nav-trigger,
+:global(body:not(.light-theme)) .mobile-nav-trigger {
+  background: rgba(255,255,255,.07);
+  border-color: rgba(255,255,255,.15);
+  color: #e2e8f0;
+}
+:global(body.dark-theme) .mobile-nav-trigger.open,
+:global(body:not(.light-theme)) .mobile-nav-trigger.open {
+  background: rgba(47,109,246,.18);
+  border-color: #2f6df6;
+}
+.mobile-nav-selected {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #1e4db7;
+}
+:global(body:not(.light-theme)) .mobile-nav-selected { color: #93c5fd; }
+.mobile-nav-emoji  { font-size: 1.1rem; line-height: 1; }
+.mobile-nav-chevron {
+  font-size: 0.8rem;
+  color: #64748b;
+  transition: transform .25s ease;
+}
+.mobile-nav-chevron.rotated { transform: rotate(180deg); }
+
+.mobile-nav-menu {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height .25s ease, opacity .2s ease;
+  opacity: 0;
+  margin-top: 8px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(0,0,0,.08);
+  display: flex;
+  flex-direction: column;
+}
+.mobile-nav-menu.open {
+  max-height: 320px;
+  opacity: 1;
+}
+:global(body:not(.light-theme)) .mobile-nav-menu {
+  background: #1e293b;
+  box-shadow: 0 8px 20px rgba(0,0,0,.3);
+}
+.mobile-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 48px;
+  padding: 0 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #edf1f7;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  text-align: left;
+  transition: background .15s;
+}
+.mobile-nav-item:hover    { background: #f4f7fc; }
+.mobile-nav-item.active   { background: #eef4ff; color: #1e4db7; font-weight: 700; }
+.mobile-nav-item.no-border { border-bottom: none; }
+:global(body:not(.light-theme)) .mobile-nav-item        { color: #cbd5e1; border-bottom-color: rgba(255,255,255,.07); }
+:global(body:not(.light-theme)) .mobile-nav-item:hover  { background: rgba(255,255,255,.06); }
+:global(body:not(.light-theme)) .mobile-nav-item.active { background: rgba(47,109,246,.2); color: #93c5fd; }
+.mobile-nav-item-emoji { font-size: 1.05rem; width: 22px; text-align: center; flex-shrink: 0; }
+
+/* ── Mobile (≤ 768px) — settings layout, panels ────────────────── */
 @media (max-width: 768px) {
   /* Prevent horizontal overflow */
   .settings-page,
@@ -1264,38 +1402,6 @@ textarea::placeholder {
     justify-content: center;
     padding: 0 20px;
     border-radius: 12px;
-  }
-
-  /* Nav: horizontal scrollable pill bar */
-  .ff-settings-nav {
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    overflow-x: auto;
-    scrollbar-width: none;
-    width: 100% !important;
-    padding: 6px 8px;
-    gap: 4px;
-    border-radius: 10px;
-  }
-  .ff-settings-nav::-webkit-scrollbar { display: none; }
-  .s-nav-item {
-    flex: 0 0 auto !important;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    height: 38px;
-    padding: 0 14px;
-    border-radius: 999px;
-    font-size: 0.85rem;
-    flex-shrink: 0;
-    text-align: center;
-    white-space: nowrap;
-  }
-  .s-nav-icon {
-    width: 26px;
-    height: 26px;
-    font-size: 0.74rem;
   }
 
   /* Content panels: reduce padding */
@@ -1364,17 +1470,6 @@ textarea::placeholder {
     gap: 12px;
   }
   .btn-delete-account { width: 100%; }
-
-  /* Sticky save bar at bottom on mobile */
-  .ff-btn-save-sticky {
-    position: sticky;
-    bottom: 12px;
-    z-index: 20;
-    width: 100%;
-    height: 44px;
-    border-radius: 12px;
-    margin-top: 8px;
-  }
 }
 
 /* ── Small mobile (≤ 430px) — single-column forms ──────────────── */
@@ -1387,12 +1482,5 @@ textarea::placeholder {
   .settings-title  { font-size: 1.15rem; }
   .settings-header { padding: 12px 12px; }
   .s-panel         { padding: 10px; }
-
-  .s-nav-item {
-    padding: 0 10px;
-    font-size: 0.75rem;
-    height: 34px;
-  }
-  .s-nav-label { display: none; }   /* icon-only on tiny phones */
 }
 </style>
