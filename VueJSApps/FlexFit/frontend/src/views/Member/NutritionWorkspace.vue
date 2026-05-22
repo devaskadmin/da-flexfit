@@ -8,7 +8,7 @@ const STORAGE_KEY_FAV = 'flexfit_nutrition_favorites';
 const STORAGE_KEY_CUSTOM = 'flexfit_nutrition_custom_foods';
 
 const selectedDateRaw = ref(new Date());
-const logOpen = ref(true);
+const logOpen = ref(false);
 const favoritesOpen = ref(false);
 const addEditOpen = ref(false);
 
@@ -320,6 +320,14 @@ onMounted(async () => {
       </div>
     </section>
 
+    <!-- ── Sticky macro summary ── -->
+    <div class="sticky-summary">
+      <span class="sticky-macro sticky-cal">🔥 {{ macroSummary.calories || 0 }}</span>
+      <span class="sticky-macro sticky-pro">🥩 {{ macroSummary.protein || 0 }}g</span>
+      <span class="sticky-macro sticky-carb">🌾 {{ macroSummary.carbs || 0 }}g</span>
+      <span class="sticky-macro sticky-fat">🥑 {{ macroSummary.fat || 0 }}g</span>
+    </div>
+
     <!-- ── Search card ── -->
     <div class="search-card">
       <div class="search-controls">
@@ -464,17 +472,18 @@ onMounted(async () => {
   --ff-border-strong: rgba(148, 163, 184, 0.48);
   --ff-border-soft: rgba(148, 163, 184, 0.34);
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 /* ── Hero ── */
 .builder-hero {
   border: 1.5px solid var(--ff-border-strong);
   border-radius: 18px;
-  min-height: 140px;
+  min-height: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
+  padding: 14px 18px;
 }
 
 .builder-hero h2 {
@@ -487,13 +496,15 @@ onMounted(async () => {
 .hero-macro-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  gap: 8px;
+  margin-bottom: 0;
 }
 
 .hero-macro-card {
   background: rgba(255, 255, 255, 0.12);
   border-radius: 12px;
-  padding: 10px 14px;
+  padding: 8px 12px;
+  min-height: 68px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -594,7 +605,7 @@ onMounted(async () => {
   background: var(--main-color, #fff);
   border: 1.5px solid var(--ff-border-strong);
   border-radius: 16px;
-  padding: 14px;
+  padding: 12px 14px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
@@ -610,7 +621,7 @@ onMounted(async () => {
   background: var(--main-color);
   color: var(--text-color);
   border-radius: 10px;
-  padding: 9px 10px;
+  padding: 8px 10px;
   height: 44px;
   font-size: 0.88rem;
 }
@@ -623,7 +634,7 @@ onMounted(async () => {
   padding: 0 18px;
   font-weight: 700;
   font-size: 0.95rem;
-  height: 44px;
+  height: 48px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -677,7 +688,8 @@ onMounted(async () => {
   transition: background 0.15s;
 }
 
-.section-toggle:hover { background: rgba(0, 0, 0, 0.02); }
+.section-toggle:hover { background: rgba(37, 99, 235, 0.05); }
+.section-toggle:active { background: rgba(37, 99, 235, 0.10); }
 
 .section-toggle small {
   font-weight: 500;
@@ -806,6 +818,42 @@ onMounted(async () => {
   cursor: pointer;
 }
 
+/* ── Sticky macro summary bar ── */
+.sticky-summary {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  background: var(--main-color);
+  border: 1.5px solid var(--ff-border-strong);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  backdrop-filter: blur(8px);
+  flex-wrap: wrap;
+}
+
+.sticky-macro {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-color);
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid var(--ff-border-soft);
+  white-space: nowrap;
+}
+
+.sticky-cal  { border-left: 3px solid #ff8a00; }
+.sticky-pro  { border-left: 3px solid #3a86ff; }
+.sticky-carb { border-left: 3px solid #43aa8b; }
+.sticky-fat  { border-left: 3px solid #ff5d73; }
+
 :global(body.light-theme) .nutrition-workspace {
   --ff-border-strong: rgba(15, 23, 42, 0.28);
   --ff-border-soft: rgba(15, 23, 42, 0.22);
@@ -822,10 +870,21 @@ onMounted(async () => {
   /* Hero: compact */
   .builder-hero {
     min-height: auto;
-    padding: 16px !important;
+    padding: 12px 14px !important;
     border-radius: 16px !important;
-    gap: 12px;
+    gap: 8px;
     overflow: hidden;
+  }
+
+  /* Sticky summary: smaller on mobile */
+  .sticky-summary {
+    gap: 8px;
+    padding: 6px 10px;
+  }
+
+  .sticky-macro {
+    font-size: 0.78rem;
+    padding: 3px 8px;
   }
 
   .builder-hero h2 {
@@ -855,7 +914,8 @@ onMounted(async () => {
   }
 
   .hero-macro-card {
-    padding: 8px 10px;
+    padding: 7px 9px;
+    min-height: 62px;
     border-radius: 10px;
     gap: 8px;
   }
