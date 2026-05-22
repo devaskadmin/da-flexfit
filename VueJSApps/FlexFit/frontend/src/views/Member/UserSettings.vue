@@ -1509,23 +1509,45 @@ textarea::placeholder {
 
 /* ── Mobile (≤ 768px) — settings layout, panels ────────────────── */
 @media (max-width: 768px) {
-  /* Prevent horizontal overflow */
+  /* Prevent horizontal overflow; full bleed */
   .settings-page,
   .settings-canvas,
   .settings-layout,
-  .s-panel {
+  .settings-content,
+  .s-panel,
+  .settings-section,
+  .settings-grid {
     box-sizing: border-box;
+    width: 100%;
     max-width: 100%;
     overflow-x: hidden;
+    margin-left: 0;
+    margin-right: 0;
   }
 
   /* Page canvas: reduce gap */
   .settings-canvas { gap: 12px; }
 
-  /* Layout: stack vertically */
+  /* Layout: stack vertically, no side squeeze */
   .settings-layout {
     flex-direction: column;
     gap: 12px;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  /* Content area: explicitly full width */
+  .settings-content {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+  }
+
+  /* Panel: full width, no gap from edges */
+  .s-panel {
+    padding: 14px 12px;
+    width: 100%;
+    border-radius: 14px;
   }
 
   /* Header: compact */
@@ -1540,30 +1562,30 @@ textarea::placeholder {
   .settings-title    { font-size: 1.25rem; }
   .settings-subtitle { font-size: 0.82rem; }
 
-  /* Settings grid: single column on mobile */
+  /* Settings grid: single column, full width */
   .settings-grid {
+    display: grid;
     grid-template-columns: 1fr;
     gap: 10px;
+    width: 100%;
   }
 
-  /* Settings sections: tighter */
+  /* Settings sections: full width, tighter */
   .settings-section {
     padding: 12px;
     margin-bottom: 10px;
     border-radius: 10px;
+    width: 100%;
   }
 
-  /* Profile header: tighter gap */
+  /* Profile header: centered content, full-width card */
   .profile-header {
     gap: 5px;
     padding-bottom: 14px;
+    width: 100%;
+    align-items: center;
   }
 
-  /* Content panels: reduce padding */
-  .s-panel {
-    padding: 14px;
-    width: 100%;
-  }
   .s-panel-head {
     margin-bottom: 14px;
     padding-bottom: 12px;
