@@ -587,17 +587,19 @@ onMounted(async () => {
       <!-- ── Hero header ─────────────────────────────────────────────────── -->
       <section class="builder-hero ff-page-header app-header-gradient">
         <div class="builder-hero__content">
-          <div class="builder-hero__text">
-            <h2>Workout Log</h2>
-            <p class="builder-hero__subtitle">View workout plans saved from Workout Builder and start a workout.</p>
-          </div>
-          <div class="builder-hero__actions">
-            <input
-              type="date"
-              v-model="selectedWorkoutDate"
-              class="wl-date-input"
-              :max="new Date().toISOString().split('T')[0]"
-            />
+          <div class="wl-hero-title-row">
+            <div class="builder-hero__text">
+              <h2>Workout Log</h2>
+              <p class="builder-hero__subtitle">View plans and start a workout.</p>
+            </div>
+            <div class="builder-hero__actions">
+              <input
+                type="date"
+                v-model="selectedWorkoutDate"
+                class="wl-date-input"
+                :max="new Date().toISOString().split('T')[0]"
+              />
+            </div>
           </div>
         </div>
         <!-- Action toolbar inside hero -->
@@ -1724,56 +1726,91 @@ onMounted(async () => {
 .wl-btn-delete:hover:not(:disabled) { background: #b91c1c; }
 .wl-btn-delete:disabled { opacity: .6; cursor: not-allowed; }
 
+/* ── v0.81.9 Hero title row utility ──────────────────────────────────────── */
+.wl-hero-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
 /* ── v0.81.6 Global density utility ──────────────────────────────────────── */
 .workout-log-mobile { /* defined here; used in template root */ }
 
-/* ── v0.81.6 Mobile 768px — Workout Log Compression ─────────────────────── */
+/* ── v0.81.9 Mobile 768px — Workout Log Compact Layout ───────────────────── */
 @media (max-width: 768px) {
-  /* §9 Global density */
+  /* Global density */
   .workout-log-mobile .app-page-canvas { gap: 8px; }
   .wl-exercise-list { gap: 8px; }
   .wl-accordion      { gap: 8px; }
   .wl-history-list   { gap: 8px; }
   .wl-day-grid       { gap: 8px; }
 
-  /* §1 Hero compression */
+  /* Hero: compact padding */
   .builder-hero {
-    --ff-page-header-padding: 10px 14px;
-    --ff-page-header-radius: 14px;
+    padding: 14px;
+    gap: 10px;
+    border-radius: 18px;
   }
-  .builder-hero__content { gap: 8px; }
-  .builder-hero__subtitle { font-size: 0.82rem; }
-  .wl-date-input {
-    height: 32px;
-    padding: 4px 10px;
-    font-size: 0.82rem;
-  }
-  .wl-toolbar { margin-top: 8px; gap: 8px; }
-  .wl-toolbar .wl-btn {
-    height: 36px;
-    padding: 0 12px;
-    font-size: 0.8rem;
+  .builder-hero__content { gap: 6px; }
+
+  /* Title + date row: side-by-side */
+  .wl-hero-title-row { align-items: center; gap: 6px; }
+  .builder-hero__text h2 { font-size: 1.15rem; margin: 0; }
+  .builder-hero__subtitle {
+    font-size: 13px;
+    line-height: 1.3;
+    max-width: 90%;
+    margin-bottom: 8px;
+    margin-top: 4px;
   }
 
-  /* §2 Stats cards — 3 columns, 70px compact cards */
+  /* Date picker: compact, fixed width */
+  .wl-date-input {
+    width: 130px;
+    height: 38px;
+    padding: 4px 8px;
+    font-size: 0.82rem;
+    flex-shrink: 0;
+  }
+
+  /* Toolbar: 2-column grid */
+  .wl-toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .wl-toolbar .wl-btn {
+    height: 46px;
+    font-size: 14px;
+    padding: 8px;
+    justify-content: center;
+  }
+
+  /* Stats cards: 3-col compact */
   .wl-stats {
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     margin-bottom: 10px;
   }
   .wl-stat-card {
-    padding: 8px 10px;
-    gap: 3px;
-    min-height: 70px;
+    min-height: 80px;
+    padding: 10px;
+    gap: 4px;
     align-content: center;
   }
-  .wl-stat-card span   { font-size: 0.7rem; }
-  .wl-stat-card strong { font-size: 1rem; }
+  .wl-stat-card span   { font-size: 0.72rem; }
+  .wl-stat-card strong { font-size: 1.05rem; }
 
-  /* §8 History tabs — horizontal scroll, reduced height */
+  /* Tabs: horizontal scroll, no wrap */
   .wl-tabs {
     overflow-x: auto;
+    white-space: nowrap;
     flex-wrap: nowrap;
+    max-width: 100%;
     scrollbar-width: none;
     gap: 2px;
     margin-bottom: 12px;
@@ -1826,90 +1863,40 @@ onMounted(async () => {
   }
 }
 
-/* ── Responsive ─────────────────────────────────────────────────────────── */
+/* ── Small mobile (≤ 640px) ──────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .wl-stats { grid-template-columns: repeat(3, 1fr); }
   .wl-plan__header { flex-direction: column; align-items: flex-start; }
   .wl-plan__right  { width: 100%; justify-content: flex-end; }
-  .wl-tabs { overflow-x: auto; }
   .wl-day-detail-header { flex-direction: column; }
   .wl-bottom-bar__inner { flex-direction: column; align-items: stretch; }
   .wl-bottom-bar__actions { justify-content: flex-end; }
-}
 
-/* ── Small mobile (≤ 640px) — toolbar, tabs, stats ──────────────────────── */
-@media (max-width: 640px) {
-  /* Toolbar: two buttons side-by-side, reduced height */
-  .wl-toolbar {
-    justify-content: stretch;
-    gap: 8px;
-  }
-  .wl-toolbar .wl-btn {
-    flex: 1 1 calc(50% - 8px);
-    justify-content: center;
-    padding: 8px 10px;
-    font-size: 0.8rem;
-    min-width: 0;
-  }
+  /* Toolbar: keep 2-column grid (Progress | Builder side-by-side) */
+  .wl-toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .wl-toolbar .wl-btn { height: 46px; justify-content: center; padding: 8px; font-size: 14px; min-width: 0; }
 
-  /* Tabs: horizontal scroll, no wrapping */
-  .wl-tabs {
-    flex-wrap: nowrap;
-    scrollbar-width: none;
-    padding-bottom: 2px;
-  }
+  /* Tabs */
+  .wl-tabs { flex-wrap: nowrap; scrollbar-width: none; padding-bottom: 2px; }
   .wl-tabs::-webkit-scrollbar { display: none; }
-  .wl-tab {
-    flex-shrink: 0;
-    padding: 10px 12px;
-    font-size: 0.82rem;
-  }
+  .wl-tab { flex-shrink: 0; padding: 10px 12px; font-size: 0.82rem; }
 
-  /* Stats cards: compact 3-col — reduce internal padding */
-  .wl-stat-card {
-    padding: 10px 10px;
-    gap: 4px;
-  }
+  /* Stats */
+  .wl-stat-card { padding: 10px; gap: 4px; }
   .wl-stat-card strong { font-size: 1.05rem; }
   .wl-stat-card span   { font-size: 0.76rem; }
 
-  /* History session header: meta wraps vertically */
-  .wl-history-session__meta {
-    flex-direction: column;
-    gap: 6px;
-  }
+  /* History */
+  .wl-history-session__meta { flex-direction: column; gap: 6px; }
+  .wl-history-datebar { flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px 12px; font-size: 0.82rem; }
 
-  /* History date bar: stack on mobile */
-  .wl-history-datebar {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 10px 12px;
-    font-size: 0.82rem;
-  }
+  /* Day card footer */
+  .wl-day-card__footer { flex-direction: column; }
+  .wl-btn-preview, .wl-btn-start, .wl-btn-resume { width: 100%; justify-content: center; }
 
-  /* Day cards: footer buttons full-width */
-  .wl-day-card__footer {
-    flex-direction: column;
-  }
-  .wl-btn-preview,
-  .wl-btn-start,
-  .wl-btn-resume {
-    width: 100%;
-    justify-content: center;
-  }
-
-  /* Bottom bar: buttons share row */
-  .wl-bottom-bar__actions {
-    gap: 8px;
-  }
-  .wl-btn-end,
-  .wl-btn-complete {
-    flex: 1;
-    justify-content: center;
-    font-size: 0.82rem;
-    padding: 9px 12px;
-  }
+  /* Bottom bar */
+  .wl-bottom-bar__actions { gap: 8px; }
+  .wl-btn-end, .wl-btn-complete { flex: 1; justify-content: center; font-size: 0.82rem; padding: 9px 12px; }
 }
 
 /* ── Tiny mobile (≤ 480px) ──────────────────────────────────────────────── */
@@ -1920,13 +1907,17 @@ onMounted(async () => {
   .wl-stat-card span   { font-size: 0.66rem; }
   .wl-stat-card strong { font-size: 0.92rem; }
 
-  /* Hero text: compress */
+  /* Hero text */
   .builder-hero__text h2  { font-size: 1.1rem; }
   .builder-hero__subtitle { font-size: 0.78rem; }
 
-  /* Toolbar: full-width stacked */
-  .wl-toolbar { flex-direction: column; }
-  .wl-toolbar .wl-btn { flex: 1 1 100%; }
+  /* Toolbar stays 2-column grid (DO NOT stack on 480) */
+  .wl-toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .wl-toolbar .wl-btn { height: 42px; font-size: 13px; }
 
   /* Tabs smaller */
   .wl-tab { padding: 7px 10px; font-size: 0.76rem; }
@@ -1942,7 +1933,7 @@ onMounted(async () => {
     padding: 3px 8px; font-size: 0.7rem;
   }
 
-  /* Cardio set table: allow horizontal scroll inside */
+  /* Cardio set table */
   .wl-hist-sets-table--cardio { overflow-x: auto; }
 }
 
