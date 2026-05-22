@@ -590,7 +590,6 @@ onMounted(async () => {
           <div class="wl-hero-title-row">
             <div class="builder-hero__text">
               <h2>Workout Log</h2>
-              <p class="builder-hero__subtitle">View plans and start a workout.</p>
             </div>
             <div class="builder-hero__actions">
               <input
@@ -1750,29 +1749,32 @@ onMounted(async () => {
 
   /* Hero: compact padding */
   .builder-hero {
-    padding: 14px;
-    gap: 10px;
+    padding: 18px;
+    gap: 12px;
     border-radius: 18px;
+    min-height: auto;
   }
   .builder-hero__content { gap: 6px; }
 
-  /* Title + date row: side-by-side */
-  .wl-hero-title-row { align-items: center; gap: 6px; }
-  .builder-hero__text h2 { font-size: 1.15rem; margin: 0; }
-  .builder-hero__subtitle {
-    font-size: 13px;
-    line-height: 1.3;
-    max-width: 90%;
-    margin-bottom: 8px;
-    margin-top: 4px;
+  /* Title + date row: side-by-side, subtitle hidden */
+  .wl-hero-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
   }
+  .builder-hero__text h2 { font-size: 1.15rem; margin: 0; }
+  .builder-hero__subtitle { display: none; }
 
-  /* Date picker: compact, fixed width */
+  /* Date picker: auto width, pill style */
   .wl-date-input {
-    width: 130px;
-    height: 38px;
-    padding: 4px 8px;
-    font-size: 0.82rem;
+    width: auto;
+    min-width: 140px;
+    height: 44px;
+    padding: 8px 14px;
+    font-size: 16px;
+    font-weight: 600;
     flex-shrink: 0;
   }
 
