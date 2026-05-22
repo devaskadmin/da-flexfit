@@ -315,7 +315,7 @@ onMounted(async () => {
             v-model="selectedDateInput"
             class="nutrition-date-input"
           />
-          <span class="nutrition-date-icon" aria-hidden="true">📅</span>
+          <span class="nutrition-calendar-icon" aria-hidden="true">📅</span>
         </div>
       </div>
     </section>
@@ -548,13 +548,15 @@ onMounted(async () => {
   position: relative;
   width: 100%;
   max-width: 320px;
+  display: flex;
+  align-items: center;
 }
 
 .nutrition-date-input {
   width: 100%;
-  height: 48px;
+  height: 52px;
   padding-left: 14px;
-  padding-right: 44px;
+  padding-right: 52px;
   border-radius: 12px;
   background: #ffffff;
   color: #1e293b;
@@ -562,34 +564,28 @@ onMounted(async () => {
   font-weight: 600;
   border: 1px solid #d6dce8;
   box-sizing: border-box;
-  appearance: auto;
-  -webkit-appearance: auto;
-  opacity: 1;
   cursor: pointer;
-  position: relative;
-  z-index: 1;
 }
 
 .nutrition-date-input::-webkit-calendar-picker-indicator {
   position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 22px;
-  height: 22px;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   opacity: 0;
   cursor: pointer;
-  z-index: 2;
+  z-index: 4;
 }
 
-.nutrition-date-icon {
+.nutrition-calendar-icon {
   position: absolute;
-  right: 12px;
+  right: 16px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 16px;
+  font-size: 18px;
+  opacity: 1;
+  z-index: 5;
   pointer-events: none;
-  z-index: 0;
   line-height: 1;
 }
 
