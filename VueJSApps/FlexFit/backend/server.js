@@ -99,12 +99,30 @@ if (isDebugEnabled) {
 let sessionStore;
 try {
   if (process.env.DB_HOST && process.env.DB_USER && process.env.DB_DATABASE) {
-    sessionStore = new MySQLStore({
+    const sessionDbConfig = {
       host: process.env.DB_HOST,
       port: Number(process.env.DB_PORT || 3306),
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
+
+      // Connection pool settings — resilient against Render idle disconnects
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+
+      // Keep connections alive so MySQL doesn't ECONNRESET after idle periods
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 0,
+
+      connectTimeout: 30000,
+
+      // Release idle connections quickly to avoid stale socket errors
+      idleTimeout: 60000,
+      maxIdle: 5,
+    };
+
+    sessionStore = new MySQLStore({
       clearExpired: true,
       checkExpirationInterval: 15 * 60 * 1000, // prune expired sessions every 15 min
       expiration: 7 * 24 * 60 * 60 * 1000,     // match cookie maxAge
@@ -113,7 +131,15 @@ try {
         tableName: 'sessions',
         columnNames: { session_id: 'session_id', expires: 'expires', data: 'data' },
       },
+    }, sessionDbConfig);
+
+    // ✅ Log session store errors but NEVER crash the backend.
+    // ECONNRESET / idle timeouts must not bring down the server.
+    sessionStore.on('error', (err) => {
+      console.error('⚠️  Session store error (non-fatal):', err.message);
+      // log only — DO NOT throw or call process.exit()
     });
+
     console.log('🗄️  Session store: MySQL (persistent across restarts)');
   } else {
     console.warn('⚠️  Session store: in-memory (DB env vars not set — sessions lost on restart)');
