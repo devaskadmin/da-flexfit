@@ -330,6 +330,10 @@ onMounted(async () => {
 
     <!-- ── Search card ── -->
     <div class="search-card">
+      <div class="search-card-head">
+        <h4 class="search-card-title">Food Search</h4>
+        <p class="search-card-sub">Find and log meals quickly</p>
+      </div>
       <div class="search-controls">
         <input v-model="foodSearchQuery" type="text" placeholder="Search food by name..." @keyup.enter="searchFood" />
         <select v-model="selectedCategory">
@@ -565,7 +569,7 @@ onMounted(async () => {
 
 .nutrition-date-input {
   width: 100%;
-  height: 52px;
+  height: 48px;
   padding-left: 14px;
   padding-right: 52px;
   border-radius: 12px;
@@ -607,6 +611,24 @@ onMounted(async () => {
   border-radius: 16px;
   padding: 12px 14px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.search-card-head {
+  margin-bottom: 10px;
+}
+
+.search-card-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 0 0 2px;
+}
+
+.search-card-sub {
+  font-size: 0.76rem;
+  color: var(--text-color-secondary);
+  margin: 0;
+  opacity: 0.85;
 }
 
 .search-controls {
@@ -825,14 +847,15 @@ onMounted(async () => {
   z-index: 50;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 8px 14px;
   background: var(--main-color);
   border: 1.5px solid var(--ff-border-strong);
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.12);
   backdrop-filter: blur(8px);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
 }
 
 .sticky-macro {
@@ -842,11 +865,13 @@ onMounted(async () => {
   font-size: 0.88rem;
   font-weight: 700;
   color: var(--text-color);
-  padding: 4px 10px;
+  padding: 6px 10px;
+  min-height: 32px;
   border-radius: 8px;
   background: rgba(255,255,255,0.07);
   border: 1px solid var(--ff-border-soft);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .sticky-cal  { border-left: 3px solid #ff8a00; }
@@ -934,7 +959,7 @@ onMounted(async () => {
 
   .search-controls {
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: 10px;
   }
 
   .search-controls input,
@@ -947,6 +972,7 @@ onMounted(async () => {
     width: 100%;
     height: 46px;
     justify-content: center;
+    margin-top: 2px;
   }
 
   /* Collapsible sections */
