@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.82.10] — Dashboard Visual Refresh + Shared Module System
+## [0.82.10] — 2026-05-22 — Dashboard Visual Refresh + Shared Module System
 
 **UI only — no backend, API, SQL, layout, or feature changes.**
 
@@ -31,7 +31,7 @@
 
 ---
 
-## [0.82.9a] — Enhanced Module Contrast
+## [0.82.9a] — 2026-05-22 — Enhanced Module Contrast
 
 **UI only — no backend, API, SQL, chart logic, or layout changes.**
 
@@ -56,7 +56,7 @@
 
 ---
 
-## [0.82.9] — Dashboard Section Borders + Module Grouping
+## [0.82.9] — 2026-05-22 — Dashboard Section Borders + Module Grouping
 
 **UI only — no backend, API, SQL, chart logic, or filter behaviour changes.**
 
@@ -73,7 +73,7 @@
 
 ---
 
-## [0.82.8] — Shared Dashboard Date Styling
+## [0.82.8] — 2026-05-22 — Shared Dashboard Date Styling
 
 **UI only — no backend, API, SQL, or chart calculation changes.**
 
@@ -93,7 +93,7 @@
 
 ---
 
-## [0.82.7] — Dashboard Style Progress Refactor
+## [0.82.7] — 2026-05-22 — Dashboard Style Progress Refactor
 
 **UI only — no backend, API, SQL, filtering logic, or chart calculation changes.**
 
@@ -123,7 +123,7 @@
 
 ---
 
-## [0.82.6] — Analytics Side Rail Layout
+## [0.82.6] — 2026-05-22 — Analytics Side Rail Layout
 
 **UI only — no backend, API, SQL, or logic changes.**
 
