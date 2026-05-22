@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
    //Import libaries
    import { ref, reactive, computed, onMounted, watch, nextTick } from "vue";
    import DateDropDown from "@/components/DropDownDate.vue"; // not template folder
@@ -1141,7 +1141,7 @@ const clearFilters = () => {
                     <h4><i class="fa-solid fa-magnifying-glass me-2"></i>Search Exercises</h4>
                   </div>
                   <!--end of panel header-->
-                  <div class="panel-body search-filter-body" :class="{ 'filters-mobile-hidden': !filtersOpen }">
+                  <div class="panel-body search-filter-body filter-body-animated" :class="{ 'filters-mobile-hidden': !filtersOpen }">
                       <div v-if="exercisesLoadError" class="alert alert-warning">
                         {{ exercisesLoadError }}
                       </div>
@@ -1445,9 +1445,7 @@ const clearFilters = () => {
                                   <h5 class="exercise-title">{{ ex.ExerciseTitle }}</h5>
 
                                   <div class="exercise-meta">
-                                    <p><span>Workout Type:</span> {{ ex.WorkoutType }}</p>
-                                    <p><span>Muscle Group:</span> {{ ex.MuscleGroup }}</p>
-                                    <p><span>Equipment:</span> {{ ex.Equipment }}</p>
+                                    <p class="exercise-meta-inline">{{ ex.WorkoutType }}<span class="meta-dot"> • </span>{{ ex.MuscleGroup }}<span class="meta-dot"> • </span>{{ ex.Equipment }}</p>
                                   </div>
 
                                   <div class="exercise-actions">
@@ -1465,17 +1463,12 @@ const clearFilters = () => {
                               </div>
                             </div>
 
-                            <div class="text-center mt-3">
-                              <button class="btn btn-outline-secondary me-2" @click="prevPage" :disabled="currentPage === 1">Prev</button>
-                              <button class="btn btn-outline-dark" @click="nextPage"
+                            <div class="pagination-row">
+                              <button class="btn btn-outline-secondary pagination-btn" @click="prevPage" :disabled="currentPage === 1">Prev</button>
+                              <span class="pagination-info">Page {{ currentPage }} / {{ Math.ceil(filteredExercises.length / itemsPerPage) }}</span>
+                              <button class="btn btn-outline-dark pagination-btn" @click="nextPage"
                                   :disabled="currentPage * itemsPerPage >= filteredExercises.length">Next</button>
                             </div>
-                            <p class="text-center small mt-2 mb-1">
-                              Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to
-                              {{
-                              Math.min(currentPage * itemsPerPage, filteredExercises.length)
-                              }} of {{ filteredExercises.length }} exercises
-                            </p>
                         </div>
                       </div>
                       <!--LIST VIEW-->
@@ -2221,6 +2214,45 @@ textarea {
   display: none;
 }
 
+/* Filter body animated collapse (mobile only) */
+.filter-body-animated {
+  overflow: hidden;
+  transition: max-height .25s ease, opacity .2s ease;
+}
+.filter-body-animated.filters-mobile-hidden {
+  display: block !important;
+  max-height: 0 !important;
+  opacity: 0;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  pointer-events: none;
+}
+
+/* Inline meta */
+.exercise-meta-inline {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+.meta-dot { color: #cbd5e1; }
+
+/* Pagination row */
+.pagination-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+.pagination-btn { min-width: 72px; }
+.pagination-info {
+  font-size: 0.86rem;
+  color: #64748b;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .search-filter-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2437,18 +2469,17 @@ textarea {
   /* - Hero banner - */
   :deep(.builder-hero),
   .builder-hero {
-    padding-top: 16px !important;
-    padding-bottom: 16px !important;
-    padding-left: 16px !important;
-    padding-right: 16px !important;
-    border-radius: 18px !important;
-    margin-bottom: 14px !important;
+    padding: 16px !important;
+    min-height: auto !important;
+    border-radius: 16px !important;
+    margin-bottom: 12px !important;
   }
   :deep(.builder-hero) h2,
   :deep(.builder-hero__content) h2 {
-    font-size: 1.5rem !important;
+    font-size: 1.4rem !important;
     font-weight: 700 !important;
     line-height: 1.2 !important;
+    margin: 0 !important;
   }
 
   /* - Overflow guard - */
@@ -2507,10 +2538,6 @@ textarea {
     border-radius: 12px 12px 0 0;
   }
   .filter-accordion-toggle i { font-size: 0.85rem; color: #64748b; }
-
-  .filters-mobile-hidden {
-    display: none !important;
-  }
 
   /* - Filter grid: 1-col on mobile - */
   .search-filter-grid {
