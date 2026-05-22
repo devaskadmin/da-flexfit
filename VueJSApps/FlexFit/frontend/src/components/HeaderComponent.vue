@@ -9,11 +9,13 @@ import {layoutPosition} from "@/composable/navPositionSetting";
 import { API_BASE } from '@/config/env'
 import { useAuth } from '@/composable/useAuth'
 import ProfileDropdown from '@/components/ProfileDropdown.vue'
+import MobileSearchModal from '@/components/MobileSearchModal.vue'
 
 const router = useRouter()
 const authStore = useAuth()
 
 const isFullScreen = ref(false);
+const mobileSearchOpen = ref(false)
 const lightThemeLogo = new URL('/src/assets/images/flex-fitlogo-transparent.png', import.meta.url)
 const darkThemeLogo = new URL('/src/assets/images/flex-fitlogo-dark.JPG', import.meta.url)
 
@@ -189,13 +191,16 @@ onUnmounted(() => {
     <div class="navbar-right">
       <!-- Admin-only tools: visible only for admin/administrator role -->
       <div v-if="isAdmin" class="admin-tools">
-        <!-- Search (desktop only – moves to row 2 on mobile) -->
-        <form v-if="!isMobile" class="navbar-search">
+        <!-- Search: full bar on desktop, icon opens modal on mobile -->
+        <form class="navbar-search navbar-search-desktop" @submit.prevent>
           <input type="search" placeholder="Search..." required>
           <button type="submit" aria-label="Search">
             <i class="fa-solid fa-magnifying-glass"></i>
           </button>
         </form>
+        <button class="navbar-btn mobile-search-btn" @click="mobileSearchOpen = true" title="Search" aria-label="Open search">
+          <i class="fa-light fa-magnifying-glass"></i>
+        </button>
 
         <!-- Language selector -->
         <div class="lang-select">
@@ -287,16 +292,8 @@ onUnmounted(() => {
         />
       </div>
     </div>
-  <!-- Mobile: full-width search row (row 2) -->
-  <div v-if="isMobile && isAdmin" class="navbar-mobile-search-row">
-    <form class="navbar-search navbar-search-mobile" @submit.prevent>
-      <input type="search" placeholder="Search..." required>
-      <button type="submit" aria-label="Search">
-        <i class="fa-solid fa-magnifying-glass"></i>
-      </button>
-    </form>
-  </div>
   </header>
+  <MobileSearchModal :is-open="mobileSearchOpen" @close="mobileSearchOpen = false" />
 </template>
 
 <style scoped>
@@ -585,6 +582,16 @@ onUnmounted(() => {
   background-color: #f1f5f9;
 }
 
+/* Desktop search bar: shown on desktop, hidden on mobile */
+.navbar-search-desktop {
+  display: flex;
+}
+
+/* Mobile search icon: hidden on desktop, shown on mobile */
+.mobile-search-btn {
+  display: none;
+}
+
 /* ======== Mobile Header (≤768px) ======== */
 .navbar-mobile-search-row {
   display: none;
@@ -592,123 +599,108 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .top-navbar {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     height: auto;
-    min-height: 44px;
-    max-height: 80px;
-    padding: 4px 8px;
-    row-gap: 3px;
+    min-height: 64px;
+    padding: 10px 14px;
     align-items: center;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .navbar-left {
-    height: 36px;
-    gap: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: auto;
+    flex-shrink: 0;
   }
 
   .navbar-logo {
     min-width: unset;
-    height: 36px;
+    height: auto;
   }
 
   .navbar-logo img,
   .navbar-logo-img {
-    height: 26px;
+    height: 28px;
   }
 
   .navbar-spacer {
     flex: 1;
-    min-width: 4px;
+    min-width: 8px;
   }
 
   .navbar-right {
-    flex-shrink: 1;
-    min-width: 0;
+    display: flex;
+    align-items: center;
     gap: 4px;
+    flex-shrink: 0;
+    flex-wrap: nowrap;
   }
 
-  /* Admin tool row — keep single row, shrink everything */
   .admin-tools {
     display: flex;
     align-items: center;
     gap: 4px;
+    flex-wrap: nowrap;
   }
 
-  /* All icon buttons: tight padding */
-  .navbar-btn {
-    font-size: 0.85rem;
-    padding: 4px 5px;
-  }
-
-  .navbar-btn .badge {
-    min-width: 14px;
-    height: 14px;
-    font-size: 0.6rem;
-    top: -1px;
-    right: -1px;
-  }
-
-  /* Language dropdown — compact */
-  .lang-select select {
-    font-size: 0.75rem;
-    padding: 3px 6px;
-    max-width: 70px;
-  }
-
-  /* Mobile search row 2 */
-  .navbar-mobile-search-row {
+  /* Show mobile search icon, hide full desktop search bar */
+  .mobile-search-btn {
     display: flex;
-    width: 100%;
-    flex: 0 0 100%;
-    padding: 0 0 3px;
   }
 
-  .navbar-search-mobile {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    flex: 1;
+  .navbar-search-desktop {
+    display: none;
   }
 
-  .navbar-search-mobile input {
-    flex: 1;
-    min-width: 0;
-    width: 100%;
-    height: 30px;
-    padding: 4px 8px;
-    font-size: 0.82rem;
+  /* Hide fullscreen and language selector on mobile */
+  #btnFullscreen,
+  .lang-select {
+    display: none;
+  }
+
+  /* Icon buttons: uniform touch target */
+  .navbar-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  /* Notification / message badge */
+  .navbar-btn .badge {
+    transform: scale(0.85);
+    top: -3px;
+    right: -3px;
+    min-width: 16px;
+    height: 16px;
+    font-size: 0.65rem;
+  }
+
+  /* Avatar container spacing */
+  .user-profile {
+    margin-left: 4px;
   }
 }
 
 /* ≤480px: further compress */
 @media (max-width: 480px) {
   .top-navbar {
-    padding: 3px 6px;
-    row-gap: 2px;
-    max-height: 76px;
+    padding: 8px 10px;
+    min-height: 56px;
   }
 
   .navbar-logo img,
   .navbar-logo-img {
-    height: 22px;
+    height: 24px;
   }
 
   .navbar-btn {
-    font-size: 0.78rem;
-    padding: 3px 4px;
-  }
-
-  .lang-select select {
-    font-size: 0.7rem;
-    padding: 2px 4px;
-    max-width: 58px;
-  }
-
-  .navbar-search-mobile input {
-    height: 26px;
-    padding: 3px 7px;
-    font-size: 0.78rem;
+    width: 32px;
+    height: 32px;
+    font-size: 0.9rem;
   }
 }
 
