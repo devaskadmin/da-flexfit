@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
    //Import libaries
    import { ref, reactive, computed, onMounted, watch, nextTick } from "vue";
    import DateDropDown from "@/components/DropDownDate.vue"; // not template folder
@@ -1427,10 +1427,8 @@ const clearFilters = () => {
                       <!--LIST VIEW-->
                       <div class="row g-3 mt-2">
                         <div class="results-header-row">
-                          <div>
-                            <h5>Exercise Results</h5>
-                            <p>Showing {{ filteredExercises.length }} exercises</p>
-                          </div>
+                          <span class="results-title">Exercise Results</span>
+                          <span class="results-count">{{ filteredExercises.length }} items</span>
                         </div>
 
                         <div class="exercise-list">
@@ -2261,19 +2259,20 @@ textarea {
 .search-filter-divider { display: none; }
 
 .results-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   border-top: 1px solid #e7edf5;
   padding-top: 8px;
   margin-top: 0;
   margin-bottom: 8px;
 }
-.results-header-row h5 {
-  margin: 0;
+.results-title {
   font-size: 1rem;
   font-weight: 700;
   color: #334155;
 }
-.results-header-row p {
-  margin: 2px 0 0;
+.results-count {
   font-size: 0.84rem;
   color: #64748b;
 }
@@ -2431,19 +2430,28 @@ textarea {
   }
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   RESPONSIVE â€“ 768px (Tablet / large phone)
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─────────────────────────────────────────────────────
+   RESPONSIVE - 768px (Tablet / large phone)
+───────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  /* â”€ Hero banner â”€ */
+  /* - Hero banner - */
   :deep(.builder-hero),
   .builder-hero {
-    padding: 16px !important;
-    margin-bottom: 12px !important;
-    border-radius: 16px !important;
+    padding-top: 16px !important;
+    padding-bottom: 16px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    border-radius: 18px !important;
+    margin-bottom: 14px !important;
+  }
+  :deep(.builder-hero) h2,
+  :deep(.builder-hero__content) h2 {
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
   }
 
-  /* â”€ Overflow guard â”€ */
+  /* - Overflow guard - */
   .exercises-page,
   .exercises-canvas,
   .ex-page-body,
@@ -2460,7 +2468,7 @@ textarea {
     height: auto;
   }
 
-  /* â”€ Tab bar: scrollable, compact â”€ */
+  /* - Tab bar: scrollable, compact - */
   .ex-tab-bar {
     overflow-x: auto;
     flex-wrap: nowrap;
@@ -2473,16 +2481,16 @@ textarea {
   .ex-tab-bar::-webkit-scrollbar { display: none; }
   .ex-tab {
     flex: 0 0 auto;
-    min-width: 110px;
+    min-width: 100px;
     max-width: 120px;
-    padding: 12px 10px 11px;
-    font-size: 0.82rem;
+    height: 40px;
+    padding: 0 10px;
+    font-size: 0.85rem;
   }
-  /* Short tab labels on mobile */
   .tab-label-full  { display: none; }
   .tab-label-short { display: inline; }
 
-  /* â”€ Accordion toggle visible on mobile â”€ */
+  /* - Accordion toggle visible on mobile - */
   .filter-accordion-toggle {
     display: flex;
     align-items: center;
@@ -2500,18 +2508,17 @@ textarea {
   }
   .filter-accordion-toggle i { font-size: 0.85rem; color: #64748b; }
 
-  /* Filter body: hidden when collapsed on mobile */
   .filters-mobile-hidden {
     display: none !important;
   }
 
-  /* â”€ Filter grid: 1-col on mobile â”€ */
+  /* - Filter grid: 1-col on mobile - */
   .search-filter-grid {
     grid-template-columns: 1fr;
     gap: 8px 0;
   }
 
-  /* â”€ Action buttons: stacked, full-width, 48px â”€ */
+  /* - Action buttons: stacked, full-width - */
   .search-filter-actions {
     flex-direction: column;
     gap: 8px;
@@ -2523,31 +2530,57 @@ textarea {
     font-size: 0.95rem;
   }
 
-  /* Reduce filter card padding */
   .search-filter-body {
     padding: 10px 12px 10px;
   }
 
-  /* Dual-column card layout */
+  /* - Compact results header - */
+  .results-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    margin-top: 0;
+    margin-bottom: 10px;
+    border-top: 1px solid #e7edf5;
+  }
+  .results-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #334155;
+  }
+  .results-count {
+    font-size: 0.82rem;
+    color: #64748b;
+    font-weight: 600;
+  }
+
+  /* - Exercise list gap - */
+  .exercise-list {
+    gap: 10px;
+  }
+
+  /* - Compact exercise card - */
   .exercise-row {
     display: flex;
     flex-direction: row;
-    align-items: center;
-    padding: 14px;
-    gap: 14px;
-    min-height: 140px;
+    align-items: flex-start;
+    padding: 12px;
+    gap: 10px;
+    min-height: auto;
   }
   .exercise-img {
-    width: 110px;
-    height: 110px;
+    width: 72px;
+    height: 72px;
     flex-shrink: 0;
     margin: 0;
   }
   .exercise-img img {
-    width: 110px;
-    height: 110px;
+    width: 72px;
+    height: 72px;
     object-fit: cover;
-    border-radius: 12px;
+    border-radius: 10px;
     display: block;
   }
   .exercise-info {
@@ -2555,37 +2588,45 @@ textarea {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    gap: 4px;
+    height: auto;
   }
   .exercise-info .exercise-title {
-    margin-bottom: 6px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 0;
+    line-height: 1.15;
   }
   .exercise-info .exercise-meta {
-    gap: 5px;
-    margin-bottom: 6px;
+    gap: 2px;
+    margin-bottom: 4px;
+  }
+  .exercise-meta p {
+    font-size: 0.82rem;
+    line-height: 1.15;
   }
   .exercise-info .exercise-actions {
-    margin-top: auto;
+    margin-top: 4px;
   }
   .exercise-card {
     display: flex;
     flex-direction: row;
-    align-items: center;
-    gap: 14px;
-    padding: 14px;
-    min-height: 140px;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+    min-height: auto;
   }
   .exercise-card .exercise-image {
-    width: 110px;
-    height: 110px;
+    width: 72px;
+    height: 72px;
     flex-shrink: 0;
     margin: 0;
   }
   .exercise-card .exercise-image img {
-    width: 110px;
-    height: 110px;
+    width: 72px;
+    height: 72px;
     object-fit: cover;
-    border-radius: 12px;
+    border-radius: 10px;
     display: block;
   }
   .exercise-card .exercise-content {
@@ -2593,40 +2634,43 @@ textarea {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    gap: 4px;
   }
+
+  /* - Compact action buttons (horizontal) - */
   .exercise-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: row;
     gap: 8px;
-    margin-top: auto;
+    margin-top: 0;
   }
   .exercise-actions .btn {
-    width: 100%;
-    min-height: 44px;
-    font-size: 0.85rem;
+    height: 34px;
+    min-height: 34px;
+    font-size: 0.8rem;
+    padding: 4px 10px;
+    width: auto;
   }
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   RESPONSIVE â€“ 480px (Small phones)
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─────────────────────────────────────────────────────
+   RESPONSIVE - 480px (Small phones)
+───────────────────────────────────────────────────── */
 @media (max-width: 480px) {
   .ex-tab {
-    min-width: 90px;
-    max-width: 110px;
-    padding: 10px 8px;
+    min-width: 80px;
+    max-width: 100px;
+    height: 36px;
+    padding: 0 8px;
     font-size: 0.78rem;
   }
-  .ex-tab i {
-    display: none; /* hide icons on very small screens to save space */
-  }
-  .exercise-img { width: 90px; height: 90px; }
-  .exercise-img img { width: 90px; height: 90px; border-radius: 10px; }
-  .exercise-card .exercise-image { width: 90px; height: 90px; }
-  .exercise-card .exercise-image img { width: 90px; height: 90px; border-radius: 10px; }
-  .exercise-row { padding: 10px; gap: 10px; min-height: 120px; }
-  .exercise-actions .btn { min-height: 40px; font-size: 0.78rem; }
+  .ex-tab i { display: none; }
+  .exercise-img { width: 64px; height: 64px; }
+  .exercise-img img { width: 64px; height: 64px; border-radius: 8px; }
+  .exercise-card .exercise-image { width: 64px; height: 64px; }
+  .exercise-card .exercise-image img { width: 64px; height: 64px; border-radius: 8px; }
+  .exercise-row { padding: 10px; gap: 8px; }
+  .exercise-actions .btn { height: 32px; min-height: 32px; font-size: 0.75rem; padding: 3px 8px; }
 }
 </style>
 
