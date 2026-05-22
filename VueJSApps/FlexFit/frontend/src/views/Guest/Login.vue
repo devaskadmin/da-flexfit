@@ -103,6 +103,14 @@ const buildCompactLoginMessage = ({ status, fallbackMessage } = {}) => {
     return 'FlexFit database connection limit reached. The hosting provider rejected additional database connections. Please wait a minute and retry.';
   }
 
+  if (
+    String(fallbackMessage || '').toLowerCase().includes('session store') ||
+    String(fallbackMessage || '').includes('ECONNRESET') ||
+    String(fallbackMessage || '').includes('ECONNREFUSED')
+  ) {
+    return 'Sign-in failed: session service temporarily unavailable. Please wait a moment and retry.';
+  }
+
   if (fallbackMessage) {
     const lowerFallback = String(fallbackMessage).toLowerCase();
     if (lowerFallback.includes('login succeeded') || lowerFallback.includes('session cookie')) {
@@ -362,11 +370,23 @@ const login = async () => {
       data: error?.response?.data,
       message: error?.message,
     });
+    // The global error handler on the backend always returns { error, code }.
+    // Older route-level errors return { error } or { message }.
+    // error?.response?.data may be a string if Express returned HTML (shouldn't
+    // happen now that we have the global handler, but guard anyway).
+    const rawData = error?.response?.data;
     const apiMessage =
-      error?.response?.data?.message ||
-      error?.response?.data?.error ||
-      'Sign-in request failed before authentication could complete.';
-    const isConnLimit = String(apiMessage).includes('ER_TOO_MANY_USER_CONNECTIONS');
+      (typeof rawData === 'object' && rawData !== null
+        ? (rawData.message || rawData.error || null)
+        : null) ||
+      'Server error during sign-in. Please try again.';
+    const errorCode = typeof rawData === 'object' ? (rawData.code || '') : '';
+    const isConnLimit =
+      String(apiMessage).includes('ER_TOO_MANY_USER_CONNECTIONS') ||
+      errorCode === 'ER_TOO_MANY_USER_CONNECTIONS';
+    const isSessionStore =
+      String(apiMessage).toLowerCase().includes('session store') ||
+      ['ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT'].includes(errorCode);
     if (isConnLimit) {
       isConnectionLimitError.value = true;
     }
@@ -374,6 +394,8 @@ const login = async () => {
       fallbackMessage: apiMessage,
       reason: isConnLimit
         ? 'Database connection limit reached on hosting provider.'
+        : isSessionStore
+        ? 'Session store temporarily unavailable.'
         : 'Browser could not complete sign-in request.',
       status: error?.response?.status,
       apiMessage,

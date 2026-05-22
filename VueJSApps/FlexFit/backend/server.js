@@ -214,6 +214,50 @@ app.use('/api', openFoodFactsRoutes);
 app.use('/api/avatar', avatarRoutes);
 app.use('/api/admin', require('./api/admin.js')); // 🔒 Admin-only routes
 
+// ✅ Global JSON error handler — MUST be registered after all routes.
+// Catches express-session store failures (which call next(err) before any route
+// handler runs), DB middleware crashes, and unhandled route errors.
+// Without this, Express returns a text/html 500 which the frontend cannot parse,
+// causing the fallback "Sign-in request failed before authentication could complete."
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  const status = err?.status || err?.statusCode || 500;
+
+  // Classify the error so we can give the user a meaningful message.
+  const isSessionStoreErr = (
+    err?.message?.includes('ECONNRESET') ||
+    err?.message?.includes('ECONNREFUSED') ||
+    err?.message?.includes('ETIMEDOUT') ||
+    err?.code === 'ECONNRESET' ||
+    err?.code === 'ECONNREFUSED' ||
+    err?.code === 'ETIMEDOUT' ||
+    err?.code === 'ER_TOO_MANY_USER_CONNECTIONS' ||
+    // express-session passes its own error objects; the store is MySQL-backed
+    (err?.constructor?.name === 'Error' && /session/i.test(err?.message || ''))
+  );
+
+  const userMessage = isSessionStoreErr
+    ? 'The session store is temporarily unavailable. Please wait a moment and try again.'
+    : (err?.message || 'An unexpected server error occurred.');
+
+  console.error('❌ [Global error handler]', {
+    status,
+    code: err?.code || null,
+    message: err?.message || String(err),
+    isSessionStoreErr,
+    path: req?.path || null,
+    method: req?.method || null,
+  });
+
+  // Always respond with JSON so the frontend can parse error.response.data
+  if (!res.headersSent) {
+    res.status(status).json({
+      error: userMessage,
+      code: err?.code || null,
+    });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Backend running on port ${PORT}`);
