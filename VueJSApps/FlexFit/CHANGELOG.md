@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.81.8a] — Login Diagnostics Button Visibility Fix
+
+- Removed `btn-outline-light` Bootstrap class from diagnostics button (root cause of invisible styling)
+- Replaced weak CSS with `button.auth-button-outline` + `!important` overrides to defeat Bootstrap specificity
+- Button now clearly visible: dark blue `#1e3a6d` background, white bold text, `#4f79d9` border
+- Added hover lift (`translateY(-1px)`, `#294d91` bg, `#6d95ff` border) and disabled `opacity: 0.75`
+- Works on desktop and mobile, same width as Sign In button
+
+---
+
 ## [0.81.8] — DB Connection Exhaustion Fix & Login Diagnostics Improvements
 
 - Reduced app DB connection pool to `connectionLimit: 5` (was 10) to prevent `ER_TOO_MANY_USER_CONNECTIONS` on shared hosting

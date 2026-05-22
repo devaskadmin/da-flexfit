@@ -436,7 +436,7 @@ const demoLogin = async (role) => {
             <button
               v-if="errorMsg"
               type="button"
-              class="btn btn-outline-light w-100 auth-button auth-button-outline"
+              class="btn w-100 auth-button auth-button-outline"
               @click="openDiagnosticsModal"
             >
               View Login Diagnostics
@@ -718,17 +718,36 @@ const demoLogin = async (role) => {
   margin-top: 8px;
 }
 
+/* ── Login diagnostics button — Bootstrap overrides defeated ── */
+button.auth-button-outline,
 .auth-button-outline {
+  background: #1e3a6d !important;
+  color: #ffffff !important;
+  border: 2px solid #4f79d9 !important;
+  opacity: 1 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  min-height: 44px;
-  background: #243f78;
-  color: white;
-  border: 1px solid #4f79d9;
-  font-weight: 600;
+  min-height: 46px;
+  font-weight: 700;
   border-radius: 10px;
-  margin-top: 10px;
+  margin-top: 12px;
   margin-bottom: 14px;
-  opacity: 1;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+  transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+button.auth-button-outline:hover,
+.auth-button-outline:hover {
+  background: #294d91 !important;
+  transform: translateY(-1px);
+  border-color: #6d95ff !important;
+}
+
+button.auth-button-outline:disabled,
+.auth-button-outline:disabled {
+  opacity: 0.75 !important;
 }
 
 .auth-button-secondary {
