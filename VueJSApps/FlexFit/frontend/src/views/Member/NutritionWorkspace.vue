@@ -309,11 +309,14 @@ onMounted(async () => {
 
       <div class="nutrition-date-wrapper">
         <span class="nutrition-date-label">Select Date</span>
-        <input
-          type="date"
-          v-model="selectedDateInput"
-          class="nutrition-date-input"
-        />
+        <div class="nutrition-date-container">
+          <input
+            type="date"
+            v-model="selectedDateInput"
+            class="nutrition-date-input"
+          />
+          <span class="nutrition-date-icon" aria-hidden="true">📅</span>
+        </div>
       </div>
     </section>
 
@@ -541,11 +544,17 @@ onMounted(async () => {
   letter-spacing: 0.05em;
 }
 
-.nutrition-date-input {
+.nutrition-date-container {
+  position: relative;
   width: 100%;
   max-width: 320px;
+}
+
+.nutrition-date-input {
+  width: 100%;
   height: 48px;
-  padding: 0 14px;
+  padding-left: 14px;
+  padding-right: 44px;
   border-radius: 12px;
   background: #ffffff;
   color: #1e293b;
@@ -557,11 +566,31 @@ onMounted(async () => {
   -webkit-appearance: auto;
   opacity: 1;
   cursor: pointer;
+  position: relative;
+  z-index: 1;
 }
 
 .nutrition-date-input::-webkit-calendar-picker-indicator {
-  opacity: 1;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  opacity: 0;
   cursor: pointer;
+  z-index: 2;
+}
+
+.nutrition-date-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  pointer-events: none;
+  z-index: 0;
+  line-height: 1;
 }
 
 /* ── Search card ── */
@@ -810,6 +839,10 @@ onMounted(async () => {
   /* Date wrapper: full-width on mobile */
   .nutrition-date-wrapper {
     width: 100%;
+  }
+
+  .nutrition-date-container {
+    max-width: 100%;
   }
 
   .nutrition-date-input {
