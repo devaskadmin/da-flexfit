@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.81.9b] — Session Persistence Root Cause Investigation & Fix
+
+**Audit findings:**
+- `trust proxy: 1` ✅ correct position (before session middleware)
+- Cookie `secure`/`sameSite` ✅ derived from `NODE_ENV`
+- `req.session.save()` existed as a callback — upgraded to `await new Promise(resolve, reject)` so errors surface cleanly through the async try/catch chain
+- Session store `connectionLimit: 2` identified as potential read/write deadlock: session middleware reads on every request (slot 1), `session.save()` writes after auth (slot 2) — any concurrent request exhausts the pool → bumped to **3**
+- `GET /api/auth/session-test` endpoint was missing → **added**
+- `[SESSION STORE] { store: 'mysql', ready: true }` log was missing → **added**
+- All `pool.getConnection()` calls (register, bootstrap) already have `conn.release()` in `finally` ✅
+- Main login route uses `pool.query()` which auto-releases ✅
+
+**Changes:**
+- `auth.js`: `req.session.save()` → `await new Promise(...)` with structured `[SESSION SAVE FAILED]` log including error code, message, sessionID
+- `auth.js`: Added `GET /api/auth/session-test` — returns `{ sessionID, hasSession, hasUser, user, cookie, timestamp }` (no DB hit)
+- `server.js`: Session pool `connectionLimit: 2 → 3`
+- `server.js`: Added `[SESSION STORE] { store: 'mysql', ready: true }` startup log
+
+---
+
 ## [0.81.9] — Controlled Debug Diagnostics System
 
 - Added `GET /api/debug/login-diagnostics` backend endpoint — returns safe structured data only when `DEBUG=true`; returns `"Contact administrator for details."` otherwise

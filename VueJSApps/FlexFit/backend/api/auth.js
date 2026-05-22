@@ -302,40 +302,56 @@ router.post('/login', async (req, res) => {
       };
       req.session.mustResetPassword = isPendingReset;
       req.session.cookie.maxAge = rememberMe ? REMEMBER_ME_MAX_AGE_MS : DEFAULT_SESSION_MAX_AGE_MS;
-      console.log("✅ Session created:", req.session.user);
+      console.log('✅ Session user assigned:', req.session.user);
 
-      req.session.save((saveErr) => {
-        if (saveErr) {
-          console.error('❌ Session save error:', saveErr);
-          return res.status(500).json({ error: 'Login succeeded, but session could not be persisted.' });
-        }
-
-        if (isDebugEnabled) {
-          console.log('🧪 [auth/login] session persisted:', {
-            sessionId: req.sessionID || null,
-            cookie: {
-              secure: Boolean(req.session?.cookie?.secure),
-              sameSite: req.session?.cookie?.sameSite || null,
-              httpOnly: Boolean(req.session?.cookie?.httpOnly),
-              maxAge: req.session?.cookie?.maxAge ?? null,
-            },
+      // ✅ Await session save — ensures MySQL write completes before responding.
+      // If save fails (pool exhaustion, ECONNRESET) the error is caught and logged
+      // without leaving an orphaned session in memory.
+      try {
+        await new Promise((resolve, reject) => {
+          req.session.save((saveErr) => {
+            if (saveErr) {
+              console.error('[SESSION SAVE FAILED]', {
+                code: saveErr?.code || 'unknown',
+                message: saveErr?.message || String(saveErr),
+                sessionId: req.sessionID || null,
+              });
+              reject(saveErr);
+              return;
+            }
+            resolve();
           });
-        }
+        });
+      } catch (saveErr) {
+        console.error('❌ Session persistence error after login:', saveErr?.message || saveErr);
+        return res.status(500).json({ error: 'Login succeeded, but session could not be persisted.' });
+      }
 
-        return res.json({
-          message: isPendingReset ? "Temporary password accepted. Password reset required." : "Login successful",
-          user: req.session.user,
-          requiresPasswordReset: isPendingReset,
-          diagnostics: {
-            loginSucceeded: true,
-            sessionVerificationPassed: true,
-            cookieDetected: Boolean(req.headers.cookie),
-            cookieSentBack: true,
-            corsPassed: Boolean(req.headers.origin),
-            sameSiteValue: req.session?.cookie?.sameSite || null,
-            secureFlag: Boolean(req.session?.cookie?.secure),
+      if (isDebugEnabled) {
+        console.log('🧪 [auth/login] session persisted:', {
+          sessionId: req.sessionID || null,
+          cookie: {
+            secure: Boolean(req.session?.cookie?.secure),
+            sameSite: req.session?.cookie?.sameSite || null,
+            httpOnly: Boolean(req.session?.cookie?.httpOnly),
+            maxAge: req.session?.cookie?.maxAge ?? null,
           },
         });
+      }
+
+      return res.json({
+        message: isPendingReset ? 'Temporary password accepted. Password reset required.' : 'Login successful',
+        user: req.session.user,
+        requiresPasswordReset: isPendingReset,
+        diagnostics: {
+          loginSucceeded: true,
+          sessionVerificationPassed: true,
+          cookieDetected: Boolean(req.headers.cookie),
+          cookieSentBack: true,
+          corsPassed: Boolean(req.headers.origin),
+          sameSiteValue: req.session?.cookie?.sameSite || null,
+          secureFlag: Boolean(req.session?.cookie?.secure),
+        },
       });
       
     } catch (err) {
@@ -636,6 +652,29 @@ router.post('/bootstrap/promote-self-admin', async (req, res) => {
     }
     res.status(401).json({ error: 'User not logged in' });
   });
+
+// GET /api/auth/session-test — lightweight session probe for diagnostics modal.
+// Returns session state without touching the DB.
+router.get('/auth/session-test', (req, res) => {
+  return res.json({
+    sessionID: req.sessionID || null,
+    hasSession: !!req.session,
+    hasUser: !!req.session?.user,
+    user: req.session?.user
+      ? {
+          id: req.session.user.id,
+          username: req.session.user.username,
+          role: req.session.user.role,
+        }
+      : null,
+    cookie: {
+      secure: Boolean(req.session?.cookie?.secure),
+      sameSite: req.session?.cookie?.sameSite || null,
+      httpOnly: Boolean(req.session?.cookie?.httpOnly),
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
 
 router.get('/register-tiers', async (req, res) => {
   try {

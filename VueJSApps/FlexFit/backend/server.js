@@ -106,9 +106,12 @@ try {
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
 
-      // ✅ Session pool strictly limited to 2 — total DB budget: app(5) + session(2) = 7
+      // ✅ Session pool: 3 connections.
+      // express-mysql-session needs 1 slot to READ at request start (middleware)
+      // and 1 slot to WRITE after login (session.save). Pool of 2 can deadlock
+      // under concurrent requests. 3 provides headroom. Total budget: app(5)+session(3)=8.
       waitForConnections: true,
-      connectionLimit: 2,
+      connectionLimit: 3,
       queueLimit: 0,
 
       // Keep connections alive so MySQL doesn't ECONNRESET after idle periods
@@ -140,8 +143,9 @@ try {
       // log only — DO NOT throw or call process.exit()
     });
 
-    console.log('🗄️  Session store: MySQL (persistent across restarts) | pool connectionLimit=2');
-    console.log('📊 DB budget: app=5 + session=2 = 7 max connections');
+    console.log('🗄️  Session store: MySQL (persistent across restarts) | pool connectionLimit=3');
+    console.log('📊 DB budget: app=5 + session=3 = 8 max connections');
+    console.log('[SESSION STORE]', { store: 'mysql', ready: true });
   } else {
     console.warn('⚠️  Session store: in-memory (DB env vars not set — sessions lost on restart)');
   }
