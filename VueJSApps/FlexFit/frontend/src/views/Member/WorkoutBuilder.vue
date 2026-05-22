@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import WorkoutMetadataForm from '@/components/workout-builder/WorkoutMetadataForm.vue';
 import ExercisePickerModal from '@/components/workout-builder/ExercisePickerModal.vue';
@@ -33,6 +33,17 @@ const deletingWorkoutId = ref('');
 const hasSavedWorkoutExerciseList = ref(false);
 const isWorkoutDetailsOpen = ref(true);
 const isSchedulePlannerOpen = ref(true);
+const openMenuDay = ref(null);
+
+const toggleDayMenu = (dayName) => {
+  openMenuDay.value = openMenuDay.value === dayName ? null : dayName;
+};
+
+const closeDayMenu = (e) => {
+  if (!e.target.closest('.day-kebab-wrap')) {
+    openMenuDay.value = null;
+  }
+};
 const route = useRoute();
 const router = useRouter();
 
@@ -780,6 +791,11 @@ const deleteWorkoutSchedule = async (schedule) => {
 onMounted(async () => {
   const requestedPlanId = String(route.query?.planId || '').trim();
   await Promise.all([loadExercises(), loadUserId(), loadWorkoutPlanner(requestedPlanId)]);
+  document.addEventListener('click', closeDayMenu);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeDayMenu);
 });
 
 watch(
@@ -1027,6 +1043,7 @@ watch(
                       <span class="exercise-count">{{ day.exerciseCount }} exercise{{ day.exerciseCount === 1 ? '' : 's' }}</span>
                     </div>
 
+                    <!-- Desktop actions (hidden on mobile) -->
                     <div class="day-actions" @click.stop>
                       <button
                         type="button"
@@ -1057,6 +1074,53 @@ watch(
                       >
                         <i :class="selectedScheduleGroup === day.name ? 'fa fa-chevron-up' : 'fa fa-chevron-down'"></i>
                       </button>
+                    </div>
+
+                    <!-- Mobile kebab menu (hidden on desktop) -->
+                    <div class="day-kebab-wrap" @click.stop>
+                      <button
+                        type="button"
+                        class="day-kebab-btn"
+                        :aria-expanded="openMenuDay === day.name"
+                        @click="toggleDayMenu(day.name)"
+                      >
+                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                      </button>
+                      <div v-if="openMenuDay === day.name" class="day-kebab-menu">
+                        <button
+                          type="button"
+                          class="day-kebab-item"
+                          @click="setActiveDay(day.name); openMenuDay = null"
+                        >
+                          <i :class="selectedScheduleGroup === day.name ? 'fa-solid fa-check-circle' : 'fa-regular fa-circle'"></i>
+                          {{ selectedScheduleGroup === day.name ? 'Selected' : 'Select Day' }}
+                        </button>
+                        <button
+                          type="button"
+                          class="day-kebab-item"
+                          @click="startEditScheduleGroup(day.name); openMenuDay = null"
+                        >
+                          <i class="fa-solid fa-pen"></i>
+                          Edit Day
+                        </button>
+                        <button
+                          type="button"
+                          class="day-kebab-item day-kebab-item--delete"
+                          :disabled="!canRemoveScheduleGroup(day.name)"
+                          @click="requestDeleteDay(day.name); openMenuDay = null"
+                        >
+                          <i class="fa-solid fa-trash"></i>
+                          Delete Day
+                        </button>
+                        <button
+                          type="button"
+                          class="day-kebab-item"
+                          @click="setActiveDay(day.name); openMenuDay = null"
+                        >
+                          <i :class="selectedScheduleGroup === day.name ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
+                          {{ selectedScheduleGroup === day.name ? 'Collapse' : 'Expand' }}
+                        </button>
+                      </div>
                     </div>
                   </button>
 
@@ -1730,6 +1794,83 @@ watch(
   color: #1d4ed8;
 }
 
+/* ── Kebab menu (mobile only) ── */
+.day-kebab-wrap {
+  position: relative;
+  display: none;
+  flex-shrink: 0;
+}
+
+.day-kebab-btn {
+  width: 44px;
+  height: 44px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #475569;
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.day-kebab-btn:hover {
+  background: #f1f5f9;
+}
+
+.day-kebab-menu {
+  position: absolute;
+  right: 0;
+  top: 50px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  min-width: 170px;
+  z-index: 200;
+  overflow: hidden;
+}
+
+.day-kebab-item {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  border-bottom: 1px solid #f1f5f9;
+  background: transparent;
+  color: #334155;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+.day-kebab-item:last-child {
+  border-bottom: none;
+}
+.day-kebab-item:hover {
+  background: #f8fafc;
+}
+.day-kebab-item i {
+  width: 16px;
+  text-align: center;
+  color: #64748b;
+}
+.day-kebab-item--delete {
+  color: #dc2626;
+}
+.day-kebab-item--delete i {
+  color: #dc2626;
+}
+.day-kebab-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .workout-day-panel {
   background: #ffffff;
   border-top: 1px solid #dbe4f0;
@@ -2363,24 +2504,17 @@ watch(
     font-size: 11px;
   }
 
-  /* Day actions — two rows on mobile */
+  /* Day actions — kebab on mobile */
   .day-actions {
-    flex-wrap: wrap;
-    gap: 4px;
-    justify-content: flex-end;
+    display: none;
   }
 
-  .day-action-btn {
-    min-height: 28px;
-    padding: 0 8px;
-    font-size: 0.73rem;
-    border-radius: 6px;
+  .day-kebab-wrap {
+    display: flex;
   }
 
-  .chevron-btn {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
+  .workout-day-header {
+    flex-wrap: nowrap;
   }
 
   /* ── Day panel ── */
