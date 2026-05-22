@@ -7,6 +7,10 @@ const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
+// ✅ RAW mysql2 (non-promise) required for express-mysql-session.
+// express-mysql-session calls .query() directly on the pool; promise pools
+// wrap that and break the internal connection check → 'this.connection.query is not a function'.
+const mysqlRaw = require('mysql2');
 
 const app = express();
 app.use(express.json());
@@ -99,52 +103,48 @@ if (isDebugEnabled) {
 let sessionStore;
 try {
   if (process.env.DB_HOST && process.env.DB_USER && process.env.DB_DATABASE) {
-    const sessionDbConfig = {
-      host: process.env.DB_HOST,
-      port: Number(process.env.DB_PORT || 3306),
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_DATABASE,
-
-      // ✅ Session pool: 3 connections.
-      // express-mysql-session needs 1 slot to READ at request start (middleware)
-      // and 1 slot to WRITE after login (session.save). Pool of 2 can deadlock
-      // under concurrent requests. 3 provides headroom. Total budget: app(5)+session(3)=8.
+    // ⚠️  MUST be a raw mysql2 pool — NOT pool.promise().
+    // express-mysql-session calls pool.query() internally; a promise-pool wraps
+    // that interface and causes: 'this.connection.query is not a function'.
+    const sessionPool = mysqlRaw.createPool({
+      host:              process.env.DB_HOST,
+      port:              Number(process.env.DB_PORT || 3306),
+      user:              process.env.DB_USER,
+      password:          process.env.DB_PASSWORD,
+      database:          process.env.DB_DATABASE,
+      connectionLimit:   2,   // 1 read (middleware) + 1 write (session.save)
       waitForConnections: true,
-      connectionLimit: 3,
-      queueLimit: 0,
-
-      // Keep connections alive so MySQL doesn't ECONNRESET after idle periods
-      enableKeepAlive: true,
+      queueLimit:        0,
+      enableKeepAlive:   true,
       keepAliveInitialDelay: 0,
-
-      connectTimeout: 30000,
-
-      // Release idle connections quickly to avoid stale socket errors
-      idleTimeout: 60000,
-      maxIdle: 2,
-    };
-
-    sessionStore = new MySQLStore({
-      clearExpired: true,
-      checkExpirationInterval: 15 * 60 * 1000, // prune expired sessions every 15 min
-      expiration: 7 * 24 * 60 * 60 * 1000,     // match cookie maxAge
-      createDatabaseTable: true,                // auto-create sessions table if missing
-      schema: {
-        tableName: 'sessions',
-        columnNames: { session_id: 'session_id', expires: 'expires', data: 'data' },
-      },
-    }, sessionDbConfig);
-
-    // ✅ Log session store errors but NEVER crash the backend.
-    // ECONNRESET / idle timeouts must not bring down the server.
-    sessionStore.on('error', (err) => {
-      console.error('⚠️  Session store error (non-fatal):', err.message);
-      // log only — DO NOT throw or call process.exit()
+      connectTimeout:    30000,
     });
 
-    console.log('🗄️  Session store: MySQL (persistent across restarts) | pool connectionLimit=3');
-    console.log('📊 DB budget: app=5 + session=3 = 8 max connections');
+    // Validate pool has the interface express-mysql-session expects
+    console.log('[SESSION DEBUG]', {
+      hasQuery:   typeof sessionPool.query,
+      hasExecute: typeof sessionPool.execute,
+      limit:      2,
+    });
+
+    sessionStore = new MySQLStore({
+      clearExpired:            true,
+      checkExpirationInterval: 15 * 60 * 1000,       // prune expired sessions every 15 min
+      expiration:              7 * 24 * 60 * 60 * 1000, // 7 days — match cookie maxAge
+      createDatabaseTable:     true,
+      schema: {
+        tableName:   'sessions',
+        columnNames: { session_id: 'session_id', expires: 'expires', data: 'data' },
+      },
+    }, sessionPool);
+
+    // ✅ Log session store errors but NEVER crash the backend.
+    sessionStore.on('error', (err) => {
+      console.error('⚠️  Session store error (non-fatal):', err.message);
+    });
+
+    console.log('🗄️  Session store: MySQL (persistent across restarts) | pool connectionLimit=2');
+    console.log('📊 DB budget: app=5 + session=2 = 7 max connections');
     console.log('[SESSION STORE]', { store: 'mysql', ready: true });
   } else {
     console.warn('⚠️  Session store: in-memory (DB env vars not set — sessions lost on restart)');
