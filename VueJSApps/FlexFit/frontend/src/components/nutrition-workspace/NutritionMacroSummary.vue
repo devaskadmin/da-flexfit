@@ -78,4 +78,47 @@ const props = defineProps({
   color: var(--text-color);
   font-size: 1.02rem;
 }
+
+/* ─────────────────────────────────────────────────────
+   RESPONSIVE - 768px  (v0.81.10 compact summary)
+───────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .macro-summary {
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .macro-summary__head {
+    margin-bottom: 6px;
+  }
+
+  .macro-summary__head h3 {
+    font-size: 0.9rem;
+  }
+
+  .macro-summary__head p {
+    display: none; /* hide subtitle on mobile to save space */
+  }
+
+  .macro-summary__grid {
+    margin-top: 8px;
+    gap: 8px;
+  }
+
+  .macro-summary__grid article {
+    min-height: 72px;
+    padding: 10px;
+    border-radius: 12px;
+    margin-bottom: 0;
+  }
+
+  .macro-summary__grid strong {
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+
+  .macro-summary__grid span {
+    font-size: 0.8rem;
+  }
+}
 </style>

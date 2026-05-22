@@ -478,73 +478,150 @@ onMounted(async () => {
   --ff-border-soft: rgba(15, 23, 42, 0.22);
 }
 @media (max-width: 1100px) { .workspace-layout { grid-template-columns: 1fr; } .workspace-side { order: -1; } }
+/* ─────────────────────────────────────────────────────
+   RESPONSIVE - 768px  (v0.81.10 mobile optimization)
+───────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .search-controls, .add-edit-grid, .form-grid { grid-template-columns: 1fr; }
-  .builder-hero__meta { width: 100%; justify-content: flex-start; }
-}
+  /* ─ Global spacing compression ─ */
+  .nutrition-workspace {
+    gap: 12px;
+  }
 
-/* ── Mobile (≤ 768px) — nutrition-specific fixes ─────────────────── */
-@media (max-width: 768px) {
-  /* Hero: prevent date control overflow */
+  /* ─ Hero: compact height, no overlap with search ─ */
   .builder-hero {
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
+    padding-top: 16px !important;
+    padding-bottom: 16px !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    border-radius: 18px !important;
+    margin-bottom: 12px !important;
+    min-height: auto !important;
+  }
+  .builder-hero h2 {
+    font-size: 1.35rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+  }
+  .builder-hero p {
+    font-size: 0.82rem !important;
+    opacity: 0.9;
+    margin-top: 4px !important;
+    margin-bottom: 0 !important;
   }
   .builder-hero__content { width: 100%; }
   .builder-hero__meta {
     width: 100%;
     justify-content: flex-start;
+    /* ensure date control never overlaps the hero card */
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+    margin-top: 0;
+    z-index: 1;
   }
 
-  /* Tab bar: horizontal scroll, no wrap */
+  /* ─ Workspace layout: single column, side goes on top ─ */
+  .workspace-layout {
+    gap: 12px;
+  }
+
+  /* ─ Workspace main: reduce padding ─ */
+  .workspace-main {
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  /* ─ Tab bar: horizontal scroll, compact pills ─ */
   .workspace-tabs {
+    display: flex;
     overflow-x: auto;
     flex-wrap: nowrap;
+    white-space: nowrap;
+    gap: 8px;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
     padding-bottom: 4px;
-    gap: 6px;
+    border-bottom: 1.5px solid var(--ff-border-soft);
   }
   .workspace-tabs::-webkit-scrollbar { display: none; }
   .workspace-tabs button {
     flex-shrink: 0;
     white-space: nowrap;
+    height: 36px;
+    padding-left: 12px;
+    padding-right: 12px;
+    font-size: 0.8rem;
+    border-radius: 18px;
   }
 
-  /* Search controls: full-width stack */
+  /* ─ Search controls: stacked, compressed ─ */
   .search-controls {
     grid-template-columns: 1fr;
     gap: 8px;
+    padding: 10px 0 0;
+  }
+  .search-controls input,
+  .search-controls select {
+    height: 42px;
+    font-size: 0.88rem;
+    border-radius: 10px;
+    padding: 8px 10px;
   }
   .btn-search {
     width: 100%;
-    padding: 10px;
+    height: 42px;
+    font-size: 0.9rem;
+    border-radius: 12px;
+    padding: 0 12px;
   }
 
-  /* Add/Edit form: single-col */
+  /* ─ Search section: normal flow (no overlap) ─ */
+  .workspace-section {
+    position: relative;
+    margin-top: 10px;
+  }
+
+  /* ─ Add/Edit + form grids: single col ─ */
+  .add-edit-grid,
   .form-grid {
     grid-template-columns: 1fr;
   }
 
-  /* Food grid: single col */
+  /* ─ Food grid: tighter gap ─ */
   .food-grid {
     gap: 8px;
+    margin-top: 8px;
   }
 
-  /* Workspace main: reduce padding */
-  .workspace-main {
+  /* ─ State messages: less top margin ─ */
+  .state-msg {
+    margin-top: 8px;
     padding: 10px;
   }
 }
 
-/* ── Small mobile (≤ 480px) — 2×2 macro summary layout ─────────── */
+/* ─────────────────────────────────────────────────────
+   RESPONSIVE - 480px  (small phones)
+───────────────────────────────────────────────────── */
 @media (max-width: 480px) {
-  .workspace-tabs button {
-    padding: 5px 10px;
-    font-size: 0.78rem;
+  .builder-hero h2 {
+    font-size: 1.2rem !important;
   }
-
-  .builder-hero h2 { font-size: 1.2rem; }
-  .builder-hero p  { font-size: 0.82rem; }
+  .builder-hero p {
+    font-size: 0.8rem !important;
+  }
+  .workspace-tabs button {
+    height: 34px;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 0.75rem;
+  }
+  .workspace-main {
+    padding: 8px;
+  }
 }
 </style>
