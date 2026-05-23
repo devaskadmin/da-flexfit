@@ -48,32 +48,39 @@ const metricOptions = computed(() => {
   switch (workoutType.value) {
     case 'strength':
       return [
-        { value: 'totalVolume', label: 'Total Volume (sets × reps × weight)' },
-        { value: 'weight',      label: 'Avg Weight (lbs/kg)' },
-        { value: 'reps',        label: 'Total Reps' },
-        { value: 'sets',        label: 'Total Sets' },
-        { value: 'calories',    label: 'Estimated Calories' },
-        { value: 'duration',    label: 'Duration (min)' },
+        { value: 'totalVolume',      label: 'Total Volume (sets × reps × weight)' },
+        { value: 'maxWeight',        label: 'Max Weight (lbs/kg)' },
+        { value: 'weight',           label: 'Avg Weight (lbs/kg)' },
+        { value: 'reps',             label: 'Total Reps' },
+        { value: 'avgReps',          label: 'Avg Reps Per Set' },
+        { value: 'sets',             label: 'Sets Completed' },
+        { value: 'workoutCount',     label: 'Workout Sessions' },
+        { value: 'volumePerSession', label: 'Volume Per Session' },
+        { value: 'duration',         label: 'Duration (min)' },
       ];
     case 'cardio':
       return [
-        { value: 'duration',  label: 'Duration (min)' },
-        { value: 'calories',  label: 'Calories Burned' },
-        { value: 'distance',  label: 'Distance (miles)' },
-        { value: 'speed',     label: 'Avg Speed (mph)' },
+        { value: 'calories',           label: 'Calories Burned' },
+        { value: 'duration',           label: 'Duration (min)' },
+        { value: 'distance',           label: 'Distance (miles)' },
+        { value: 'speed',              label: 'Avg Speed (mph)' },
+        { value: 'maxSpeed',           label: 'Max Speed (mph)' },
+        { value: 'caloriesPerSession', label: 'Calories Per Session' },
+        { value: 'workoutCount',       label: 'Workout Sessions' },
       ];
     case 'other':
       return [
-        { value: 'duration',  label: 'Duration (min)' },
-        { value: 'calories',  label: 'Calories' },
-        { value: 'count',     label: 'Exercise Count' },
+        { value: 'workoutCount', label: 'Workout Sessions' },
+        { value: 'duration',     label: 'Duration (min)' },
+        { value: 'calories',     label: 'Calories Burned' },
+        { value: 'count',        label: 'Exercise Count' },
       ];
     default: // all
       return [
-        { value: 'calories',            label: 'Calories Burned' },
-        { value: 'duration',            label: 'Duration (min)' },
-        { value: 'completedWorkouts',   label: 'Completed Workouts' },
-        { value: 'completedExercises',  label: 'Completed Exercises' },
+        { value: 'workoutCount',       label: 'Workout Sessions' },
+        { value: 'calories',           label: 'Calories Burned' },
+        { value: 'duration',           label: 'Duration (min)' },
+        { value: 'completedExercises', label: 'Exercises Completed' },
       ];
   }
 });
@@ -279,7 +286,7 @@ function resetFilters() {
   workoutType.value  = 'all';
   exerciseId.value   = '';
   activeExChip.value = '';
-  metric.value       = 'calories';
+  metric.value       = 'workoutCount';
   loadExercises();
   loadChart();
 }

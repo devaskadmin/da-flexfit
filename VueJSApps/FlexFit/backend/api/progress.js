@@ -18,10 +18,16 @@ const VALID_GROUP_BY     = new Set(['day', 'month', 'year']);
 const VALID_WORKOUT_TYPE = new Set(['all', 'strength', 'cardio', 'other']);
 
 const VALID_METRICS_BY_TYPE = {
-  strength: new Set(['totalVolume', 'weight', 'reps', 'sets', 'calories', 'duration']),
-  cardio:   new Set(['duration', 'calories', 'distance', 'speed']),
-  other:    new Set(['duration', 'calories', 'count']),
-  all:      new Set(['calories', 'duration', 'completedWorkouts', 'completedExercises']),
+  strength: new Set([
+    'totalVolume', 'weight', 'maxWeight', 'reps', 'avgReps', 'sets',
+    'workoutCount', 'volumePerSession', 'duration',
+  ]),
+  cardio: new Set([
+    'calories', 'duration', 'distance', 'speed', 'maxSpeed',
+    'caloriesPerSession', 'workoutCount',
+  ]),
+  other: new Set(['workoutCount', 'duration', 'calories', 'count']),
+  all:   new Set(['workoutCount', 'calories', 'duration', 'completedExercises']),
 };
 
 // ─── Auth guard helper ────────────────────────────────────────────────────────
@@ -153,9 +159,9 @@ router.get('/chart', async (req, res) => {
   if (!metric || !allowedMetrics.has(metric)) {
     // default metric per type
     metric = workoutType === 'strength' ? 'totalVolume'
-           : workoutType === 'cardio'   ? 'duration'
-           : workoutType === 'other'    ? 'duration'
-           : 'calories';
+           : workoutType === 'cardio'   ? 'calories'
+           : workoutType === 'other'    ? 'workoutCount'
+           : 'workoutCount';
   }
 
   // exerciseId must belong to this user's completed logs

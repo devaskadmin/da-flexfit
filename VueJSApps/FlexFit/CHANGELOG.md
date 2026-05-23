@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.82.12] — 2026-05-23 — Workout Type Aware Metric Filtering
+
+**Feature: dynamic Y-axis metric list per workout type. No layout or SQL schema changes.**
+
+**Frontend — `metricOptions` computed expanded:**
+
+| Workout Type | Metrics Available |
+|---|---|
+| **Strength** | Total Volume, Max Weight, Avg Weight, Total Reps, Avg Reps Per Set, Sets Completed, Workout Sessions, Volume Per Session, Duration |
+| **Cardio** | Calories Burned, Duration, Distance, Avg Speed, Max Speed, Calories Per Session, Workout Sessions |
+| **Other** | Workout Sessions, Duration, Calories Burned, Exercise Count |
+| **All Types** | Workout Sessions, Calories Burned, Duration, Exercises Completed |
+
+- Calories Burned removed from Strength — was misleading; weight/volume metrics shown instead
+- Avg Speed / Max Speed / Distance removed from Strength and Other
+- Weight / Volume / Reps / Sets removed from Cardio and Other
+- Metric dropdown auto-resets to first valid option on type change (existing `watch(workoutType)` behaviour)
+- `resetFilters()` default metric changed from `calories` → `workoutCount` (valid across all types)
+
+**Backend — `progress.js` updated:**
+
+*`VALID_METRICS_BY_TYPE` expanded:*
+- `strength` now allows: `totalVolume`, `weight`, `maxWeight`, `reps`, `avgReps`, `sets`, `workoutCount`, `volumePerSession`, `duration`
+- `cardio` now allows: `calories`, `duration`, `distance`, `speed`, `maxSpeed`, `caloriesPerSession`, `workoutCount`
+- `other` now allows: `workoutCount`, `duration`, `calories`, `count`
+- `all` now allows: `workoutCount`, `calories`, `duration`, `completedExercises`
+
+*New SQL expressions added to chart route switch:*
+- `maxWeight` → `MAX(wl.Weight)`
+- `avgReps` → `AVG(wl.Reps)`
+- `workoutCount` → `COUNT(DISTINCT DATE(wl.WorkoutDate))`
+- `volumePerSession` → `SUM(sets×reps×weight) / NULLIF(COUNT(DISTINCT DATE), 0)`
+- `maxSpeed` → `MAX(wl.Speed)`
+- `caloriesPerSession` → `SUM(Calories) / NULLIF(COUNT(DISTINCT DATE), 0)`
+
+*Default metric fallback per type updated:* `strength` → `totalVolume`, `cardio` → `calories`, `other`/`all` → `workoutCount`
+
+---
+
 ## [0.82.11] — 2026-05-23 — Workout Type Driven Exercise Filtering
 
 **Feature: filter workflow improvement. No layout, API, or chart calculation changes.**
