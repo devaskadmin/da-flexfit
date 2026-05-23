@@ -17,17 +17,14 @@ const pool    = require('../db.js');
 const VALID_GROUP_BY     = new Set(['day', 'month', 'year']);
 const VALID_WORKOUT_TYPE = new Set(['all', 'strength', 'cardio', 'other']);
 
+// v0.82.13: simplified to 5 core metrics per type.
+// TODO: Pro metrics (maxWeight, avgReps, volumePerSession, maxSpeed, caloriesPerSession)
+//       will be restored behind the Pro subscription gate in a future version.
 const VALID_METRICS_BY_TYPE = {
-  strength: new Set([
-    'totalVolume', 'weight', 'maxWeight', 'reps', 'avgReps', 'sets',
-    'workoutCount', 'volumePerSession', 'duration',
-  ]),
-  cardio: new Set([
-    'calories', 'duration', 'distance', 'speed', 'maxSpeed',
-    'caloriesPerSession', 'workoutCount',
-  ]),
-  other: new Set(['workoutCount', 'duration', 'calories', 'count']),
-  all:   new Set(['workoutCount', 'calories', 'duration', 'completedExercises']),
+  strength: new Set(['weight', 'totalVolume', 'reps', 'sets', 'workoutCount']),
+  cardio:   new Set(['calories', 'duration', 'distance', 'speed', 'workoutCount']),
+  other:    new Set(['workoutCount', 'duration', 'calories']),
+  all:      new Set(['workoutCount', 'calories', 'duration', 'completedExercises']),
 };
 
 // ─── Auth guard helper ────────────────────────────────────────────────────────
@@ -147,7 +144,9 @@ router.get('/chart', async (req, res) => {
   const range  = defaultDateRange();
 
   // ── Validate & extract params ─────────────────────────────────────────────
-  let { startDate, endDate, groupBy, workoutType, exerciseId, metric } = req.query;
+  // v0.82.13: prefer metricPrimary; fall back to legacy 'metric' param for older clients.
+  let { startDate, endDate, groupBy, workoutType, exerciseId,
+        metric, metricPrimary, metricSecondary } = req.query;
 
   startDate   = isValidDate(startDate)   ? startDate   : range.startDate;
   endDate     = isValidDate(endDate)     ? endDate     : range.endDate;
@@ -155,14 +154,17 @@ router.get('/chart', async (req, res) => {
   workoutType = VALID_WORKOUT_TYPE.has((workoutType || '').toLowerCase())
     ? workoutType.toLowerCase() : 'all';
 
+  metric = metricPrimary || metric; // prefer new param
   const allowedMetrics = VALID_METRICS_BY_TYPE[workoutType] || VALID_METRICS_BY_TYPE['all'];
   if (!metric || !allowedMetrics.has(metric)) {
-    // default metric per type
-    metric = workoutType === 'strength' ? 'totalVolume'
+    metric = workoutType === 'strength' ? 'weight'
            : workoutType === 'cardio'   ? 'calories'
-           : workoutType === 'other'    ? 'workoutCount'
            : 'workoutCount';
   }
+
+  // Validate secondary metric — must be in the same allowed set and differ from primary.
+  metricSecondary = (metricSecondary && allowedMetrics.has(metricSecondary) && metricSecondary !== metric)
+    ? metricSecondary : null;
 
   // exerciseId must belong to this user's completed logs
   let safeExerciseId = null;
@@ -195,22 +197,37 @@ router.get('/chart', async (req, res) => {
     orderExpr = `DATE(wl.WorkoutDate)`;
   }
 
-  // ── Build metric expression ───────────────────────────────────────────────
-  let valueExpr;
-  switch (metric) {
-    case 'totalVolume':       valueExpr = 'IFNULL(SUM(wl.Sets * wl.Reps * wl.Weight), 0)'; break;
-    case 'weight':            valueExpr = 'IFNULL(AVG(wl.Weight), 0)';                      break;
-    case 'reps':              valueExpr = 'IFNULL(SUM(wl.Reps), 0)';                        break;
-    case 'sets':              valueExpr = 'IFNULL(SUM(wl.Sets), 0)';                        break;
-    case 'calories':          valueExpr = 'IFNULL(SUM(wl.Calories), 0)';                    break;
-    case 'duration':          valueExpr = 'IFNULL(SUM(wl.Duration), 0)';                    break;
-    case 'distance':          valueExpr = 'IFNULL(SUM(wl.Distance), 0)';                    break;
-    case 'speed':             valueExpr = 'IFNULL(AVG(wl.Speed), 0)';                       break;
-    case 'count':             valueExpr = 'COUNT(wl.WorkoutLogID)';                          break;
-    case 'completedWorkouts': valueExpr = `COUNT(DISTINCT ${groupExpr})`;                    break;
-    case 'completedExercises':valueExpr = 'COUNT(wl.WorkoutLogID)';                          break;
-    default:                  valueExpr = 'IFNULL(SUM(wl.Calories), 0)';
+  // ── Build metric SQL expression ───────────────────────────────────────────
+  // TODO: Pro metric expressions (maxWeight, avgReps, volumePerSession, etc.) will be
+  //       unlocked here via subscription flag check when billing is implemented.
+  // TODO: PR tracking, period comparison, trend engine, and recovery score
+  //       will each add new metric expressions in future Pro releases.
+  function getMetricExpr(m) {
+    switch (m) {
+      case 'totalVolume':        return 'IFNULL(SUM(wl.Sets * wl.Reps * wl.Weight), 0)';
+      case 'weight':             return 'IFNULL(AVG(wl.Weight), 0)';
+      case 'reps':               return 'IFNULL(SUM(wl.Reps), 0)';
+      case 'sets':               return 'IFNULL(SUM(wl.Sets), 0)';
+      case 'calories':           return 'IFNULL(SUM(wl.Calories), 0)';
+      case 'duration':           return 'IFNULL(SUM(wl.Duration), 0)';
+      case 'distance':           return 'IFNULL(SUM(wl.Distance), 0)';
+      case 'speed':              return 'IFNULL(AVG(wl.Speed), 0)';
+      case 'count':              return 'COUNT(wl.WorkoutLogID)';
+      case 'completedWorkouts':  return `COUNT(DISTINCT ${groupExpr})`;
+      case 'completedExercises': return 'COUNT(wl.WorkoutLogID)';
+      case 'workoutCount':       return 'COUNT(DISTINCT DATE(wl.WorkoutDate))';
+      // Advanced — SQL retained for Pro unlock:
+      case 'maxWeight':          return 'IFNULL(MAX(wl.Weight), 0)';
+      case 'avgReps':            return 'IFNULL(AVG(wl.Reps), 0)';
+      case 'volumePerSession':   return 'IFNULL(SUM(wl.Sets * wl.Reps * wl.Weight) / NULLIF(COUNT(DISTINCT DATE(wl.WorkoutDate)), 0), 0)';
+      case 'maxSpeed':           return 'IFNULL(MAX(wl.Speed), 0)';
+      case 'caloriesPerSession': return 'IFNULL(SUM(wl.Calories) / NULLIF(COUNT(DISTINCT DATE(wl.WorkoutDate)), 0), 0)';
+      default:                   return 'IFNULL(SUM(wl.Calories), 0)';
+    }
   }
+
+  const valueExpr  = getMetricExpr(metric);
+  const valueExpr2 = metricSecondary ? getMetricExpr(metricSecondary) : null;
 
   // ── Build WHERE clauses ───────────────────────────────────────────────────
   const whereParts = [
@@ -237,6 +254,7 @@ router.get('/chart', async (req, res) => {
         ${groupExpr}  AS dateGroup,
         ${labelExpr}  AS label,
         ${valueExpr}  AS value
+        ${valueExpr2 ? `, ${valueExpr2} AS value2` : ''}
       FROM workout_log wl
       LEFT JOIN workout_log_sessions wls ON wl.workout_log_session_id = wls.id
       WHERE ${whereSQL}
@@ -248,6 +266,7 @@ router.get('/chart', async (req, res) => {
       dateGroup: String(r.dateGroup),
       label:     String(r.label),
       value:     Number(r.value) || 0,
+      ...(valueExpr2 ? { value2: Number(r.value2) || 0 } : {}),
     }));
 
     return res.status(200).json(data);

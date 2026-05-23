@@ -1,5 +1,64 @@
 # Changelog
 
+## [0.82.13] — 2026-05-23 — Dual Metric Analytics Foundation
+
+**Feature: dual Y-axis chart system, Show Range quick filter, metric simplification, Pro gate scaffold.**
+
+**Filter panel — new layout (6 fields):**
+
+| Field | Change |
+|---|---|
+| Workout Type | unchanged |
+| Exercise | unchanged |
+| Primary Metric (Y1) | replaces "Y-Axis Metric" |
+| Secondary Metric (Y2) | new — Pro-gated, default None |
+| Show Range | new — 7 / 14 / 30 / 60 / 90 / 180 / 365 Days or Custom |
+| Reset | unchanged |
+
+**Show Range quick filter:**
+- Selecting a preset (7 → 365 days) auto-updates `startDate`/`endDate` and refreshes chart
+- Selecting "Custom" signals manual date picker mode — `showRange` set to `'custom'`
+- Date picker in header still works; picking dates sets `showRange = 'custom'`
+
+**Dual metric system (Y1 + Y2):**
+- `metricPrimary` (Y1): required, left axis, solid line / bar
+- `metricSecondary` (Y2): optional, right axis, dashed line, different colour (`#f59e0b`)
+- `isDual` computed: active when Pro + secondary selected + backend returned `value2`
+- Dual mode forces chart type to `line`; `dashArray: [0, 6]` distinguishes Y2
+- Chart title updates: `"Weight Trend vs Total Reps"` when dual active
+- `chartSeries` returns 1 or 2 ApexCharts series depending on `isDual`
+- `chartOptions.yaxis` switches between single object and `[{}, { opposite: true }]` array
+
+**Metric simplification (5 core options per type):**
+
+| Type | Options |
+|---|---|
+| Strength | Weight, Total Volume, Total Reps, Sets Completed, Sessions |
+| Cardio | Calories Burned, Duration, Distance, Avg Speed, Sessions |
+| Other | Sessions, Duration, Calories Burned |
+| All Types | Sessions, Calories Burned, Duration, Exercises Completed |
+
+Advanced metrics (Max Weight, Avg Reps, Volume Per Session, Max Speed, Calories Per Session) removed from UI — SQL expressions retained in backend for Pro re-enable.
+
+**Pro gate scaffold (no billing implemented):**
+- `isProUser = ref(false)` — hardcoded Free tier
+- Secondary metric dropdown disabled + lock icon + "Upgrade to Pro" hint for Free users
+- Purple `PRO` badge inline with Secondary Metric label
+- `params.metricSecondary` only sent to backend when `isProUser.value === true`
+- TODO comments mark: Pro metrics, PR tracking, period comparison, trend engine, recovery score
+
+**Backend — `progress.js` updated:**
+- `VALID_METRICS_BY_TYPE` simplified to match 5 core frontend options per type
+- Accepts `metricPrimary` param (preferred); falls back to legacy `metric` for older clients
+- Accepts `metricSecondary` param; validated against same allowed set, must differ from primary
+- `getMetricExpr(m)` helper replaces inline `switch` — used for both primary and secondary
+- SQL: `${valueExpr2 ? `, ${valueExpr2} AS value2` : ''}` added to SELECT
+- Response: `value2` included when secondary metric was requested
+- All advanced SQL expressions retained in `getMetricExpr` for future Pro unlock
+- TODO comments: Pro metric expressions, PR tracking, period comparison, trend engine, recovery score
+
+---
+
 ## [0.82.12] — 2026-05-23 — Workout Type Aware Metric Filtering
 
 **Feature: dynamic Y-axis metric list per workout type. No layout or SQL schema changes.**

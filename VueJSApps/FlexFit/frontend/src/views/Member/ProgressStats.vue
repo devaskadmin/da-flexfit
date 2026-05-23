@@ -20,12 +20,19 @@ const range = last30Days();
 const summary        = ref({ workoutsThisWeek: 0, currentStreak: 0, caloriesBurned: 0 });
 const summaryLoading = ref(true);
 
-const startDate   = ref(range.start);
-const endDate     = ref(range.end);
-const groupBy     = ref('day');
-const workoutType = ref('all');
-const exerciseId  = ref('');
-const metric      = ref('calories');
+const startDate       = ref(range.start);
+const endDate         = ref(range.end);
+const groupBy         = ref('day');
+const workoutType     = ref('all');
+const exerciseId      = ref('');
+const metricPrimary   = ref('workoutCount');
+const metricSecondary = ref('');   // '' = None (Y2); default off
+const showRange       = ref('30'); // quick range in days; 'custom' = manual date picker
+
+// TODO: isProUser — wire to user subscription/role when billing is implemented.
+//       Free tier:  Y1 only.
+//       Pro unlock: dual metric (Y2), trend overlays, period comparison, recovery score.
+const isProUser = ref(false);
 
 const exercises = ref([]);
 const exLoading = ref(false);
@@ -85,22 +92,39 @@ const metricOptions = computed(() => {
   }
 });
 
-// Ensure metric is valid when workout type changes; reload exercise dropdown
+// Ensure metrics are valid when workout type changes; reload exercise dropdown
 watch(workoutType, () => {
   const allowed = metricOptions.value.map((m) => m.value);
-  if (!allowed.includes(metric.value)) metric.value = allowed[0];
+  if (!allowed.includes(metricPrimary.value))                           metricPrimary.value   = allowed[0];
+  if (metricSecondary.value && !allowed.includes(metricSecondary.value)) metricSecondary.value = '';
   exerciseId.value   = '';
   activeExChip.value = '';
   loadExercises();
 });
 
 // ─── Computed helpers ─────────────────────────────────────────────────────────
-const currentMetricLabel = computed(() => {
-  const opt = metricOptions.value.find((m) => m.value === metric.value);
-  return opt ? opt.label : metric.value;
+const primaryMetricLabel = computed(() => {
+  const opt = metricOptions.value.find((m) => m.value === metricPrimary.value);
+  return opt ? opt.label : metricPrimary.value;
 });
 
-const chartTitle = computed(() => `${currentMetricLabel.value} Trend`);
+// Alias kept for template compatibility (Quick Insights card header, etc.)
+const currentMetricLabel = primaryMetricLabel;
+
+// Secondary metric — same list as primary for same-type dual comparison.
+// TODO: Future Pro option: cross-type comparison (e.g., Strength volume vs Cardio calories).
+const secondaryMetricOptions = computed(() => metricOptions.value);
+
+const secondaryMetricLabel = computed(() => {
+  if (!metricSecondary.value) return '';
+  const opt = secondaryMetricOptions.value.find((m) => m.value === metricSecondary.value);
+  return opt ? opt.label : metricSecondary.value;
+});
+
+const chartTitle = computed(() => {
+  const base = `${primaryMetricLabel.value} Trend`;
+  return metricSecondary.value ? `${base} vs ${secondaryMetricLabel.value}` : base;
+});
 
 const chartSubtitle = computed(() => {
   const exLabel = exerciseId.value
@@ -183,7 +207,19 @@ function scheduleChartReload() {
 }
 
 // Auto-reload whenever any filter value changes
-watch([startDate, endDate, groupBy, workoutType, exerciseId, metric], scheduleChartReload);
+watch([startDate, endDate, groupBy, workoutType, exerciseId, metricPrimary, metricSecondary], scheduleChartReload);
+
+// Show Range quick filter → auto-update date window ('custom' = user is using date picker, skip)
+watch(showRange, (val) => {
+  if (val === 'custom') return;
+  const days  = Number(val);
+  const end   = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - (days - 1));
+  endDate.value   = toDateStr(end);
+  startDate.value = toDateStr(start);
+  // startDate/endDate are in the watch array above — chart reloads automatically
+});
 
 // ─── Active filter chips ──────────────────────────────────────────────────────
 const activeFilters = computed(() => {
@@ -204,8 +240,11 @@ const activeFilters = computed(() => {
     chips.push({ key: 'exercise', label: ex?.exerciseTitle || 'Exercise', icon: '🏋', removable: true });
   }
   const defaultMetric = metricOptions.value[0]?.value;
-  if (metric.value !== defaultMetric) {
-    chips.push({ key: 'metric', label: currentMetricLabel.value, icon: '⚖', removable: true });
+  if (metricPrimary.value !== defaultMetric) {
+    chips.push({ key: 'metric', label: primaryMetricLabel.value, icon: '⚖', removable: true });
+  }
+  if (metricSecondary.value) {
+    chips.push({ key: 'metricSecondary', label: `Y2: ${secondaryMetricLabel.value}`, icon: '📊', removable: true });
   }
   return chips;
 });
@@ -215,7 +254,8 @@ function removeFilter(key) {
   if      (key === 'dateRange')   { startDate.value = d.start; endDate.value = d.end; }
   else if (key === 'workoutType') { workoutType.value = 'all'; }
   else if (key === 'exercise')    { exerciseId.value = ''; activeExChip.value = ''; }
-  else if (key === 'metric')      { metric.value = metricOptions.value[0]?.value || 'calories'; }
+  else if (key === 'metric')          { metricPrimary.value   = metricOptions.value[0]?.value || 'workoutCount'; }
+  else if (key === 'metricSecondary') { metricSecondary.value = ''; }
 }
 
 // ─── Summary widgets ──────────────────────────────────────────────────────────
@@ -257,12 +297,16 @@ async function loadChart() {
   chartError.value   = '';
   try {
     const params = {
-      startDate:   startDate.value,
-      endDate:     endDate.value,
-      groupBy:     groupBy.value,
-      workoutType: workoutType.value,
-      metric:      metric.value,
+      startDate:     startDate.value,
+      endDate:       endDate.value,
+      groupBy:       groupBy.value,
+      workoutType:   workoutType.value,
+      metricPrimary: metricPrimary.value,
+      metric:        metricPrimary.value, // legacy compat for older backend versions
     };
+    if (metricSecondary.value && isProUser.value) {
+      params.metricSecondary = metricSecondary.value;
+    }
     if (exerciseId.value) params.exerciseId = exerciseId.value;
 
     const { data } = await axios.get(`${API_BASE}/api/progress/chart`, {
@@ -280,28 +324,47 @@ async function loadChart() {
 
 function resetFilters() {
   const d = last30Days();
-  startDate.value    = d.start;
-  endDate.value      = d.end;
-  groupBy.value      = 'day';
-  workoutType.value  = 'all';
-  exerciseId.value   = '';
-  activeExChip.value = '';
-  metric.value       = 'workoutCount';
+  startDate.value       = d.start;
+  endDate.value         = d.end;
+  showRange.value       = '30';
+  groupBy.value         = 'day';
+  workoutType.value     = 'all';
+  exerciseId.value      = '';
+  activeExChip.value    = '';
+  metricPrimary.value   = 'workoutCount';
+  metricSecondary.value = '';
   loadExercises();
   loadChart();
 }
 
 // ─── ApexCharts config ────────────────────────────────────────────────────────
-const chartSeries = computed(() => [{
-  name: currentMetricLabel.value,
-  data: chartData.value.map((d) => d.value),
-}]);
+// isDual: true when Pro user has a secondary metric selected and backend returned value2
+const isDual = computed(() =>
+  isProUser.value &&
+  !!metricSecondary.value &&
+  chartData.value.some((d) => d.value2 !== undefined)
+);
+
+const chartSeries = computed(() => {
+  const series = [{
+    name: primaryMetricLabel.value,
+    data: chartData.value.map((d) => d.value),
+  }];
+  // Y2 series — only rendered when Pro + secondary selected + backend returned value2
+  if (isDual.value) {
+    series.push({
+      name: secondaryMetricLabel.value,
+      data: chartData.value.map((d) => d.value2 ?? 0),
+    });
+  }
+  return series;
+});
 
 const chartCategories = computed(() => chartData.value.map((d) => d.label));
 
 const chartOptions = computed(() => ({
   chart: {
-    type: chartType.value,
+    type: isDual.value ? 'line' : chartType.value,
     height: 340,
     toolbar: { show: false },
     fontFamily: 'inherit',
@@ -311,24 +374,27 @@ const chartOptions = computed(() => ({
   dataLabels: { enabled: false },
   stroke: {
     curve: 'smooth',
-    width: chartType.value === 'bar' ? 0 : 2.5,
+    width:     isDual.value ? [2.5, 2]  : (chartType.value === 'bar' ? 0 : 2.5),
+    dashArray: isDual.value ? [0, 6]   : 0,
   },
-  fill: chartType.value === 'bar'
-    ? {
-        type: 'gradient',
-        gradient: {
-          shade: 'light',
-          type: 'vertical',
-          shadeIntensity: 0.25,
-          gradientToColors: ['#60a5fa'],
-          inverseColors: false,
-          opacityFrom: 0.92,
-          opacityTo: 0.72,
-          stops: [0, 100],
-        },
-      }
-    : { opacity: 1 },
-  colors: ['#3b82f6'],
+  fill: isDual.value
+    ? { opacity: 1 }
+    : (chartType.value === 'bar'
+      ? {
+          type: 'gradient',
+          gradient: {
+            shade: 'light',
+            type: 'vertical',
+            shadeIntensity: 0.25,
+            gradientToColors: ['#60a5fa'],
+            inverseColors: false,
+            opacityFrom: 0.92,
+            opacityTo: 0.72,
+            stops: [0, 100],
+          },
+        }
+      : { opacity: 1 }),
+  colors: isDual.value ? ['#3b82f6', '#f59e0b'] : ['#3b82f6'],
   xaxis: {
     categories: chartCategories.value,
     labels: {
@@ -339,12 +405,24 @@ const chartOptions = computed(() => ({
     axisBorder: { show: false },
     axisTicks:  { show: false },
   },
-  yaxis: {
-    labels: {
-      style: { fontSize: '10px', colors: '#94a3b8' },
-      formatter: (v) => Number(v).toLocaleString(),
-    },
-  },
+  yaxis: isDual.value
+    ? [
+        {
+          seriesName: primaryMetricLabel.value,
+          labels: { style: { fontSize: '10px', colors: '#3b82f6' }, formatter: (v) => Number(v).toLocaleString() },
+        },
+        {
+          seriesName: secondaryMetricLabel.value,
+          opposite: true,
+          labels: { style: { fontSize: '10px', colors: '#f59e0b' }, formatter: (v) => Number(v).toLocaleString() },
+        },
+      ]
+    : {
+        labels: {
+          style: { fontSize: '10px', colors: '#94a3b8' },
+          formatter: (v) => Number(v).toLocaleString(),
+        },
+      },
   grid: {
     borderColor: '#f1f5f9',
     strokeDashArray: 5,
@@ -355,11 +433,11 @@ const chartOptions = computed(() => ({
     y: { formatter: (v) => Number(v).toLocaleString() },
   },
   markers: {
-    size: chartType.value === 'bar' ? 0 : 3,
-    colors: ['#fff'],
-    strokeColors: '#3b82f6',
-    strokeWidth: 2,
-    hover: { size: 5 },
+    size:         isDual.value || chartType.value === 'line' ? 3 : 0,
+    colors:       ['#fff', '#fff'],
+    strokeColors: isDual.value ? ['#3b82f6', '#f59e0b'] : ['#3b82f6'],
+    strokeWidth:  2,
+    hover:        { size: 5 },
   },
   plotOptions: {
     bar: { borderRadius: 6, columnWidth: chartData.value.length <= 5 ? '28%' : '58%' },
@@ -397,6 +475,7 @@ const metrics = computed(() => [
 
 // Date range handler from shared DateRangePicker component
 function onDateChange([start, end]) {
+  showRange.value = 'custom';
   startDate.value = start;
   endDate.value   = end;
 }
@@ -460,11 +539,44 @@ onMounted(() => {
                 </select>
               </div>
               <div class="ps-filter-field">
-                <label>Y-Axis Metric</label>
-                <select v-model="metric" class="ps-select">
+                <label>Primary Metric (Y1)</label>
+                <select v-model="metricPrimary" class="ps-select">
                   <option v-for="opt in metricOptions" :key="opt.value" :value="opt.value">
                     {{ opt.label }}
                   </option>
+                </select>
+              </div>
+              <div class="ps-filter-field">
+                <label>
+                  Secondary Metric (Y2)
+                  <span class="ps-pro-badge">PRO</span>
+                </label>
+                <select
+                  v-model="metricSecondary"
+                  class="ps-select"
+                  :disabled="!isProUser"
+                  :title="!isProUser ? 'Upgrade to Pro to unlock dual metric comparison' : ''"
+                >
+                  <option value="">None</option>
+                  <option v-for="opt in secondaryMetricOptions" :key="opt.value" :value="opt.value">
+                    {{ opt.label }}
+                  </option>
+                </select>
+                <span v-if="!isProUser" class="ps-pro-hint">
+                  <i class="fa-solid fa-lock"></i> Upgrade to Pro
+                </span>
+              </div>
+              <div class="ps-filter-field">
+                <label>Show Range</label>
+                <select v-model="showRange" class="ps-select">
+                  <option value="7">7 Days</option>
+                  <option value="14">14 Days</option>
+                  <option value="30">30 Days</option>
+                  <option value="60">60 Days</option>
+                  <option value="90">90 Days</option>
+                  <option value="180">180 Days</option>
+                  <option value="365">365 Days</option>
+                  <option value="custom">Custom</option>
                 </select>
               </div>
               <div class="ps-filter-field ps-filter-field--action">
@@ -1029,7 +1141,7 @@ onMounted(() => {
 /* Single-row filter grid: Exercise | Workout Type | Metric | Reset */
 .ps-filter-grid {
   display: grid;
-  grid-template-columns: 2fr 1.4fr 2fr auto;
+  grid-template-columns: 1.5fr 1.4fr 1.5fr 1.5fr 1.1fr auto;
   gap: 10px;
   padding: 12px 18px;
   align-items: end;
@@ -1117,6 +1229,41 @@ onMounted(() => {
 }
 
 .ps-select:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ───────────────────────────────────────────────────────────────── */
+/* PRO GATE — secondary metric                                        */
+/* ───────────────────────────────────────────────────────────────── */
+
+.ps-pro-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.60rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  vertical-align: middle;
+  margin-left: 4px;
+  line-height: 1.6;
+}
+
+.ps-pro-hint {
+  font-size: 0.70rem;
+  color: #7c3aed;
+  font-weight: 600;
+  margin: 3px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ps-filter-field label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+}
 
 /* ─────────────────────────────────────────────────────────────────── */
 /* CHART CARD                                                          */
@@ -1490,7 +1637,7 @@ onMounted(() => {
 
 @media (max-width: 1100px) {
   .ps-row3 { grid-template-columns: 1fr 1fr; }
-  .ps-filter-grid { grid-template-columns: 1fr 1fr 1fr auto; }
+  .ps-filter-grid { grid-template-columns: 1fr 1fr 1fr 1fr auto; }
 }
 
 @media (max-width: 960px) {
@@ -1498,7 +1645,7 @@ onMounted(() => {
   .ps-right-col { flex-direction: row; flex-wrap: wrap; }
   .ps-right-col .ps-mini-widget { flex: 1 1 140px; }
   .ps-chart-wrap { height: 260px !important; }
-  .ps-filter-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ps-filter-grid { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 }
 
 @media (max-width: 768px) {
