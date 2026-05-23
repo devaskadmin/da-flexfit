@@ -78,12 +78,13 @@ const metricOptions = computed(() => {
   }
 });
 
-// Ensure metric is valid when workout type changes
+// Ensure metric is valid when workout type changes; reload exercise dropdown
 watch(workoutType, () => {
   const allowed = metricOptions.value.map((m) => m.value);
   if (!allowed.includes(metric.value)) metric.value = allowed[0];
   exerciseId.value   = '';
   activeExChip.value = '';
+  loadExercises();
 });
 
 // ─── Computed helpers ─────────────────────────────────────────────────────────
@@ -227,7 +228,14 @@ async function loadSummary() {
 async function loadExercises() {
   exLoading.value = true;
   try {
-    const { data } = await axios.get(`${API_BASE}/api/progress/exercises`, { withCredentials: true });
+    const params = {};
+    if (workoutType.value && workoutType.value !== 'all') {
+      params.workoutType = workoutType.value;
+    }
+    const { data } = await axios.get(`${API_BASE}/api/progress/exercises`, {
+      params,
+      withCredentials: true,
+    });
     exercises.value = data;
   } catch (err) {
     console.error('Progress exercises error', err);
@@ -272,6 +280,7 @@ function resetFilters() {
   exerciseId.value   = '';
   activeExChip.value = '';
   metric.value       = 'calories';
+  loadExercises();
   loadChart();
 }
 
@@ -426,21 +435,21 @@ onMounted(() => {
           <div v-if="filtersOpen" class="ps-filter-body">
             <div class="ps-filter-grid">
               <div class="ps-filter-field">
-                <label>Exercise</label>
-                <select v-model="exerciseId" class="ps-select" :disabled="exLoading">
-                  <option value="">All Exercises</option>
-                  <option v-for="ex in exercises" :key="ex.exerciseId" :value="ex.exerciseId">
-                    {{ ex.exerciseTitle }}
-                  </option>
-                </select>
-              </div>
-              <div class="ps-filter-field">
                 <label>Workout Type</label>
                 <select v-model="workoutType" class="ps-select">
                   <option value="all">All Types</option>
                   <option value="strength">💪 Strength</option>
                   <option value="cardio">🏃 Cardio</option>
                   <option value="other">⚡ Other</option>
+                </select>
+              </div>
+              <div class="ps-filter-field">
+                <label>Exercise</label>
+                <select v-model="exerciseId" class="ps-select" :disabled="exLoading">
+                  <option value="">All Exercises</option>
+                  <option v-for="ex in exercises" :key="ex.exerciseId" :value="ex.exerciseId">
+                    {{ ex.exerciseTitle }}
+                  </option>
                 </select>
               </div>
               <div class="ps-filter-field">

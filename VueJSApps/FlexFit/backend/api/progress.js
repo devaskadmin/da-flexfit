@@ -253,26 +253,39 @@ router.get('/chart', async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/progress/exercises
-// Returns exercises completed by the logged-in user (for filter dropdown).
+// Query params: workoutType (optional — 'all' | 'strength' | 'cardio' | 'other')
+// Returns exercises completed by the logged-in user, filtered by workout type.
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/exercises', async (req, res) => {
   if (!requireAuth(req, res)) return;
 
   const userId = req.session.user.id;
+  const rawType = (req.query.workoutType || 'all').toLowerCase();
+  const workoutType = VALID_WORKOUT_TYPE.has(rawType) ? rawType : 'all';
 
   try {
+    const whereParts = [
+      'wl.UserID = ?',
+      '(wl.workout_log_session_id IS NULL OR wls.status = \'completed\')',
+    ];
+    const params = [userId];
+
+    if (workoutType !== 'all') {
+      whereParts.push('LOWER(wl.WorkoutType) = ?');
+      params.push(workoutType);
+    }
+
     const [rows] = await pool.query(`
       SELECT DISTINCT
-        ex.ExerciseID   AS exerciseId,
+        ex.ExerciseID    AS exerciseId,
         ex.ExerciseTitle AS exerciseTitle,
         wl.WorkoutType
       FROM workout_log wl
       LEFT JOIN workout_log_sessions wls ON wl.workout_log_session_id = wls.id
       JOIN exercises ex ON wl.ExerciseID = ex.ExerciseID
-      WHERE wl.UserID = ?
-        AND (wl.workout_log_session_id IS NULL OR wls.status = 'completed')
+      WHERE ${whereParts.join(' AND ')}
       ORDER BY ex.ExerciseTitle ASC
-    `, [userId]);
+    `, params);
 
     // De-duplicate by exerciseId (keep first WorkoutType encountered)
     const seen = new Set();

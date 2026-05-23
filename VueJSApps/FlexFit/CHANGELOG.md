@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.82.11] — 2026-05-23 — Workout Type Driven Exercise Filtering
+
+**Feature: filter workflow improvement. No layout, API, or chart calculation changes.**
+
+**Filter field order changed:**
+- Was: Exercise → Workout Type → Y-Axis Metric
+- Now: **Workout Type → Exercise → Y-Axis Metric**
+- Enforces the correct selection flow — type is chosen first, exercise list updates second
+
+**Backend — `GET /api/progress/exercises` updated:**
+- Now accepts optional `workoutType` query param (`all` | `strength` | `cardio` | `other`)
+- When a specific type is passed, the SQL `WHERE` clause adds `LOWER(wl.WorkoutType) = ?` — only returns exercises the user has actually completed in that workout type
+- `All Types` passes no filter — returns all completed exercises as before
+- Validation uses the existing `VALID_WORKOUT_TYPE` Set — safe against invalid input
+- De-duplication logic unchanged
+
+**Frontend — `ProgressStats.vue` updated:**
+- `loadExercises()` now passes `{ workoutType }` as a query param when type is not `all`
+- `watch(workoutType)` now calls `loadExercises()` after clearing exercise selection — dropdown refreshes automatically on every type change
+- `resetFilters()` now calls `loadExercises()` after resetting type to `all` — restores the full exercise list immediately
+
+**Filter cascade behaviour:**
+1. User selects Workout Type → exercise selection cleared → exercise dropdown reloads with type-filtered results → chart auto-refreshes
+2. User selects Exercise → chart auto-refreshes (unchanged)
+3. Reset → all filters cleared → exercise dropdown reloads with all exercises → chart reloads
+
+---
+
 ## [0.82.10] — 2026-05-22 — Dashboard Visual Refresh + Shared Module System
 
 **UI only — no backend, API, SQL, layout, or feature changes.**
