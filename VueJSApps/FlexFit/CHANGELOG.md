@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.82.15] — 2026-05-23 — Analytics Stability Fix
+
+**Bug fix: chart failing after metric cleanup; stale defaults; misleading error on empty data.**
+
+**Root causes fixed:**
+
+1. `metricPrimary` was initialised to `'workoutCount'` — no longer in free Y1 options after v0.82.14. Backend rejected it and returned an error → "Failed to load chart data" shown.
+2. `metricOptions` computed was never successfully replaced in v0.82.14 (silent tool failure) — still contained the old long lists including `workoutCount`, `totalVolume`, etc. Fixed now.
+3. `proMetricOptions` was referenced in `watch(workoutType)` and `secondaryMetricOptions` but never defined — runtime ReferenceError on workout type change.
+4. Empty API response (`[]`) was triggering the `catch` branch — not an error, just no data.
+
+**Fixes applied — `ProgressStats.vue`:**
+
+- `metricPrimary` initialised to `'duration'` — valid across all types
+- `metricOptions` replaced with correct raw-only lists (strength: 4, cardio: 4, other: 2, all: 2)
+- `proMetricOptions` defined properly alongside `metricOptions`
+- `defaultMetricForType(type)` helper added:
+  - `strength` → `'weight'`
+  - `cardio` → `'duration'`
+  - `other` / `all` → `'duration'`
+- `watch(workoutType)` uses `defaultMetricForType()` instead of `allowed[0]`
+- `resetFilters()` uses `defaultMetricForType(workoutType.value)`
+- `removeFilter('metric')` uses `defaultMetricForType(workoutType.value)`
+- `loadChart()` — `catch` block improved:
+  - Empty array (`[]`) treated as valid empty state, not an error
+  - 401 → `'Session expired. Please log in again.'`
+  - Other errors → `'Unable to load chart data. Please try again.'`
+  - Summary widgets (`workoutsThisWeek`, `currentStreak`, `caloriesBurned`) are unaffected — they load independently
+- Empty state copy updated: `'No workout history found. Complete workouts to generate analytics.'`
+
+---
+
 ## [0.82.14] — 2026-05-23 — Metric Simplification + Pro Row Separation
 
 **Feature: Y1 = raw log data only. Y2 = collapsible Pro section with advanced metrics.**

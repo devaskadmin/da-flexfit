@@ -25,7 +25,7 @@ const endDate         = ref(range.end);
 const groupBy         = ref('day');
 const workoutType     = ref('all');
 const exerciseId      = ref('');
-const metricPrimary   = ref('workoutCount');
+const metricPrimary   = ref('duration');  // valid across all workout types
 const metricSecondary = ref('');   // '' = None (Y2); default off
 const showRange       = ref('30'); // quick range in days; 'custom' = manual date picker
 
@@ -53,27 +53,52 @@ const activeExChip = ref('');
 // Filter panel — expanded by default in 0.82.4
 const filtersOpen = ref(true);
 
-// ─── Metric options per workout type ─────────────────────────────────────────
+// ─── Y1 metric options — RAW workout log data only ──────────────────────────
+// Only values stored directly in workout_log rows. No formulas, no aggregates.
 const metricOptions = computed(() => {
   switch (workoutType.value) {
     case 'strength':
       return [
-        { value: 'totalVolume',      label: 'Total Volume (sets × reps × weight)' },
-        { value: 'maxWeight',        label: 'Max Weight (lbs/kg)' },
-        { value: 'weight',           label: 'Avg Weight (lbs/kg)' },
-        { value: 'reps',             label: 'Total Reps' },
-        { value: 'avgReps',          label: 'Avg Reps Per Set' },
-        { value: 'sets',             label: 'Sets Completed' },
-        { value: 'workoutCount',     label: 'Workout Sessions' },
-        { value: 'volumePerSession', label: 'Volume Per Session' },
-        { value: 'duration',         label: 'Duration (min)' },
+        { value: 'weight',   label: 'Weight (lbs/kg)' },
+        { value: 'reps',     label: 'Reps' },
+        { value: 'sets',     label: 'Sets' },
+        { value: 'duration', label: 'Duration (min)' },
       ];
     case 'cardio':
       return [
-        { value: 'calories',           label: 'Calories Burned' },
-        { value: 'duration',           label: 'Duration (min)' },
-        { value: 'distance',           label: 'Distance (miles)' },
-        { value: 'speed',              label: 'Avg Speed (mph)' },
+        { value: 'duration', label: 'Duration (min)' },
+        { value: 'calories', label: 'Calories Burned' },
+        { value: 'distance', label: 'Distance (miles)' },
+        { value: 'speed',    label: 'Avg Speed (mph)' },
+      ];
+    case 'other':
+      return [
+        { value: 'duration', label: 'Duration (min)' },
+        { value: 'calories', label: 'Calories Burned' },
+      ];
+    default: // all
+      return [
+        { value: 'duration', label: 'Duration (min)' },
+        { value: 'calories', label: 'Calories Burned' },
+      ];
+  }
+});
+
+// ─── Y2 Pro metric options — advanced/calculated metrics ─────────────────────
+// TODO: Pro metrics will expand with PR tracking, recovery score, trend engine.
+const proMetricOptions = computed(() => {
+  switch (workoutType.value) {
+    case 'strength':
+      return [
+        { value: 'totalVolume',      label: 'Total Volume (sets × reps × weight)' },
+        { value: 'maxWeight',        label: 'Max Weight' },
+        { value: 'weight',           label: 'Avg Weight' },
+        { value: 'avgReps',          label: 'Avg Reps Per Set' },
+        { value: 'volumePerSession', label: 'Volume Per Session' },
+        { value: 'workoutCount',     label: 'Workout Sessions' },
+      ];
+    case 'cardio':
+      return [
         { value: 'maxSpeed',           label: 'Max Speed (mph)' },
         { value: 'caloriesPerSession', label: 'Calories Per Session' },
         { value: 'workoutCount',       label: 'Workout Sessions' },
@@ -81,25 +106,32 @@ const metricOptions = computed(() => {
     case 'other':
       return [
         { value: 'workoutCount', label: 'Workout Sessions' },
-        { value: 'duration',     label: 'Duration (min)' },
-        { value: 'calories',     label: 'Calories Burned' },
-        { value: 'count',        label: 'Exercise Count' },
       ];
     default: // all
       return [
         { value: 'workoutCount',       label: 'Workout Sessions' },
-        { value: 'calories',           label: 'Calories Burned' },
-        { value: 'duration',           label: 'Duration (min)' },
         { value: 'completedExercises', label: 'Exercises Completed' },
       ];
   }
 });
 
+// Return the first valid Y1 metric key for a given workout type
+function defaultMetricForType(type) {
+  switch (type) {
+    case 'strength': return 'weight';
+    case 'cardio':   return 'duration';
+    default:         return 'duration';
+  }
+}
+
 // Ensure metrics are valid when workout type changes; reload exercise dropdown
 watch(workoutType, () => {
   const allowed    = metricOptions.value.map((m) => m.value);
   const allowedPro = proMetricOptions.value.map((m) => m.value);
-  if (!allowed.includes(metricPrimary.value))                              metricPrimary.value   = allowed[0];
+  // Set type-aware default rather than blindly picking allowed[0]
+  if (!allowed.includes(metricPrimary.value)) {
+    metricPrimary.value = defaultMetricForType(workoutType.value);
+  }
   if (metricSecondary.value && !allowedPro.includes(metricSecondary.value)) metricSecondary.value = '';
   exerciseId.value   = '';
   activeExChip.value = '';
@@ -258,7 +290,7 @@ function removeFilter(key) {
   if      (key === 'dateRange')   { startDate.value = d.start; endDate.value = d.end; }
   else if (key === 'workoutType') { workoutType.value = 'all'; }
   else if (key === 'exercise')    { exerciseId.value = ''; activeExChip.value = ''; }
-  else if (key === 'metric')          { metricPrimary.value   = metricOptions.value[0]?.value || 'workoutCount'; }
+  else if (key === 'metric')          { metricPrimary.value   = defaultMetricForType(workoutType.value); }
   else if (key === 'metricSecondary') { metricSecondary.value = ''; }
 }
 
@@ -317,10 +349,16 @@ async function loadChart() {
       params,
       withCredentials: true,
     });
-    chartData.value = data;
+    // Empty array = no data for this period — not an error
+    chartData.value = Array.isArray(data) ? data : [];
   } catch (err) {
     console.error('Progress chart error', err);
-    chartError.value = 'Failed to load chart data. Please try again.';
+    // Only show error message on actual network/server failure;
+    // do NOT reset summary widgets — they load independently
+    chartError.value = err?.response?.status === 401
+      ? 'Session expired. Please log in again.'
+      : 'Unable to load chart data. Please try again.';
+    chartData.value = []; // clear stale data on error
   } finally {
     chartLoading.value = false;
   }
@@ -335,7 +373,7 @@ function resetFilters() {
   workoutType.value     = 'all';
   exerciseId.value      = '';
   activeExChip.value    = '';
-  metricPrimary.value   = metricOptions.value[0]?.value || 'duration';
+  metricPrimary.value   = defaultMetricForType(workoutType.value);
   metricSecondary.value = '';
   proRowOpen.value      = false;
   loadExercises();
@@ -657,10 +695,10 @@ onMounted(() => {
                 </div>
                 <div v-else-if="!chartData.length" class="ps-empty-state">
                   <div class="ps-empty-icon">📊</div>
-                  <h6 class="ps-empty-title">No data for this period</h6>
+                  <h6 class="ps-empty-title">No workout history found</h6>
                   <div class="ps-empty-tips">
-                    <span>Try a wider date range</span>
-                    <span>Or a different metric</span>
+                    <span>Complete workouts to generate analytics</span>
+                    <span>Or try a wider date range</span>
                   </div>
                 </div>
                 <div v-else class="ps-chart-wrap">
