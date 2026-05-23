@@ -17,14 +17,12 @@ const pool    = require('../db.js');
 const VALID_GROUP_BY     = new Set(['day', 'month', 'year']);
 const VALID_WORKOUT_TYPE = new Set(['all', 'strength', 'cardio', 'other']);
 
-// v0.82.13: simplified to 5 core metrics per type.
-// TODO: Pro metrics (maxWeight, avgReps, volumePerSession, maxSpeed, caloriesPerSession)
-//       will be restored behind the Pro subscription gate in a future version.
+// v0.82.15: Y1 raw-only metrics. Pro metrics remain in getMetricExpr() for future unlock.
 const VALID_METRICS_BY_TYPE = {
-  strength: new Set(['weight', 'totalVolume', 'reps', 'sets', 'workoutCount']),
-  cardio:   new Set(['calories', 'duration', 'distance', 'speed', 'workoutCount']),
-  other:    new Set(['workoutCount', 'duration', 'calories']),
-  all:      new Set(['workoutCount', 'calories', 'duration', 'completedExercises']),
+  strength: new Set(['weight', 'reps', 'sets', 'duration']),
+  cardio:   new Set(['duration', 'calories', 'distance', 'speed']),
+  other:    new Set(['duration', 'calories']),
+  all:      new Set(['duration', 'calories']),
 };
 
 // ─── Auth guard helper ────────────────────────────────────────────────────────

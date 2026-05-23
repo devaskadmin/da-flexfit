@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.82.17] — 2026-05-23 — WorkoutType-Dependent Exercise Filtering
+
+**Bug fix: Exercise dropdown was not filtering by selected Workout Type.**
+
+**Root cause:** `watch(workoutType)` was synchronous — it called `loadExercises()` fire-and-forget then returned immediately. The combined watcher (`watch([..., workoutType, ...])`) triggered `scheduleChartReload` before the new exercise list was fetched, and `exercises.value` retained the stale list from the previous type until the async call resolved.
+
+**Fixes applied — `ProgressStats.vue`:**
+
+- `loadExercises()` now accepts `{ autoSelect = false }` option:
+  - Clears `exercises.value = []` immediately (removes stale list while loading)
+  - When `autoSelect: true` and exactly 1 exercise is returned, auto-selects it (`exerciseId`, `activeExChip`)
+  - Guards assignment with `Array.isArray(data)` to prevent non-array responses causing downstream errors
+- `watch(workoutType)` made `async`:
+  - Clears `exerciseId` and `activeExChip` synchronously as before
+  - `await loadExercises({ autoSelect: true })` — waits for the correct exercise list before proceeding
+  - Explicitly calls `scheduleChartReload()` after load — decoupled from the combined watcher for this code path
+- `resetFilters()` — calls `loadExercises({ autoSelect: false })` (no auto-select on full reset)
+
+**Fixes applied — `backend/api/progress.js`:**
+
+- `VALID_METRICS_BY_TYPE` synced to v0.82.15 raw-only Y1 metric set (was stale, still had `workoutCount` in free tier)
+
+---
+
 ## [0.82.15] — 2026-05-23 — Analytics Stability Fix
 
 **Bug fix: chart failing after metric cleanup; stale defaults; misleading error on empty data.**

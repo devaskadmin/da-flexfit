@@ -125,7 +125,7 @@ function defaultMetricForType(type) {
 }
 
 // Ensure metrics are valid when workout type changes; reload exercise dropdown
-watch(workoutType, () => {
+watch(workoutType, async () => {
   const allowed    = metricOptions.value.map((m) => m.value);
   const allowedPro = proMetricOptions.value.map((m) => m.value);
   // Set type-aware default rather than blindly picking allowed[0]
@@ -135,7 +135,9 @@ watch(workoutType, () => {
   if (metricSecondary.value && !allowedPro.includes(metricSecondary.value)) metricSecondary.value = '';
   exerciseId.value   = '';
   activeExChip.value = '';
-  loadExercises();
+  // Await exercise load so the dropdown reflects the correct type before the chart reloads
+  await loadExercises({ autoSelect: true });
+  scheduleChartReload();
 });
 
 // ─── Computed helpers ─────────────────────────────────────────────────────────
@@ -308,8 +310,9 @@ async function loadSummary() {
 }
 
 // ─── Exercise dropdown ────────────────────────────────────────────────────────
-async function loadExercises() {
+async function loadExercises({ autoSelect = false } = {}) {
   exLoading.value = true;
+  exercises.value  = []; // clear stale list immediately so dropdown reflects the new type
   try {
     const params = {};
     if (workoutType.value && workoutType.value !== 'all') {
@@ -319,9 +322,17 @@ async function loadExercises() {
       params,
       withCredentials: true,
     });
-    exercises.value = data;
+    exercises.value = Array.isArray(data) ? data : [];
+
+    // Auto-select: if caller requested it and exactly one exercise exists, pick it automatically.
+    // Also auto-select when only one exercise is available regardless (unambiguous).
+    if (autoSelect && exercises.value.length === 1) {
+      exerciseId.value   = exercises.value[0].exerciseId;
+      activeExChip.value = exercises.value[0].exerciseId;
+    }
   } catch (err) {
     console.error('Progress exercises error', err);
+    exercises.value = [];
   } finally {
     exLoading.value = false;
   }
@@ -376,7 +387,7 @@ function resetFilters() {
   metricPrimary.value   = defaultMetricForType(workoutType.value);
   metricSecondary.value = '';
   proRowOpen.value      = false;
-  loadExercises();
+  loadExercises({ autoSelect: false });
   loadChart();
 }
 
