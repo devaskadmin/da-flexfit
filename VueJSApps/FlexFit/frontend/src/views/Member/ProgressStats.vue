@@ -34,6 +34,9 @@ const showRange       = ref('30'); // quick range in days; 'custom' = manual dat
 //       Pro unlock: dual metric (Y2), trend overlays, period comparison, recovery score.
 const isProUser = ref(false);
 
+// Pro row (Y2 section) — collapsed by default
+const proRowOpen = ref(false);
+
 const exercises = ref([]);
 const exLoading = ref(false);
 
@@ -94,9 +97,10 @@ const metricOptions = computed(() => {
 
 // Ensure metrics are valid when workout type changes; reload exercise dropdown
 watch(workoutType, () => {
-  const allowed = metricOptions.value.map((m) => m.value);
-  if (!allowed.includes(metricPrimary.value))                           metricPrimary.value   = allowed[0];
-  if (metricSecondary.value && !allowed.includes(metricSecondary.value)) metricSecondary.value = '';
+  const allowed    = metricOptions.value.map((m) => m.value);
+  const allowedPro = proMetricOptions.value.map((m) => m.value);
+  if (!allowed.includes(metricPrimary.value))                              metricPrimary.value   = allowed[0];
+  if (metricSecondary.value && !allowedPro.includes(metricSecondary.value)) metricSecondary.value = '';
   exerciseId.value   = '';
   activeExChip.value = '';
   loadExercises();
@@ -111,9 +115,9 @@ const primaryMetricLabel = computed(() => {
 // Alias kept for template compatibility (Quick Insights card header, etc.)
 const currentMetricLabel = primaryMetricLabel;
 
-// Secondary metric — same list as primary for same-type dual comparison.
+// Secondary metric uses Pro options (advanced/calculated metrics).
 // TODO: Future Pro option: cross-type comparison (e.g., Strength volume vs Cardio calories).
-const secondaryMetricOptions = computed(() => metricOptions.value);
+const secondaryMetricOptions = computed(() => proMetricOptions.value);
 
 const secondaryMetricLabel = computed(() => {
   if (!metricSecondary.value) return '';
@@ -331,8 +335,9 @@ function resetFilters() {
   workoutType.value     = 'all';
   exerciseId.value      = '';
   activeExChip.value    = '';
-  metricPrimary.value   = 'workoutCount';
+  metricPrimary.value   = metricOptions.value[0]?.value || 'duration';
   metricSecondary.value = '';
+  proRowOpen.value      = false;
   loadExercises();
   loadChart();
 }
@@ -519,6 +524,7 @@ onMounted(() => {
           </button>
 
           <div v-if="filtersOpen" class="ps-filter-body">
+            <!-- Row 1: primary filters -->
             <div class="ps-filter-grid">
               <div class="ps-filter-field">
                 <label>Workout Type</label>
@@ -547,26 +553,6 @@ onMounted(() => {
                 </select>
               </div>
               <div class="ps-filter-field">
-                <label>
-                  Secondary Metric (Y2)
-                  <span class="ps-pro-badge">PRO</span>
-                </label>
-                <select
-                  v-model="metricSecondary"
-                  class="ps-select"
-                  :disabled="!isProUser"
-                  :title="!isProUser ? 'Upgrade to Pro to unlock dual metric comparison' : ''"
-                >
-                  <option value="">None</option>
-                  <option v-for="opt in secondaryMetricOptions" :key="opt.value" :value="opt.value">
-                    {{ opt.label }}
-                  </option>
-                </select>
-                <span v-if="!isProUser" class="ps-pro-hint">
-                  <i class="fa-solid fa-lock"></i> Upgrade to Pro
-                </span>
-              </div>
-              <div class="ps-filter-field">
                 <label>Show Range</label>
                 <select v-model="showRange" class="ps-select">
                   <option value="7">7 Days</option>
@@ -584,6 +570,46 @@ onMounted(() => {
                 <button class="ps-reset-btn" @click="resetFilters">
                   <i class="fa-solid fa-rotate-left"></i> Reset
                 </button>
+              </div>
+            </div>
+
+            <!-- Row 2: Pro Y2 section (collapsible) -->
+            <div class="ps-pro-row">
+              <button class="ps-pro-row__toggle" @click="proRowOpen = !proRowOpen">
+                <span class="ps-pro-row__toggle-left">
+                  <i class="fa-solid fa-chart-line"></i>
+                  Secondary Metric (Y2)
+                  <span class="ps-pro-badge">PRO</span>
+                  <span v-if="metricSecondary" class="ps-pro-row__active-hint">· {{ secondaryMetricLabel }}</span>
+                </span>
+                <span class="ps-pro-row__toggle-right">
+                  <span v-if="!isProUser" class="ps-pro-row__lock">
+                    <i class="fa-solid fa-lock"></i> Upgrade to Pro
+                  </span>
+                  <i :class="proRowOpen ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
+                </span>
+              </button>
+
+              <div v-if="proRowOpen" class="ps-pro-row__body">
+                <div v-if="!isProUser" class="ps-pro-row__gate">
+                  <div class="ps-pro-gate-icon"><i class="fa-solid fa-lock"></i></div>
+                  <div class="ps-pro-gate-text">
+                    <strong>Pro Feature</strong>
+                    <span>Overlay a second metric on the right Y-axis. Compare Weight vs Reps, Calories vs Distance, and more.</span>
+                  </div>
+                  <button class="ps-pro-gate-btn" disabled>Upgrade to Pro</button>
+                </div>
+                <div v-else class="ps-pro-row__fields">
+                  <div class="ps-filter-field">
+                    <label>Secondary Metric (Y2)</label>
+                    <select v-model="metricSecondary" class="ps-select">
+                      <option value="">None</option>
+                      <option v-for="opt in secondaryMetricOptions" :key="opt.value" :value="opt.value">
+                        {{ opt.label }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1138,12 +1164,12 @@ onMounted(() => {
 
 .ps-chip__remove:hover { color: #2563eb; }
 
-/* Single-row filter grid: Exercise | Workout Type | Metric | Reset */
+/* Row 1: Workout Type | Exercise | Primary Metric | Show Range | Reset */
 .ps-filter-grid {
   display: grid;
-  grid-template-columns: 1.5fr 1.4fr 1.5fr 1.5fr 1.1fr auto;
+  grid-template-columns: 1.5fr 1.5fr 1.5fr 1.2fr auto;
   gap: 10px;
-  padding: 12px 18px;
+  padding: 12px 18px 12px;
   align-items: end;
 }
 
@@ -1231,7 +1257,7 @@ onMounted(() => {
 .ps-select:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ───────────────────────────────────────────────────────────────── */
-/* PRO GATE — secondary metric                                        */
+/* PRO BADGE + PRO ROW — Y2 collapsible section                      */
 /* ───────────────────────────────────────────────────────────────── */
 
 .ps-pro-badge {
@@ -1244,25 +1270,135 @@ onMounted(() => {
   font-weight: 800;
   letter-spacing: 0.06em;
   vertical-align: middle;
-  margin-left: 4px;
+  margin-left: 2px;
   line-height: 1.6;
 }
 
-.ps-pro-hint {
-  font-size: 0.70rem;
-  color: #7c3aed;
+.ps-pro-row {
+  border-top: 1px solid rgba(120, 130, 150, 0.18);
+}
+
+.ps-pro-row__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 18px;
+  border: none;
+  background: rgba(245, 243, 255, 0.6);
+  font-family: inherit;
+  font-size: 0.83rem;
+  font-weight: 700;
+  color: #6d28d9;
+  cursor: pointer;
+  gap: 10px;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.ps-pro-row__toggle:hover { background: rgba(237, 233, 254, 0.8); }
+
+.ps-pro-row__toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.ps-pro-row__active-hint {
+  font-size: 0.76rem;
   font-weight: 600;
-  margin: 3px 0 0;
+  color: #7c3aed;
+  opacity: 0.85;
+}
+
+.ps-pro-row__toggle-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: #7c3aed;
+}
+
+.ps-pro-row__lock {
   display: flex;
   align-items: center;
   gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #7c3aed;
+  opacity: 0.75;
 }
 
-.ps-filter-field label {
+.ps-pro-row__toggle-right > i { font-size: 0.72rem; color: #94a3b8; }
+
+.ps-pro-row__body {
+  border-top: 1px solid rgba(139, 92, 246, 0.15);
+}
+
+.ps-pro-row__gate {
   display: flex;
   align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  background: rgba(245, 243, 255, 0.4);
   flex-wrap: wrap;
+}
+
+.ps-pro-gate-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #7c3aed22, #a855f722);
+  border: 1px solid #c4b5fd;
+  color: #7c3aed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.ps-pro-gate-text {
+  display: flex;
+  flex-direction: column;
   gap: 2px;
+  flex: 1;
+  min-width: 160px;
+}
+
+.ps-pro-gate-text strong {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #5b21b6;
+}
+
+.ps-pro-gate-text span {
+  font-size: 0.77rem;
+  color: #6d28d9;
+  opacity: 0.8;
+  line-height: 1.4;
+}
+
+.ps-pro-gate-btn {
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 16px;
+  font-size: 0.80rem;
+  font-weight: 700;
+  cursor: not-allowed;
+  opacity: 0.6;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.ps-pro-row__fields {
+  padding: 12px 18px;
+  display: grid;
+  grid-template-columns: minmax(180px, 300px);
+  gap: 10px;
 }
 
 /* ─────────────────────────────────────────────────────────────────── */

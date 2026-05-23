@@ -1,5 +1,57 @@
 # Changelog
 
+## [0.82.14] — 2026-05-23 — Metric Simplification + Pro Row Separation
+
+**Feature: Y1 = raw log data only. Y2 = collapsible Pro section with advanced metrics.**
+
+**Y1 Primary Metric — raw workout_log values only:**
+
+| Workout Type | Y1 Options |
+|---|---|
+| Strength | Weight (lbs/kg), Reps, Sets, Duration (min) |
+| Cardio | Duration (min), Calories Burned, Distance (miles), Avg Speed (mph) |
+| Other | Duration (min), Calories Burned |
+| All Types | Duration (min), Calories Burned |
+
+Removed from Y1: Total Volume, Max Weight, Avg Weight, Avg Reps, Volume Per Session, Workout Sessions, Max Speed, Calories Per Session, Exercises Completed — all moved to Pro Y2.
+
+**Y2 Pro Metric — collapsible second row (collapsed by default):**
+
+| Workout Type | Y2 Pro Options |
+|---|---|
+| Strength | Total Volume, Max Weight, Avg Weight, Avg Reps Per Set, Volume Per Session, Workout Sessions |
+| Cardio | Max Speed, Calories Per Session, Workout Sessions |
+| Other | Workout Sessions |
+| All Types | Workout Sessions, Exercises Completed |
+
+- Toggle button: `Secondary Metric (Y2) [PRO]` with lock icon and "Upgrade to Pro" hint for Free users
+- Expanded state shows Pro gate panel (lock icon, description, disabled upgrade button) for Free users
+- `proRowOpen = ref(false)` — collapsed by default; `resetFilters()` collapses it
+- When Pro active and secondary selected: toggle shows `· MetricName` inline hint
+- `secondaryMetricOptions` now points to `proMetricOptions` (not `metricOptions`)
+- `watch(workoutType)` validates secondary against `proMetricOptions` separately from primary
+
+**Filter layout — Row 1 (5 fields):**
+`Workout Type | Exercise | Primary Metric (Y1) | Show Range | Reset`
+
+Secondary metric removed from Row 1. Y2 lives in its own collapsible Pro row below.
+
+**`metricOptions` / `proMetricOptions` split:**
+- `metricOptions` — Y1, raw fields only, 2–4 options per type
+- `proMetricOptions` — Y2 Pro, calculated/aggregate, 1–6 options per type
+- `watch(workoutType)` validates primary against `metricOptions`, secondary against `proMetricOptions`
+- `resetFilters` defaults `metricPrimary` to `metricOptions[0]` (type-aware)
+
+**CSS additions:**
+- `.ps-pro-badge` — purple gradient pill badge
+- `.ps-pro-row` — border-separated collapsible row
+- `.ps-pro-row__toggle` / `__toggle-left` / `__toggle-right` — header button
+- `.ps-pro-row__gate` / `.ps-pro-gate-icon` / `.ps-pro-gate-text` / `.ps-pro-gate-btn` — Free tier gate panel
+- `.ps-pro-row__fields` — Pro active field area (single dropdown, 300px max)
+- `.ps-filter-grid` updated to 5-col: `1.5fr 1.5fr 1.5fr 1.2fr auto`
+
+---
+
 ## [0.82.13] — 2026-05-23 — Dual Metric Analytics Foundation
 
 **Feature: dual Y-axis chart system, Show Range quick filter, metric simplification, Pro gate scaffold.**
