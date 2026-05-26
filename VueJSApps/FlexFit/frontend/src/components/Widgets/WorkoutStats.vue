@@ -1,21 +1,34 @@
 <script setup>
-// v0.82.20 – Dashboard Live Metrics
-import { onMounted, ref, computed } from 'vue';
+// v0.82.21 – Dashboard Metric Integration (date-range aware)
+import { onMounted, ref, computed, watch } from 'vue';
 import { API_BASE } from '@/config/env';
+
+const props = defineProps({
+  startDate: { type: String, default: null },
+  endDate:   { type: String, default: null },
+});
 
 const workoutsThisWeek = ref(0);
 const workoutsLastWeek = ref(0);
-const weekDiff = ref(0);
-const streak = ref(0);
-const caloriesBurned = ref(0);
-const loading = ref(true);
+const weekDiff         = ref(0);
+const weeklyTarget     = ref(0);
+const streak           = ref(0);
+const caloriesBurned   = ref(0);
+const loading          = ref(true);
 
 // +/- comparison text for Workouts This Week
 const weekCompareText = computed(() => {
-  if (weekDiff.value > 0) return `+${weekDiff.value} vs last week`;
-  if (weekDiff.value < 0) return `${weekDiff.value} vs last week`;
-  return 'No change vs last week';
+  if (weekDiff.value > 0) return `+${weekDiff.value} vs prior period`;
+  if (weekDiff.value < 0) return `${weekDiff.value} vs prior period`;
+  return 'No change vs prior period';
 });
+
+// "Target: X sessions" when a schedule exists, otherwise "Completed sessions"
+const workoutsSubtext = computed(() =>
+  weeklyTarget.value > 0
+    ? `Target: ${weeklyTarget.value} sessions`
+    : 'Completed sessions'
+);
 
 // Streak subtext
 const streakSubtext = computed(() => {
@@ -24,25 +37,36 @@ const streakSubtext = computed(() => {
   return 'Keep it going';
 });
 
-onMounted(async () => {
+async function fetchMetrics() {
+  loading.value = true;
   try {
-    const res = await fetch(`${API_BASE}/api/dashboard/metrics`, {
+    const params = new URLSearchParams();
+    if (props.startDate) params.set('startDate', props.startDate);
+    if (props.endDate)   params.set('endDate',   props.endDate);
+
+    const res = await fetch(`${API_BASE}/api/dashboard/metrics?${params}`, {
       credentials: 'include',
     });
     if (res.ok) {
       const data = await res.json();
       workoutsThisWeek.value = data.workoutsThisWeek ?? 0;
       workoutsLastWeek.value = data.workoutsLastWeek ?? 0;
-      weekDiff.value = data.weekDiff ?? 0;
-      streak.value = data.streak ?? 0;
-      caloriesBurned.value = data.caloriesBurned ?? 0;
+      weekDiff.value         = data.weekDiff         ?? 0;
+      weeklyTarget.value     = data.weeklyTarget      ?? 0;
+      streak.value           = data.streak            ?? 0;
+      caloriesBurned.value   = data.caloriesBurned    ?? 0;
     }
   } catch (err) {
     console.error('Failed to load dashboard metrics:', err);
   } finally {
     loading.value = false;
   }
-});
+}
+
+// Re-fetch whenever the date range changes
+watch([() => props.startDate, () => props.endDate], fetchMetrics);
+
+onMounted(fetchMetrics);
 </script>
 
 <template>
@@ -55,7 +79,7 @@ onMounted(async () => {
           <div>
             <h3 class="fw-normal">{{ loading ? '—' : workoutsThisWeek }}</h3>
             <p>WORKOUTS THIS WEEK</p>
-            <small v-if="!loading" class="metric-subtext d-block">Completed sessions</small>
+            <small v-if="!loading" class="metric-subtext d-block">{{ workoutsSubtext }}</small>
             <small v-if="!loading" class="metric-compare d-block">{{ weekCompareText }}</small>
           </div>
           <div>

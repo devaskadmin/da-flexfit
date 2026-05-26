@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.82.21] — 2026-05-26 — Dashboard Metric Integration
+
+Upgraded the three live dashboard metric cards to respect the dashboard date range picker and improved data accuracy.
+
+**What changed vs 0.82.20:**
+
+- **Date range integration** — `DateRangePicker` `@change` now flows from `HomeDashboard.vue` into `WorkoutStatsComponent` as `startDate`/`endDate` props. Metrics re-fetch automatically on picker change. Default is the current ISO week (Mon–Sun) on load.
+- **Workouts This Week** — now queries `workout_log_sessions` using `BETWEEN startDate AND endDate` instead of `YEARWEEK`. Comparison period is the same-length prior period (not hardcoded "last week"). Subtext shows `Target: X sessions` if the user has an active workout schedule; falls back to `Completed sessions`.
+- **Current Streak** — unchanged logic; still global (not range-bound) so streak always reflects the real consecutive-day count.
+- **Calories Burned** — removed `WorkoutType = 'Cardio'` filter; now sums `COALESCE(Calories, 0)` across all workout types in the selected date range.
+- **weeklyTarget** — new field in API response, sourced from the number of groups in the user's most-recent `active` workout schedule.
+- **Backend validation** — `startDate`/`endDate` query params validated with `/^\d{4}-\d{2}-\d{2}$/` regex before use; fallback to ISO week on invalid/missing input.
+
+**Files changed:**
+- `backend/api/dashboard.js` — date-range params, prior-period comparison, all-type calories, weeklyTarget
+- `frontend/src/views/HomeDashboard.vue` — ISO-week default, `@change` wired to `WorkoutStatsComponent`
+- `frontend/src/components/Widgets/WorkoutStats.vue` — `defineProps`, `watch`, `fetchMetrics()`, weeklyTarget subtext
+- `backend/sql/0.82.21_dashboard_metrics.sql` — query reference documentation
+
+---
+
 ## [0.82.20] — 2026-05-26 — Dashboard Live Metrics
 
 Replaced all static/demo dashboard metric card values with live database queries.

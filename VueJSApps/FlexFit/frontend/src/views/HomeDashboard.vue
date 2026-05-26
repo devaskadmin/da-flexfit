@@ -1,36 +1,52 @@
 <script setup>
-import {onMounted, ref} from "vue";
+import { ref } from "vue";
 import WorkoutStatsComponent from "@/components/Widgets/WorkoutStats.vue";
 import NutritionLogChart from "@/components/Widgets/NutritionLogChart.vue";
 import AssignedWorkoutsMini from "@/components/Widgets/AssignedWorkoutsMini.vue";
 import ProgressChart from "@/components/Widgets/ProgressChart.vue"
-
 
 import MyTasks from '@/components/Widgets/MyTasks.vue';
 import PendingGoals from '@/components/Widgets/PendingGoals.vue';
 import AssignedWorkouts from '@/components/Widgets/AssignedWorkouts.vue';
 import UpcomingActivitiesComponent from '@/components/Widgets/UpcomingActivitiesComponent.vue';
 
-
 import PictureUpload from '@/components/Widgets/PictureUpload.vue';
 
 import DateRangePicker from "@/components/template/DateRangePicker.vue";
 
+// v0.82.21 – Default date range to current ISO week (Mon–Sun)
+const toIso = (d) => d.toISOString().slice(0, 10);
+const getMonday = () => {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const mon = new Date(now);
+  mon.setDate(now.getDate() + diff);
+  mon.setHours(0, 0, 0, 0);
+  return mon;
+};
+const monday = getMonday();
+const sunday = new Date(monday);
+sunday.setDate(monday.getDate() + 6);
 
-onMounted(() => {
+const dashStartDate = ref(toIso(monday));
+const dashEndDate = ref(toIso(sunday));
 
-})
+const onDateChange = ([s, e]) => {
+  dashStartDate.value = s;
+  dashEndDate.value = e;
+};
 </script>
 
 <template>
   <div class="dashboard-page-wrapper">
   <div class="dashboard-breadcrumb mb-25">
     <h2>Welcome</h2>
-    <DateRangePicker />
+    <DateRangePicker @change="onDateChange" />
   </div>
 
 
-  <WorkoutStatsComponent/>
+  <WorkoutStatsComponent :start-date="dashStartDate" :end-date="dashEndDate" />
   <div class="row">
     
 
