@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.82.19] — 2026-05-26 — Login Diagnostics: Database Auth Error Detection
+
+**Bug:** HTTP 500 on Render deployment showing generic "Login failed" — caused by `ER_ACCESS_DENIED_ERROR` from MySQL being swallowed by the login route catch block and incorrectly surfaced to the user as a Safari cookie/cross-site tracking issue.
+
+**Fix — `backend/api/auth.js`:**
+
+- Login route `catch` block now inspects `err.code` before returning a generic 500.
+- `ER_ACCESS_DENIED_ERROR` → HTTP 503 with `{ error, code: 'ER_ACCESS_DENIED_ERROR' }`.
+- `ECONNREFUSED` → HTTP 503 with `{ error, code: 'ECONNREFUSED' }`.
+- `ETIMEDOUT` / `ECONNRESET` → HTTP 503 with `{ error, code }`.
+- All other errors continue to return HTTP 500 `{ error: 'Login failed' }`.
+
+**Fix — `frontend/src/views/Guest/Login.vue`:**
+
+- `buildCompactLoginMessage` now accepts a `code` param and returns targeted messages for `ER_ACCESS_DENIED_ERROR`, `ECONNREFUSED`, and `ETIMEDOUT`/`ECONNRESET` before falling through to existing status-based logic.
+- `setLoginError` accepts `code` param; passes it to `buildCompactLoginMessage` and drives `isDbAuthError` ref.
+- `login()` catch block: added `isDbAuth` flag; passes `code: errorCode` to `setLoginError`; sets `safariDetailed: false` when `isDbAuth` is true (Safari troubleshooting steps are suppressed); opens diagnostics modal on DB auth errors.
+- Added `isDbAuthError` ref with reset at login start.
+- Diagnostics modal: new `ER_ACCESS_DENIED_ERROR` banner listing `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_DATABASE` Render env vars to verify. Explicitly states: "This is not a browser or cookie issue."
+
+---
+
 ## [0.82.18] — 2026-05-25 — Exercise Data Migration & SQL-to-CSV Tooling
 
 **Data: Migrated full exercises dataset from SQL dump to CSV.**

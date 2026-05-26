@@ -356,6 +356,25 @@ router.post('/login', async (req, res) => {
       
     } catch (err) {
         console.error("❌ Login error:", err);
+        const errCode = err?.code || '';
+        if (errCode === 'ER_ACCESS_DENIED_ERROR') {
+          return res.status(503).json({
+            error: 'Database authentication failed. The server reached the database but credentials were rejected.',
+            code: 'ER_ACCESS_DENIED_ERROR',
+          });
+        }
+        if (errCode === 'ECONNREFUSED') {
+          return res.status(503).json({
+            error: 'Database offline. Could not connect to the database server.',
+            code: 'ECONNREFUSED',
+          });
+        }
+        if (['ETIMEDOUT', 'ECONNRESET'].includes(errCode)) {
+          return res.status(503).json({
+            error: 'Database unavailable. Connection timed out.',
+            code: errCode,
+          });
+        }
         res.status(500).json({ error: "Login failed" });
         }
 });

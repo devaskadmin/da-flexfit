@@ -19,6 +19,7 @@ const diagnosticsCopied = ref(false);
 const showDiagnosticsModal = ref(false);
 const isSubmitting = ref(false);
 const isConnectionLimitError = ref(false);
+const isDbAuthError = ref(false);
 const appVersion = import.meta.env.VITE_APP_VERSION || '0.69.0';
 const isDev = import.meta.env.DEV;
 
@@ -98,7 +99,16 @@ const buildLoginDiagnostics = ({
   ].join('\n');
 };
 
-const buildCompactLoginMessage = ({ status, fallbackMessage } = {}) => {
+const buildCompactLoginMessage = ({ status, fallbackMessage, code = '' } = {}) => {
+  if (code === 'ER_ACCESS_DENIED_ERROR') {
+    return 'Database connection failed. The FlexFit server reached the database but authentication was rejected. Please verify Render environment variables: DB_HOST, DB_USER, DB_PASSWORD, DB_DATABASE.';
+  }
+  if (code === 'ECONNREFUSED') {
+    return 'Database offline. Sign-in is unavailable until the database server is reachable.';
+  }
+  if (code === 'ETIMEDOUT' || code === 'ECONNRESET') {
+    return 'Database unavailable. The connection timed out. Please retry in a moment.';
+  }
   if (String(fallbackMessage || '').includes('ER_TOO_MANY_USER_CONNECTIONS')) {
     return 'FlexFit database connection limit reached. The hosting provider rejected additional database connections. Please wait a minute and retry.';
   }
@@ -172,9 +182,11 @@ const setLoginError = ({
   sessionCookiePersisted = null,
   sessionVerificationPassed = false,
   safariDetailed = false,
+  code = '',
 }) => {
+  isDbAuthError.value = code === 'ER_ACCESS_DENIED_ERROR';
   const isSafari = isSafariBrowser();
-  const compactMessage = buildCompactLoginMessage({ status, fallbackMessage });
+  const compactMessage = buildCompactLoginMessage({ status, fallbackMessage, code });
   const detailedMessage = safariDetailed && isSafari
     ? buildSafariLoginFailureMessage({ reason, status, apiMessage, networkMessage })
     : (fallbackMessage || 'No additional details.');
@@ -284,6 +296,7 @@ const login = async () => {
   diagnosticsCopied.value = false;
   showDiagnosticsModal.value = false;
   isConnectionLimitError.value = false;
+  isDbAuthError.value = false;
 
   const safeUsername = String(username.value || "").trim();
   const safePassword = String(password.value || "");
@@ -387,12 +400,15 @@ const login = async () => {
     const isSessionStore =
       String(apiMessage).toLowerCase().includes('session store') ||
       ['ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT'].includes(errorCode);
+    const isDbAuth = errorCode === 'ER_ACCESS_DENIED_ERROR';
     if (isConnLimit) {
       isConnectionLimitError.value = true;
     }
     setLoginError({
       fallbackMessage: apiMessage,
-      reason: isConnLimit
+      reason: isDbAuth
+        ? 'Database credentials were rejected by MySQL. Verify Render environment variables.'
+        : isConnLimit
         ? 'Database connection limit reached on hosting provider.'
         : isSessionStore
         ? 'Session store temporarily unavailable.'
@@ -403,9 +419,10 @@ const login = async () => {
       loginSucceeded: false,
       sessionCookiePersisted: null,
       sessionVerificationPassed: false,
-      safariDetailed: !isConnLimit,
+      code: errorCode,
+      safariDetailed: !isConnLimit && !isDbAuth,
     });
-    if (isConnLimit) {
+    if (isConnLimit || isDbAuth) {
       openDiagnosticsModal();
     }
   } finally {
@@ -541,6 +558,21 @@ const demoLogin = async (role) => {
                 <li>Retry login</li>
                 <li>Contact administrator</li>
               </ul>
+            </div>
+
+            <!-- DB auth error banner -->
+            <div v-if="isDbAuthError" class="login-diag-conn-limit">
+              <p class="login-diag-conn-title">Database authentication failed.</p>
+              <p class="login-diag-conn-sub">The FlexFit server reached the database but authentication was rejected.</p>
+              <p class="login-diag-conn-error">Error: <code>ER_ACCESS_DENIED_ERROR</code></p>
+              <p class="login-diag-conn-suggestions">Please verify these Render environment variables:</p>
+              <ul class="login-diag-conn-list">
+                <li><code>DB_HOST</code></li>
+                <li><code>DB_USER</code></li>
+                <li><code>DB_PASSWORD</code></li>
+                <li><code>DB_DATABASE</code></li>
+              </ul>
+              <p class="login-diag-conn-sub">This is not a browser or cookie issue.</p>
             </div>
 
             <!-- Server diagnostics -->
