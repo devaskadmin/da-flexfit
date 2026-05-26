@@ -14,21 +14,24 @@ app.use(express.json());
 const isProduction = process.env.NODE_ENV === 'production';
 const debugFlag = String(process.env.DEBUG || process.env.VITE_DEBUG || '').toLowerCase();
 const isDebugEnabled = ['true', '1', 'yes'].includes(debugFlag);
-const REQUIRED_FRONTEND_ORIGIN = 'https://flex-fit-lkzh.onrender.com';
+const CLIENT_ORIGIN = String(process.env.CLIENT_ORIGIN || '').trim();
 const FRONTEND_URL = process.env.FRONTEND_URL || process.env.FRONTEND_ORIGIN;
+const COOKIE_DOMAIN = String(process.env.COOKIE_DOMAIN || '').trim();
 const CORS_ORIGINS = String(process.env.CORS_ORIGINS || '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-const allowedOrigins = new Set([
-  REQUIRED_FRONTEND_ORIGIN,
-  FRONTEND_URL,
-  ...CORS_ORIGINS,
-].filter(Boolean));
+const allowedOrigins = new Set(
+  (CLIENT_ORIGIN
+    ? [CLIENT_ORIGIN]
+    : [FRONTEND_URL, ...CORS_ORIGINS]
+  ).filter(Boolean)
+);
 
-console.log(`🚀 FRONTEND_URL=${FRONTEND_URL || '(not set)'}`);
+console.log(`🚀 CLIENT_ORIGIN=${CLIENT_ORIGIN || '(not set)'}`);
 console.log(`🌐 Allowed CORS origins: ${[...allowedOrigins].join(', ') || '(none configured)'}`);
+console.log(`🍪 COOKIE_DOMAIN=${COOKIE_DOMAIN || '(host-only)'}`);
 
 // ✅ Trust proxy always — Render (and most cloud hosts) terminate TLS at the
 // load balancer and forward requests via HTTP internally. Without this,
@@ -64,10 +67,11 @@ if (isDebugEnabled) {
   console.log('🧪 Session/CORS debug:', {
     nodeEnv: process.env.NODE_ENV,
     isProduction,
-    frontendUrl: FRONTEND_URL || null,
+    clientOrigin: CLIENT_ORIGIN || null,
     corsOrigins: [...allowedOrigins],
     sessionCookieSecure,
     sessionCookieSameSite,
+    cookieDomain: COOKIE_DOMAIN || null,
   });
 }
 
@@ -120,6 +124,7 @@ app.use(session({
     httpOnly: true,
     secure: sessionCookieSecure,
     sameSite: sessionCookieSameSite,
+    ...(COOKIE_DOMAIN ? { domain: COOKIE_DOMAIN } : {}),
     path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days default; auth.js overrides per login
   }

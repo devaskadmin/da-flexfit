@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.82.23] - 2026-05-26 - Production Safari Auth Domain Fix
+
+- Updated backend CORS origin strategy to prioritize `CLIENT_ORIGIN` as the exact credentialed frontend origin for production auth.
+- Added optional cookie domain support via `COOKIE_DOMAIN` in session cookie config.
+  - If `COOKIE_DOMAIN` is set (example: `.flexfit.com`), cookie domain is included.
+  - If not set, host-only cookie behavior is preserved.
+- Kept Render production requirements in session middleware:
+  - `app.set('trust proxy', 1)`
+  - `secure: true`
+  - `sameSite: 'none'`
+  - `httpOnly: true`
+  - `maxAge: 7 days`
+- Retained `GET /api/session/check` and expanded response with explicit verification fields:
+  - `authenticated`
+  - `userID`
+  - `username`
+  - `sessionID`
+  - `sessionIDExists`
+  - `cookieHeaderPresent`
+- Updated backend debug/login diagnostics payload to include production domain env context:
+  - `CLIENT_ORIGIN`
+  - `API_BASE_URL`
+  - `COOKIE_DOMAIN`
+- Updated frontend login diagnostics to detect cross-site parent-domain architecture and show production guidance:
+  - `Cross-site cookie architecture detected.`
+  - `Use custom same-site domains for production: app.flexfit.com and api.flexfit.com.`
+- Removed Safari-setting-first messaging from the main remediation path.
+- Added frontend API base env alias support for `VITE_API_BASE_URL`.
+
+---
+
 ## [0.82.22a] - 2026-05-26 - Session Verification Repair
 
 - Added login-time persistence diagnostics to print sessionID, userID, username, and cookie after successful session save.

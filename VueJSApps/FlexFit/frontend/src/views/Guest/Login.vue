@@ -34,30 +34,68 @@ const isSafariBrowser = () => {
   return isSafari && !isOtherBrowser;
 };
 
+const getParentDomain = (hostname = '') => {
+  const parts = String(hostname || '').toLowerCase().split('.').filter(Boolean);
+  if (parts.length < 2) return hostname;
+  return `${parts[parts.length - 2]}.${parts[parts.length - 1]}`;
+};
+
+const detectCrossSiteArchitecture = () => {
+  try {
+    const appHost = new URL(window.location.origin).hostname;
+    const apiHost = new URL(API_BASE).hostname;
+    const appParent = getParentDomain(appHost);
+    const apiParent = getParentDomain(apiHost);
+    return {
+      appHost,
+      apiHost,
+      appParent,
+      apiParent,
+      isCrossSiteParentDomain: appParent !== apiParent,
+    };
+  } catch (_) {
+    return {
+      appHost: 'unknown',
+      apiHost: 'unknown',
+      appParent: 'unknown',
+      apiParent: 'unknown',
+      isCrossSiteParentDomain: false,
+    };
+  }
+};
+
 const buildSafariLoginFailureMessage = ({
   reason = 'Login did not complete.',
   status,
   apiMessage,
   networkMessage,
 } = {}) => {
+  const arch = detectCrossSiteArchitecture();
   const detailLines = [
     `Safari sign-in issue detected. ${reason}`,
     '',
     'Details:',
     `- API Base: ${API_BASE}`,
+    `- App Host: ${arch.appHost}`,
+    `- API Host: ${arch.apiHost}`,
+    `- App Parent Domain: ${arch.appParent}`,
+    `- API Parent Domain: ${arch.apiParent}`,
     `- HTTP Status: ${status ?? 'none'}`,
     `- Server Message: ${apiMessage || 'none'}`,
     `- Network Message: ${networkMessage || 'none'}`,
     '',
-    'Safari troubleshooting steps:',
-    '1) iPhone/iPad: Settings > Safari',
-    '2) Turn OFF "Prevent Cross-Site Tracking"',
-    '3) Confirm cookies are allowed (not blocked)',
-    '4) Tap "Clear History and Website Data"',
-    '5) Close Safari completely, reopen, and sign in again',
-    '',
-    'If this still fails, test the same account in Chrome/Edge on the same device to confirm Safari cookie restrictions.',
   ];
+
+  if (arch.isCrossSiteParentDomain) {
+    detailLines.push(
+      'Cross-site cookie architecture detected.',
+      'Use custom same-site domains for production: app.flexfit.com and api.flexfit.com.'
+    );
+  } else {
+    detailLines.push(
+      'Use production custom domains with shared parent domain and COOKIE_DOMAIN=.flexfit.com for stable Safari auth persistence.'
+    );
+  }
 
   return detailLines.join('\n');
 };
@@ -79,6 +117,7 @@ const buildLoginDiagnostics = ({
   const userAgent = navigator.userAgent || 'unknown';
   const origin = window.location.origin || 'unknown';
   const now = new Date().toISOString();
+  const arch = detectCrossSiteArchitecture();
 
   return [
     'FlexFit Login Diagnostics',
@@ -88,6 +127,9 @@ const buildLoginDiagnostics = ({
     `- Cookies Enabled: ${navigator.cookieEnabled}`,
     `- App Origin: ${origin}`,
     `- API Base: ${API_BASE}`,
+    `- App Parent Domain: ${arch.appParent}`,
+    `- API Parent Domain: ${arch.apiParent}`,
+    `- Cross-site Parent Domains: ${arch.isCrossSiteParentDomain}`,
     `- HTTP Status: ${status ?? 'none'}`,
     `- loginSucceeded: ${loginSucceeded}`,
     `- sessionCookiePersisted: ${sessionCookiePersisted === null ? 'unknown' : sessionCookiePersisted}`,
@@ -100,6 +142,12 @@ const buildLoginDiagnostics = ({
     `- Reason: ${reason || 'none'}`,
     `- Server Message: ${apiMessage || 'none'}`,
     `- Network Message: ${networkMessage || 'none'}`,
+    ...(arch.isCrossSiteParentDomain
+      ? [
+          '- Architecture Notice: Cross-site cookie architecture detected.',
+          '- Production Fix: Use custom same-site domains app.flexfit.com and api.flexfit.com.',
+        ]
+      : []),
   ].join('\n');
 };
 

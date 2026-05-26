@@ -14,6 +14,7 @@ const REMEMBER_ME_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
 const isDebugEnabled = ['true', '1', 'yes'].includes(String(process.env.DEBUG || process.env.VITE_DEBUG || '').toLowerCase());
 const SESSION_COOKIE_SECURE = true;
 const SESSION_COOKIE_SAMESITE = 'none';
+const CLIENT_ORIGIN = String(process.env.CLIENT_ORIGIN || '').trim();
 
 const normalizeRoleValue = (rawValue = '') => {
   const value = String(rawValue || '').trim().toLowerCase();
@@ -198,9 +199,12 @@ router.get('/debug/login-diagnostics', (req, res) => {
     environment: {
       nodeEnv: process.env.NODE_ENV || 'unknown',
       debug: process.env.DEBUG || 'false',
-      frontendConfigured: !!process.env.FRONTEND_URL,
-      corsConfigured: !!process.env.CORS_ORIGINS,
-      sessionCookieSecure: process.env.SESSION_COOKIE_SECURE || 'not set',
+      clientOrigin: CLIENT_ORIGIN || null,
+      apiBaseUrl: process.env.API_BASE_URL || null,
+      cookieDomain: process.env.COOKIE_DOMAIN || null,
+      corsConfigured: !!CLIENT_ORIGIN,
+      sessionCookieSecure: SESSION_COOKIE_SECURE,
+      sessionCookieSameSite: SESSION_COOKIE_SAMESITE,
     },
     database: {
       hostConfigured: !!process.env.DB_HOST,
@@ -481,7 +485,7 @@ router.get('/session/check', (req, res) => {
   const rawCookie = String(req.headers?.cookie || '');
   const hasSessionCookie = /flexfit_session=/.test(rawCookie);
   const origin = req.headers.origin || null;
-  const corsAllowed = !origin || origin === 'https://flex-fit-lkzh.onrender.com' || origin === (process.env.FRONTEND_URL || process.env.FRONTEND_ORIGIN);
+  const corsAllowed = !origin || (CLIENT_ORIGIN ? origin === CLIENT_ORIGIN : true);
   const sessionExists = Boolean(req.session);
   const userID = req.session?.userID || null;
   const username = req.session?.username || null;
@@ -502,9 +506,11 @@ router.get('/session/check', (req, res) => {
   return res.json({
     authenticated,
     sessionID: req.sessionID || null,
+    sessionIDExists: Boolean(req.sessionID),
     userID,
     username,
     cookiePresent: Boolean(req.headers.cookie),
+    cookieHeaderPresent: Boolean(req.headers.cookie),
     sessionExists,
     cookie: req.session?.cookie || null,
     diagnostics: {

@@ -5,7 +5,7 @@ const isDevMode = forceProdMode ? false : forceDevMode ? true : Boolean(import.m
 const defaultApiBase = isDevMode
   ? 'http://localhost:5000'
   : 'https://dev-asterisks-github.onrender.com';
-const rawApiBase = import.meta.env.VITE_API_BASE || defaultApiBase;
+const rawApiBase = import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL || defaultApiBase;
 
 const normalizeApiBase = (value) => {
   const trimmed = String(value || '').trim();
