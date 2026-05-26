@@ -323,6 +323,8 @@ router.post('/login', async (req, res) => {
           return res.status(500).json({ error: 'Login succeeded, but session could not be persisted.' });
         }
 
+        const setCookieHeader = res.getHeader('Set-Cookie');
+        console.log('SET COOKIE HEADER:', setCookieHeader);
         console.log({
           sessionID: req.sessionID,
           userID: req.session.userID,
@@ -333,6 +335,7 @@ router.post('/login', async (req, res) => {
         if (isDebugEnabled) {
           console.log('🧪 [auth/login] session persisted:', {
             sessionId: req.sessionID || null,
+            setCookieHeaderPresent: Boolean(setCookieHeader),
             cookie: {
               secure: Boolean(req.session?.cookie?.secure),
               sameSite: req.session?.cookie?.sameSite || null,
@@ -347,13 +350,21 @@ router.post('/login', async (req, res) => {
           user: req.session.user,
           requiresPasswordReset: isPendingReset,
           diagnostics: {
+            success: true,
+            sessionID: req.sessionID,
+            setCookieHeaderPresent: Boolean(setCookieHeader),
             loginSucceeded: true,
             sessionVerificationPassed: true,
             cookieDetected: Boolean(req.headers.cookie),
             cookieSentBack: true,
             corsPassed: Boolean(req.headers.origin),
-            sameSiteValue: req.session?.cookie?.sameSite || null,
-            secureFlag: Boolean(req.session?.cookie?.secure),
+            cookieConfig: {
+              secure: req.session.cookie.secure,
+              sameSite: req.session.cookie.sameSite,
+              httpOnly: req.session.cookie.httpOnly,
+              path: req.session.cookie.path,
+              expires: req.session.cookie.expires,
+            },
           },
         });
       });
@@ -389,7 +400,7 @@ router.post('/logout', (req, res) => {
     req.session.destroy(err => {
       if (err) return res.status(500).send("Logout failed");
       // Explicitly clear the session cookie for Safari cross-site handling.
-      res.clearCookie('flexfit_session', {
+      res.clearCookie('flexfit.sid', {
         path: '/',
         httpOnly: true,
         secure: SESSION_COOKIE_SECURE,
@@ -402,7 +413,7 @@ router.post('/logout', (req, res) => {
 //Get Session
 router.get('/session', async (req, res) => {
     const rawCookie = String(req.headers?.cookie || '');
-    const hasSessionCookie = /flexfit_session=/.test(rawCookie);
+    const hasSessionCookie = /flexfit\.sid=/.test(rawCookie);
     const cookieSentBack = Boolean(req.headers.cookie);
     const hasUserSession = Boolean(req.session?.user);
 
@@ -483,13 +494,25 @@ router.get('/session', async (req, res) => {
 // Dedicated auth/session verification endpoint used right after login.
 router.get('/session/check', (req, res) => {
   const rawCookie = String(req.headers?.cookie || '');
-  const hasSessionCookie = /flexfit_session=/.test(rawCookie);
+  const hasSessionCookie = /flexfit\.sid=/.test(rawCookie);
   const origin = req.headers.origin || null;
   const corsAllowed = !origin || (CLIENT_ORIGIN ? origin === CLIENT_ORIGIN : true);
   const sessionExists = Boolean(req.session);
   const userID = req.session?.userID || null;
   const username = req.session?.username || null;
-  const authenticated = Boolean(userID);
+  const authenticated = Boolean(req.session?.user?.id || req.session?.userID);
+
+  const safeSessionUser = req.session?.user
+    ? { id: req.session.user.id, username: req.session.user.username, role: req.session.user.role }
+    : null;
+
+  console.log('[session/check]', {
+    authenticated,
+    sessionID: req.sessionID || null,
+    cookieHeaderPresent: Boolean(req.headers.cookie),
+    hasSessionCookie,
+    userID,
+  });
 
   if (isDebugEnabled) {
     console.log('FlexFit Session Diagnostics', {
@@ -509,10 +532,11 @@ router.get('/session/check', (req, res) => {
     sessionIDExists: Boolean(req.sessionID),
     userID,
     username,
-    cookiePresent: Boolean(req.headers.cookie),
+    cookiePresent: hasSessionCookie,
     cookieHeaderPresent: Boolean(req.headers.cookie),
+    cookieHeaderPreview: req.headers.cookie ? 'present' : 'missing',
     sessionExists,
-    cookie: req.session?.cookie || null,
+    sessionUser: safeSessionUser,
     diagnostics: {
       cookiePresent: hasSessionCookie,
       sessionId: req.sessionID || null,

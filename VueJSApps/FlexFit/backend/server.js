@@ -22,11 +22,11 @@ const CORS_ORIGINS = String(process.env.CORS_ORIGINS || '')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+// Always include the current Render frontend URL as a hard fallback.
+// CLIENT_ORIGIN in env can override/extend this for custom domains.
+const RENDER_FRONTEND_ORIGIN = 'https://flex-fit-lkzh.onrender.com';
 const allowedOrigins = new Set(
-  (CLIENT_ORIGIN
-    ? [CLIENT_ORIGIN]
-    : [FRONTEND_URL, ...CORS_ORIGINS]
-  ).filter(Boolean)
+  [RENDER_FRONTEND_ORIGIN, CLIENT_ORIGIN, FRONTEND_URL, ...CORS_ORIGINS].filter(Boolean)
 );
 
 console.log(`🚀 CLIENT_ORIGIN=${CLIENT_ORIGIN || '(not set)'}`);
@@ -61,7 +61,7 @@ app.use(cors({
 const sessionCookieSecure = true;
 const sessionCookieSameSite = 'none';
 
-console.log(`🍪 Session cookie: name=flexfit_session secure=${sessionCookieSecure} sameSite=${sessionCookieSameSite}`);
+console.log(`🍪 Session cookie: name=flexfit.sid secure=${sessionCookieSecure} sameSite=${sessionCookieSameSite}`);
 
 if (isDebugEnabled) {
   console.log('🧪 Session/CORS debug:', {
@@ -113,7 +113,7 @@ try {
 }
 
 app.use(session({
-  name: 'flexfit_session',
+  name: 'flexfit.sid',
   secret: process.env.SESSION_SECRET || 'dev-only-session-secret',
   resave: false,
   saveUninitialized: false,
@@ -142,7 +142,7 @@ app.use((req, res, next) => {
       origin,
       corsAllowed,
       hasCookieHeader: Boolean(req.headers.cookie),
-      cookieDetected: /flexfit_session=/.test(rawCookie),
+      cookieDetected: /flexfit\.sid=/.test(rawCookie),
       sessionId: req.sessionID || null,
       hasUserSession: Boolean(req.session?.user),
       secureFlag: sessionCookieSecure,
@@ -151,7 +151,7 @@ app.use((req, res, next) => {
     });
 
     console.log('FlexFit Session Diagnostics', {
-      cookiePresent: /flexfit_session=/.test(rawCookie),
+      cookiePresent: /flexfit\.sid=/.test(rawCookie),
       sessionId: req.sessionID || null,
       sameSiteValue: sessionCookieSameSite,
       secureFlag: sessionCookieSecure,
