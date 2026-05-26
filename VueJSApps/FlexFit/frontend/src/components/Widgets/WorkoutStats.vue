@@ -1,31 +1,117 @@
 <script setup>
-const stats = [
-  { title: "Workouts This Week", value: "5", icon: "fa-dumbbell" },
-  { title: "Streak", value: "7 Days", icon: "fa-fire" },
-  { title: "Points Earned", value: "300", icon: "fa-star" },
-  { title: "Calories Burned", value: "1500", icon: "fa-burn" },
-];
+// v0.82.20 – Dashboard Live Metrics
+import { onMounted, ref, computed } from 'vue';
+import { API_BASE } from '@/config/env';
+
+const workoutsThisWeek = ref(0);
+const workoutsLastWeek = ref(0);
+const weekDiff = ref(0);
+const streak = ref(0);
+const caloriesBurned = ref(0);
+const loading = ref(true);
+
+// +/- comparison text for Workouts This Week
+const weekCompareText = computed(() => {
+  if (weekDiff.value > 0) return `+${weekDiff.value} vs last week`;
+  if (weekDiff.value < 0) return `${weekDiff.value} vs last week`;
+  return 'No change vs last week';
+});
+
+// Streak subtext
+const streakSubtext = computed(() => {
+  if (streak.value === 0) return 'Start streak today';
+  if (streak.value >= 7) return 'Consistency improving';
+  return 'Keep it going';
+});
+
+onMounted(async () => {
+  try {
+    const res = await fetch(`${API_BASE}/api/dashboard/metrics`, {
+      credentials: 'include',
+    });
+    if (res.ok) {
+      const data = await res.json();
+      workoutsThisWeek.value = data.workoutsThisWeek ?? 0;
+      workoutsLastWeek.value = data.workoutsLastWeek ?? 0;
+      weekDiff.value = data.weekDiff ?? 0;
+      streak.value = data.streak ?? 0;
+      caloriesBurned.value = data.caloriesBurned ?? 0;
+    }
+  } catch (err) {
+    console.error('Failed to load dashboard metrics:', err);
+  } finally {
+    loading.value = false;
+  }
+});
 </script>
 
 <template>
   <div class="row">
-    <div
-      v-for="(stat, index) in stats"
-      :key="index"
-      class="col-lg-3 col-6 col-xs-12"
-    >
+
+    <!-- Card 1: Workouts This Week -->
+    <div class="col-lg-3 col-6 col-xs-12">
       <div class="dashboard-top-box panel-bg">
         <div class="d-flex justify-content-between align-items-center">
           <div>
-            <h3 class="fw-normal">{{ stat.value }}</h3>
-            <p>{{ stat.title }}</p>
+            <h3 class="fw-normal">{{ loading ? '—' : workoutsThisWeek }}</h3>
+            <p>WORKOUTS THIS WEEK</p>
+            <small v-if="!loading" class="metric-subtext d-block">Completed sessions</small>
+            <small v-if="!loading" class="metric-compare d-block">{{ weekCompareText }}</small>
           </div>
           <div>
-            <i :class="'fa ' + stat.icon"></i>
+            <i class="fa fa-dumbbell"></i>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Card 2: Current Streak -->
+    <div class="col-lg-3 col-6 col-xs-12">
+      <div class="dashboard-top-box panel-bg">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h3 class="fw-normal">{{ loading ? '—' : streak + 'd' }}</h3>
+            <p>CURRENT STREAK</p>
+            <small v-if="!loading" class="metric-subtext d-block">{{ streakSubtext }}</small>
+          </div>
+          <div>
+            <i class="fa fa-fire"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Points Earned (static – not part of live metrics pass) -->
+    <div class="col-lg-3 col-6 col-xs-12">
+      <div class="dashboard-top-box panel-bg">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h3 class="fw-normal">300</h3>
+            <p>Points Earned</p>
+          </div>
+          <div>
+            <i class="fa fa-star"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 4: Calories Burned -->
+    <div class="col-lg-3 col-6 col-xs-12">
+      <div class="dashboard-top-box panel-bg">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h3 class="fw-normal">{{ loading ? '—' : caloriesBurned }}</h3>
+            <p>CALORIES BURNED</p>
+            <small v-if="!loading" class="metric-subtext d-block">This week total</small>
+          </div>
+          <div>
+            <i class="fa fa-burn"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 

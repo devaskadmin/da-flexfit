@@ -226,6 +226,7 @@ app.use('/api', openFoodFactsRoutes);
 app.use('/api/avatar', avatarRoutes);
 app.use('/api/admin', require('./api/admin.js')); // 🔒 Admin-only routes
 app.use('/api/progress', require('./api/progress.js')); // 📊 v0.82 Progress Stats
+app.use('/api', require('./api/dashboard.js')); // 📊 v0.82.20 Dashboard Live Metrics
 
 // ✅ Global JSON error handler — MUST be registered after all routes.
 // Catches express-session store failures (which call next(err) before any route

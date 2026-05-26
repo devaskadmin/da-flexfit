@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.82.20] — 2026-05-26 — Dashboard Live Metrics
+
+Replaced all static/demo dashboard metric card values with live database queries.
+
+**Cards updated:**
+- **Workouts This Week** — counts `completed` sessions in `workout_log_sessions` for the current ISO week; shows `+X / -X / No change vs last week` comparison subtext.
+- **Current Streak** — calculates consecutive workout days from distinct `workout_log_sessions` dates via `StreakCalculator`; displays value as `Xd` with contextual subtext (`Keep it going` / `Consistency improving` / `Start streak today`).
+- **Calories Burned** — sums `Calories` from `workout_log` rows where `WorkoutType = 'Cardio'` in the current ISO week; defaults to `0` if no cardio logged.
+
+**Cards NOT modified:** Points Earned, Training Progress chart, Activity Feed, Sidebar, Header, date picker, layout, or styling.
+
+**New files:**
+- `backend/api/dashboard.js` — `GET /api/dashboard/metrics` endpoint (auth-guarded).
+- `backend/utils/StreakCalculator.js` — pure streak-calculation helper; isolated from route logic.
+- `backend/sql/0.82.20_dashboard_metrics.sql` — adds composite indexes `idx_wls_user_status_date` on `workout_log_sessions` and `idx_wl_user_type_date` on `workout_log`.
+
+**Modified files:**
+- `backend/server.js` — registered new dashboard route.
+- `frontend/src/components/Widgets/WorkoutStats.vue` — replaced static `stats` array with live `fetch` to `/api/dashboard/metrics`; cards now show real values with subtexts.
+
+---
+
 ## [0.82.19] — 2026-05-26 — Login Diagnostics: Database Auth Error Detection
 
 **Bug:** HTTP 500 on Render deployment showing generic "Login failed" — caused by `ER_ACCESS_DENIED_ERROR` from MySQL being swallowed by the login route catch block and incorrectly surfaced to the user as a Safari cookie/cross-site tracking issue.
