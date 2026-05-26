@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.82.22a] - 2026-05-26 - Session Verification Repair
+
+- Added login-time persistence diagnostics to print sessionID, userID, username, and cookie after successful session save.
+- Updated login session payload to persist top-level fields:
+  - req.session.userID
+  - req.session.username
+- Ensured login success response is returned only after req.session.save callback completes.
+- Reworked GET /api/session/check to return explicit verification diagnostics:
+  - authenticated
+  - sessionID
+  - userID
+  - username
+  - cookiePresent
+  - sessionExists
+  - cookie
+- Migrated backend session store wiring to connect-mysql2 table user_sessions and disabled MemoryStore fallback.
+- Session middleware now uses rolling cookies with trust proxy enabled and Safari-safe cookie flags:
+  - secure: true
+  - sameSite: none
+  - httpOnly: true
+  - maxAge: 604800000
+- Frontend login now waits 500ms after POST /api/login, then calls GET /api/session/check once and logs response diagnostics.
+- Added SQL migration file:
+  - backend/sql/0.82.22a_session_store.sql
+
+---
+
 ## [0.82.22] - 2026-05-26 - Safari Session Persistence Fix
 
 - Hardened cross-site session cookie settings for Render + Safari compatibility.

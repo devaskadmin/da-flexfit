@@ -6,11 +6,8 @@ dotenv.config({ path: path.resolve(__dirname, '.env.local'), override: true });
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
-const MySQLStore = require('express-mysql-session')(session);
-// ✅ RAW mysql2 (non-promise) required for express-mysql-session.
-// express-mysql-session calls .query() directly on the pool; promise pools
-// wrap that and break the internal connection check → 'this.connection.query is not a function'.
-const mysqlRaw = require('mysql2');
+const MySQLStoreFactory = require('connect-mysql2');
+const MySQLStore = MySQLStoreFactory(session);
 
 const app = express();
 app.use(express.json());
@@ -75,63 +72,40 @@ if (isDebugEnabled) {
 }
 
 // ✅ Persist sessions in MySQL so they survive Render cold starts / restarts.
-// Falls back to in-memory store when DB config is absent (local dev without DB).
+// 0.82.22a: no MemoryStore fallback for session verification reliability.
 let sessionStore;
 try {
-  if (process.env.DB_HOST && process.env.DB_USER && process.env.DB_DATABASE) {
-    // ⚠️  MUST be a raw mysql2 pool — NOT pool.promise().
-    // express-mysql-session calls pool.query() internally; a promise-pool wraps
-    // that interface and causes: 'this.connection.query is not a function'.
-    const sessionPool = mysqlRaw.createPool({
-      host:              process.env.DB_HOST,
-      port:              Number(process.env.DB_PORT || 3306),
-      user:              process.env.DB_USER,
-      password:          process.env.DB_PASSWORD,
-      database:          process.env.DB_DATABASE,
-      connectionLimit:   1,   // 1 connection for session store (read + write share one slot)
-      waitForConnections: true,
-      queueLimit:        0,
-      enableKeepAlive:   true,
-      keepAliveInitialDelay: 0,
-      connectTimeout:    30000,
-    });
-
-    // Validate pool has the interface express-mysql-session expects
-    console.log('[SESSION DEBUG]', {
-      hasQuery:   typeof sessionPool.query,
-      hasExecute: typeof sessionPool.execute,
-      limit:      1,
-    });
-
-    sessionStore = new MySQLStore({
-      clearExpired:            true,
-      checkExpirationInterval: 15 * 60 * 1000,       // prune expired sessions every 15 min
-      expiration:              7 * 24 * 60 * 60 * 1000, // 7 days — match cookie maxAge
-      createDatabaseTable:     true,
-      schema: {
-        tableName:   'sessions',
-        columnNames: { session_id: 'session_id', expires: 'expires', data: 'data' },
-      },
-    }, sessionPool);
-
-    // ✅ Log session store errors but NEVER crash the backend.
-    sessionStore.on('error', (err) => {
-      console.error('⚠️  Session store error (non-fatal):', err.message);
-    });
-
-    // ✅ Prevent idle session pool connections from crashing Node on ECONNRESET.
-    sessionPool.on('error', (err) => {
-      console.error('[SESSION POOL ERROR]', err.code || err.message, err);
-    });
-
-    console.log('🗄️  Session store: MySQL (persistent across restarts) | pool connectionLimit=1');
-    console.log('📊 DB budget: app=2 + session=1 = 3 max connections');
-    console.log('[SESSION STORE]', { store: 'mysql', ready: true });
-  } else {
-    console.warn('⚠️  Session store: in-memory (DB env vars not set — sessions lost on restart)');
+  if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_DATABASE) {
+    throw new Error('Session store requires DB_HOST, DB_USER, and DB_DATABASE. MemoryStore fallback is disabled in v0.82.22a.');
   }
+
+  const sessionDbConfig = {
+    host: process.env.DB_HOST,
+    port: Number(process.env.DB_PORT || 3306),
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE,
+    connectionLimit: 2,
+    waitForConnections: true,
+    queueLimit: 0,
+    charset: 'utf8mb4',
+  };
+
+  sessionStore = new MySQLStore({
+    config: sessionDbConfig,
+    table: 'user_sessions',
+    pool: true,
+    cleanup: true,
+    keepalive: 30000,
+    retries: 3,
+    secret: process.env.SESSION_SECRET || 'dev-only-session-secret',
+  });
+
+  console.log('🗄️  Session store: connect-mysql2 user_sessions (persistent across restarts)');
+  console.log('[SESSION STORE]', { store: 'connect-mysql2', table: 'user_sessions', ready: true });
 } catch (storeErr) {
   console.error('❌ Failed to init MySQL session store:', storeErr?.message || storeErr);
+  process.exit(1);
 }
 
 app.use(session({
@@ -139,8 +113,9 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'dev-only-session-secret',
   resave: false,
   saveUninitialized: false,
+  rolling: true,
   proxy: true, // always true — Render always reverse-proxies
-  store: sessionStore,  // undefined = in-memory fallback
+  store: sessionStore,
   cookie: {
     httpOnly: true,
     secure: sessionCookieSecure,

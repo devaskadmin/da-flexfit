@@ -228,59 +228,37 @@ const devLog = (...args) => {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Helps mobile/Safari where session cookie can be visible a moment after /login response.
-const waitForSessionReady = async (maxAttempts = 5, waitMs = 250) => {
+// Wait briefly then run one explicit session verification check.
+const waitForSessionReady = async () => {
   const sessionUrl = '/api/session/check';
-  let lastStatus = null;
-  let lastNote = '';
-  let lastHasSessionCookie = null;
-  let lastDiagnostics = {};
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    try {
-      devLog('Session verification request', {
-        url: sessionUrl,
-        attempt,
-      });
+  await sleep(500);
 
-      const sessionRes = await apiClient.get(sessionUrl, {
-        headers: { 'Cache-Control': 'no-cache' },
-      });
+  try {
+    const sessionRes = await apiClient.get(sessionUrl, {
+      headers: { 'Cache-Control': 'no-cache' },
+    });
 
-      lastStatus = sessionRes?.status ?? null;
-      lastHasSessionCookie = sessionRes?.data?.diagnostics?.cookiePresent ?? null;
-      lastNote = sessionRes?.data?.authenticated ? 'Session verification succeeded.' : 'Session verification failed.';
-      lastDiagnostics = sessionRes?.data?.diagnostics || {};
+    console.log('Session check response:', sessionRes?.data || null);
 
-      if (sessionRes?.data?.authenticated === true) {
-        return {
-          passed: true,
-          status: sessionRes?.status ?? null,
-          hasSessionCookie: sessionRes?.data?.diagnostics?.cookiePresent ?? true,
-          note: 'Session verification succeeded.',
-          diagnostics: lastDiagnostics,
-        };
-      }
-    } catch (err) {
-      lastStatus = err?.response?.status ?? null;
-      lastHasSessionCookie = err?.response?.data?.diagnostics?.cookiePresent ?? lastHasSessionCookie;
-      lastNote = err?.response?.data?.diagnostics?.note || err?.message || lastNote;
-      lastDiagnostics = err?.response?.data?.diagnostics || lastDiagnostics;
+    return {
+      passed: sessionRes?.data?.authenticated === true,
+      status: sessionRes?.status ?? null,
+      hasSessionCookie: sessionRes?.data?.cookiePresent ?? null,
+      note: sessionRes?.data?.authenticated ? 'Session verification succeeded.' : 'Session verification failed.',
+      diagnostics: sessionRes?.data || {},
+    };
+  } catch (err) {
+    console.log('Session check response error:', err?.response?.data || err?.message || null);
 
-      // Retry until attempts are exhausted.
-    }
-
-    if (attempt < maxAttempts) {
-      await sleep(waitMs);
-    }
+    return {
+      passed: false,
+      status: err?.response?.status ?? null,
+      hasSessionCookie: err?.response?.data?.cookiePresent ?? null,
+      note: err?.response?.data?.message || err?.message || 'Session verification failed.',
+      diagnostics: err?.response?.data || {},
+    };
   }
-  return {
-    passed: false,
-    status: lastStatus,
-    hasSessionCookie: lastHasSessionCookie,
-    note: lastNote || 'Session verification did not pass after login.',
-    diagnostics: lastDiagnostics,
-  };
 };
 
 const goToDashboard = async () => {
@@ -330,9 +308,9 @@ const login = async () => {
           sessionVerificationPassed: false,
           cookieDetected: d.cookiePresent ?? null,
           cookieSentBack: d.cookiePresent ?? null,
-          corsPassed: d.corsResult ?? null,
-          sameSiteValue: d.sameSiteValue ?? null,
-          secureFlag: d.secureFlag ?? null,
+          corsPassed: d.diagnostics?.corsResult ?? null,
+          sameSiteValue: d.diagnostics?.sameSiteValue ?? null,
+          secureFlag: d.diagnostics?.secureFlag ?? null,
           safariDetailed: true,
         });
         return;
@@ -356,9 +334,9 @@ const login = async () => {
           sessionVerificationPassed: false,
           cookieDetected: d.cookiePresent ?? null,
           cookieSentBack: d.cookiePresent ?? null,
-          corsPassed: d.corsResult ?? null,
-          sameSiteValue: d.sameSiteValue ?? null,
-          secureFlag: d.secureFlag ?? null,
+          corsPassed: d.diagnostics?.corsResult ?? null,
+          sameSiteValue: d.diagnostics?.sameSiteValue ?? null,
+          secureFlag: d.diagnostics?.secureFlag ?? null,
           safariDetailed: true,
         });
         return;
