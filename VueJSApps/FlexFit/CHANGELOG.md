@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.82.22] - 2026-05-26 - Safari Session Persistence Fix
+
+- Hardened cross-site session cookie settings for Render + Safari compatibility.
+- Updated backend session cookie policy to always use `secure: true`, `sameSite: 'none'`, `httpOnly: true`, and 7-day max age.
+- Kept `app.set('trust proxy', 1)` for Render TLS proxy handling.
+- Tightened credentialed CORS handling to explicit allowed origins including `https://flex-fit-lkzh.onrender.com`.
+- Added dedicated `GET /api/session/check` endpoint returning:
+  - `{ authenticated: true, userID, username }` when a valid session exists
+  - `{ authenticated: false }` when no authenticated session exists
+- Added `FlexFit Session Diagnostics` debug logging including cookie presence, session id, sameSite, secure flag, origin, CORS result, and proxy status.
+- Updated login flow to verify session persistence immediately after successful login via `/api/session/check`.
+- Updated login error handling to display `Session persistence issue` when post-login session verification fails.
+- Updated login HTTP client usage to a credentialed Axios instance (`axios.create({ baseURL, withCredentials: true })`).
+
+---
+
 ## [0.82.21] — 2026-05-26 — Dashboard Metric Integration
 
 Upgraded the three live dashboard metric cards to respect the dashboard date range picker and improved data accuracy.

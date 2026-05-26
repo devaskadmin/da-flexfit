@@ -12,6 +12,8 @@ const pool = require('../db.js');
 const DEFAULT_SESSION_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
 const REMEMBER_ME_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
 const isDebugEnabled = ['true', '1', 'yes'].includes(String(process.env.DEBUG || process.env.VITE_DEBUG || '').toLowerCase());
+const SESSION_COOKIE_SECURE = true;
+const SESSION_COOKIE_SAMESITE = 'none';
 
 const normalizeRoleValue = (rawValue = '') => {
   const value = String(rawValue || '').trim().toLowerCase();
@@ -384,14 +386,12 @@ router.post('/login', async (req, res) => {
 router.post('/logout', (req, res) => {
     req.session.destroy(err => {
       if (err) return res.status(500).send("Logout failed");
-      // Explicitly clear the session cookie on the client for all browsers including Safari
-      const isProduction = process.env.NODE_ENV === 'production';
-      const secureFlag = isProduction || String(process.env.SESSION_COOKIE_SECURE || '').toLowerCase() === 'true';
+      // Explicitly clear the session cookie for Safari cross-site handling.
       res.clearCookie('flexfit_session', {
         path: '/',
         httpOnly: true,
-        secure: secureFlag,
-        sameSite: secureFlag ? 'none' : 'lax',
+        secure: SESSION_COOKIE_SECURE,
+        sameSite: SESSION_COOKIE_SAMESITE,
       });
       res.json({ message: "Logged out successfully" });
     });
@@ -405,9 +405,8 @@ router.get('/session', async (req, res) => {
     const hasUserSession = Boolean(req.session?.user);
 
     // Compute cookie config for diagnostics
-    const isProduction = process.env.NODE_ENV === 'production';
-    const secureFlag = isProduction || String(process.env.SESSION_COOKIE_SECURE || '').toLowerCase() === 'true';
-    const sameSiteValue = secureFlag ? 'none' : 'lax';
+    const secureFlag = SESSION_COOKIE_SECURE;
+    const sameSiteValue = SESSION_COOKIE_SAMESITE;
     const corsPassed = Boolean(req.headers.origin);
 
     if (isDebugEnabled) {
@@ -477,6 +476,57 @@ router.get('/session', async (req, res) => {
       },
     });
   });
+
+// GET /api/session/check
+// Dedicated auth/session verification endpoint used right after login.
+router.get('/session/check', (req, res) => {
+  const rawCookie = String(req.headers?.cookie || '');
+  const hasSessionCookie = /flexfit_session=/.test(rawCookie);
+  const origin = req.headers.origin || null;
+  const corsAllowed = !origin || origin === 'https://flex-fit-lkzh.onrender.com' || origin === (process.env.FRONTEND_URL || process.env.FRONTEND_ORIGIN);
+
+  if (isDebugEnabled) {
+    console.log('FlexFit Session Diagnostics', {
+      cookiePresent: hasSessionCookie,
+      sessionId: req.sessionID || null,
+      sameSiteValue: SESSION_COOKIE_SAMESITE,
+      secureFlag: SESSION_COOKIE_SECURE,
+      origin,
+      corsResult: corsAllowed,
+      renderProxyStatus: req.app?.get('trust proxy'),
+    });
+  }
+
+  if (req.session?.user?.id) {
+    return res.json({
+      authenticated: true,
+      userID: req.session.user.id,
+      username: req.session.user.username,
+      diagnostics: {
+        cookiePresent: hasSessionCookie,
+        sessionId: req.sessionID || null,
+        sameSiteValue: SESSION_COOKIE_SAMESITE,
+        secureFlag: SESSION_COOKIE_SECURE,
+        origin,
+        corsResult: corsAllowed,
+        renderProxyStatus: req.app?.get('trust proxy'),
+      },
+    });
+  }
+
+  return res.json({
+    authenticated: false,
+    diagnostics: {
+      cookiePresent: hasSessionCookie,
+      sessionId: req.sessionID || null,
+      sameSiteValue: SESSION_COOKIE_SAMESITE,
+      secureFlag: SESSION_COOKIE_SECURE,
+      origin,
+      corsResult: corsAllowed,
+      renderProxyStatus: req.app?.get('trust proxy'),
+    },
+  });
+});
 
 // Forgot password - generate and email temporary password
 router.post('/forgot-password', async (req, res) => {

@@ -17,34 +17,18 @@ app.use(express.json());
 const isProduction = process.env.NODE_ENV === 'production';
 const debugFlag = String(process.env.DEBUG || process.env.VITE_DEBUG || '').toLowerCase();
 const isDebugEnabled = ['true', '1', 'yes'].includes(debugFlag);
+const REQUIRED_FRONTEND_ORIGIN = 'https://flex-fit-lkzh.onrender.com';
 const FRONTEND_URL = process.env.FRONTEND_URL || process.env.FRONTEND_ORIGIN;
 const CORS_ORIGINS = String(process.env.CORS_ORIGINS || '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-const allowedOrigins = new Set([FRONTEND_URL, ...CORS_ORIGINS].filter(Boolean));
-
-const isPrivateDevOrigin = (origin) => {
-  if (!origin || isProduction) return false;
-
-  try {
-    const { hostname } = new URL(origin);
-    if (['localhost', '127.0.0.1', '::1'].includes(hostname)) return true;
-    if (/^10\./.test(hostname)) return true;
-    if (/^192\.168\./.test(hostname)) return true;
-
-    const match172 = hostname.match(/^172\.(\d{1,3})\./);
-    if (match172) {
-      const block = Number(match172[1]);
-      if (block >= 16 && block <= 31) return true;
-    }
-  } catch (_) {
-    return false;
-  }
-
-  return false;
-};
+const allowedOrigins = new Set([
+  REQUIRED_FRONTEND_ORIGIN,
+  FRONTEND_URL,
+  ...CORS_ORIGINS,
+].filter(Boolean));
 
 console.log(`🚀 FRONTEND_URL=${FRONTEND_URL || '(not set)'}`);
 console.log(`🌐 Allowed CORS origins: ${[...allowedOrigins].join(', ') || '(none configured)'}`);
@@ -64,11 +48,6 @@ app.use(cors({
       return callback(null, true);
     }
 
-    // Dev fallback for LAN/mobile testing when frontend runs on local network IP.
-    if (isPrivateDevOrigin(origin)) {
-      return callback(null, true);
-    }
-
     console.warn(`🚫 CORS blocked origin: ${origin}`);
     return callback(new Error('Not allowed by CORS'));
   },
@@ -78,12 +57,9 @@ app.use(cors({
 }));
 
 // ✅ Configure session (only once)
-// secure=true required for SameSite=None; derive from NODE_ENV so Render
-// production deployments are always correct even if SESSION_COOKIE_SECURE is unset.
-const sessionCookieSecure = isProduction || String(process.env.SESSION_COOKIE_SECURE || '').toLowerCase() === 'true';
-// SameSite=None is required for cross-origin cookies (Safari + all modern browsers).
-// SameSite=Lax breaks cross-origin POST (login) on Safari / iOS.
-const sessionCookieSameSite = sessionCookieSecure ? 'none' : 'lax';
+// Safari + cross-site Render setup requires secure + SameSite=None.
+const sessionCookieSecure = true;
+const sessionCookieSameSite = 'none';
 
 console.log(`🍪 Session cookie: name=flexfit_session secure=${sessionCookieSecure} sameSite=${sessionCookieSameSite}`);
 
@@ -178,16 +154,30 @@ app.use(session({
 app.use((req, res, next) => {
   if (isDebugEnabled) {
     const rawCookie = String(req.headers?.cookie || '');
+    const origin = req.headers.origin || null;
+    const corsAllowed = !origin || allowedOrigins.has(origin);
     console.log('🧠 Session inbound:', {
       method: req.method,
       path: req.path,
-      origin: req.headers.origin || null,
+      origin,
+      corsAllowed,
       hasCookieHeader: Boolean(req.headers.cookie),
       cookieDetected: /flexfit_session=/.test(rawCookie),
       sessionId: req.sessionID || null,
       hasUserSession: Boolean(req.session?.user),
       secureFlag: sessionCookieSecure,
       sameSiteValue: sessionCookieSameSite,
+      renderProxyStatus: app.get('trust proxy'),
+    });
+
+    console.log('FlexFit Session Diagnostics', {
+      cookiePresent: /flexfit_session=/.test(rawCookie),
+      sessionId: req.sessionID || null,
+      sameSiteValue: sessionCookieSameSite,
+      secureFlag: sessionCookieSecure,
+      origin,
+      corsResult: corsAllowed,
+      renderProxyStatus: app.get('trust proxy'),
     });
   }
   next();

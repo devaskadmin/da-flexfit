@@ -8,6 +8,10 @@ import { useAuth } from '@/composable/useAuth';
 
 const router = useRouter();
 const { fetchUser } = useAuth();
+const apiClient = axios.create({
+  baseURL: API_BASE,
+  withCredentials: true,
+});
 
 const username = ref("");
 const password = ref("");
@@ -153,7 +157,7 @@ const diagnosticsLoading = ref(false);
 const fetchServerDiagnostics = async () => {
   diagnosticsLoading.value = true;
   try {
-    const res = await axios.get(`${API_BASE}/api/debug/login-diagnostics`, { withCredentials: true });
+    const res = await apiClient.get('/api/debug/login-diagnostics');
     serverDiagnostics.value = res.data || null;
   } catch {
     serverDiagnostics.value = { enabled: false, message: 'Contact administrator for details.' };
@@ -226,7 +230,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Helps mobile/Safari where session cookie can be visible a moment after /login response.
 const waitForSessionReady = async (maxAttempts = 5, waitMs = 250) => {
-  const sessionUrl = `${API_BASE}/api/session`;
+  const sessionUrl = '/api/session/check';
   let lastStatus = null;
   let lastNote = '';
   let lastHasSessionCookie = null;
@@ -236,32 +240,30 @@ const waitForSessionReady = async (maxAttempts = 5, waitMs = 250) => {
     try {
       devLog('Session verification request', {
         url: sessionUrl,
-        withCredentials: true,
         attempt,
       });
 
-      const sessionRes = await axios.get(sessionUrl, {
-        withCredentials: true,
+      const sessionRes = await apiClient.get(sessionUrl, {
         headers: { 'Cache-Control': 'no-cache' },
       });
 
       lastStatus = sessionRes?.status ?? null;
-      lastHasSessionCookie = sessionRes?.data?.diagnostics?.hasSessionCookie ?? null;
-      lastNote = sessionRes?.data?.diagnostics?.note || '';
+      lastHasSessionCookie = sessionRes?.data?.diagnostics?.cookiePresent ?? null;
+      lastNote = sessionRes?.data?.authenticated ? 'Session verification succeeded.' : 'Session verification failed.';
       lastDiagnostics = sessionRes?.data?.diagnostics || {};
 
-      if (sessionRes?.data?.loggedIn === true) {
+      if (sessionRes?.data?.authenticated === true) {
         return {
           passed: true,
           status: sessionRes?.status ?? null,
-          hasSessionCookie: sessionRes?.data?.diagnostics?.hasSessionCookie ?? true,
-          note: sessionRes?.data?.diagnostics?.note || 'Session verification succeeded.',
+          hasSessionCookie: sessionRes?.data?.diagnostics?.cookiePresent ?? true,
+          note: 'Session verification succeeded.',
           diagnostics: lastDiagnostics,
         };
       }
     } catch (err) {
       lastStatus = err?.response?.status ?? null;
-      lastHasSessionCookie = err?.response?.data?.diagnostics?.hasSessionCookie ?? lastHasSessionCookie;
+      lastHasSessionCookie = err?.response?.data?.diagnostics?.cookiePresent ?? lastHasSessionCookie;
       lastNote = err?.response?.data?.diagnostics?.note || err?.message || lastNote;
       lastDiagnostics = err?.response?.data?.diagnostics || lastDiagnostics;
 
@@ -304,15 +306,13 @@ const login = async () => {
   try {
     devLog('Submitting login request', { username: safeUsername, rememberMe: !!rememberMe.value });
 
-    const loginUrl = `${API_BASE}/api/login`;
-    const response = await axios.post(
-      loginUrl,
+    const response = await apiClient.post(
+      '/api/login',
       {
         username: safeUsername,
         password: safePassword,
         rememberMe: !!rememberMe.value,
-      },
-      { withCredentials: true }
+      }
     );
 
     if (response?.data?.requiresPasswordReset === true) {
@@ -321,16 +321,16 @@ const login = async () => {
       if (!sessionState?.passed) {
         const d = sessionState?.diagnostics || {};
         setLoginError({
-          fallbackMessage: 'Login succeeded, but the session cookie was not available for follow-up requests.',
+          fallbackMessage: 'Session persistence issue',
           reason: 'Session persistence issue after successful authentication.',
           status: sessionState?.status,
           apiMessage: sessionState?.note || 'Login successful, but session verification failed.',
           loginSucceeded: true,
           sessionCookiePersisted: sessionState?.hasSessionCookie,
           sessionVerificationPassed: false,
-          cookieDetected: d.cookieDetected ?? null,
-          cookieSentBack: d.cookieSentBack ?? null,
-          corsPassed: d.corsPassed ?? null,
+          cookieDetected: d.cookiePresent ?? null,
+          cookieSentBack: d.cookiePresent ?? null,
+          corsPassed: d.corsResult ?? null,
           sameSiteValue: d.sameSiteValue ?? null,
           secureFlag: d.secureFlag ?? null,
           safariDetailed: true,
@@ -347,16 +347,16 @@ const login = async () => {
       if (!sessionState?.passed) {
         const d = sessionState?.diagnostics || {};
         setLoginError({
-          fallbackMessage: 'Login succeeded, but the session cookie was not available for follow-up requests.',
+          fallbackMessage: 'Session persistence issue',
           reason: 'Session persistence issue after successful authentication.',
           status: sessionState?.status,
           apiMessage: sessionState?.note || response?.data?.message,
           loginSucceeded: true,
           sessionCookiePersisted: sessionState?.hasSessionCookie,
           sessionVerificationPassed: false,
-          cookieDetected: d.cookieDetected ?? null,
-          cookieSentBack: d.cookieSentBack ?? null,
-          corsPassed: d.corsPassed ?? null,
+          cookieDetected: d.cookiePresent ?? null,
+          cookieSentBack: d.cookiePresent ?? null,
+          corsPassed: d.corsResult ?? null,
           sameSiteValue: d.sameSiteValue ?? null,
           secureFlag: d.secureFlag ?? null,
           safariDetailed: true,
