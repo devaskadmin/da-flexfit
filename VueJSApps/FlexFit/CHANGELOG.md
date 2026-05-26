@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.82.18] — 2026-05-25 — Exercise Data Migration & SQL-to-CSV Tooling
+
+**Data: Migrated full exercises dataset from SQL dump to CSV.**
+
+**Problem:** The existing PowerShell conversion script (`convert.ps1`) was only extracting a fraction of rows (118–281 out of 871) due to two bugs:
+
+1. `$Matches` name collision with PowerShell's built-in automatic variable — the foreach loop silently iterated over nothing.
+2. Both the INSERT block boundary regex and the row-extraction regex used `;` and `)` as terminators, which broke whenever those characters appeared inside quoted instruction text (e.g. `'target the rear delts; the arms...'` or `'a 90 degree angle'`).
+
+**Fix — `convert.ps1`:**
+
+- Renamed `$matches` → `$insertMatches` to avoid PowerShell reserved variable collision.
+- Replaced regex-based row extraction with a character-level depth-tracking scanner (`Parse-SqlRows`) that ignores parentheses inside quoted strings.
+- Added `Parse-SqlValues` function that handles both `\'` (backslash-escaped) and `''` (doubled-quote) SQL escape sequences when splitting field values.
+- Fixed column name mismatch: `UserID` → `CreatedByUserID`.
+
+**Fix — `extract_inserts.py` (new helper script):**
+
+- Rewrote SQL parser using `_advance_quoted()` — a forward scanner that correctly skips over entire quoted strings before checking for `;`, `(`, `)` delimiters.
+- `find_insert_blocks()` scans character-by-character to find the true end of each INSERT VALUES block, completely ignoring semicolons inside quotes.
+- `extract_rows_from_block()` uses depth-aware paren tracking, skipping quoted content.
+- `parse_fields()` handles both `\'` and `''` escape forms for quoted strings.
+- Script now accepts the SQL filename as a command-line argument (`python extract_inserts.py exercises.sql`) and auto-names output files to match (e.g. `exercises.csv`, `exercises_extracted_rows.txt`).
+
+**Result:** All 869–871 rows successfully extracted depending on the source SQL dump.
+
+---
+
 ## [0.82.17] — 2026-05-23 — WorkoutType-Dependent Exercise Filtering
 
 **Bug fix: Exercise dropdown was not filtering by selected Workout Type.**
