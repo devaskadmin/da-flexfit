@@ -58,10 +58,28 @@ app.use(cors({
 
 // ✅ Configure session (only once)
 // Safari + cross-site Render setup requires secure + SameSite=None.
-const sessionCookieSecure = true;
-const sessionCookieSameSite = 'none';
+const cookieConfig = {
+  secure: isProduction,
+  sameSite: isProduction ? 'none' : 'lax',
+  httpOnly: true,
+  maxAge: 1000 * 60 * 60 * 24,
+};
+
+const sessionCookieSecure = cookieConfig.secure;
+const sessionCookieSameSite = cookieConfig.sameSite;
 
 console.log(`🍪 Session cookie: name=flexfit.sid secure=${sessionCookieSecure} sameSite=${sessionCookieSameSite}`);
+console.log('COOKIE MODE', {
+  env: process.env.NODE_ENV,
+  secure: cookieConfig.secure,
+  sameSite: cookieConfig.sameSite,
+});
+console.log({
+  environment: process.env.NODE_ENV,
+  cookieSecure: cookieConfig.secure,
+  sameSite: cookieConfig.sameSite,
+  frontend: process.env.FRONTEND_URL,
+});
 
 if (isDebugEnabled) {
   console.log('🧪 Session/CORS debug:', {
@@ -121,12 +139,10 @@ app.use(session({
   proxy: true, // always true — Render always reverse-proxies
   store: sessionStore,
   cookie: {
-    httpOnly: true,
-    secure: sessionCookieSecure,
-    sameSite: sessionCookieSameSite,
+    ...cookieConfig,
     ...(COOKIE_DOMAIN ? { domain: COOKIE_DOMAIN } : {}),
     path: '/',
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days default; auth.js overrides per login
+    maxAge: cookieConfig.maxAge,
   }
 }));
 
