@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { API_BASE } from '@/config/env'
 import DateRangePicker from '@/components/template/DateRangePicker.vue';
-import FitnessMetricCard from '@/components/fitness/FitnessMetricCard.vue';
 import ProgressChart from '@/components/Widgets/ProgressChart.vue';
 import NutritionLogChart from '@/components/Widgets/NutritionLogChart.vue';
 
@@ -13,6 +12,7 @@ const firstName = ref('')
 const loadingMetrics = ref(true)
 const loadingActivity = ref(true)
 const loadingNutritionActivity = ref(true)
+const activeStatTab = ref('workouts')
 const dashboardStartDate = ref(null)
 const dashboardEndDate = ref(null)
 const dashboardStats = ref({
@@ -127,40 +127,98 @@ onMounted(async () => {
   await Promise.all([fetchDashboardStats(), fetchActivityFeed(), fetchNutritionActivity()])
 })
 
-const metrics = computed(() => {
+const statsSummary = computed(() => {
   const stats = dashboardStats.value
+  return {
+    workouts: Number(stats.workoutsThisWeek || 0),
+    streak: Number(stats.currentStreak || 0),
+    calories: Number(stats.caloriesBurned || 0),
+    protein: Number(stats.proteinToday || 0),
+    weekStart: stats.weekStart || '—',
+    weekEnd: stats.weekEnd || '—',
+    weekDiff: Number(stats.weekDiff || 0),
+    weeklyTarget: Number(stats.weeklyTarget || 0),
+  }
+})
+
+const statTabs = computed(() => {
+  const summary = statsSummary.value
   return [
     {
-      title: 'Workouts This Week',
-      value: loadingMetrics.value ? '—' : stats.workoutsThisWeek,
-      subtitle: stats.weeklyTarget > 0
-        ? `Target: ${stats.weeklyTarget} sessions`
-        : 'Completed sessions this week',
-      trend: loadingMetrics.value ? '' : `${formatTrend(stats.weekDiff, '', 'No change')} vs last week`,
+      key: 'workouts',
+      title: 'Workouts',
+      value: loadingMetrics.value ? '—' : String(summary.workouts),
       icon: 'fa-solid fa-dumbbell',
     },
     {
-      title: 'Current Streak',
-      value: loadingMetrics.value ? '—' : `${stats.currentStreak} day${stats.currentStreak === 1 ? '' : 's'}`,
-      subtitle: stats.currentStreak > 0 ? 'Consecutive workout days' : 'No active streak',
-      trend: loadingMetrics.value ? '' : (stats.currentStreak > 0 ? 'Active today' : 'Log a workout today'),
+      key: 'streak',
+      title: 'Streak',
+      value: loadingMetrics.value ? '—' : `${summary.streak}d`,
       icon: 'fa-solid fa-fire',
     },
     {
-      title: 'Calories Burned',
-      value: loadingMetrics.value ? '—' : stats.caloriesBurned.toLocaleString(),
-      subtitle: 'This week total',
-      trend: loadingMetrics.value ? '' : `${stats.weekStart || '—'} to ${stats.weekEnd || '—'}`,
+      key: 'calories',
+      title: 'Calories',
+      value: loadingMetrics.value ? '—' : summary.calories.toLocaleString(),
       icon: 'fa-solid fa-bolt',
     },
     {
-      title: 'Protein Today',
-      value: loadingMetrics.value ? '—' : `${stats.proteinToday.toLocaleString()}g`,
-      subtitle: 'Today from nutrition logs',
-      trend: loadingMetrics.value ? '' : (stats.proteinToday > 0 ? 'Logged today' : 'No protein logged today'),
+      key: 'protein',
+      title: 'Protein',
+      value: loadingMetrics.value ? '—' : `${summary.protein}g`,
       icon: 'fa-solid fa-drumstick-bite',
     },
   ]
+})
+
+const activeStatPanel = computed(() => {
+  const summary = statsSummary.value
+  const proteinGoal = 120
+  const proteinPct = proteinGoal > 0 ? Math.min(100, Math.round((summary.protein / proteinGoal) * 100)) : 0
+
+  if (activeStatTab.value === 'streak') {
+    return {
+      heading: 'Current streak',
+      primary: loadingMetrics.value ? '—' : `${summary.streak} day streak`,
+      body: summary.streak > 0 ? 'Consistency is building. Keep your momentum going.' : 'Start a workout today',
+      meta: summary.streak > 0 ? 'Progress message: Active streak detected' : 'Progress message: No active streak yet',
+      ctaText: '',
+      ctaRoute: '',
+    }
+  }
+
+  if (activeStatTab.value === 'calories') {
+    return {
+      heading: 'Calories burned',
+      primary: loadingMetrics.value ? '—' : `${summary.calories.toLocaleString()} calories`,
+      body: 'Weekly summary',
+      meta: `${summary.weekStart} to ${summary.weekEnd}`,
+      ctaText: '',
+      ctaRoute: '',
+    }
+  }
+
+  if (activeStatTab.value === 'protein') {
+    return {
+      heading: 'Protein today',
+      primary: loadingMetrics.value ? '—' : `${summary.protein.toLocaleString()}g`,
+      body: loadingMetrics.value ? 'Goal progress' : `${proteinPct}% of ${proteinGoal}g goal`,
+      meta: summary.protein > 0 ? 'Nutrition summary: Logged today' : 'Nutrition summary: No protein logged today',
+      ctaText: '',
+      ctaRoute: '',
+    }
+  }
+
+  return {
+    heading: 'Workouts This Week',
+    primary: loadingMetrics.value ? '—' : `${summary.workouts} completed`,
+    body: summary.weeklyTarget > 0
+      ? `Completed sessions this week · Target: ${summary.weeklyTarget}`
+      : 'Completed sessions this week',
+    meta: loadingMetrics.value ? '' : `${formatTrend(summary.weekDiff, '', 'No change')} vs last week`,
+    ctaText: 'Quick start workout',
+    ctaRoute: '/workout-log',
+  }
 })
 const recentActivity = ref([])
 
@@ -187,6 +245,10 @@ const quickActions = [
 
 const goToQuickAction = (route) => {
   router.push(route)
+}
+
+const selectStatTab = (tabKey) => {
+  activeStatTab.value = tabKey
 }
 
 const activityItems = computed(() => recentActivity.value.map((item) => ({
@@ -235,17 +297,41 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
         <p>Prioritize one quality strength session and hit your protein target.</p>
       </section>
 
-      <!-- Stats Cards Section -->
-      <section class="dashboard-stats">
-        <div v-for="metric in metrics" :key="metric.title" class="stat-card">
-          <FitnessMetricCard
-            :title="metric.title"
-            :value="metric.value"
-            :subtitle="metric.subtitle"
-            :trend="metric.trend"
-            :icon="metric.icon"
-          />
+      <!-- Compact Vertical Stats Navigation -->
+      <section class="dashboard-stats-nav">
+        <div class="dashboard-stats-nav__tabs">
+          <button
+            v-for="tab in statTabs"
+            :key="tab.key"
+            type="button"
+            class="stats-nav-tab"
+            :class="{ 'stats-nav-tab--active': activeStatTab === tab.key }"
+            @click="selectStatTab(tab.key)"
+          >
+            <span class="stats-nav-tab__icon"><i :class="tab.icon"></i></span>
+            <span class="stats-nav-tab__text">
+              <span class="stats-nav-tab__title">{{ tab.title }}</span>
+              <span class="stats-nav-tab__value">{{ tab.value }}</span>
+            </span>
+          </button>
         </div>
+
+        <article class="dashboard-panel panel panel-bg stats-nav-panel">
+          <div class="panel-header"><h5>{{ activeStatPanel.heading }}</h5></div>
+          <div class="panel-body stats-nav-panel__body">
+            <strong class="stats-nav-panel__primary">{{ activeStatPanel.primary }}</strong>
+            <p class="stats-nav-panel__body-text">{{ activeStatPanel.body }}</p>
+            <p v-if="activeStatPanel.meta" class="stats-nav-panel__meta">{{ activeStatPanel.meta }}</p>
+            <button
+              v-if="activeStatPanel.ctaText"
+              type="button"
+              class="stats-nav-panel__cta"
+              @click="goToQuickAction(activeStatPanel.ctaRoute)"
+            >
+              {{ activeStatPanel.ctaText }}
+            </button>
+          </div>
+        </article>
       </section>
 
       <section class="dashboard-quick-actions">
@@ -447,26 +533,123 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
 /* STATS CARDS: MOBILE-FIRST STACKING                                  */
 /* ─────────────────────────────────────────────────────────────────── */
 
-.dashboard-stats {
+.dashboard-stats-nav {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 170px 1fr;
   gap: 14px;
+  align-items: stretch;
+}
+
+.dashboard-stats-nav__tabs {
+  display: grid;
+  gap: 8px;
+}
+
+.stats-nav-tab {
+  border: 1px solid rgba(120, 130, 150, 0.28);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(20, 30, 50, 0.04);
+  min-height: 52px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.stats-nav-tab:hover {
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.stats-nav-tab--active {
+  border-color: rgba(59, 130, 246, 0.6);
+  background: #eff6ff;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.14);
+}
+
+.stats-nav-tab__icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: #dbeafe;
+  color: #2563eb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.74rem;
+  flex-shrink: 0;
+}
+
+.stats-nav-tab--active .stats-nav-tab__icon {
+  background: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.stats-nav-tab__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+  gap: 3px;
+}
+
+.stats-nav-tab__title {
+  color: #334155;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.stats-nav-tab__value {
+  color: #0f172a;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.stats-nav-panel__body {
+  display: grid;
+  gap: 6px;
+  align-content: center;
+  min-height: 132px;
+}
+
+.stats-nav-panel__primary {
+  color: #0f172a;
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+.stats-nav-panel__body-text {
+  margin: 0;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.stats-nav-panel__meta {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.stats-nav-panel__cta {
+  justify-self: start;
+  margin-top: 2px;
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 6px 10px;
 }
 
 .dashboard-quick-actions {
   display: grid;
   grid-template-columns: 1fr;
   gap: 14px;
-}
-
-.stat-card {
-  width: 100%;
-  display: flex;
-}
-
-.stat-card :deep(.metric-card) {
-  width: 100%;
-  height: 100%;
 }
 
 /* ─────────────────────────────────────────────────────────────────── */
@@ -670,8 +853,8 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
     padding: 14px 20px;
   }
 
-  .dashboard-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .dashboard-stats-nav {
+    grid-template-columns: 170px 1fr;
     gap: 14px;
   }
 
@@ -704,8 +887,8 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
     padding: 22px;
   }
 
-  .dashboard-stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .dashboard-stats-nav {
+    grid-template-columns: 180px 1fr;
     gap: 14px;
   }
 
@@ -796,8 +979,48 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
     margin-top: 0;
   }
 
-  .dashboard-stats {
+  .dashboard-stats-nav {
+    grid-template-columns: 1fr;
     gap: 5px;
+  }
+
+  .dashboard-stats-nav__tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .stats-nav-tab {
+    min-height: 44px;
+    padding: 6px 8px;
+  }
+
+  .stats-nav-tab__title {
+    font-size: 0.68rem;
+  }
+
+  .stats-nav-tab__value {
+    font-size: 0.8rem;
+  }
+
+  .stats-nav-panel__body {
+    min-height: unset;
+  }
+
+  .stats-nav-panel__primary {
+    font-size: 0.9rem;
+  }
+
+  .stats-nav-panel__body-text {
+    font-size: 0.74rem;
+  }
+
+  .stats-nav-panel__meta {
+    font-size: 0.7rem;
+  }
+
+  .stats-nav-panel__cta {
+    font-size: 0.7rem;
+    padding: 5px 8px;
   }
 
   .panel-header {
@@ -838,19 +1061,6 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
     height: 24px;
     border-radius: 6px;
     font-size: 0.72rem;
-  }
-
-  .stat-card :deep(.metric-card) {
-    min-height: unset;
-    padding: 5px 6px;
-  }
-
-  .stat-card :deep(.metric-card__right i) {
-    width: 19px;
-    height: 19px;
-    border-radius: 4px;
-    font-size: 0.62rem;
-    margin-right: 1px;
   }
 
   .activity-row {
@@ -945,16 +1155,6 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
     border-radius: 8px;
   }
 
-  .stat-card :deep(.metric-card) {
-    padding: 5px 6px;
-  }
-
-  .stat-card :deep(.metric-card__right i) {
-    width: 17px;
-    height: 17px;
-    font-size: 0.58rem;
-  }
-
   .panel-body :deep(.btn-box .btn) {
     height: 24px;
     padding: 1px 5px;
@@ -1008,18 +1208,8 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
     padding: 4px 6px;
   }
 
-  .dashboard-stats {
+  .dashboard-stats-nav__tabs {
     gap: 3px;
-  }
-
-  .stat-card :deep(.metric-card) {
-    padding: 4px 5px;
-  }
-
-  .stat-card :deep(.metric-card__right i) {
-    width: 16px;
-    height: 16px;
-    font-size: 0.55rem;
   }
 
   .panel-body :deep(.btn-box .btn) {
@@ -1072,18 +1262,9 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
     padding: 3px 5px;
   }
 
-  .dashboard-stats {
+  .dashboard-stats-nav__tabs {
+    grid-template-columns: 1fr;
     gap: 2px;
-  }
-
-  .stat-card :deep(.metric-card) {
-    padding: 3px 4px;
-  }
-
-  .stat-card :deep(.metric-card__right i) {
-    width: 15px;
-    height: 15px;
-    font-size: 0.52rem;
   }
 
   .panel-body :deep(.btn-box .btn) {
