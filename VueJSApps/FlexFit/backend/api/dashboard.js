@@ -17,8 +17,6 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db.js');
-const { calculateStreak } = require('../utils/StreakCalculator.js');
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -79,24 +77,26 @@ router.get('/dashboard/metrics', requireAuth, async (req, res) => {
     const priorEnd   = shiftDate(startDate, -1);
     const priorStart = shiftDate(priorEnd, -(rangeDays - 1));
 
-    // ── Card 1: Workouts (selected range) ───────────────────────────────────
+    // ── Card 1: Workouts This Week (real user data, selected week range) ────
     const [[thisWeekRow]] = await pool.query(
-      `SELECT COUNT(*) AS cnt
-       FROM workout_log_sessions
-       WHERE user_id = ?
-         AND status = 'completed'
-         AND workout_date BETWEEN ? AND ?`,
+      `SELECT COUNT(DISTINCT DATE(wl.WorkoutDate)) AS cnt
+       FROM workout_log wl
+       LEFT JOIN workout_log_sessions wls ON wl.workout_log_session_id = wls.id
+       WHERE wl.UserID = ?
+         AND (wl.workout_log_session_id IS NULL OR wls.status = 'completed')
+         AND DATE(wl.WorkoutDate) BETWEEN ? AND ?`,
       [userId, startDate, endDate]
     );
     const workoutsThisWeek = Number(thisWeekRow?.cnt ?? 0);
 
     // Prior period count for +/- comparison subtext
     const [[lastWeekRow]] = await pool.query(
-      `SELECT COUNT(*) AS cnt
-       FROM workout_log_sessions
-       WHERE user_id = ?
-         AND status = 'completed'
-         AND workout_date BETWEEN ? AND ?`,
+      `SELECT COUNT(DISTINCT DATE(wl.WorkoutDate)) AS cnt
+       FROM workout_log wl
+       LEFT JOIN workout_log_sessions wls ON wl.workout_log_session_id = wls.id
+       WHERE wl.UserID = ?
+         AND (wl.workout_log_session_id IS NULL OR wls.status = 'completed')
+         AND DATE(wl.WorkoutDate) BETWEEN ? AND ?`,
       [userId, priorStart, priorEnd]
     );
     const workoutsLastWeek = Number(lastWeekRow?.cnt ?? 0);
@@ -116,7 +116,7 @@ router.get('/dashboard/metrics', requireAuth, async (req, res) => {
     );
     const weeklyTarget = Number(targetRow?.cnt ?? 0);
 
-    // ── Card 2: Current Streak (always global, not range-bound) ────────────
+    // ── Card 2: Current Streak (strict: today must have a workout) ─────────
     const [dateRows] = await pool.query(
       `SELECT DISTINCT DATE_FORMAT(workout_date, '%Y-%m-%d') AS d
        FROM workout_log_sessions
@@ -125,7 +125,25 @@ router.get('/dashboard/metrics', requireAuth, async (req, res) => {
        LIMIT 365`,
       [userId]
     );
-    const streak = calculateStreak(dateRows.map((r) => r.d));
+
+    let streak = 0;
+    if (dateRows.length > 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().slice(0, 10);
+      const firstDate = String(dateRows[0]?.d || '').slice(0, 10);
+
+      if (firstDate === todayStr) {
+        let expected = new Date(today);
+        for (const row of dateRows) {
+          const currentDate = String(row?.d || '').slice(0, 10);
+          const expectedStr = expected.toISOString().slice(0, 10);
+          if (currentDate !== expectedStr) break;
+          streak += 1;
+          expected.setDate(expected.getDate() - 1);
+        }
+      }
+    }
 
     // ── Card 3: Calories Burned (all workout types, selected range) ─────────
     const [[calRow]] = await pool.query(
@@ -137,16 +155,41 @@ router.get('/dashboard/metrics', requireAuth, async (req, res) => {
     );
     const caloriesBurned = Number(calRow?.total ?? 0);
 
-    return res.status(200).json({
+    // ── Card 4: Protein Today (real user nutrition log data) ────────────────
+    let proteinToday = 0;
+    try {
+      const [[proteinRow]] = await pool.query(
+        `SELECT COALESCE(SUM(protein_g), 0) AS total
+         FROM food_nutrition_logs
+         WHERE user_id = ?
+           AND log_date = CURDATE()`,
+        [userId]
+      );
+      proteinToday = Number(proteinRow?.total ?? 0);
+    } catch (proteinErr) {
+      // Keep dashboard functional if nutrition table has not been applied yet.
+      console.warn('⚠️ Protein Today fallback to 0:', proteinErr?.message || proteinErr);
+    }
+
+    const stats = {
+      userId,
       workoutsThisWeek,
+      proteinToday,
+      caloriesBurned,
+      currentStreak: streak,
+      streak,
+      weeklyTarget,
       workoutsLastWeek,
       weekDiff,
-      weeklyTarget,
-      streak,
-      caloriesBurned,
+      weekStart: startDate,
+      weekEnd: endDate,
       startDate,
       endDate,
-    });
+    };
+
+    console.log('DASHBOARD STATS', stats);
+
+    return res.status(200).json(stats);
   } catch (err) {
     console.error('❌ GET /api/dashboard/metrics:', err);
     return res.status(500).json({ error: 'Failed to load dashboard metrics.' });

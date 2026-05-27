@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { API_BASE } from '@/config/env'
 import DateRangePicker from '@/components/template/DateRangePicker.vue';
@@ -8,6 +8,49 @@ import ProgressChart from '@/components/Widgets/ProgressChart.vue';
 import NutritionLogChart from '@/components/Widgets/NutritionLogChart.vue';
 
 const firstName = ref('')
+const loadingMetrics = ref(true)
+const dashboardStats = ref({
+  userId: null,
+  workoutsThisWeek: 0,
+  currentStreak: 0,
+  caloriesBurned: 0,
+  proteinToday: 0,
+  weeklyTarget: 0,
+  workoutsLastWeek: 0,
+  weekDiff: 0,
+  weekStart: null,
+  weekEnd: null,
+})
+
+const formatTrend = (value, suffix = '', zeroText = 'No change') => {
+  const numeric = Number(value || 0)
+  if (numeric > 0) return `+${numeric}${suffix}`
+  if (numeric < 0) return `${numeric}${suffix}`
+  return zeroText
+}
+
+const fetchDashboardStats = async () => {
+  loadingMetrics.value = true
+  try {
+    const { data } = await axios.get(`${API_BASE}/api/dashboard/metrics`, { withCredentials: true })
+    dashboardStats.value = {
+      userId: data?.userId ?? null,
+      workoutsThisWeek: Number(data?.workoutsThisWeek ?? 0),
+      currentStreak: Number(data?.currentStreak ?? data?.streak ?? 0),
+      caloriesBurned: Number(data?.caloriesBurned ?? 0),
+      proteinToday: Number(data?.proteinToday ?? 0),
+      weeklyTarget: Number(data?.weeklyTarget ?? 0),
+      workoutsLastWeek: Number(data?.workoutsLastWeek ?? 0),
+      weekDiff: Number(data?.weekDiff ?? 0),
+      weekStart: data?.weekStart || data?.startDate || null,
+      weekEnd: data?.weekEnd || data?.endDate || null,
+    }
+  } catch (err) {
+    console.error('Failed to load dashboard stats:', err)
+  } finally {
+    loadingMetrics.value = false
+  }
+}
 
 onMounted(async () => {
   try {
@@ -17,45 +60,46 @@ onMounted(async () => {
   } catch {
     // silently fail — greeting just shows without a name
   }
+
+  await fetchDashboardStats()
 })
 
-const metrics = [
-  {
-    title: 'Workouts This Week',
-    value: 5,
-    subtitle: 'Target: 6 sessions',
-    trend: '+1 vs last week',
-    icon: 'fa-solid fa-dumbbell',
-  },
-  {
-    title: 'Current Streak',
-    value: '12 days',
-    subtitle: 'Consistency is improving',
-    trend: '+3 days',
-    icon: 'fa-solid fa-fire',
-  },
-  {
-    title: 'Calories Burned',
-    value: '2,430',
-    subtitle: 'This week total',
-    trend: '+8%',
-    icon: 'fa-solid fa-bolt',
-  },
-  {
-    title: 'Protein Today',
-    value: '148g',
-    subtitle: 'Goal: 170g',
-    trend: '87% of goal',
-    icon: 'fa-solid fa-drumstick-bite',
-  },
-];
-
-const recentActivity = [
-  { time: '07:10 AM', action: 'Logged breakfast', detail: 'Greek yogurt + berries' },
-  { time: '11:30 AM', action: 'Completed workout', detail: 'Upper Body Strength (55 min)' },
-  { time: '02:15 PM', action: 'Hydration update', detail: '2.1L total water intake' },
-  { time: '06:40 PM', action: 'Added dinner', detail: 'Salmon bowl with rice' },
-];
+const metrics = computed(() => {
+  const stats = dashboardStats.value
+  return [
+    {
+      title: 'Workouts This Week',
+      value: loadingMetrics.value ? '—' : stats.workoutsThisWeek,
+      subtitle: stats.weeklyTarget > 0
+        ? `Target: ${stats.weeklyTarget} sessions`
+        : 'Completed sessions this week',
+      trend: loadingMetrics.value ? '' : `${formatTrend(stats.weekDiff, '', 'No change')} vs last week`,
+      icon: 'fa-solid fa-dumbbell',
+    },
+    {
+      title: 'Current Streak',
+      value: loadingMetrics.value ? '—' : `${stats.currentStreak} day${stats.currentStreak === 1 ? '' : 's'}`,
+      subtitle: stats.currentStreak > 0 ? 'Consecutive workout days' : 'No active streak',
+      trend: loadingMetrics.value ? '' : (stats.currentStreak > 0 ? 'Active today' : 'Log a workout today'),
+      icon: 'fa-solid fa-fire',
+    },
+    {
+      title: 'Calories Burned',
+      value: loadingMetrics.value ? '—' : stats.caloriesBurned.toLocaleString(),
+      subtitle: 'This week total',
+      trend: loadingMetrics.value ? '' : `${stats.weekStart || '—'} to ${stats.weekEnd || '—'}`,
+      icon: 'fa-solid fa-bolt',
+    },
+    {
+      title: 'Protein Today',
+      value: loadingMetrics.value ? '—' : `${stats.proteinToday.toLocaleString()}g`,
+      subtitle: 'Today from nutrition logs',
+      trend: loadingMetrics.value ? '' : (stats.proteinToday > 0 ? 'Logged today' : 'No protein logged today'),
+      icon: 'fa-solid fa-drumstick-bite',
+    },
+  ]
+})
+const recentActivity = ref([])
 </script>
 
 <template>
@@ -111,6 +155,9 @@ const recentActivity = [
                   <p>{{ item.detail }}</p>
                 </div>
               </article>
+              <p v-if="!recentActivity.length" class="activity-empty">
+                No live activity feed data is wired to this dashboard yet.
+              </p>
             </div>
           </div>
         </div>
@@ -172,6 +219,13 @@ const recentActivity = [
   display: grid;
   gap: 14px;
   padding-block: 4px !important;
+}
+
+.activity-empty {
+  margin: 0;
+  color: color-mix(in srgb, var(--text-color-secondary) 92%, #64748b 8%);
+  font-size: 0.92rem;
+  line-height: 1.45;
 }
 
 /* ─────────────────────────────────────────────────────────────────── */
