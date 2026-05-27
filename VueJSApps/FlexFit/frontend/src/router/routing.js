@@ -212,6 +212,10 @@ export const pagesRoutes = [
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {
+        path: '/nutrition',
+        redirect: { name: 'Nutrition' },
+    },
+    {
         path: '/exercises',
         component: () => import('@/views/Member/exercises.vue'),
         name: 'exercises',
@@ -406,6 +410,10 @@ export const pagesRoutes = [
         component: () => import('@/views/template/pages/user/ViewProfile.vue'),
         name: 'view_profile',
         meta: { layout: 'AppLayout', isPartials: true },
+    },
+    {
+        path: '/profile',
+        redirect: { name: 'view_profile' },
     },
     {
         path: '/edit-profile',

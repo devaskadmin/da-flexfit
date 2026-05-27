@@ -184,6 +184,47 @@ async function loadNutritionActivity(userId, limit = 5) {
   }));
 }
 
+async function loadRecentWorkout(userId) {
+  const [rows] = await pool.query(
+    `SELECT
+       wls.id AS sessionId,
+       DATE(wls.workout_date) AS workoutDate,
+       COALESCE(NULLIF(TRIM(wls.workout_day_name), ''), 'Workout Session') AS workoutName,
+       COALESCE(workoutAgg.totalDurationMinutes, 0) AS totalDurationMinutes,
+       COALESCE(workoutAgg.exerciseCount, 0) AS exerciseCount
+     FROM workout_log_sessions wls
+     LEFT JOIN (
+       SELECT
+         wl.workout_log_session_id AS sessionId,
+         COUNT(DISTINCT wl.WorkoutLogID) AS exerciseCount,
+         COALESCE(SUM(wl.Duration), 0) AS totalDurationMinutes
+       FROM workout_log wl
+       WHERE wl.UserID = ?
+       GROUP BY wl.workout_log_session_id
+     ) workoutAgg ON workoutAgg.sessionId = wls.id
+     WHERE wls.user_id = ?
+       AND wls.status = 'completed'
+     ORDER BY COALESCE(wls.completed_at, wls.workout_date) DESC, wls.id DESC
+     LIMIT 1`,
+    [userId, userId]
+  );
+
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return null;
+  }
+
+  const row = rows[0];
+  return {
+    sessionId: Number(row.sessionId || 0),
+    workoutName: String(row.workoutName || 'Workout Session').trim() || 'Workout Session',
+    workoutDate: row.workoutDate instanceof Date
+      ? row.workoutDate.toISOString().slice(0, 10)
+      : String(row.workoutDate || '').slice(0, 10),
+    durationMinutes: Math.max(0, Math.round(Number(row.totalDurationMinutes || 0))),
+    exerciseCount: Math.max(0, Number(row.exerciseCount || 0)),
+  };
+}
+
 // ─── Auth guard ─────────────────────────────────────────────────────────────
 const requireAuth = (req, res, next) => {
   if (!req.session?.user?.id) {
@@ -390,6 +431,17 @@ router.get('/dashboard/nutrition-activity', requireAuth, async (req, res) => {
 
     console.error('❌ GET /api/dashboard/nutrition-activity:', err);
     return res.status(500).json({ error: 'Failed to load nutrition activity.' });
+  }
+});
+
+router.get('/dashboard/recent-workout', requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const recentWorkout = await loadRecentWorkout(userId);
+    return res.status(200).json(recentWorkout || null);
+  } catch (err) {
+    console.error('❌ GET /api/dashboard/recent-workout:', err);
+    return res.status(500).json({ error: 'Failed to load recent workout.' });
   }
 });
 

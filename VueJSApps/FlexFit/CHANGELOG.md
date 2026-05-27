@@ -1,5 +1,49 @@
 # Changelog
 
+## [0.82.28] - 2026-05-27 - Dashboard Polish Sprint Phase 1
+
+- Added interactive KPI cards on dashboard metrics with full-card click support and subtle hover lift/glow:
+  - Workouts This Week -> `/workout-log`
+  - Current Streak -> `/progress`
+  - Calories Burned -> `/nutrition`
+  - Protein Today -> `/nutrition`
+- Added dashboard Recent Workout hero widget (pulls latest completed session):
+  - workout name/day
+  - duration in minutes
+  - exercise count
+  - date
+  - empty state CTA to start workout
+- Added compact TODAY summary widget under focus with dynamic completion indicators:
+  - Workout completed
+  - Protein goal met
+  - Calories tracked
+  - Water goal logged (fallback placeholder)
+- Improved dashboard empty states with user-friendly copy and direct CTAs:
+  - Activity feed empty state now guides user to start workout
+  - Nutrition activity empty state now guides user to log nutrition
+  - Recent workout empty state now prompts first workout
+- Added new dashboard API endpoint:
+  - `GET /api/dashboard/recent-workout`
+- Polished dashboard visual hierarchy and spacing system:
+  - introduced spacing tokens for section/card/grid/header rhythm
+  - refined high/medium/lower visual emphasis across sections
+  - normalized section/card spacing and mobile scaling
+- Updated profile avatar dropdown UX:
+  - menu items: Profile, Settings, Theme, Logout
+  - Theme action toggles active theme
+  - mobile behavior upgraded to full-width dropdown panel with subtle animation
+- Added route aliases for dashboard workflow paths:
+  - `/nutrition` -> existing nutrition workspace route
+  - `/profile` -> existing profile page route
+- Added updated dashboard FUTURE placeholder comments only (no implementation):
+  - AI Coach Widget
+  - Recovery Score
+  - Smart Workout Suggestions
+  - FlexFit AI Insights
+  - Daily Recovery Tracking
+
+---
+
 ## [0.82.27] - 2026-05-27 - Dashboard Nutrition Activity + Quick Actions
 
 - Reordered dashboard flow to reduce dead space and improve usability:

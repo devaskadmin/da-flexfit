@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { API_BASE } from '@/config/env'
 import { useAuth } from '@/composable/useAuth'
+import { toggleTheme, currentActiveTheme } from '@/composable/manageThemeSetting.js'
 
 const props = defineProps({
   username: {
@@ -56,23 +57,19 @@ const handleKeyDown = (event) => {
 }
 
 // Menu item handlers
-const handleViewProfile = () => {
+const handleProfile = () => {
   closeDropdown()
-  router.push({ name: 'view_profile' })
+  router.push('/profile')
 }
 
-const handleAccountSettings = () => {
+const handleSettings = () => {
   closeDropdown()
-  router.push({ name: 'user_settings' })
+  router.push('/settings')
 }
 
-const handleHelp = () => {
+const handleTheme = () => {
+  toggleTheme()
   closeDropdown()
-  // Navigate to help page - adjust route name as needed
-  router.push({ name: 'help' }).catch(() => {
-    // Fallback: open help in current view or show notification
-    console.log('Help page not configured')
-  })
 }
 
 const handleSignOut = async () => {
@@ -135,7 +132,7 @@ onUnmounted(() => {
           </div>
           <div class="user-info-text">
             <p class="user-display-name">{{ username }}</p>
-            <p class="user-email">View your profile</p>
+            <p class="user-email">Dashboard quick menu</p>
           </div>
         </div>
 
@@ -144,40 +141,40 @@ onUnmounted(() => {
 
         <!-- Menu Items -->
         <div class="dropdown-items">
-          <!-- View Profile -->
+          <!-- Profile -->
           <button
             class="dropdown-item"
-            @click="handleViewProfile"
+            @click="handleProfile"
             role="menuitem"
           >
             <span class="dropdown-icon">
               <i class="fa-regular fa-user"></i>
             </span>
-            <span class="dropdown-label">View Profile</span>
+            <span class="dropdown-label">Profile</span>
           </button>
 
-          <!-- Account Settings -->
+          <!-- Settings -->
           <button
             class="dropdown-item"
-            @click="handleAccountSettings"
+            @click="handleSettings"
             role="menuitem"
           >
             <span class="dropdown-icon">
               <i class="fa-regular fa-gear"></i>
             </span>
-            <span class="dropdown-label">Account Settings</span>
+            <span class="dropdown-label">Settings</span>
           </button>
 
-          <!-- Help -->
+          <!-- Theme -->
           <button
             class="dropdown-item"
-            @click="handleHelp"
+            @click="handleTheme"
             role="menuitem"
           >
             <span class="dropdown-icon">
-              <i class="fa-regular fa-circle-question"></i>
+              <i :class="currentActiveTheme === 'light-theme' ? 'fa-regular fa-moon-stars' : 'fa-regular fa-sun'"></i>
             </span>
-            <span class="dropdown-label">Help</span>
+            <span class="dropdown-label">Theme</span>
           </button>
         </div>
 
@@ -195,8 +192,8 @@ onUnmounted(() => {
             <span class="dropdown-icon">
               <i class="fa-regular fa-arrow-right-from-bracket"></i>
             </span>
-            <span class="dropdown-label" v-if="logoutInProgress">Signing out...</span>
-            <span class="dropdown-label" v-else>Sign Out</span>
+            <span class="dropdown-label" v-if="logoutInProgress">Logging out...</span>
+            <span class="dropdown-label" v-else>Logout</span>
           </button>
         </div>
       </div>
@@ -441,8 +438,24 @@ onUnmounted(() => {
 /* Responsive */
 @media (max-width: 576px) {
   .profile-dropdown-menu {
-    min-width: 240px;
-    right: -20px;
+    min-width: 100%;
+    right: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-dropdown-menu {
+    position: fixed;
+    top: 76px;
+    left: 10px;
+    right: 10px;
+    min-width: auto;
+    border-radius: 14px;
+    animation: profileDropdownSlideInMobile 0.2s ease-out forwards;
+  }
+
+  .profile-dropdown-menu::before {
+    display: none;
   }
 
   .dropdown-user-info {
@@ -466,6 +479,17 @@ onUnmounted(() => {
 
   .dropdown-item:hover {
     padding-left: 14px;
+  }
+}
+
+@keyframes profileDropdownSlideInMobile {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 </style>

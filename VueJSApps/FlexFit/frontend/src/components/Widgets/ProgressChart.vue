@@ -2,7 +2,10 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import axios from 'axios';
 import vueApexcharts from 'vue3-apexcharts';
+import { useRouter } from 'vue-router';
 import { API_BASE } from '@/config/env';
+
+const router = useRouter();
 
 const props = defineProps({
   startDate: { type: String, default: null },
@@ -23,6 +26,10 @@ const chartSubtitle = computed(() => {
 });
 
 const chartHeight = computed(() => (chartData.value.length > 0 && chartData.value.length <= 3 ? 240 : 300));
+
+const goToWorkoutLog = () => {
+  router.push('/workout-log');
+};
 
 const chartSeries = computed(() => ([
   {
@@ -171,11 +178,11 @@ onMounted(loadChart);
       </div>
       <div v-else-if="!chartData.length" class="ps-empty-state">
         <div class="ps-empty-icon">📊</div>
-        <h6 class="ps-empty-title">No workout history found</h6>
+        <h6 class="ps-empty-title">No workouts logged yet</h6>
         <div class="ps-empty-tips">
-          <span>Complete workouts to generate analytics</span>
-          <span>Or try a wider date range</span>
+          <span>Start your first workout to begin tracking progress.</span>
         </div>
+        <button type="button" class="ps-empty-btn" @click="goToWorkoutLog">Start Workout</button>
       </div>
       <div v-else class="ps-chart-wrap">
         <vueApexcharts :type="chartType" :height="chartHeight" :options="chartOptions" :series="chartSeries" />
@@ -316,6 +323,23 @@ onMounted(loadChart);
   flex-direction: column;
   gap: 4px;
   font-size: 0.8rem;
+}
+
+.ps-empty-btn {
+  margin-top: 4px;
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 8px;
+  font-size: 0.79rem;
+  font-weight: 800;
+  padding: 7px 11px;
+  transition: all 0.2s ease;
+}
+
+.ps-empty-btn:hover {
+  background: #dbeafe;
+  border-color: rgba(59, 130, 246, 0.72);
 }
 
 @media (max-width: 768px) {
