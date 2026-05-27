@@ -228,18 +228,21 @@ const quickActions = [
     subtitle: 'Go to Workout Log',
     route: '/workout-log',
     icon: 'fa-solid fa-dumbbell',
+    tint: 'rgba(59, 130, 246, 0.06)',
   },
   {
     title: 'Workout Builder',
     subtitle: 'Create plans',
     route: '/workout-builder',
     icon: 'fa-solid fa-clipboard-list',
+    tint: 'rgba(139, 92, 246, 0.06)',
   },
   {
     title: 'Exercise Database',
     subtitle: 'Browse exercises',
     route: '/exercises',
     icon: 'fa-solid fa-book-open',
+    tint: 'rgba(20, 184, 166, 0.06)',
   },
 ]
 
@@ -335,23 +338,26 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
       </section>
 
       <section class="dashboard-quick-actions">
-        <button
+        <router-link
           v-for="action in quickActions"
           :key="action.route"
-          type="button"
+          :to="action.route"
           class="quick-action-card"
-          @click="goToQuickAction(action.route)"
+          :style="{ '--action-tint': action.tint }"
         >
           <div class="quick-action-content">
             <div class="quick-action-left">
               <span class="quick-action-title">{{ action.title }}</span>
               <span class="quick-action-subtitle">{{ action.subtitle }}</span>
             </div>
-            <span class="quick-action-icon">
-              <i :class="action.icon"></i>
-            </span>
+            <div class="quick-action-right">
+              <span class="quick-action-icon">
+                <i :class="action.icon"></i>
+              </span>
+              <span class="quick-action-arrow" aria-hidden="true">&#8250;</span>
+            </div>
           </div>
-        </button>
+        </router-link>
       </section>
 
       <!-- Training Progress + Activity Feed -->
@@ -749,15 +755,30 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
   border: 1px solid rgba(120, 130, 150, 0.32);
   border-radius: 12px;
   padding: 14px;
-  background: #fff;
+  background: linear-gradient(to right, var(--action-tint, rgba(59, 130, 246, 0.05)), transparent 58%), #fff;
   box-shadow: 0 2px 6px rgba(20, 30, 50, 0.05);
   text-align: left;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.22s ease;
 }
 
 .quick-action-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(20, 30, 50, 0.09);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.14);
+  border-color: rgba(59, 130, 246, 0.45);
+}
+
+.quick-action-card:focus-visible {
+  transform: translateY(-2px) scale(1.005);
+  border-color: rgba(59, 130, 246, 0.55);
+  box-shadow: 0 0 0 2px rgba(191, 219, 254, 0.8), 0 8px 18px rgba(37, 99, 235, 0.16);
+}
+
+.quick-action-card:active {
+  transform: scale(0.98);
 }
 
 .quick-action-content {
@@ -765,35 +786,65 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
 .quick-action-left {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: flex-start;
+  gap: 0;
 }
 
 .quick-action-title {
   color: #1e293b;
   font-size: 0.98rem;
   font-weight: 900;
+  line-height: 1.22;
+  margin-bottom: 3px;
 }
 
 .quick-action-subtitle {
   color: var(--text-color-secondary);
   font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+.quick-action-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 8px;
 }
 
 .quick-action-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #eff6ff;
-  color: #3b82f6;
+  background: linear-gradient(145deg, rgba(239, 246, 255, 0.95), rgba(219, 234, 254, 0.85));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 6px 12px rgba(59, 130, 246, 0.14);
+  color: #2563eb;
+  font-size: 0.98rem;
+  flex-shrink: 0;
+}
+
+.quick-action-arrow {
+  color: #64748b;
+  font-size: 1.05rem;
+  font-weight: 900;
+  line-height: 1;
+  opacity: 0.55;
+  transform: translateX(-3px);
+  transition: all 0.22s ease;
+}
+
+.quick-action-card:hover .quick-action-arrow,
+.quick-action-card:focus-visible .quick-action-arrow {
+  opacity: 0.95;
+  transform: translateX(0);
 }
 
 .nutrition-activity-feed {
@@ -1048,12 +1099,22 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
     padding: 8px;
   }
 
+  .quick-action-content {
+    gap: 8px;
+  }
+
   .quick-action-title {
     font-size: 0.84rem;
+    margin-bottom: 1px;
   }
 
   .quick-action-subtitle {
     font-size: 0.68rem;
+  }
+
+  .quick-action-right {
+    gap: 7px;
+    margin-left: 4px;
   }
 
   .quick-action-icon {
@@ -1061,6 +1122,11 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
     height: 24px;
     border-radius: 6px;
     font-size: 0.72rem;
+  }
+
+  .quick-action-arrow {
+    font-size: 0.9rem;
+    transform: translateX(-2px);
   }
 
   .activity-row {

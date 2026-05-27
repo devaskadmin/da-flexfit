@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.82.31] - 2026-05-27 - Dashboard Quick Action UX Polish
+
+- Polished dashboard quick action cards into premium launch-card interactions while preserving compact row height and responsive layout.
+- Upgraded quick action cards to semantic `router-link` navigation for stronger keyboard accessibility and focus behavior.
+- Added stronger action affordance and interaction states:
+  - `transition: all 0.22s ease`
+  - hover lift/scale: `translateY(-4px) scale(1.01)`
+  - elevated hover shadow and stronger border highlight
+  - active press state: `scale(0.98)`
+- Added right-side directional arrow indicator (`›`) with subtle slide/fade on hover/focus to reinforce navigational intent.
+- Refined card layout hierarchy with tighter title/subtitle spacing and improved icon/text alignment.
+- Added very subtle per-card gradient accent backgrounds:
+  - Start Workout: blue tint
+  - Workout Builder: violet tint
+  - Exercise Database: teal tint
+- Enhanced icon containers with increased visual weight: soft gradient fill, stronger shadow, and slightly larger icon treatment.
+
+---
+
 ## [0.82.27] - 2026-05-27 - Dashboard Nutrition Activity + Quick Actions
 
 - Reordered dashboard flow to reduce dead space and improve usability:
