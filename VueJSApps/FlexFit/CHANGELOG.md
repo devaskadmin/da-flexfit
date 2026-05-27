@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.82.27] - 2026-05-27 - Dashboard Nutrition Activity + Quick Actions
+
+- Reordered dashboard flow to reduce dead space and improve usability:
+  - Welcome
+  - Focus section
+  - Metric cards
+  - Quick Actions
+  - Training Progress + Activity Feed
+  - Nutrition Activity
+  - Nutrition Trend
+- Added a new full-width Nutrition Activity widget above Nutrition Trend using the same rounded card style, light body, shadow, and blue header treatment as other dashboard panels.
+- Added backend endpoint `GET /api/dashboard/nutrition-activity`:
+  - returns newest-first nutrition entries
+  - limits response to 5 rows
+  - includes `mealType`, `summary`, `date`, and optional `calories`
+  - gracefully returns an empty list if nutrition table is not present
+- Added dashboard quick action mini-cards directly below metrics:
+  - Start Workout → `/workout-log`
+  - Workout Builder → `/workout-builder`
+  - Exercise Database → `/exercises`
+- Added route redirect support for `/workout-log` to existing workout log page route.
+- Added dashboard TODO placeholders (comments only, no implementation):
+  - AI coach summary
+  - Recommended workout
+  - Recovery score
+  - Smart nutrition alerts
+  - FlexFit AI block
+- Confirmed no auth/session logic was modified and no workout analytics logic was changed.
+
+---
+
 ## [0.82.23] - 2026-05-26 - Production Safari Auth Domain Fix
 
 - Updated backend CORS origin strategy to prioritize `CLIENT_ORIGIN` as the exact credentialed frontend origin for production auth.

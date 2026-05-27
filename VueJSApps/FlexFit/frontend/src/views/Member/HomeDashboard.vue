@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { API_BASE } from '@/config/env'
 import DateRangePicker from '@/components/template/DateRangePicker.vue';
@@ -7,9 +8,11 @@ import FitnessMetricCard from '@/components/fitness/FitnessMetricCard.vue';
 import ProgressChart from '@/components/Widgets/ProgressChart.vue';
 import NutritionLogChart from '@/components/Widgets/NutritionLogChart.vue';
 
+const router = useRouter()
 const firstName = ref('')
 const loadingMetrics = ref(true)
 const loadingActivity = ref(true)
+const loadingNutritionActivity = ref(true)
 const dashboardStartDate = ref(null)
 const dashboardEndDate = ref(null)
 const dashboardStats = ref({
@@ -89,6 +92,23 @@ const fetchActivityFeed = async () => {
   }
 }
 
+const nutritionHistory = ref([])
+
+const fetchNutritionActivity = async () => {
+  loadingNutritionActivity.value = true
+  try {
+    const { data } = await axios.get(`${API_BASE}/api/dashboard/nutrition-activity`, {
+      withCredentials: true,
+    })
+    nutritionHistory.value = Array.isArray(data) ? data : []
+  } catch (err) {
+    console.error('Failed to load nutrition activity:', err)
+    nutritionHistory.value = []
+  } finally {
+    loadingNutritionActivity.value = false
+  }
+}
+
 const onDateChange = async ([startDate, endDate]) => {
   dashboardStartDate.value = startDate
   dashboardEndDate.value = endDate
@@ -104,7 +124,7 @@ onMounted(async () => {
     // silently fail — greeting just shows without a name
   }
 
-  await Promise.all([fetchDashboardStats(), fetchActivityFeed()])
+  await Promise.all([fetchDashboardStats(), fetchActivityFeed(), fetchNutritionActivity()])
 })
 
 const metrics = computed(() => {
@@ -144,6 +164,31 @@ const metrics = computed(() => {
 })
 const recentActivity = ref([])
 
+const quickActions = [
+  {
+    title: 'Start Workout',
+    subtitle: 'Go to Workout Log',
+    route: '/workout-log',
+    icon: 'fa-solid fa-dumbbell',
+  },
+  {
+    title: 'Workout Builder',
+    subtitle: 'Create plans',
+    route: '/workout-builder',
+    icon: 'fa-solid fa-clipboard-list',
+  },
+  {
+    title: 'Exercise Database',
+    subtitle: 'Browse exercises',
+    route: '/exercises',
+    icon: 'fa-solid fa-book-open',
+  },
+]
+
+const goToQuickAction = (route) => {
+  router.push(route)
+}
+
 const activityItems = computed(() => recentActivity.value.map((item) => ({
   key: `${item.date}-${item.activityType}-${item.exerciseCount}`,
   dateLabel: formatActivityDate(item.date),
@@ -152,6 +197,21 @@ const activityItems = computed(() => recentActivity.value.map((item) => ({
     ? item.exerciseNames
     : `${item.exerciseCount || 0} exercise${Number(item.exerciseCount || 0) === 1 ? '' : 's'}`,
 })))
+
+const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, index) => ({
+  key: `${item.date || 'unknown'}-${item.mealType || 'meal'}-${index}`,
+  mealType: String(item.mealType || 'Meal').trim() || 'Meal',
+  summary: String(item.summary || 'Meal entry').trim() || 'Meal entry',
+  dateLabel: formatActivityDate(item.date),
+  calories: Number.isFinite(Number(item.calories)) ? Number(item.calories) : null,
+})))
+
+// FUTURE:
+// AI coach summary
+// Recommended workout
+// Recovery score
+// Smart nutrition alerts
+// FlexFit AI block
 </script>
 
 <template>
@@ -188,6 +248,26 @@ const activityItems = computed(() => recentActivity.value.map((item) => ({
         </div>
       </section>
 
+      <section class="dashboard-quick-actions">
+        <button
+          v-for="action in quickActions"
+          :key="action.route"
+          type="button"
+          class="quick-action-card"
+          @click="goToQuickAction(action.route)"
+        >
+          <div class="quick-action-content">
+            <div class="quick-action-left">
+              <span class="quick-action-title">{{ action.title }}</span>
+              <span class="quick-action-subtitle">{{ action.subtitle }}</span>
+            </div>
+            <span class="quick-action-icon">
+              <i :class="action.icon"></i>
+            </span>
+          </div>
+        </button>
+      </section>
+
       <!-- Training Progress + Activity Feed -->
       <section class="dashboard-main-row">
         <div class="training-progress-section">
@@ -212,6 +292,31 @@ const activityItems = computed(() => recentActivity.value.map((item) => ({
                 Start a workout to populate your activity feed.
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard-nutrition-activity">
+        <div class="panel panel-bg dashboard-panel">
+          <div class="panel-header"><h5>Nutrition Activity</h5></div>
+          <div class="panel-body nutrition-activity-feed">
+            <article v-for="item in nutritionActivityItems" :key="item.key" class="nutrition-activity-row">
+              <div class="nutrition-activity-main">
+                <strong>{{ item.mealType }} Logged</strong>
+                <p>{{ item.summary }}</p>
+                <div class="nutrition-meta">
+                  <span>{{ item.dateLabel }}</span>
+                  <span v-if="item.calories !== null">{{ item.calories }} cal</span>
+                </div>
+              </div>
+            </article>
+            <p v-if="loadingNutritionActivity" class="activity-empty">
+              Loading nutrition activity...
+            </p>
+            <p v-else-if="!nutritionActivityItems.length" class="activity-empty">
+              No nutrition history recorded.<br>
+              Start logging meals to populate this section.
+            </p>
           </div>
         </div>
       </section>
@@ -348,6 +453,12 @@ const activityItems = computed(() => recentActivity.value.map((item) => ({
   gap: 14px;
 }
 
+.dashboard-quick-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
 .stat-card {
   width: 100%;
   display: flex;
@@ -381,6 +492,10 @@ const activityItems = computed(() => recentActivity.value.map((item) => ({
   width: 100%;
 }
 
+.dashboard-nutrition-activity {
+  width: 100%;
+}
+
 /* ─────────────────────────────────────────────────────────────────── */
 /* CARD STYLES                                                         */
 /* ─────────────────────────────────────────────────────────────────── */
@@ -395,7 +510,7 @@ const activityItems = computed(() => recentActivity.value.map((item) => ({
 
 .panel-header {
   padding: 14px 18px;
-  background: rgba(235, 240, 248, 0.65);
+  background: rgba(219, 234, 254, 0.95);
   border-bottom: 1px solid rgba(120, 130, 150, 0.25);
 }
 
@@ -447,6 +562,91 @@ const activityItems = computed(() => recentActivity.value.map((item) => ({
   font-size: 0.82rem;
 }
 
+.quick-action-card {
+  border: 1px solid rgba(120, 130, 150, 0.32);
+  border-radius: 12px;
+  padding: 14px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(20, 30, 50, 0.05);
+  text-align: left;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.quick-action-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(20, 30, 50, 0.09);
+}
+
+.quick-action-content {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.quick-action-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.quick-action-title {
+  color: #1e293b;
+  font-size: 0.98rem;
+  font-weight: 900;
+}
+
+.quick-action-subtitle {
+  color: var(--text-color-secondary);
+  font-size: 0.78rem;
+}
+
+.quick-action-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eff6ff;
+  color: #3b82f6;
+}
+
+.nutrition-activity-feed {
+  display: grid;
+  gap: 12px;
+}
+
+.nutrition-activity-row {
+  border: 1px solid rgba(120, 130, 150, 0.28);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  box-shadow: 0 1px 3px rgba(20, 30, 50, 0.04);
+}
+
+.nutrition-activity-main strong {
+  color: var(--text-color);
+  font-size: 0.88rem;
+}
+
+.nutrition-activity-main p {
+  margin: 4px 0 0;
+  color: var(--text-color-secondary);
+  font-size: 0.82rem;
+}
+
+.nutrition-meta {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
 /* ─────────────────────────────────────────────────────────────────── */
 /* TABLET BREAKPOINT (768px+)                                          */
 /* ─────────────────────────────────────────────────────────────────── */
@@ -479,6 +679,11 @@ const activityItems = computed(() => recentActivity.value.map((item) => ({
     grid-template-columns: 1fr 1fr;
     gap: 14px;
   }
+
+  .dashboard-quick-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────────── */
@@ -507,6 +712,10 @@ const activityItems = computed(() => recentActivity.value.map((item) => ({
   .dashboard-main-row {
     grid-template-columns: 1.5fr 1fr;
     gap: 14px;
+  }
+
+  .dashboard-quick-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .panel-body {
@@ -608,6 +817,29 @@ const activityItems = computed(() => recentActivity.value.map((item) => ({
     margin-top: 0;
   }
 
+  .dashboard-quick-actions {
+    gap: 5px;
+  }
+
+  .quick-action-card {
+    padding: 8px;
+  }
+
+  .quick-action-title {
+    font-size: 0.84rem;
+  }
+
+  .quick-action-subtitle {
+    font-size: 0.68rem;
+  }
+
+  .quick-action-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+  }
+
   .stat-card :deep(.metric-card) {
     min-height: unset;
     padding: 5px 6px;
@@ -625,6 +857,10 @@ const activityItems = computed(() => recentActivity.value.map((item) => ({
     flex-wrap: wrap;
     padding: 6px 8px;
     gap: 6px;
+  }
+
+  .nutrition-activity-row {
+    padding: 6px 8px;
   }
 
   .activity-row .time {

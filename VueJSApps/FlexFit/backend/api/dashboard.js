@@ -120,6 +120,70 @@ async function loadActivityFeed(userId, startDate = null, endDate = null, limit 
   }));
 }
 
+async function loadNutritionActivity(userId, limit = 5) {
+  const [columnRows] = await pool.query(
+    `SELECT COLUMN_NAME
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'food_nutrition_logs'`
+  );
+
+  if (!Array.isArray(columnRows) || columnRows.length === 0) {
+    return [];
+  }
+
+  const columns = new Set(columnRows.map((row) => String(row.COLUMN_NAME || '').trim()));
+  const pickColumn = (candidates) => candidates.find((name) => columns.has(name)) || null;
+
+  const userCol = pickColumn(['user_id', 'UserID', 'userId']);
+  const dateCol = pickColumn(['log_date', 'date', 'logged_at', 'created_at']);
+  if (!userCol || !dateCol) {
+    return [];
+  }
+
+  const mealTypeCol = pickColumn(['meal_type', 'mealType', 'meal_name', 'MealType']);
+  const summaryCol = pickColumn(['summary', 'food_name', 'foodName', 'meal_summary', 'meal_title', 'name']);
+  const caloriesCol = pickColumn(['calories', 'calories_kcal', 'kcal', 'energy_kcal']);
+  const idCol = pickColumn(['id', 'nutrition_log_id', 'log_id']);
+
+  const mealTypeExpr = mealTypeCol
+    ? `NULLIF(TRIM(${mealTypeCol}), '')`
+    : `'Meal'`;
+  const summaryExpr = summaryCol
+    ? `NULLIF(TRIM(${summaryCol}), '')`
+    : `'Meal entry'`;
+  const caloriesExpr = caloriesCol
+    ? `CAST(${caloriesCol} AS DECIMAL(10,2))`
+    : `NULL`;
+
+  const orderBy = [
+    `DATE(${dateCol}) DESC`,
+    ...(idCol ? [`${idCol} DESC`] : []),
+  ].join(', ');
+
+  const [rows] = await pool.query(
+    `SELECT
+       DATE(${dateCol}) AS entryDate,
+       ${mealTypeExpr} AS mealType,
+       ${summaryExpr} AS summary,
+       ${caloriesExpr} AS calories
+     FROM food_nutrition_logs
+     WHERE ${userCol} = ?
+     ORDER BY ${orderBy}
+     LIMIT ?`,
+    [userId, limit]
+  );
+
+  return rows.map((row) => ({
+    mealType: String(row.mealType || 'Meal').trim() || 'Meal',
+    summary: String(row.summary || 'Meal entry').trim() || 'Meal entry',
+    date: row.entryDate instanceof Date
+      ? row.entryDate.toISOString().slice(0, 10)
+      : String(row.entryDate || '').slice(0, 10),
+    calories: row.calories == null ? null : Number(row.calories),
+  }));
+}
+
 // ─── Auth guard ─────────────────────────────────────────────────────────────
 const requireAuth = (req, res, next) => {
   if (!req.session?.user?.id) {
@@ -311,6 +375,21 @@ router.get('/dashboard/activity', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('❌ GET /api/dashboard/activity:', err);
     return res.status(500).json({ error: 'Failed to load dashboard activity.' });
+  }
+});
+
+router.get('/dashboard/nutrition-activity', requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const nutritionActivity = await loadNutritionActivity(userId, 5);
+    return res.status(200).json(nutritionActivity);
+  } catch (err) {
+    if (err?.code === 'ER_NO_SUCH_TABLE') {
+      return res.status(200).json([]);
+    }
+
+    console.error('❌ GET /api/dashboard/nutrition-activity:', err);
+    return res.status(500).json({ error: 'Failed to load nutrition activity.' });
   }
 });
 

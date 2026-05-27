@@ -224,6 +224,10 @@ export const pagesRoutes = [
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {
+        path: '/workout-log',
+        redirect: { name: 'workouts' },
+    },
+    {
         path: '/workout-builder',
         component: () => import('@/views/Member/WorkoutBuilder.vue'),
         name: 'workout_builder',

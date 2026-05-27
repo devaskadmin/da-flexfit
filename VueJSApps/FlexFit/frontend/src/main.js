@@ -20,6 +20,7 @@ import AOS from 'aos'
 import 'aos/dist/aos.css'
 
 import i18n from "./i18n"
+import axios from 'axios'
 
 import {createApp, inject} from 'vue'
 import { createPinia } from 'pinia'
@@ -27,6 +28,8 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 
 import router from './router';
+
+axios.defaults.withCredentials = true;
 
 const app = createApp(App)
 

@@ -140,6 +140,32 @@ onMounted(fetchMetrics);
 </template>
 
 <style scoped>
+.dashboard-top-box .d-flex {
+  align-items: flex-start !important;
+  gap: 10px;
+}
+
+.dashboard-top-box h3 {
+  margin-bottom: 2px;
+  line-height: 1.1;
+}
+
+.dashboard-top-box p {
+  margin-bottom: 2px;
+  line-height: 1.25;
+}
+
+.dashboard-top-box .metric-subtext,
+.dashboard-top-box .metric-compare {
+  line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-top-box .metric-compare {
+  opacity: 0.9;
+}
+
 /* ── Mobile metric cards ── */
 @media (max-width: 768px) {
   /* 2-column grid: Workouts | Streak / Calories | Points */
@@ -161,23 +187,29 @@ onMounted(fetchMetrics);
 
   /* Compact card — target 95–110px tall */
   .dashboard-top-box {
-    padding: 7px 9px !important;
+    padding: 9px 10px !important;
     min-height: unset !important;
     height: auto !important;
   }
 
   /* Keep big value readable */
   .dashboard-top-box h3 {
-    font-size: 1.05rem !important;
-    margin-bottom: 0 !important;
+    font-size: 1.1rem !important;
+    margin-bottom: 2px !important;
     line-height: 1.2;
   }
 
   /* Subtitle smaller */
   .dashboard-top-box p {
-    font-size: 0.65rem !important;
-    margin-bottom: 0 !important;
-    line-height: 1.15;
+    font-size: 0.68rem !important;
+    margin-bottom: 2px !important;
+    line-height: 1.2;
+  }
+
+  .dashboard-top-box .metric-subtext,
+  .dashboard-top-box .metric-compare {
+    font-size: 0.66rem;
+    line-height: 1.25;
   }
 
   /* Icon closer to right edge, smaller */
@@ -193,15 +225,20 @@ onMounted(fetchMetrics);
   }
 
   .dashboard-top-box {
-    padding: 6px 8px !important;
+    padding: 8px 9px !important;
   }
 
   .dashboard-top-box h3 {
-    font-size: 0.95rem !important;
+    font-size: 1rem !important;
   }
 
   .dashboard-top-box p {
-    font-size: 0.6rem !important;
+    font-size: 0.64rem !important;
+  }
+
+  .dashboard-top-box .metric-subtext,
+  .dashboard-top-box .metric-compare {
+    font-size: 0.62rem;
   }
 
   .dashboard-top-box .fa {
@@ -215,15 +252,21 @@ onMounted(fetchMetrics);
   }
 
   .dashboard-top-box {
-    padding: 5px 6px !important;
+    padding: 7px !important;
   }
 
   .dashboard-top-box h3 {
-    font-size: 0.88rem !important;
+    font-size: 0.92rem !important;
   }
 
   .dashboard-top-box p {
-    font-size: 0.57rem !important;
+    font-size: 0.6rem !important;
+  }
+
+  .dashboard-top-box .metric-subtext,
+  .dashboard-top-box .metric-compare {
+    font-size: 0.58rem;
+    line-height: 1.2;
   }
 
   .dashboard-top-box .fa {

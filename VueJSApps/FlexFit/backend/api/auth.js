@@ -12,8 +12,9 @@ const pool = require('../db.js');
 const DEFAULT_SESSION_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
 const REMEMBER_ME_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
 const isDebugEnabled = ['true', '1', 'yes'].includes(String(process.env.DEBUG || process.env.VITE_DEBUG || '').toLowerCase());
-const SESSION_COOKIE_SECURE = true;
-const SESSION_COOKIE_SAMESITE = 'none';
+const isProduction = process.env.NODE_ENV === 'production';
+const SESSION_COOKIE_SECURE = isProduction;
+const SESSION_COOKIE_SAMESITE = isProduction ? 'none' : 'lax';
 const CLIENT_ORIGIN = String(process.env.CLIENT_ORIGIN || '').trim();
 
 const normalizeRoleValue = (rawValue = '') => {

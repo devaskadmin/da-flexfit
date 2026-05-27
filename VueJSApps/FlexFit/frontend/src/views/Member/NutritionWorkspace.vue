@@ -507,12 +507,20 @@ onMounted(async () => {
 .hero-macro-card {
   background: rgba(255, 255, 255, 0.12);
   border-radius: 12px;
-  padding: 8px 12px;
-  min-height: 68px;
+  padding: 9px 12px;
+  min-height: 70px;
   display: flex;
   align-items: center;
   gap: 10px;
   border-left: 4px solid rgba(255, 255, 255, 0.25);
+}
+
+.hero-macro-card > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
 }
 
 .hero-macro-calories { border-left-color: #ff8a00; }
@@ -531,7 +539,7 @@ onMounted(async () => {
   color: #fff;
   font-size: 1.25rem;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1.15;
 }
 
 .hero-macro-card span {
@@ -541,6 +549,7 @@ onMounted(async () => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  line-height: 1.2;
 }
 
 .nutrition-date-wrapper {
@@ -939,17 +948,24 @@ onMounted(async () => {
   }
 
   .hero-macro-card {
-    padding: 7px 9px;
+    padding: 8px 10px;
     min-height: 62px;
     border-radius: 10px;
     gap: 8px;
+  }
+
+  .hero-macro-card > div {
+    gap: 1px;
   }
 
   .hero-macro-icon { font-size: 1.15rem; }
 
   .hero-macro-card strong { font-size: 1.05rem; }
 
-  .hero-macro-card span { font-size: 0.65rem; }
+  .hero-macro-card span {
+    font-size: 0.65rem;
+    line-height: 1.2;
+  }
 
   /* Search: stacked column */
   .search-card {
