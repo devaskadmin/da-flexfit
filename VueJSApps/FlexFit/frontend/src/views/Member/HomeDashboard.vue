@@ -13,7 +13,6 @@ const firstName = ref('')
 const loadingMetrics = ref(true)
 const loadingActivity = ref(true)
 const loadingNutritionActivity = ref(true)
-const loadingRecentWorkout = ref(true)
 const dashboardStartDate = ref(null)
 const dashboardEndDate = ref(null)
 const dashboardStats = ref({
@@ -94,7 +93,6 @@ const fetchActivityFeed = async () => {
 }
 
 const nutritionHistory = ref([])
-const recentWorkout = ref(null)
 
 const fetchNutritionActivity = async () => {
   loadingNutritionActivity.value = true
@@ -108,21 +106,6 @@ const fetchNutritionActivity = async () => {
     nutritionHistory.value = []
   } finally {
     loadingNutritionActivity.value = false
-  }
-}
-
-const fetchRecentWorkout = async () => {
-  loadingRecentWorkout.value = true
-  try {
-    const { data } = await axios.get(`${API_BASE}/api/dashboard/recent-workout`, {
-      withCredentials: true,
-    })
-    recentWorkout.value = data && typeof data === 'object' ? data : null
-  } catch (err) {
-    console.error('Failed to load recent workout:', err)
-    recentWorkout.value = null
-  } finally {
-    loadingRecentWorkout.value = false
   }
 }
 
@@ -141,12 +124,7 @@ onMounted(async () => {
     // silently fail — greeting just shows without a name
   }
 
-  await Promise.all([
-    fetchDashboardStats(),
-    fetchActivityFeed(),
-    fetchNutritionActivity(),
-    fetchRecentWorkout(),
-  ])
+  await Promise.all([fetchDashboardStats(), fetchActivityFeed(), fetchNutritionActivity()])
 })
 
 const metrics = computed(() => {
@@ -160,7 +138,6 @@ const metrics = computed(() => {
         : 'Completed sessions this week',
       trend: loadingMetrics.value ? '' : `${formatTrend(stats.weekDiff, '', 'No change')} vs last week`,
       icon: 'fa-solid fa-dumbbell',
-      route: '/workout-log',
     },
     {
       title: 'Current Streak',
@@ -168,7 +145,6 @@ const metrics = computed(() => {
       subtitle: stats.currentStreak > 0 ? 'Consecutive workout days' : 'No active streak',
       trend: loadingMetrics.value ? '' : (stats.currentStreak > 0 ? 'Active today' : 'Log a workout today'),
       icon: 'fa-solid fa-fire',
-      route: '/progress',
     },
     {
       title: 'Calories Burned',
@@ -176,7 +152,6 @@ const metrics = computed(() => {
       subtitle: 'This week total',
       trend: loadingMetrics.value ? '' : `${stats.weekStart || '—'} to ${stats.weekEnd || '—'}`,
       icon: 'fa-solid fa-bolt',
-      route: '/nutrition',
     },
     {
       title: 'Protein Today',
@@ -184,7 +159,6 @@ const metrics = computed(() => {
       subtitle: 'Today from nutrition logs',
       trend: loadingMetrics.value ? '' : (stats.proteinToday > 0 ? 'Logged today' : 'No protein logged today'),
       icon: 'fa-solid fa-drumstick-bite',
-      route: '/nutrition',
     },
   ]
 })
@@ -215,16 +189,6 @@ const goToQuickAction = (route) => {
   router.push(route)
 }
 
-const goToRoute = (route) => {
-  router.push(route)
-}
-
-const openMetricRoute = (metric) => {
-  if (metric?.route) {
-    router.push(metric.route)
-  }
-}
-
 const activityItems = computed(() => recentActivity.value.map((item) => ({
   key: `${item.date}-${item.activityType}-${item.exerciseCount}`,
   dateLabel: formatActivityDate(item.date),
@@ -242,48 +206,12 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
   calories: Number.isFinite(Number(item.calories)) ? Number(item.calories) : null,
 })))
 
-const recentWorkoutDisplay = computed(() => {
-  const item = recentWorkout.value
-  if (!item || !item.workoutDate) {
-    return null
-  }
-
-  return {
-    title: String(item.workoutName || 'Workout Session').trim() || 'Workout Session',
-    durationMinutes: Math.max(0, Number(item.durationMinutes || 0)),
-    exerciseCount: Math.max(0, Number(item.exerciseCount || 0)),
-    dateLabel: formatActivityDate(item.workoutDate),
-  }
-})
-
-const todaySummaryItems = computed(() => {
-  const stats = dashboardStats.value
-  return [
-    {
-      label: 'Workout completed',
-      complete: Boolean(recentWorkoutDisplay.value),
-    },
-    {
-      label: 'Protein goal met',
-      complete: Number(stats.proteinToday || 0) >= 120,
-    },
-    {
-      label: 'Calories tracked',
-      complete: Number(stats.caloriesBurned || 0) > 0 || nutritionActivityItems.value.length > 0,
-    },
-    {
-      label: 'Water goal logged',
-      complete: false,
-    },
-  ]
-})
-
 // FUTURE:
-// AI Coach Widget
-// Recovery Score
-// Smart Workout Suggestions
-// FlexFit AI Insights
-// Daily Recovery Tracking
+// AI coach summary
+// Recommended workout
+// Recovery score
+// Smart nutrition alerts
+// FlexFit AI block
 </script>
 
 <template>
@@ -301,49 +229,10 @@ const todaySummaryItems = computed(() => {
         </div>
       </section>
 
-      <section class="dashboard-priority-row">
-        <article class="dashboard-recent-workout dashboard-panel panel panel-bg">
-          <div class="panel-header"><h5>Recent Workout</h5></div>
-          <div class="panel-body recent-workout-body">
-            <template v-if="loadingRecentWorkout">
-              <p class="activity-empty">Loading recent workout...</p>
-            </template>
-            <template v-else-if="recentWorkoutDisplay">
-              <strong class="recent-workout-title">{{ recentWorkoutDisplay.title }}</strong>
-              <div class="recent-workout-meta">
-                <span>{{ recentWorkoutDisplay.durationMinutes }} mins</span>
-                <span>{{ recentWorkoutDisplay.exerciseCount }} exercises</span>
-                <span>{{ recentWorkoutDisplay.dateLabel }}</span>
-              </div>
-            </template>
-            <template v-else>
-              <p class="activity-empty">
-                No workouts logged yet<br>
-                Start your first workout to begin tracking progress.
-              </p>
-              <button type="button" class="dashboard-empty-btn" @click="goToRoute('/workout-log')">
-                Start Workout
-              </button>
-            </template>
-          </div>
-        </article>
-
-        <section class="dashboard-focus-card dashboard-focus-card--high">
-          <h3>Today's focus: progressive overload + nutrition consistency</h3>
-          <p>Prioritize one quality strength session and hit your protein target.</p>
-
-          <div class="today-summary-widget">
-            <h6>TODAY</h6>
-            <div class="today-summary-list">
-              <div v-for="item in todaySummaryItems" :key="item.label" class="today-summary-item">
-                <span :class="item.complete ? 'today-check today-check--ok' : 'today-check today-check--warn'">
-                  {{ item.complete ? '✔' : '✖' }}
-                </span>
-                <span>{{ item.label }}</span>
-              </div>
-            </div>
-          </div>
-        </section>
+      <!-- Focus Card -->
+      <section class="dashboard-focus-card">
+        <h3>Today's focus: progressive overload + nutrition consistency</h3>
+        <p>Prioritize one quality strength session and hit your protein target.</p>
       </section>
 
       <!-- Stats Cards Section -->
@@ -355,8 +244,6 @@ const todaySummaryItems = computed(() => {
             :subtitle="metric.subtitle"
             :trend="metric.trend"
             :icon="metric.icon"
-            :clickable="true"
-            @click="openMetricRoute(metric)"
           />
         </div>
       </section>
@@ -401,12 +288,9 @@ const todaySummaryItems = computed(() => {
                 Loading workout activity...
               </p>
               <p v-else-if="!activityItems.length" class="activity-empty">
-                No recent workout activity.<br>
-                Complete a workout to populate your activity feed.
+                No workout activity recorded yet.<br>
+                Start a workout to populate your activity feed.
               </p>
-              <button v-if="!loadingActivity && !activityItems.length" type="button" class="dashboard-empty-btn" @click="goToRoute('/workout-log')">
-                Start Workout
-              </button>
             </div>
           </div>
         </div>
@@ -430,12 +314,9 @@ const todaySummaryItems = computed(() => {
               Loading nutrition activity...
             </p>
             <p v-else-if="!nutritionActivityItems.length" class="activity-empty">
-              No nutrition entries logged.<br>
-              Track meals to build nutrition history.
+              No nutrition history recorded.<br>
+              Start logging meals to populate this section.
             </p>
-            <button v-if="!loadingNutritionActivity && !nutritionActivityItems.length" type="button" class="dashboard-empty-btn" @click="goToRoute('/nutrition')">
-              Log Nutrition
-            </button>
           </div>
         </div>
       </section>
@@ -457,10 +338,6 @@ const todaySummaryItems = computed(() => {
 /* ─────────────────────────────────────────────────────────────────── */
 
 .dashboard-container {
-  --dashboard-section-gap: 14px;
-  --dashboard-card-padding: 18px;
-  --dashboard-grid-gap: 14px;
-  --dashboard-header-spacing: 12px;
   display: block;
   padding-top: 0 !important;
   margin-top: 5px;
@@ -498,7 +375,7 @@ const todaySummaryItems = computed(() => {
 
 .dashboard-canvas {
   display: grid;
-  gap: var(--dashboard-section-gap);
+  gap: 14px;
   padding-block: 4px !important;
 }
 
@@ -522,7 +399,7 @@ const todaySummaryItems = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: var(--dashboard-header-spacing);
+  gap: 12px;
   flex-wrap: wrap;
 }
 
@@ -547,95 +424,9 @@ const todaySummaryItems = computed(() => {
 .dashboard-focus-card {
   border: 1px solid rgba(120, 130, 150, 0.32);
   border-radius: 16px;
-  padding: var(--dashboard-card-padding);
+  padding: 18px 20px;
   background: rgba(255, 255, 255, 0.85);
   box-shadow: 0 2px 6px rgba(20, 30, 50, 0.05);
-}
-
-.dashboard-focus-card--high {
-  border-color: rgba(59, 130, 246, 0.35);
-  background: linear-gradient(180deg, rgba(239, 246, 255, 0.8), rgba(255, 255, 255, 0.9));
-}
-
-.dashboard-priority-row {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--dashboard-grid-gap);
-}
-
-.dashboard-recent-workout {
-  border-color: rgba(59, 130, 246, 0.38);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
-}
-
-.recent-workout-body {
-  display: grid;
-  gap: 8px;
-}
-
-.recent-workout-title {
-  font-size: 1.1rem;
-  color: #1e293b;
-  letter-spacing: -0.01em;
-}
-
-.recent-workout-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  color: #64748b;
-  font-weight: 700;
-  font-size: 0.83rem;
-}
-
-.today-summary-widget {
-  margin-top: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  border-radius: 12px;
-  padding: 10px 12px;
-  background: rgba(248, 250, 252, 0.9);
-}
-
-.today-summary-widget h6 {
-  margin: 0 0 8px;
-  font-size: 0.74rem;
-  letter-spacing: 0.08em;
-  color: #475569;
-  font-weight: 900;
-}
-
-.today-summary-list {
-  display: grid;
-  gap: 6px;
-}
-
-.today-summary-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.82rem;
-  color: #334155;
-}
-
-.today-check {
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.7rem;
-  font-weight: 900;
-}
-
-.today-check--ok {
-  color: #15803d;
-  background: rgba(187, 247, 208, 0.7);
-}
-
-.today-check--warn {
-  color: #c2410c;
-  background: rgba(254, 215, 170, 0.65);
 }
 
 .dashboard-focus-card h3 {
@@ -659,13 +450,13 @@ const todaySummaryItems = computed(() => {
 .dashboard-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--dashboard-grid-gap);
+  gap: 14px;
 }
 
 .dashboard-quick-actions {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--dashboard-grid-gap);
+  gap: 14px;
 }
 
 .stat-card {
@@ -685,7 +476,7 @@ const todaySummaryItems = computed(() => {
 .dashboard-main-row {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--dashboard-grid-gap);
+  gap: 14px;
 }
 
 .training-progress-section,
@@ -731,14 +522,7 @@ const todaySummaryItems = computed(() => {
 }
 
 .panel-body {
-  padding: var(--dashboard-card-padding);
-}
-
-.dashboard-main-row .dashboard-panel,
-.dashboard-nutrition-activity .dashboard-panel,
-.dashboard-nutrition .dashboard-panel {
-  border-color: rgba(120, 130, 150, 0.24);
-  box-shadow: 0 1px 4px rgba(20, 30, 50, 0.045);
+  padding: 16px 18px;
 }
 
 /* ─────────────────────────────────────────────────────────────────── */
@@ -786,31 +570,6 @@ const todaySummaryItems = computed(() => {
   box-shadow: 0 2px 6px rgba(20, 30, 50, 0.05);
   text-align: left;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.dashboard-empty-btn {
-  justify-self: start;
-  margin-top: 4px;
-  border: 1px solid rgba(59, 130, 246, 0.45);
-  background: #eff6ff;
-  color: #1d4ed8;
-  border-radius: 8px;
-  font-size: 0.79rem;
-  font-weight: 800;
-  padding: 7px 10px;
-  transition: all 0.2s ease;
-}
-
-.dashboard-empty-btn:hover {
-  background: #dbeafe;
-  border-color: rgba(59, 130, 246, 0.72);
-}
-
-.training-progress-section :deep(.apexcharts-canvas),
-.training-progress-section :deep(svg),
-.dashboard-nutrition :deep(.apexcharts-canvas),
-.dashboard-nutrition :deep(svg) {
-  max-width: 100% !important;
 }
 
 .quick-action-card:hover {
@@ -918,16 +677,12 @@ const todaySummaryItems = computed(() => {
 
   .dashboard-main-row {
     grid-template-columns: 1fr 1fr;
-    gap: var(--dashboard-grid-gap);
+    gap: 14px;
   }
 
   .dashboard-quick-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--dashboard-grid-gap);
-  }
-
-  .dashboard-priority-row {
-    grid-template-columns: 1.1fr 1fr;
+    gap: 14px;
   }
 }
 
@@ -956,7 +711,7 @@ const todaySummaryItems = computed(() => {
 
   .dashboard-main-row {
     grid-template-columns: 1.5fr 1fr;
-    gap: var(--dashboard-grid-gap);
+    gap: 14px;
   }
 
   .dashboard-quick-actions {
@@ -986,11 +741,7 @@ const todaySummaryItems = computed(() => {
 
 @media (max-width: 768px) {
   .dashboard-canvas {
-    --dashboard-section-gap: 6px;
-    --dashboard-card-padding: 8px;
-    --dashboard-grid-gap: 6px;
-    --dashboard-header-spacing: 8px;
-    gap: var(--dashboard-section-gap);
+    gap: 5px;
   }
 
   /* Hero: 2-column grid — title left, date picker right */
@@ -1046,7 +797,7 @@ const todaySummaryItems = computed(() => {
   }
 
   .dashboard-stats {
-    gap: var(--dashboard-grid-gap);
+    gap: 5px;
   }
 
   .panel-header {
@@ -1062,12 +813,12 @@ const todaySummaryItems = computed(() => {
   }
 
   .dashboard-main-row {
-    gap: var(--dashboard-grid-gap);
+    gap: 5px;
     margin-top: 0;
   }
 
   .dashboard-quick-actions {
-    gap: var(--dashboard-grid-gap);
+    gap: 5px;
   }
 
   .quick-action-card {
@@ -1128,12 +879,6 @@ const todaySummaryItems = computed(() => {
     padding: 1px 7px;
     font-size: 0.7rem;
     line-height: 1.2;
-  }
-
-  .dashboard-empty-btn {
-    width: 100%;
-    justify-self: stretch;
-    text-align: center;
   }
 }
 

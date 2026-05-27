@@ -1,15 +1,12 @@
 <script setup>
 import { computed } from 'vue';
 
-const emit = defineEmits(['click']);
-
 const props = defineProps({
   title: { type: String, required: true },
   value: { type: [String, Number], required: true },
   subtitle: { type: String, default: '' },
   trend: { type: String, default: '' },
   icon: { type: String, default: 'fa-solid fa-chart-line' },
-  clickable: { type: Boolean, default: false },
 });
 
 const iconBadgeClass = computed(() => {
@@ -18,30 +15,10 @@ const iconBadgeClass = computed(() => {
   if (props.icon.includes('fa-drumstick-bite')) return 'metric-card__icon-badge--protein';
   return 'metric-card__icon-badge--default';
 });
-
-const handleActivate = () => {
-  if (!props.clickable) return;
-  emit('click');
-};
-
-const onCardKeyDown = (event) => {
-  if (!props.clickable) return;
-  if (event.key === 'Enter' || event.key === ' ') {
-    event.preventDefault();
-    emit('click');
-  }
-};
 </script>
 
 <template>
-  <article
-    class="metric-card panel-bg"
-    :class="{ 'metric-card--clickable': clickable }"
-    :tabindex="clickable ? 0 : -1"
-    :role="clickable ? 'button' : undefined"
-    @click="handleActivate"
-    @keydown="onCardKeyDown"
-  >
+  <article class="metric-card panel-bg">
     <div class="metric-card__main">
       <div class="metric-card__left">
         <span class="metric-card__title">{{ title }}</span>
@@ -67,18 +44,6 @@ const onCardKeyDown = (event) => {
   align-items: center;
   background: #fff;
   box-shadow: 0 2px 6px rgba(20, 30, 50, 0.05);
-}
-
-.metric-card--clickable {
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.metric-card--clickable:hover,
-.metric-card--clickable:focus-visible {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 14px rgba(20, 30, 50, 0.12);
-  border-color: rgba(59, 130, 246, 0.55);
 }
 
 .metric-card__main {
