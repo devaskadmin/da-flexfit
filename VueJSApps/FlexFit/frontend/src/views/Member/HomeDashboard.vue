@@ -9,6 +9,9 @@ import NutritionLogChart from '@/components/Widgets/NutritionLogChart.vue';
 
 const firstName = ref('')
 const loadingMetrics = ref(true)
+const loadingActivity = ref(true)
+const dashboardStartDate = ref(null)
+const dashboardEndDate = ref(null)
 const dashboardStats = ref({
   userId: null,
   workoutsThisWeek: 0,
@@ -20,7 +23,17 @@ const dashboardStats = ref({
   weekDiff: 0,
   weekStart: null,
   weekEnd: null,
+  workoutsLoggedChart: [],
+  activityFeed: [],
 })
+
+const formatActivityDate = (isoDate) => {
+  if (!isoDate) return '—'
+  const date = new Date(`${isoDate}T00:00:00`)
+  return Number.isNaN(date.getTime())
+    ? isoDate
+    : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
 
 const formatTrend = (value, suffix = '', zeroText = 'No change') => {
   const numeric = Number(value || 0)
@@ -32,7 +45,9 @@ const formatTrend = (value, suffix = '', zeroText = 'No change') => {
 const fetchDashboardStats = async () => {
   loadingMetrics.value = true
   try {
-    const { data } = await axios.get(`${API_BASE}/api/dashboard/metrics`, { withCredentials: true })
+    const { data } = await axios.get(`${API_BASE}/api/dashboard/metrics`, {
+      withCredentials: true,
+    })
     dashboardStats.value = {
       userId: data?.userId ?? null,
       workoutsThisWeek: Number(data?.workoutsThisWeek ?? 0),
@@ -44,12 +59,40 @@ const fetchDashboardStats = async () => {
       weekDiff: Number(data?.weekDiff ?? 0),
       weekStart: data?.weekStart || data?.startDate || null,
       weekEnd: data?.weekEnd || data?.endDate || null,
+      workoutsLoggedChart: Array.isArray(data?.workoutsLoggedChart) ? data.workoutsLoggedChart : [],
+      activityFeed: Array.isArray(data?.activityFeed) ? data.activityFeed : [],
     }
   } catch (err) {
     console.error('Failed to load dashboard stats:', err)
   } finally {
     loadingMetrics.value = false
   }
+}
+
+const fetchActivityFeed = async () => {
+  loadingActivity.value = true
+  try {
+    const params = {}
+    if (dashboardStartDate.value) params.startDate = dashboardStartDate.value
+    if (dashboardEndDate.value) params.endDate = dashboardEndDate.value
+
+    const { data } = await axios.get(`${API_BASE}/api/dashboard/activity`, {
+      params,
+      withCredentials: true,
+    })
+    recentActivity.value = Array.isArray(data) ? data : []
+  } catch (err) {
+    console.error('Failed to load dashboard activity:', err)
+    recentActivity.value = []
+  } finally {
+    loadingActivity.value = false
+  }
+}
+
+const onDateChange = async ([startDate, endDate]) => {
+  dashboardStartDate.value = startDate
+  dashboardEndDate.value = endDate
+  await fetchActivityFeed()
 }
 
 onMounted(async () => {
@@ -61,7 +104,7 @@ onMounted(async () => {
     // silently fail — greeting just shows without a name
   }
 
-  await fetchDashboardStats()
+  await Promise.all([fetchDashboardStats(), fetchActivityFeed()])
 })
 
 const metrics = computed(() => {
@@ -100,6 +143,15 @@ const metrics = computed(() => {
   ]
 })
 const recentActivity = ref([])
+
+const activityItems = computed(() => recentActivity.value.map((item) => ({
+  key: `${item.date}-${item.activityType}-${item.exerciseCount}`,
+  dateLabel: formatActivityDate(item.date),
+  action: item.summary || 'Recorded workout activity',
+  detail: item.exerciseNames
+    ? item.exerciseNames
+    : `${item.exerciseCount || 0} exercise${Number(item.exerciseCount || 0) === 1 ? '' : 's'}`,
+})))
 </script>
 
 <template>
@@ -112,7 +164,7 @@ const recentActivity = ref([])
             <h2>Welcome back<template v-if="firstName">, {{ firstName }}</template>!</h2>
           </div>
           <div class="header-picker">
-            <DateRangePicker />
+            <DateRangePicker @change="onDateChange" />
           </div>
         </div>
       </section>
@@ -139,24 +191,25 @@ const recentActivity = ref([])
       <!-- Training Progress + Activity Feed -->
       <section class="dashboard-main-row">
         <div class="training-progress-section">
-          <div class="panel panel-bg dashboard-panel">
-            <div class="panel-header"><h5>Training Progress</h5></div>
-            <div class="panel-body"><ProgressChart /></div>
-          </div>
+          <ProgressChart :start-date="dashboardStartDate" :end-date="dashboardEndDate" />
         </div>
         <div class="activity-feed-section">
           <div class="panel panel-bg dashboard-panel">
             <div class="panel-header"><h5>Activity Feed</h5></div>
             <div class="panel-body activity-feed">
-              <article v-for="item in recentActivity" :key="item.time + item.action" class="activity-row">
-                <span class="time">{{ item.time }}</span>
+              <article v-for="item in activityItems" :key="item.key" class="activity-row">
+                <span class="time">{{ item.dateLabel }}</span>
                 <div>
                   <strong>{{ item.action }}</strong>
                   <p>{{ item.detail }}</p>
                 </div>
               </article>
-              <p v-if="!recentActivity.length" class="activity-empty">
-                No live activity feed data is wired to this dashboard yet.
+              <p v-if="loadingActivity" class="activity-empty">
+                Loading workout activity...
+              </p>
+              <p v-else-if="!activityItems.length" class="activity-empty">
+                No workout activity recorded yet.<br>
+                Start a workout to populate your activity feed.
               </p>
             </div>
           </div>

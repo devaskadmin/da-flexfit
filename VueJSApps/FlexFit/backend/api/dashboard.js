@@ -20,6 +20,7 @@ const pool = require('../db.js');
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const VALID_GROUP_BY = new Set(['day', 'month', 'year']);
 
 /** Validate a YYYY-MM-DD string and confirm it is a real calendar date. */
 function isValidIsoDate(str) {
@@ -49,6 +50,76 @@ function shiftDate(isoStr, days) {
   return d.toISOString().slice(0, 10);
 }
 
+function resolveGroupBy(rawValue) {
+  return VALID_GROUP_BY.has(String(rawValue || '').toLowerCase())
+    ? String(rawValue).toLowerCase()
+    : 'day';
+}
+
+function getChartGrouping(groupBy) {
+  if (groupBy === 'month') {
+    return {
+      groupExpr: `DATE_FORMAT(wl.WorkoutDate, '%Y-%m')`,
+      labelExpr: `DATE_FORMAT(wl.WorkoutDate, '%b %Y')`,
+      orderExpr: `DATE_FORMAT(wl.WorkoutDate, '%Y-%m')`,
+    };
+  }
+
+  if (groupBy === 'year') {
+    return {
+      groupExpr: `YEAR(wl.WorkoutDate)`,
+      labelExpr: `CAST(YEAR(wl.WorkoutDate) AS CHAR)`,
+      orderExpr: `YEAR(wl.WorkoutDate)`,
+    };
+  }
+
+  return {
+    groupExpr: `DATE(wl.WorkoutDate)`,
+    labelExpr: `DATE_FORMAT(wl.WorkoutDate, '%b %e')`,
+    orderExpr: `DATE(wl.WorkoutDate)`,
+  };
+}
+
+async function loadActivityFeed(userId, startDate = null, endDate = null, limit = 5) {
+  const whereParts = [
+    'wl.UserID = ?',
+    '(wl.workout_log_session_id IS NULL OR wls.status = \'completed\')',
+  ];
+  const params = [userId];
+
+  if (startDate && endDate) {
+    whereParts.push('DATE(wl.WorkoutDate) BETWEEN ? AND ?');
+    params.push(startDate, endDate);
+  }
+
+  params.push(limit);
+
+  const [rows] = await pool.query(
+    `SELECT
+       DATE(wl.WorkoutDate) AS activityDate,
+       COUNT(DISTINCT wl.WorkoutLogID) AS exerciseCount,
+       GROUP_CONCAT(DISTINCT ex.ExerciseTitle ORDER BY ex.ExerciseTitle SEPARATOR ', ') AS exerciseNames
+     FROM workout_log wl
+     LEFT JOIN workout_log_sessions wls ON wl.workout_log_session_id = wls.id
+     LEFT JOIN exercises ex ON wl.ExerciseID = ex.ExerciseID
+     WHERE ${whereParts.join(' AND ')}
+     GROUP BY DATE(wl.WorkoutDate)
+     ORDER BY activityDate DESC
+     LIMIT ?`,
+    params
+  );
+
+  return rows.map((row) => ({
+    date: row.activityDate instanceof Date
+      ? row.activityDate.toISOString().slice(0, 10)
+      : String(row.activityDate).slice(0, 10),
+    activityType: 'workout_logged',
+    exerciseCount: Number(row.exerciseCount || 0),
+    summary: 'Recorded workout activity',
+    exerciseNames: String(row.exerciseNames || '').trim(),
+  }));
+}
+
 // ─── Auth guard ─────────────────────────────────────────────────────────────
 const requireAuth = (req, res, next) => {
   if (!req.session?.user?.id) {
@@ -61,6 +132,7 @@ const requireAuth = (req, res, next) => {
 router.get('/dashboard/metrics', requireAuth, async (req, res) => {
   try {
     const userId = req.session.user.id;
+    const groupBy = resolveGroupBy(req.query.groupBy);
 
     // ── Resolve date range ──────────────────────────────────────────────────
     const week = currentIsoWeek();
@@ -155,6 +227,31 @@ router.get('/dashboard/metrics', requireAuth, async (req, res) => {
     );
     const caloriesBurned = Number(calRow?.total ?? 0);
 
+    // ── Training Progress chart: workouts logged by selected grouping ───────
+    const { groupExpr, labelExpr, orderExpr } = getChartGrouping(groupBy);
+    const [chartRows] = await pool.query(
+      `SELECT
+         ${groupExpr} AS chartDate,
+         ${labelExpr} AS label,
+         COUNT(DISTINCT wl.WorkoutLogID) AS value
+       FROM workout_log wl
+       LEFT JOIN workout_log_sessions wls ON wl.workout_log_session_id = wls.id
+       WHERE wl.UserID = ?
+         AND (wl.workout_log_session_id IS NULL OR wls.status = 'completed')
+         AND DATE(wl.WorkoutDate) BETWEEN ? AND ?
+       GROUP BY ${groupExpr}
+       ORDER BY ${orderExpr} ASC`,
+      [userId, startDate, endDate]
+    );
+
+    const workoutsLoggedChart = chartRows.map((row) => ({
+      date: String(row.chartDate),
+      label: String(row.label),
+      value: Number(row.value || 0),
+    }));
+
+    const activityFeed = await loadActivityFeed(userId, startDate, endDate, 5);
+
     // ── Card 4: Protein Today (real user nutrition log data) ────────────────
     let proteinToday = 0;
     try {
@@ -185,6 +282,9 @@ router.get('/dashboard/metrics', requireAuth, async (req, res) => {
       weekEnd: endDate,
       startDate,
       endDate,
+      groupBy,
+      workoutsLoggedChart,
+      activityFeed,
     };
 
     console.log('DASHBOARD STATS', stats);
@@ -193,6 +293,24 @@ router.get('/dashboard/metrics', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('❌ GET /api/dashboard/metrics:', err);
     return res.status(500).json({ error: 'Failed to load dashboard metrics.' });
+  }
+});
+
+router.get('/dashboard/activity', requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const week = currentIsoWeek();
+    const rawStart = req.query.startDate;
+    const rawEnd = req.query.endDate;
+
+    const startDate = isValidIsoDate(rawStart) ? rawStart : week.start;
+    const endDate = isValidIsoDate(rawEnd) ? rawEnd : week.end;
+
+    const activityFeed = await loadActivityFeed(userId, startDate, endDate, 5);
+    return res.status(200).json(activityFeed);
+  } catch (err) {
+    console.error('❌ GET /api/dashboard/activity:', err);
+    return res.status(500).json({ error: 'Failed to load dashboard activity.' });
   }
 });
 
