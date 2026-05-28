@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.82.32] - 2026-05-27 - Colored CTA Dashboard Polish
+
+- Added final quick-action helper CTA copy polish for dashboard launch cards:
+  - Start Workout: `Click here to access Workout Log →`
+  - Workout Builder: `Click here to access Workout Builder →`
+  - Exercise Database: `Click here to access Exercise Database →`
+- Applied card-accent color-coded helper CTA text for stronger navigation identity:
+  - Start Workout: soft blue (`#3b82f6`)
+  - Workout Builder: soft purple (`#8b5cf6`)
+  - Exercise Database: soft teal (`#14b8a6`)
+- Updated CTA typography and micro-interaction styling:
+  - `font-size: 11px`
+  - `font-weight: 600`
+  - `opacity: 0.78`
+  - `margin-top: 6px`
+  - `letter-spacing: 0.2px`
+  - `transition: all 0.2s ease`
+- Added hover/focus affordance for helper CTA and arrow indicator:
+  - CTA text opacity increases to full with subtle `translateX(2px)`
+  - right-side arrow slides to reinforce navigation intent
+- Preserved compact dashboard layout and existing card dimensions with no chart/activity widget modifications.
+
+---
+
 ## [0.82.31] - 2026-05-27 - Dashboard Quick Action UX Polish
 
 - Polished dashboard quick action cards into premium launch-card interactions while preserving compact row height and responsive layout.

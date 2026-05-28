@@ -225,24 +225,27 @@ const recentActivity = ref([])
 const quickActions = [
   {
     title: 'Start Workout',
-    subtitle: 'Go to Workout Log',
+    subtitle: 'Click here to access Workout Log →',
     route: '/workout-log',
     icon: 'fa-solid fa-dumbbell',
     tint: 'rgba(59, 130, 246, 0.06)',
+    ctaColor: '#3b82f6',
   },
   {
     title: 'Workout Builder',
-    subtitle: 'Create plans',
+    subtitle: 'Click here to access Workout Builder →',
     route: '/workout-builder',
     icon: 'fa-solid fa-clipboard-list',
     tint: 'rgba(139, 92, 246, 0.06)',
+    ctaColor: '#8b5cf6',
   },
   {
     title: 'Exercise Database',
-    subtitle: 'Browse exercises',
+    subtitle: 'Click here to access Exercise Database →',
     route: '/exercises',
     icon: 'fa-solid fa-book-open',
     tint: 'rgba(20, 184, 166, 0.06)',
+    ctaColor: '#14b8a6',
   },
 ]
 
@@ -343,7 +346,7 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
           :key="action.route"
           :to="action.route"
           class="quick-action-card"
-          :style="{ '--action-tint': action.tint }"
+          :style="{ '--action-tint': action.tint, '--action-cta': action.ctaColor }"
         >
           <div class="quick-action-content">
             <div class="quick-action-left">
@@ -805,9 +808,20 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
 }
 
 .quick-action-subtitle {
-  color: var(--text-color-secondary);
-  font-size: 0.78rem;
+  color: var(--action-cta, #3b82f6);
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.78;
+  margin-top: 6px;
+  letter-spacing: 0.2px;
   line-height: 1.25;
+  transition: all 0.2s ease;
+}
+
+.quick-action-card:hover .quick-action-subtitle,
+.quick-action-card:focus-visible .quick-action-subtitle {
+  opacity: 1;
+  transform: translateX(2px);
 }
 
 .quick-action-right {
@@ -843,8 +857,8 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
 
 .quick-action-card:hover .quick-action-arrow,
 .quick-action-card:focus-visible .quick-action-arrow {
-  opacity: 0.95;
-  transform: translateX(0);
+  opacity: 1;
+  transform: translateX(2px);
 }
 
 .nutrition-activity-feed {
