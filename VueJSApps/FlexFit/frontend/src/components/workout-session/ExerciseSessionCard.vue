@@ -46,6 +46,12 @@ const completedSets = computed(() =>
 );
 const totalSets = computed(() => props.exercise.sessionSets.length);
 const allDone = computed(() => completedSets.value === totalSets.value && totalSets.value > 0);
+
+const hasPrefilledValues = computed(() =>
+  (props.exercise.sessionSets || []).some((set) => Boolean(set?.prefilledFromLastWorkout))
+);
+
+const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input--prefilled' : '');
 </script>
 
 <template>
@@ -114,7 +120,7 @@ const allDone = computed(() => completedSets.value === totalSets.value && totalS
             <div class="c3-col-value">
               <input
                 type="number"
-                class="set-input"
+                :class="['set-input', prefillClass(set, 'weight')]"
                 :value="set.weight"
                 min="0"
                 step="0.5"
@@ -130,7 +136,7 @@ const allDone = computed(() => completedSets.value === totalSets.value && totalS
             <div class="c3-col-value">
               <input
                 type="number"
-                class="set-input"
+                :class="['set-input', prefillClass(set, 'reps')]"
                 :value="set.reps"
                 min="0"
                 placeholder="0"
@@ -190,7 +196,7 @@ const allDone = computed(() => completedSets.value === totalSets.value && totalS
             <div class="c3-col-value">
               <input
                 type="number"
-                class="set-input"
+                :class="['set-input', prefillClass(set, 'duration')]"
                 :value="set.duration ?? 0"
                 min="0"
                 placeholder="0"
@@ -267,7 +273,7 @@ const allDone = computed(() => completedSets.value === totalSets.value && totalS
           <div class="c3-col-value">
             <input
               type="number"
-              class="set-input"
+              :class="['set-input', prefillClass(set, 'duration')]"
               :value="set.duration"
               min="0"
               placeholder="0"
@@ -282,7 +288,7 @@ const allDone = computed(() => completedSets.value === totalSets.value && totalS
           <div class="c3-col-value">
             <input
               type="number"
-              class="set-input"
+              :class="['set-input', prefillClass(set, 'caloriesBurned')]"
               :value="set.caloriesBurned"
               min="0"
               placeholder="0"
@@ -297,7 +303,7 @@ const allDone = computed(() => completedSets.value === totalSets.value && totalS
           <div class="c3-col-value">
             <input
               type="number"
-              class="set-input"
+              :class="['set-input', prefillClass(set, 'distanceMiles')]"
               :value="set.distanceMiles"
               min="0"
               step="0.01"
@@ -313,7 +319,7 @@ const allDone = computed(() => completedSets.value === totalSets.value && totalS
           <div class="c3-col-value">
             <input
               type="number"
-              class="set-input"
+              :class="['set-input', prefillClass(set, 'speedMph')]"
               :value="set.speedMph"
               min="0"
               step="0.1"
@@ -362,6 +368,10 @@ const allDone = computed(() => completedSets.value === totalSets.value && totalS
       <span class="sec-summary">
         {{ exercise.sessionSets.filter((s) => s.done).length }} /
         {{ exercise.sessionSets.length }} sets completed
+      </span>
+
+      <span v-if="hasPrefilledValues" class="sec-prefill-note">
+        Prefilled from last workout
       </span>
 
       <button
@@ -591,8 +601,25 @@ const allDone = computed(() => completedSets.value === totalSets.value && totalS
   background: #fff;
 }
 
+.set-input--prefilled {
+  background: #f8fafc;
+  border-color: #d9e2ec;
+  color: #64748b;
+}
+
 .set-input--text {
   text-align: left;
+}
+
+.sec-prefill-note {
+  color: #64748b;
+  font-size: 0.73rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  border: 1px solid #dbe3ec;
+  white-space: nowrap;
 }
 
 /* ─── Cardio Table Wrapper — full width, no cap */

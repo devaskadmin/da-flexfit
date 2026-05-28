@@ -177,4 +177,69 @@ router.post('/workout-sessions/cancel/:sessionId', requireAuth, async (req, res)
   }
 });
 
+// ─── GET /api/workouts/history/latest/:exerciseId ─────────────────────────
+// Returns the most recent completed workout-set values for a specific exercise.
+router.get('/workouts/history/latest/:exerciseId', requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const exerciseId = Number(req.params.exerciseId || 0);
+
+    if (!exerciseId) {
+      return res.status(400).json({ error: 'Invalid exerciseId.' });
+    }
+
+    const [latestRows] = await pool.query(
+      `SELECT
+         wl.WorkoutLogID                 AS workoutLogId,
+         wl.ExerciseID                   AS exerciseId,
+         wl.WorkoutDate                  AS workoutDate,
+         wls.workout_date                AS sessionWorkoutDate,
+         wls.completed_at                AS completedAt
+       FROM workout_log wl
+       INNER JOIN workout_log_sessions wls ON wls.id = wl.workout_log_session_id
+       WHERE wl.UserID = ?
+         AND wl.ExerciseID = ?
+         AND wls.status = 'completed'
+       ORDER BY wls.workout_date DESC, wls.completed_at DESC, wl.WorkoutLogID DESC
+       LIMIT 1`,
+      [userId, exerciseId]
+    );
+
+    if (!latestRows.length) {
+      return res.status(200).json({
+        exerciseId,
+        lastPerformed: null,
+        sets: [],
+      });
+    }
+
+    const latest = latestRows[0];
+
+    const [setRows] = await pool.query(
+      `SELECT
+         set_number       AS setNumber,
+         weight,
+         reps,
+         duration_minutes AS duration,
+         distance_miles   AS distance,
+         calories_burned  AS calories,
+         speed_mph        AS speed
+       FROM workout_log_sets
+       WHERE workout_log_id = ?
+         AND completed = 1
+       ORDER BY set_number ASC`,
+      [latest.workoutLogId]
+    );
+
+    return res.status(200).json({
+      exerciseId,
+      lastPerformed: latest.sessionWorkoutDate || latest.workoutDate || null,
+      sets: setRows,
+    });
+  } catch (err) {
+    console.error('❌ GET /workouts/history/latest/:exerciseId:', err);
+    return res.status(500).json({ error: 'Failed to fetch latest workout history.' });
+  }
+});
+
 module.exports = router;

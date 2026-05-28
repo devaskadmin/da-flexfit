@@ -40,6 +40,7 @@ const expandedPlanId    = ref(null);   // accordion open state
 const expandedPlanData  = ref(null);   // full plan detail (with exercises/days)
 const expandedLoading   = ref(false);
 const dayOrderStateByPlanId = ref({});
+const latestHistoryByExerciseId = ref({});
 
 /* ─── Session state (Day Details) ───────────────────────────────────────── */
 const activeSession    = ref(null);
@@ -460,7 +461,124 @@ const buildInitialSets = (exercise) => {
     setNum: i + 1, weight: Number(exercise.weight || 0),
     reps: Number(exercise.reps || 0), duration: Number(exercise.duration || 0),
     caloriesBurned: 0, distanceMiles: 0, speedMph: 0, done: false,
+    prefilledFields: {},
+    prefilledFromLastWorkout: false,
   }));
+};
+
+const getLatestExerciseHistory = async (exerciseId) => {
+  const normalizedExerciseId = Number(exerciseId || 0);
+  if (!normalizedExerciseId) {
+    return null;
+  }
+
+  const cached = latestHistoryByExerciseId.value[normalizedExerciseId];
+  if (cached) {
+    return cached;
+  }
+
+  try {
+    const response = await fetch(
+      `${API_BASE}/api/workouts/history/latest/${encodeURIComponent(normalizedExerciseId)}`,
+      { credentials: 'include' }
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = await response.json();
+    latestHistoryByExerciseId.value = {
+      ...latestHistoryByExerciseId.value,
+      [normalizedExerciseId]: payload,
+    };
+    return payload;
+  } catch (_) {
+    return null;
+  }
+};
+
+const applyLatestHistoryPrefill = (exercise, latestHistory) => {
+  if (!exercise || !Array.isArray(exercise.sessionSets)) {
+    return;
+  }
+
+  const latestSets = Array.isArray(latestHistory?.sets) ? latestHistory.sets : [];
+  if (!latestSets.length) {
+    return;
+  }
+
+  const exerciseType = String(exercise.workoutType || '').trim().toLowerCase();
+  const latestBySetNum = new Map();
+  for (const setEntry of latestSets) {
+    const setNumber = Number(setEntry?.setNumber || 0);
+    if (setNumber > 0) {
+      latestBySetNum.set(setNumber, setEntry);
+    }
+  }
+
+  exercise.sessionSets = exercise.sessionSets.map((set) => {
+    const setNumber = Number(set?.setNum || 0);
+    const lastSet = latestBySetNum.get(setNumber);
+    if (!lastSet) {
+      return {
+        ...set,
+        prefilledFields: { ...(set?.prefilledFields || {}) },
+        prefilledFromLastWorkout: Boolean(set?.prefilledFromLastWorkout),
+      };
+    }
+
+    const nextSet = {
+      ...set,
+      prefilledFields: { ...(set?.prefilledFields || {}) },
+      prefilledFromLastWorkout: false,
+    };
+
+    const markPrefilled = (field, value) => {
+      if (value === null || value === undefined) {
+        return;
+      }
+      const numericValue = Number(value);
+      if (!Number.isFinite(numericValue)) {
+        return;
+      }
+      nextSet[field] = numericValue;
+      nextSet.prefilledFields[field] = true;
+      nextSet.prefilledFromLastWorkout = true;
+    };
+
+    if (exerciseType === 'strength') {
+      markPrefilled('weight', lastSet.weight);
+      markPrefilled('reps', lastSet.reps);
+    } else {
+      markPrefilled('duration', lastSet.duration);
+      markPrefilled('distanceMiles', lastSet.distance);
+      markPrefilled('caloriesBurned', lastSet.calories);
+      markPrefilled('speedMph', lastSet.speed);
+    }
+
+    return nextSet;
+  });
+};
+
+const buildSessionExercisesWithHistoryPrefill = async (baseExercises = []) => {
+  const sessionRows = (Array.isArray(baseExercises) ? baseExercises : []).map((exercise) => ({
+    ...exercise,
+    sessionSets: buildInitialSets(exercise),
+  }));
+
+  await Promise.all(
+    sessionRows.map(async (exercise) => {
+      const exerciseId = Number(exercise?.exerciseId || 0);
+      if (!exerciseId) {
+        return;
+      }
+      const latestHistory = await getLatestExerciseHistory(exerciseId);
+      applyLatestHistoryPrefill(exercise, latestHistory);
+    })
+  );
+
+  return sessionRows;
 };
 
 const addSet = (exerciseId) => {
@@ -468,7 +586,18 @@ const addSet = (exerciseId) => {
   const ex = sessionExercises.value.find((e) => e.id === exerciseId);
   if (!ex) return;
   const last = ex.sessionSets[ex.sessionSets.length - 1] || { weight: 0, reps: 0, duration: 0, caloriesBurned: 0, distanceMiles: 0, speedMph: 0 };
-  ex.sessionSets.push({ setNum: ex.sessionSets.length + 1, weight: last.weight, reps: last.reps, duration: last.duration, caloriesBurned: last.caloriesBurned, distanceMiles: last.distanceMiles, speedMph: last.speedMph, done: false });
+  ex.sessionSets.push({
+    setNum: ex.sessionSets.length + 1,
+    weight: last.weight,
+    reps: last.reps,
+    duration: last.duration,
+    caloriesBurned: last.caloriesBurned,
+    distanceMiles: last.distanceMiles,
+    speedMph: last.speedMph,
+    done: false,
+    prefilledFields: {},
+    prefilledFromLastWorkout: false,
+  });
 };
 
 const removeSet = (exerciseId, setIndex) => {
@@ -483,6 +612,11 @@ const updateSet = (exerciseId, setIndex, field, value) => {
   if (isPreviewMode.value) return;
   const ex = sessionExercises.value.find((e) => e.id === exerciseId);
   if (!ex) return;
+  if (field !== 'done' && ex.sessionSets[setIndex]?.prefilledFields) {
+    ex.sessionSets[setIndex].prefilledFields[field] = false;
+    ex.sessionSets[setIndex].prefilledFromLastWorkout = Object.values(ex.sessionSets[setIndex].prefilledFields)
+      .some(Boolean);
+  }
   ex.sessionSets[setIndex][field] = field === 'done' ? Boolean(value) : (Number(value) || 0);
 };
 
@@ -502,6 +636,23 @@ const loadWorkoutLists = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+const autoExpandSinglePlanIfNeeded = async () => {
+  if (workoutLists.value.length !== 1) {
+    return;
+  }
+
+  if (expandedPlanId.value) {
+    return;
+  }
+
+  const onlyPlanId = String(workoutLists.value[0]?.planId || '').trim();
+  if (!onlyPlanId) {
+    return;
+  }
+
+  await togglePlan(onlyPlanId);
 };
 
 /* ─── Accordion: expand a plan (load full detail) ───────────────────────── */
@@ -556,9 +707,7 @@ const checkActiveSession = async () => {
       selectedDay.value = data.session.workoutDayName;
       // Rebuild sessionExercises from expanded plan
       if (expandedPlanData.value) {
-        sessionExercises.value = (expandedPlanData.value.exercises || []).map((ex) => ({
-          ...ex, sessionSets: buildInitialSets(ex),
-        }));
+        sessionExercises.value = await buildSessionExercisesWithHistoryPrefill(expandedPlanData.value.exercises || []);
       }
     } else {
       activeSession.value    = null;
@@ -621,9 +770,7 @@ const startDayWorkout = async (dayName) => {
     isPreviewMode.value    = false;
 
     // Build session exercises from the expanded plan
-    sessionExercises.value = (expandedPlanData.value?.exercises || []).map((ex) => ({
-      ...ex, sessionSets: buildInitialSets(ex),
-    }));
+    sessionExercises.value = await buildSessionExercisesWithHistoryPrefill(expandedPlanData.value?.exercises || []);
 
     activeTab.value = 'dayDetails';
   } catch (err) {
@@ -865,6 +1012,7 @@ const saveHistoryWorkout = async (session) => {
 /* ─── Lifecycle ──────────────────────────────────────────────────────────── */
 onMounted(async () => {
   await loadWorkoutLists();
+  await autoExpandSinglePlanIfNeeded();
   await checkActiveSession();
 });
 </script>
@@ -1023,7 +1171,7 @@ onMounted(async () => {
               </div>
 
               <div v-else class="wl-day-grid">
-                <div class="wl-day-order-toolbar app-section-card">
+                <div class="wl-day-order-toolbar workout-log-order-toolbar app-section-card">
                   <label class="wl-day-order-toggle">
                     <input
                       type="checkbox"
@@ -1041,21 +1189,21 @@ onMounted(async () => {
                   <div class="wl-day-order-actions">
                     <button
                       type="button"
-                      class="wl-btn-preview"
+                      class="wl-order-toolbar-btn wl-order-toolbar-btn--reset"
                       :disabled="dayOrderSaving || dayOrderLoading"
                       @click="resetWorkoutLogDayOrder"
                     >
-                      <i class="fa-solid fa-rotate-left"></i> Reset To Builder Order
+                      <i class="fa-solid fa-rotate-left"></i> Reset Order
                     </button>
                     <button
                       type="button"
-                      class="wl-btn-start"
+                      class="wl-order-toolbar-btn wl-order-toolbar-btn--save"
                       :disabled="dayOrderSaving || dayOrderLoading || !dayOrderDirty"
                       @click="saveWorkoutLogDayOrder"
                     >
                       <i v-if="dayOrderSaving" class="fa-solid fa-spinner fa-spin"></i>
                       <i v-else class="fa-solid fa-floppy-disk"></i>
-                      Save Workout Log Order
+                      Save Order
                     </button>
                   </div>
                   <p v-if="currentDayOrderState?.error" class="wl-day-order-error">
@@ -1092,7 +1240,7 @@ onMounted(async () => {
                         :disabled="!currentDayOrderState?.useCustomWorkoutLogOrder || dayOrderSaving || groups.findIndex((g) => g === group.name) === 0"
                         @click="moveGroupUp(group.name)"
                       >
-                        Move Up
+                        <i class="fa-solid fa-arrow-up"></i> Move Up
                       </button>
                       <button
                         type="button"
@@ -1100,7 +1248,7 @@ onMounted(async () => {
                         :disabled="!currentDayOrderState?.useCustomWorkoutLogOrder || dayOrderSaving || groups.findIndex((g) => g === group.name) === groups.length - 1"
                         @click="moveGroupDown(group.name)"
                       >
-                        Move Down
+                        <i class="fa-solid fa-arrow-down"></i> Move Down
                       </button>
                     </div>
                   </div>
@@ -1144,6 +1292,13 @@ onMounted(async () => {
               </div>
             </div>
           </div>
+        </div>
+
+        <div
+          v-if="workoutLists.length > 1 && !expandedPlanId"
+          class="wl-plan-picker-hint"
+        >
+          Select a workout plan to view its days.
         </div>
       </div>
 
@@ -1503,53 +1658,122 @@ onMounted(async () => {
 
 .wl-day-order-toolbar {
   grid-column: 1 / -1;
-  display: grid;
-  gap: 10px;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: center;
-  padding: 12px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
 }
 
 .wl-day-order-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 700;
+  gap: 7px;
+  font-weight: 600;
+  font-size: 0.79rem;
   color: #1e293b;
+}
+
+.wl-day-order-toggle input {
+  width: 14px;
+  height: 14px;
 }
 
 .wl-custom-order-badge {
   display: inline-flex;
   width: fit-content;
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 999px;
   background: #dcfce7;
   color: #166534;
-  font-size: 0.75rem;
+  font-size: 0.69rem;
   font-weight: 700;
   border: 1px solid #86efac;
 }
 
 .wl-day-order-actions {
-  display: flex;
+  display: inline-flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
+.wl-order-toolbar-btn {
+  border-radius: 8px;
+  padding: 5px 10px;
+  min-height: 30px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+  transition: background 0.14s, border-color 0.14s, color 0.14s, box-shadow 0.14s;
+}
+
+.wl-order-toolbar-btn--reset {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+}
+
+.wl-order-toolbar-btn--reset i {
+  color: #64748b;
+}
+
+.wl-order-toolbar-btn--reset:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.wl-order-toolbar-btn--save {
+  background: #16a34a;
+  border: 1px solid #15803d;
+  color: #fff;
+}
+
+.wl-order-toolbar-btn--save:hover {
+  background: #15803d;
+}
+
+.wl-order-toolbar-btn:disabled {
+  opacity: 0.56;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .wl-day-order-error {
-  margin: 0;
+  margin: 0 0 0 2px;
   color: #b91c1c;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
 .wl-order-btn {
-  border: 1px solid #cbd5e1;
+  border: 1px solid #d5dde7;
   background: #f8fafc;
-  color: #1e293b;
-  border-radius: 8px;
-  padding: 4px 8px;
-  font-size: 0.75rem;
+  color: #475569;
+  border-radius: 6px;
+  padding: 2px 7px;
+  min-height: 24px;
+  font-size: 0.68rem;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1;
+  transition: background 0.14s, border-color 0.14s, color 0.14s;
+}
+
+.wl-order-btn i {
+  color: #64748b;
+  font-size: 0.62rem;
+}
+
+.wl-order-btn:hover {
+  background: #f1f5f9;
+  border-color: #b7c3d4;
 }
 
 .wl-order-btn:disabled {
@@ -1641,6 +1865,17 @@ onMounted(async () => {
 /* ── Accordion ──────────────────────────────────────────────────────────── */
 .wl-accordion { display: grid; gap: 10px; }
 
+.wl-plan-picker-hint {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 .wl-plan {
   border: 1px solid var(--border-color, #e5e7eb);
   border-radius: 14px; background: #fff;
@@ -1723,6 +1958,7 @@ onMounted(async () => {
 .wl-day-card__meta {
   display: flex; gap: 12px; flex-wrap: wrap;
   color: var(--text-color-secondary, #6b7280); font-size: 0.8rem;
+  align-items: center;
 }
 .wl-day-card__meta span { display: flex; align-items: center; gap: 4px; }
 .wl-day-card__meta i    { color: #3b82f6; }
@@ -2235,6 +2471,28 @@ onMounted(async () => {
   .wl-day-card          { padding: 12px; gap: 8px; }
   .wl-day-card__title h4 { font-size: 0.9rem; }
   .wl-day-card__meta    { font-size: 0.74rem; gap: 8px; }
+  .wl-day-order-toolbar {
+    display: flex;
+    width: 100%;
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+  .wl-day-order-actions {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .wl-order-toolbar-btn {
+    min-height: 30px;
+    padding: 5px 9px;
+    font-size: 0.73rem;
+  }
+  .wl-order-btn {
+    padding: 2px 6px;
+    min-height: 22px;
+    font-size: 0.66rem;
+  }
   .wl-day-card__ex-row  { font-size: 0.78rem; }
 
   /* §3 Global font reduction — secondary labels */
@@ -2328,6 +2586,15 @@ onMounted(async () => {
 
   /* Day cards */
   .wl-day-card { padding: 10px; }
+
+  .wl-day-order-toolbar {
+    padding: 7px 8px;
+  }
+  .wl-order-toolbar-btn {
+    font-size: 0.7rem;
+    min-height: 29px;
+    padding: 5px 8px;
+  }
 
   /* History edit buttons smaller */
   .wl-hist-edit-btn, .wl-hist-save-btn, .wl-hist-cancel-btn, .wl-hist-delete-btn {
