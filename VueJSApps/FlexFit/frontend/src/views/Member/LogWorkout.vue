@@ -32,8 +32,11 @@ const historySaveError        = ref('');
 
 /* ─── Plan list state ────────────────────────────────────────────────────── */
 const loading       = ref(false);
-const error         = ref('');
+const plansLoaded   = ref(false);
+const plansLoadError = ref('');
+const plansLoadRequested = ref(false);
 const workoutLists  = ref([]);
+const didAutoExpandSinglePlan = ref(false);
 
 /* ─── Accordion / selected plan state ───────────────────────────────────── */
 const expandedPlanId    = ref(null);   // accordion open state
@@ -109,6 +112,10 @@ const summaryStats = computed(() => {
     averageDuration: Math.round(totalDuration / workoutLists.value.length),
   };
 });
+const hasWorkoutPlans = computed(() => plansLoaded.value && Array.isArray(workoutLists.value) && workoutLists.value.length > 0);
+const shouldShowPlanLoadError = computed(() =>
+  plansLoaded.value && plansLoadRequested.value && !loading.value && Boolean(plansLoadError.value)
+);
 /* ─── Workout History grouped view ──────────────────────────────────────────── */
 const scheduleMode = computed(() => expandedPlanData.value?.scheduleMode || 'day');
 
@@ -427,6 +434,27 @@ const dayExercises = computed(() =>
   ),
 );
 
+watch(
+  [() => groups.value, expandedPlanId, expandedLoading, plansLoaded],
+  ([nextGroups, nextExpandedPlanId, nextExpandedLoading, nextPlansLoaded]) => {
+    if (!nextPlansLoaded || nextExpandedLoading) {
+      return;
+    }
+
+    const normalizedGroups = Array.isArray(nextGroups) ? nextGroups : [];
+    const hasSelectedDay = Boolean(String(selectedDay.value || '').trim());
+    const selectedDayStillExists = normalizedGroups.includes(selectedDay.value);
+
+    if (!nextExpandedPlanId || (hasSelectedDay && !selectedDayStillExists)) {
+      selectedDay.value = '';
+      if (activeTab.value === 'dayDetails') {
+        activeTab.value = 'overview';
+      }
+    }
+  },
+  { deep: false }
+);
+
 // Auto-open first incomplete exercise whenever the day exercise list is populated/rebuilt
 watch(
   () => dayExercises.value,
@@ -623,27 +651,41 @@ const updateSet = (exerciseId, setIndex, field, value) => {
 /* ─── Load plan list ─────────────────────────────────────────────────────── */
 const loadWorkoutLists = async () => {
   loading.value = true;
-  error.value   = '';
+  plansLoadRequested.value = true;
+  plansLoadError.value = '';
+  plansLoaded.value = false;
   try {
     const res  = await fetch(`${API_BASE}/api/workout-planner`, { credentials: 'include' });
     if (!res.ok) throw new Error('Failed to load workout plans.');
     const data = await res.json();
     workoutLists.value = (Array.isArray(data?.workoutLists) ? data.workoutLists : [])
       .map((plan) => ({ ...plan, updatedAtLabel: formatUpdatedAt(plan.updatedAt) }));
+
+    if (workoutLists.value.length !== 1) {
+      didAutoExpandSinglePlan.value = false;
+    }
+
+    plansLoaded.value = true;
+    await autoExpandSinglePlanIfNeeded();
   } catch (err) {
-    error.value = err?.message || 'Failed to load workout plans.';
+    plansLoadError.value = err?.message || 'Failed to load workout plans.';
     workoutLists.value = [];
+    plansLoaded.value = true;
   } finally {
     loading.value = false;
   }
 };
 
 const autoExpandSinglePlanIfNeeded = async () => {
+  if (!plansLoaded.value || loading.value || plansLoadError.value) {
+    return;
+  }
+
   if (workoutLists.value.length !== 1) {
     return;
   }
 
-  if (expandedPlanId.value) {
+  if (expandedPlanId.value || didAutoExpandSinglePlan.value) {
     return;
   }
 
@@ -653,6 +695,7 @@ const autoExpandSinglePlanIfNeeded = async () => {
   }
 
   await togglePlan(onlyPlanId);
+  didAutoExpandSinglePlan.value = true;
 };
 
 /* ─── Accordion: expand a plan (load full detail) ───────────────────────── */
@@ -1012,7 +1055,6 @@ const saveHistoryWorkout = async (session) => {
 /* ─── Lifecycle ──────────────────────────────────────────────────────────── */
 onMounted(async () => {
   await loadWorkoutLists();
-  await autoExpandSinglePlanIfNeeded();
   await checkActiveSession();
 });
 </script>
@@ -1093,9 +1135,9 @@ onMounted(async () => {
         </button>
         <button
           type="button" role="tab"
-          :class="['wl-tab', activeTab === 'dayDetails' ? 'wl-tab--active' : '', !selectedDay ? 'wl-tab--disabled' : '']"
-          :disabled="!selectedDay"
-          @click="selectedDay && (activeTab = 'dayDetails')"
+          :class="['wl-tab', activeTab === 'dayDetails' ? 'wl-tab--active' : '', (!selectedDay || !hasWorkoutPlans) ? 'wl-tab--disabled' : '']"
+          :disabled="!selectedDay || !hasWorkoutPlans"
+          @click="selectedDay && hasWorkoutPlans && (activeTab = 'dayDetails')"
         >
           <i class="fa-solid fa-dumbbell"></i> Day Details
           <span v-if="selectedDay" class="wl-tab-badge">{{ selectedDay }}</span>
@@ -1113,11 +1155,11 @@ onMounted(async () => {
       <div v-show="activeTab === 'overview'" class="wl-tab-panel">
 
         <!-- Loading -->
-        <div v-if="loading" class="wl-empty"><p>Loading workout plans…</p></div>
+        <div v-if="loading || !plansLoaded" class="wl-empty"><p>Loading workout plans...</p></div>
 
         <!-- Error -->
-        <div v-else-if="error" class="wl-empty">
-          <p>{{ error }}</p>
+        <div v-else-if="shouldShowPlanLoadError" class="wl-empty">
+          <p>{{ plansLoadError }}</p>
           <button type="button" class="wl-btn" @click="loadWorkoutLists">Retry</button>
         </div>
 

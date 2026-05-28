@@ -1,5 +1,50 @@
 # Changelog
 
+## [0.82.42] - 2026-05-27 - SQL Architecture Cleanup & Migration Organization
+
+- Refactored entire `backend/migrations/` folder into a categorized subfolder structure for maintainability and multi-developer safety.
+- Created new migration subfolders:
+  - `migrations/core/` – core user/auth schema changes
+  - `migrations/workout/` – workout logging, sessions, planner
+  - `migrations/nutrition/` – nutrition tracking (future)
+  - `migrations/security/` – ownership, RBAC, access control
+  - `migrations/dashboard/` – dashboard metrics, notifications, stats
+  - `migrations/ai/` – AI feature migrations (v0.85+)
+  - `migrations/archive/` – one-off backfills and deprecated patches
+- Moved all workout migrations (001–005) to `migrations/workout/` with date-prefixed filenames (`20260527_*`):
+  - `20260527_workout_sessions.sql`
+  - `20260527_workout_log_sets_cardio_fields.sql`
+  - `20260527_workout_log_day_ordering.sql`
+  - `20260527_workout_history_index.sql`
+  - `20260527_workout_planner_ordering_columns.sql`
+- Moved exercise ownership migration (006) to `migrations/security/` as `20260527_exercise_ownership.sql`.
+- Moved dashboard/stats SQL from `backend/sql/` to `migrations/dashboard/`:
+  - `20260527_dashboard_metrics.sql`
+  - `20260527_dashboard_metric_queries.sql`
+  - `20260527_progress_stats.sql`
+  - `20260527_notifications_schema.sql`
+- Archived one-off and legacy scripts to `migrations/archive/`:
+  - `add_user_avatar_columns.sql`
+  - `0.82.22a_session_store.sql`
+  - `roles_rbac_backfill_0752.sql`
+  - `users_password_reset_columns.sql`
+- Created `backend/schema/` with canonical schema files:
+  - `exercises_schema.sql` (moved from `sql/`)
+  - `workout_schedule_schema.sql` (moved from `sql/`)
+  - `base_schema.sql` (new – full baseline for fresh installs)
+  - `seed_data.sql` (new – role seeds and lookup value bootstrap)
+  - `demo_accounts.sql` (new – dev/staging demo users)
+  - `lookup_tables.sql` (new – reference table definitions)
+- Created `backend/scripts/` with automation scripts:
+  - `migration_runner.js` – detects and applies unapplied migrations in category order, tracks applied versions in `schema_migrations` table, supports `--dry-run` and `--category` flags.
+  - `schema_verify.js` – validates required tables and columns exist in the live DB; exits non-zero on failure.
+  - `backup_db.js` – placeholder mysqldump automation script for pre-migration backups.
+- Created `backend/migrations/CURRENT_SCHEMA_VERSION.md` documenting current schema version, applied systems, folder map, and known dependencies.
+- Renamed migration files from numeric prefix (`001_`, `002_`) to date-based prefix (`YYYYMMDD_`) to prevent merge conflicts and ordering collisions in multi-developer environments.
+- No active DB tables renamed, no APIs modified, no existing backend references broken.
+
+---
+
 ## [0.82.33] - 2026-05-27 - Workout Day Ordering System
 
 - Fixed Workout Builder day insertion behavior so new workout days always append to the bottom of the day list.

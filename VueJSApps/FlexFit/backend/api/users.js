@@ -45,6 +45,78 @@ const buildPlanId = () => {
   return `plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 };
 
+const workoutPlannerSchemaState = {
+  checked: false,
+  hasUseCustomWorkoutLogOrder: false,
+  hasWorkoutLogDisplayOrder: false,
+};
+
+const refreshWorkoutPlannerSchemaState = async (db = pool) => {
+  const [columnRows] = await db.query(
+    `SELECT table_name, column_name
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND (
+         (table_name = 'workout_schedules' AND column_name = 'use_custom_workout_log_order')
+         OR
+         (table_name = 'workout_schedule_groups' AND column_name = 'workout_log_display_order')
+       )`
+  );
+
+  workoutPlannerSchemaState.checked = true;
+  workoutPlannerSchemaState.hasUseCustomWorkoutLogOrder = columnRows.some(
+    (row) => row?.table_name === 'workout_schedules' && row?.column_name === 'use_custom_workout_log_order'
+  );
+  workoutPlannerSchemaState.hasWorkoutLogDisplayOrder = columnRows.some(
+    (row) => row?.table_name === 'workout_schedule_groups' && row?.column_name === 'workout_log_display_order'
+  );
+
+  return { ...workoutPlannerSchemaState };
+};
+
+const getWorkoutPlannerSchemaState = async (db = pool, options = {}) => {
+  const forceRefresh = Boolean(options?.forceRefresh);
+  if (forceRefresh || !workoutPlannerSchemaState.checked) {
+    return refreshWorkoutPlannerSchemaState(db);
+  }
+  return { ...workoutPlannerSchemaState };
+};
+
+const ensureWorkoutPlannerOrderingColumns = async (db = pool) => {
+  let schemaState = await getWorkoutPlannerSchemaState(db);
+
+  const alterations = [];
+  if (!schemaState.hasUseCustomWorkoutLogOrder) {
+    alterations.push(
+      `ALTER TABLE workout_schedules
+       ADD COLUMN use_custom_workout_log_order TINYINT(1) NOT NULL DEFAULT 0 AFTER schedule_mode`
+    );
+  }
+  if (!schemaState.hasWorkoutLogDisplayOrder) {
+    alterations.push(
+      `ALTER TABLE workout_schedule_groups
+       ADD COLUMN workout_log_display_order INT(11) NULL DEFAULT NULL AFTER sort_order`
+    );
+  }
+
+  for (const statement of alterations) {
+    try {
+      await db.query(statement);
+      console.log('✅ Applied workout planner ordering schema patch.');
+    } catch (err) {
+      if (err?.code !== 'ER_DUP_FIELDNAME') {
+        console.error('⚠️ Unable to auto-apply workout planner ordering schema patch:', err?.message || err);
+      }
+    }
+  }
+
+  if (alterations.length > 0) {
+    schemaState = await getWorkoutPlannerSchemaState(db, { forceRefresh: true });
+  }
+
+  return schemaState;
+};
+
 const extractWorkoutPlans = (settings) => {
   const planner = settings?.workoutPlanner || {};
   const plans = Array.isArray(planner?.plans) ? planner.plans.filter(Boolean) : [];
@@ -368,6 +440,8 @@ const hasSavedExercisesForUser = async (userId) => {
 };
 
 const buildPlannerFromSchedule = async (scheduleId, userId) => {
+  const schemaState = await getWorkoutPlannerSchemaState();
+
   const [scheduleRows] = await pool.query(
     `SELECT *
      FROM workout_schedules
@@ -382,8 +456,12 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
 
   const schedule = scheduleRows[0];
 
+  const groupSelectFields = schemaState.hasWorkoutLogDisplayOrder
+    ? 'id, label, group_type, sort_order, workout_log_display_order'
+    : 'id, label, group_type, sort_order, NULL AS workout_log_display_order';
+
   const [groupRows] = await pool.query(
-    `SELECT id, label, group_type, sort_order, workout_log_display_order
+    `SELECT ${groupSelectFields}
      FROM workout_schedule_groups
      WHERE workout_schedule_id = ?
      ORDER BY sort_order ASC, id ASC`,
@@ -424,8 +502,9 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
 
   const scheduleMode = String(schedule.schedule_mode || 'day').trim() === 'week' ? 'week' : 'day';
 
-  const dayGroupRows = groupRows.filter((g) => ['day', 'any', 'section'].includes(String(g.group_type || '').trim()));
-  const weekGroupRows = groupRows.filter((g) => String(g.group_type || '').trim() === 'week');
+  const normalizedGroupRows = Array.isArray(groupRows) ? groupRows : [];
+  const dayGroupRows = normalizedGroupRows.filter((g) => ['day', 'any', 'section'].includes(String(g?.group_type || '').trim()));
+  const weekGroupRows = normalizedGroupRows.filter((g) => String(g?.group_type || '').trim() === 'week');
 
   const dayGroups = dayGroupRows
     .map((g) => String(g.label || '').trim())
@@ -452,7 +531,8 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
     ? (weekGroups[0] || 'Week 1')
     : (dayGroups[0] || 'Any Day');
 
-  const exercises = exerciseRows.map((row) => ({
+  const normalizedExerciseRows = Array.isArray(exerciseRows) ? exerciseRows : [];
+  const exercises = normalizedExerciseRows.map((row) => ({
     id: `wse-${row.id}`,
     exerciseId: Number(row.exercise_id || 0),
     name: String(row.exercise_name || row.ExerciseTitle || '').trim(),
@@ -474,7 +554,9 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
     version: 2,
     planId: String(schedule.id),
     scheduleMode,
-    useCustomWorkoutLogOrder: Number(schedule.use_custom_workout_log_order || 0) === 1,
+    useCustomWorkoutLogOrder: schemaState.hasUseCustomWorkoutLogOrder
+      ? Number(schedule.use_custom_workout_log_order || 0) === 1
+      : false,
     dayGroups: dayGroups.length ? dayGroups : ['Any Day'],
     weekGroups: weekGroups.length ? weekGroups : ['Week 1'],
     dayGroupOrders: dayGroupOrders.length ? dayGroupOrders : [{ label: 'Any Day', sortOrder: 1 }],
@@ -493,6 +575,8 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
 };
 
 const replaceScheduleGroupsAndExercises = async (connection, scheduleId, planner) => {
+  const schemaState = await getWorkoutPlannerSchemaState(connection);
+
   const mode = planner?.scheduleMode === 'week' ? 'week' : 'day';
   const inputDayGroups = Array.isArray(planner?.dayGroups) ? planner.dayGroups : [];
   const inputWeekGroups = Array.isArray(planner?.weekGroups) ? planner.weekGroups : [];
@@ -529,18 +613,24 @@ const replaceScheduleGroupsAndExercises = async (connection, scheduleId, planner
       }))
       .sort((a, b) => a.sortOrder - b.sortOrder);
 
-  const [[scheduleRow]] = await connection.query(
-    `SELECT use_custom_workout_log_order
-     FROM workout_schedules
-     WHERE id = ?
-     LIMIT 1`,
-    [scheduleId]
-  );
+  let scheduleRow = null;
+  if (schemaState.hasUseCustomWorkoutLogOrder) {
+    const [rows] = await connection.query(
+      `SELECT use_custom_workout_log_order
+       FROM workout_schedules
+       WHERE id = ?
+       LIMIT 1`,
+      [scheduleId]
+    );
+    scheduleRow = rows?.[0] || null;
+  }
 
-  const preserveCustomWorkoutLogOrder = Number(scheduleRow?.use_custom_workout_log_order || 0) === 1;
+  const preserveCustomWorkoutLogOrder = schemaState.hasUseCustomWorkoutLogOrder
+    ? Number(scheduleRow?.use_custom_workout_log_order || 0) === 1
+    : false;
   const existingWorkoutLogOrderByLabel = new Map();
 
-  if (preserveCustomWorkoutLogOrder) {
+  if (preserveCustomWorkoutLogOrder && schemaState.hasWorkoutLogDisplayOrder) {
     const [existingGroupRows] = await connection.query(
       `SELECT label, workout_log_display_order
        FROM workout_schedule_groups
@@ -569,18 +659,33 @@ const replaceScheduleGroupsAndExercises = async (connection, scheduleId, planner
       ? (existingWorkoutLogOrderByLabel.get(normalizedLabel) ?? null)
       : null;
 
-    const [insertGroup] = await connection.query(
-      `INSERT INTO workout_schedule_groups
-        (workout_schedule_id, label, group_type, sort_order, workout_log_display_order)
-       VALUES (?, ?, ?, ?, ?)`,
-      [
-        scheduleId,
-        groupEntry.label,
-        groupEntry.groupType,
-        groupEntry.sortOrder,
-        preservedWorkoutLogDisplayOrder,
-      ]
-    );
+    let insertGroup;
+    if (schemaState.hasWorkoutLogDisplayOrder) {
+      [insertGroup] = await connection.query(
+        `INSERT INTO workout_schedule_groups
+          (workout_schedule_id, label, group_type, sort_order, workout_log_display_order)
+         VALUES (?, ?, ?, ?, ?)`,
+        [
+          scheduleId,
+          groupEntry.label,
+          groupEntry.groupType,
+          groupEntry.sortOrder,
+          preservedWorkoutLogDisplayOrder,
+        ]
+      );
+    } else {
+      [insertGroup] = await connection.query(
+        `INSERT INTO workout_schedule_groups
+          (workout_schedule_id, label, group_type, sort_order)
+         VALUES (?, ?, ?, ?)`,
+        [
+          scheduleId,
+          groupEntry.label,
+          groupEntry.groupType,
+          groupEntry.sortOrder,
+        ]
+      );
+    }
     groupIdByLabel.set(groupEntry.label, insertGroup.insertId);
   }
 
@@ -1068,11 +1173,24 @@ router.get('/workout-planner', async (req, res) => {
       return res.status(401).json({ error: 'User not logged in' });
     }
 
-    const workoutLists = await loadSchedulesForUser(userId);
-    const requestedPlanId = Number(req.query?.planId || 0);
-    const fallbackPlanId = workoutLists.length ? Number(workoutLists[0].planId) : 0;
-    const selectedId = requestedPlanId || fallbackPlanId;
-    const planner = selectedId ? await buildPlannerFromSchedule(selectedId, userId) : null;
+    await ensureWorkoutPlannerOrderingColumns();
+
+    let workoutLists = [];
+    let planner = null;
+    try {
+      workoutLists = await loadSchedulesForUser(userId);
+      const requestedPlanId = Number(req.query?.planId || 0);
+      const fallbackPlanId = workoutLists.length ? Number(workoutLists[0].planId) : 0;
+      const selectedId = requestedPlanId || fallbackPlanId;
+      planner = selectedId ? await buildPlannerFromSchedule(selectedId, userId) : null;
+    } catch (processingError) {
+      console.error('Workout planner processing failed:', processingError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to process workout planner data',
+        error: process.env.NODE_ENV === 'development' ? (processingError?.message || 'Unknown error') : undefined,
+      });
+    }
 
     return res.json({
       planner: planner || normalizePlannerPayload({}),
@@ -1082,7 +1200,11 @@ router.get('/workout-planner', async (req, res) => {
     });
   } catch (err) {
     console.error('❌ Failed to load workout planner:', err);
-    return res.status(500).json({ error: 'Failed to load workout planner' });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to load workout planner',
+      error: process.env.NODE_ENV === 'development' ? (err?.message || 'Unknown error') : undefined,
+    });
   }
 });
 
@@ -1104,6 +1226,7 @@ router.put('/workout-planner', async (req, res) => {
     const planId = Number(normalizedPlanner?.planId || 0);
 
     await connection.beginTransaction();
+    await ensureWorkoutPlannerOrderingColumns(connection);
 
     let scheduleId = planId;
     if (scheduleId) {

@@ -1,0 +1,18 @@
+-- =============================================================================
+-- FlexFit – Demo Accounts
+-- File: backend/schema/demo_accounts.sql
+-- Purpose: Development and staging demo user accounts.
+--          DO NOT run in production.
+--
+-- Notes:
+--   - All passwords are bcrypt hashes of safe demo credentials.
+--   - Uses INSERT IGNORE to avoid duplicate seeding.
+-- =============================================================================
+
+-- ---------------------------------------------------------------------------
+-- Placeholder: Add demo user INSERT statements here.
+-- Example (replace hash with actual bcrypt):
+--
+-- INSERT IGNORE INTO users (email, password_hash, first_name, last_name, created_at)
+-- VALUES ('demo@flexfit.dev', '<bcrypt_hash>', 'Demo', 'User', NOW());
+-- ---------------------------------------------------------------------------

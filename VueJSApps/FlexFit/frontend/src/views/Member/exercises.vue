@@ -4,6 +4,7 @@
    import DateDropDown from "@/components/DropDownDate.vue"; // not template folder
   import { API_BASE } from '@/config/env';
   import { DEFAULT_EXERCISE_IMAGE, getExerciseImage, getExerciseImageFromGallery } from '@/utils/exerciseImage';
+  import { useExerciseFiltering } from '@/composable/exerciseFilters';
    import '@fortawesome/fontawesome-free/css/all.min.css';
    
    // ---- VARIABLES ----
@@ -23,6 +24,15 @@
   const favoriteExercises = ref([]);
   const loadingFavorites = ref(false);
   const favoritesLoadError = ref("");
+  const myCustomExercises = ref([]);
+  const customExercisesLoadError = ref('');
+  const currentUserRole = ref('');
+  const logSearchExercise = ref('');
+  const logWorkoutTypeFilter = ref('All');
+  const logMuscleGroupFilter = ref('All');
+  const logEquipmentFilter = ref('All');
+  const logOwnershipFilter = ref('all');
+  const logSuggestionIndex = ref(-1);
    
    
    
@@ -43,48 +53,49 @@
      WorkoutType: '',
      RecordingType: '',
      Instructions: '',
-     ImageGallery: '[]'
+    ImageGallery: '[]',
+    CreateAsGlobalExercise: false,
+    CanDelete: 0,
+    CanEdit: 0,
    });
 
    // Error and success state for edit form
    const updateError = ref('');
    const updateSuccess = ref('');
    const isSaving = ref(false);
+  const isAdminUser = computed(() => {
+    const normalized = String(currentUserRole.value || '').trim().toLowerCase();
+    return normalized === 'admin' || normalized === 'administrator';
+  });
    
    // ---- FILTER EXERCISES ----
-   const filteredExercises = computed(() => {
-  let list = allExercises.value;
+   const searchFilters = computed(() => ({
+    search: searchExercise.value,
+    workoutType: workoutType.value,
+    muscleGroup: selectedMuscleGroup.value,
+    equipment: selectedEquipment.value,
+    ownership: 'all',
+   }));
 
-  if (workoutType.value !== "All") {
-    list = list.filter(ex => ex.WorkoutType?.toLowerCase() === workoutType.value.toLowerCase());
-  }
+   const logFilters = computed(() => ({
+    search: logSearchExercise.value,
+    workoutType: logWorkoutTypeFilter.value,
+    muscleGroup: logMuscleGroupFilter.value,
+    equipment: logEquipmentFilter.value,
+    ownership: logOwnershipFilter.value,
+   }));
 
-  if (selectedMuscleGroup.value !== "All") {
-    list = list.filter(ex => ex.MuscleGroup === selectedMuscleGroup.value);
-  }
+   const filteredExercises = useExerciseFiltering({
+    rowsRef: allExercises,
+    filtersRef: searchFilters,
+   });
 
-  if (selectedEquipment.value !== "All") {
-    list = list.filter(ex => ex.Equipment === selectedEquipment.value);
-  }
+   const filteredLogExercises = useExerciseFiltering({
+    rowsRef: allExercises,
+    filtersRef: logFilters,
+   });
 
-
-  if (searchExercise.value) {
-    const term = searchExercise.value.toLowerCase();
-    list = list.filter(ex => {
-      const title = ex.ExerciseTitle ? ex.ExerciseTitle.toLowerCase() : '';
-      const muscle = ex.MuscleGroup ? ex.MuscleGroup.toLowerCase() : '';
-      const equip = ex.Equipment ? ex.Equipment.toLowerCase() : '';
-      // Partial match anywhere in the string (not just start)
-      return (
-        title.includes(term) ||
-        muscle.includes(term) ||
-        equip.includes(term)
-      );
-    });
-  }
-
-  return list;
-});
+   const logExerciseMatches = computed(() => filteredLogExercises.value.slice(0, 8));
 
    
    // ---- GET MUSCLE GROUPS + EQUIPMENT ----
@@ -421,6 +432,38 @@ const loadExercisesLibrary = async () => {
   }
 };
 
+const loadCurrentSessionRole = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/api/session`, { credentials: 'include' });
+    if (!res.ok) {
+      currentUserRole.value = '';
+      return;
+    }
+
+    const data = await res.json();
+    currentUserRole.value = String(data?.user?.role || data?.user?.roleSlug || '').trim();
+  } catch (err) {
+    console.error('Failed to resolve session role:', err);
+    currentUserRole.value = '';
+  }
+};
+
+const loadMyCustomExercises = async () => {
+  customExercisesLoadError.value = '';
+  try {
+    const res = await fetch(`${API_BASE}/api/exercises/my`, { credentials: 'include' });
+    if (!res.ok) {
+      throw new Error(`Failed to load custom exercises (${res.status})`);
+    }
+    const data = await res.json();
+    myCustomExercises.value = Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error('Failed to load custom exercises:', err);
+    myCustomExercises.value = [];
+    customExercisesLoadError.value = 'Could not load your custom exercises right now.';
+  }
+};
+
 const isFavoriteExercise = (exerciseId) => {
   return favoriteExerciseIds.value.has(Number(exerciseId));
 };
@@ -500,8 +543,11 @@ const loadFavoriteExercises = async () => {
 
 //Async function to pass data from front end to backend
 onMounted(async () => {
+  await loadCurrentSessionRole();
+
   //Get All exercises
   await loadExercisesLibrary();
+  await loadMyCustomExercises();
 
   //Get user ID
   try {
@@ -539,6 +585,11 @@ watch(existingLogs, () => {
 watch(exerciseView, async () => {
   currentPage.value = 1;
   await loadExercisesLibrary();
+  await loadMyCustomExercises();
+});
+
+watch(logSearchExercise, () => {
+  logSuggestionIndex.value = -1;
 });
 
 // Trigger favorites load whenever the favorites tab becomes active
@@ -612,6 +663,36 @@ function autoSwitchTabToLogOrLibrary() {
      activeTab.value = "log-exercise";
      scrollToLogWorkout();
    };
+
+  const selectExerciseForLog = (ex) => {
+    if (!ex) return;
+    selectedExercise.value = ex.ExerciseTitle;
+    logSearchExercise.value = ex.ExerciseTitle;
+    logSuggestionIndex.value = -1;
+    scrollToLogWorkout();
+  };
+
+  const onLogSearchKeydown = (event) => {
+    const list = logExerciseMatches.value;
+    if (!list.length) return;
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      logSuggestionIndex.value = Math.min(logSuggestionIndex.value + 1, list.length - 1);
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      logSuggestionIndex.value = Math.max(logSuggestionIndex.value - 1, 0);
+      return;
+    }
+
+    if (event.key === 'Enter' && logSuggestionIndex.value >= 0) {
+      event.preventDefault();
+      selectExerciseForLog(list[logSuggestionIndex.value]);
+    }
+  };
    
    const scrollToLogWorkout = () => {
      const logWorkoutEl = document.getElementById('log-workout-form');
@@ -648,7 +729,12 @@ const selectedImage = computed(() => {
    };
    
    const startEditing = (exercise) => {
+       if (Number(exercise?.CanEdit || 0) !== 1 && !isAdminUser.value) {
+         alert('You are not allowed to edit this exercise.');
+         return;
+       }
      Object.assign(editExercise, exercise);
+       editExercise.CreateAsGlobalExercise = Number(exercise?.IsGlobalExercise || 0) === 1;
      showEditForm.value = true;
      scrollToEditForm(); // optional
    };
@@ -737,6 +823,7 @@ const selectedImage = computed(() => {
        
        // Refresh exercise list
        await loadExercisesLibrary();
+      await loadMyCustomExercises();
        
        // Clear form after short delay to show success message
        setTimeout(() => {
@@ -867,7 +954,8 @@ const newExercise = reactive({
   Equipment: '',
   MuscleGroup: '',
   Instructions: '',
-  ImageGallery: '[]'
+  ImageGallery: '[]',
+  CreateAsGlobalExercise: false,
 });
 
 const showAddForm = ref(false); // Toggle form visibility
@@ -894,6 +982,7 @@ const AddWorkout = async () => {
     if (!res.ok) throw new Error(result.error || 'Failed to add exercise');
     // Refresh the list
     await loadExercisesLibrary();
+    await loadMyCustomExercises();
     alert('âœ… New exercise added!');
     showAddForm.value = false;
     // Reset form and images
@@ -904,7 +993,8 @@ const AddWorkout = async () => {
       Equipment: '',
       MuscleGroup: '',
       Instructions: '',
-      ImageGallery: '[]'
+      ImageGallery: '[]',
+      CreateAsGlobalExercise: false,
     });
     selectedImages.value = [];
     imagePreviews.value = [];
@@ -1032,6 +1122,10 @@ const deleteExercise = async (exercise) => {
     alert('No ExerciseID found.');
     return;
   }
+  if (Number(exercise?.CanDelete || 0) !== 1 && !isAdminUser.value) {
+    alert('You are not allowed to delete this exercise.');
+    return;
+  }
   if (!confirm('Are you sure you want to delete this exercise? This cannot be undone.')) return;
   try {
     const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/delete-exercise/${exercise.ExerciseID}`,
@@ -1042,6 +1136,7 @@ const deleteExercise = async (exercise) => {
     if (!res.ok) throw new Error('Failed to delete exercise');
     // Refresh exercise list
     await loadExercisesLibrary();
+    await loadMyCustomExercises();
     alert('âœ… Exercise deleted!');
     showEditForm.value = false;
   } catch (err) {
@@ -1056,6 +1151,12 @@ const clearFilters = () => {
   selectedMuscleGroup.value = 'All';
   selectedEquipment.value = 'All';
   searchExercise.value = '';
+  logSearchExercise.value = '';
+  logWorkoutTypeFilter.value = 'All';
+  logMuscleGroupFilter.value = 'All';
+  logEquipmentFilter.value = 'All';
+  logOwnershipFilter.value = 'all';
+  logSuggestionIndex.value = -1;
   currentPage.value = 1;
   // reset any derived pagination/display state if you need:
   displayLimit.value = 3;
@@ -1271,6 +1372,12 @@ const clearFilters = () => {
                                   <label class="form-label">Instructions</label>
                                   <textarea v-model="editExercise.Instructions" class="form-control instructions" rows="=3" />
                               </div>
+                              <div class="col-md-12" v-if="isAdminUser">
+                                <div class="form-check mt-2">
+                                  <input id="edit-global-toggle" v-model="editExercise.CreateAsGlobalExercise" class="form-check-input" type="checkbox" />
+                                  <label for="edit-global-toggle" class="form-check-label">Create as Global Exercise</label>
+                                </div>
+                              </div>
                               <!-- Cardio Fields 
                                   <div class="col-md-12">
                                     <hr><h4>Cardio</h4><hr>
@@ -1323,7 +1430,7 @@ const clearFilters = () => {
                                     <button class="btn btn-outline-secondary ms-2" @click="showEditForm = false" :disabled="isSaving">Cancel</button>
                                   </div>
                                   <div class="ms-auto">
-                                    <button class="btn btn-danger" @click="deleteExercise(editExercise)" style="background-color: #e53935; color: #fff; min-width: 140px;">Delete Exercise</button>
+                                    <button v-if="Number(editExercise.CanDelete || 0) === 1 || isAdminUser" class="btn btn-danger" @click="deleteExercise(editExercise)" style="background-color: #e53935; color: #fff; min-width: 140px;">Delete Exercise</button>
                                   </div>
                               </div>
 
@@ -1411,6 +1518,13 @@ const clearFilters = () => {
       <textarea v-model="newExercise.Instructions" class="form-control instructions" rows="3" />
     </div>
 
+    <div class="col-md-12" v-if="isAdminUser">
+      <div class="form-check mt-2">
+        <input id="add-global-toggle" v-model="newExercise.CreateAsGlobalExercise" class="form-check-input" type="checkbox" />
+        <label for="add-global-toggle" class="form-check-label">Create as Global Exercise</label>
+      </div>
+    </div>
+
     <div class="col-12 mt-3">
       <button class="btn btn-primary" @click="AddWorkout">Add Exercise</button>
       <button class="btn btn-outline-secondary ms-2" @click="showAddForm = false">Cancel</button>
@@ -1446,6 +1560,8 @@ const clearFilters = () => {
 
                                   <div class="exercise-meta">
                                     <p class="exercise-meta-inline">{{ ex.WorkoutType }}<span class="meta-dot"> • </span>{{ ex.MuscleGroup }}<span class="meta-dot"> • </span>{{ ex.Equipment }}</p>
+                                    <p class="exercise-meta-inline" v-if="Number(ex.IsGlobalExercise || 0) === 1">Global exercise</p>
+                                    <p class="exercise-meta-inline" v-else>Custom exercise</p>
                                   </div>
 
                                   <div class="exercise-actions">
@@ -1456,7 +1572,7 @@ const clearFilters = () => {
                                       <i v-if="isFavoriteExercise(ex.ExerciseID)" class="fa-solid fa-heart"></i>
                                       {{ isFavoriteExercise(ex.ExerciseID) ? 'Unfav' : 'Fav' }}
                                     </button>
-                                    <button class="btn btn-sm btn-outline-secondary" @click="startEditing(ex)">
+                                    <button v-if="Number(ex.CanEdit || 0) === 1 || isAdminUser" class="btn btn-sm btn-outline-secondary" @click="startEditing(ex)">
                                       Edit Exercise
                                     </button>
                                   </div>
@@ -1559,6 +1675,39 @@ const clearFilters = () => {
   <!-- Log Exercise Section -->
   <div v-if="activeTab === 'log-exercise'">
 
+  <div class="container container-block">
+    <div class="panel">
+      <div class="panel-header">
+        <h4>My Custom Exercises</h4>
+      </div>
+      <div class="panel-body">
+        <div v-if="customExercisesLoadError" class="alert alert-warning">{{ customExercisesLoadError }}</div>
+        <div v-else-if="myCustomExercises.length === 0" class="text-center py-4">
+          <p class="mb-2">No custom exercises created yet.</p>
+          <p class="text-muted mb-3">Create your first custom exercise to personalize your workouts.</p>
+          <button class="btn btn-success" @click="activeTab = 'search-exercises'; showAddForm = true">+ Create Exercise</button>
+        </div>
+        <div v-else class="exercise-list">
+          <div class="exercise-row" v-for="myEx in myCustomExercises" :key="`mine-${myEx.ExerciseID}`">
+            <div class="exercise-img">
+              <img :src="getFirstImage(myEx.ImageGallery)" class="clickable" @click="selectExerciseForLog(myEx)" />
+            </div>
+            <div class="exercise-info">
+              <h5 class="exercise-title">{{ myEx.ExerciseTitle }}</h5>
+              <div class="exercise-meta">
+                <p class="exercise-meta-inline">{{ myEx.WorkoutType }}<span class="meta-dot"> • </span>{{ myEx.MuscleGroup }}<span class="meta-dot"> • </span>{{ myEx.Equipment }}</p>
+              </div>
+              <div class="exercise-actions">
+                <button class="btn btn-sm btn-primary" @click="selectExerciseForLog(myEx)">Use in Log</button>
+                <button v-if="Number(myEx.CanEdit || 0) === 1 || isAdminUser" class="btn btn-sm btn-outline-secondary" @click="startEditing(myEx)">Edit Exercise</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 
   <!--Log Excerise container -->
   <div class="container container-block">
@@ -1571,6 +1720,67 @@ const clearFilters = () => {
 
             <div class="panel-header">
               <h4>Log Excerise</h4>
+            </div>
+
+            <div class="panel-body">
+              <div class="search-filter-grid">
+                <div class="search-filter-field full-width">
+                  <label class="form-label">Search Exercise For Log</label>
+                  <input
+                    v-model="logSearchExercise"
+                    class="form-control"
+                    placeholder="Search as you type"
+                    @keydown="onLogSearchKeydown"
+                  />
+                </div>
+                <div class="search-filter-field">
+                  <label class="form-label">Workout Type</label>
+                  <select v-model="logWorkoutTypeFilter" class="form-select">
+                    <option value="All">All</option>
+                    <option value="Strength">Strength</option>
+                    <option value="Cardio">Cardio</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="search-filter-field">
+                  <label class="form-label">Muscle Group</label>
+                  <select v-model="logMuscleGroupFilter" class="form-select">
+                    <option v-for="group in muscleGroups" :key="`log-group-${group}`" :value="group">{{ group }}</option>
+                  </select>
+                </div>
+                <div class="search-filter-field">
+                  <label class="form-label">Equipment</label>
+                  <select v-model="logEquipmentFilter" class="form-select">
+                    <option v-for="equip in equipmentList" :key="`log-equip-${equip}`" :value="equip">{{ equip }}</option>
+                  </select>
+                </div>
+                <div class="search-filter-field">
+                  <label class="form-label">Library</label>
+                  <select v-model="logOwnershipFilter" class="form-select">
+                    <option value="all">All</option>
+                    <option value="global">Global Exercises</option>
+                    <option value="custom">My Custom Exercises</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="exercise-list mt-3" v-if="logExerciseMatches.length">
+                <div
+                  class="exercise-row"
+                  v-for="(match, index) in logExerciseMatches"
+                  :key="`log-match-${match.ExerciseID}`"
+                  :class="{ 'exercise-row--active': index === logSuggestionIndex }"
+                  @click="selectExerciseForLog(match)"
+                >
+                  <div class="exercise-img">
+                    <img :src="getFirstImage(match.ImageGallery)" class="clickable" />
+                  </div>
+                  <div class="exercise-info">
+                    <h5 class="exercise-title">{{ match.ExerciseTitle }}</h5>
+                    <p class="exercise-meta-inline">{{ match.WorkoutType }}<span class="meta-dot"> • </span>{{ match.MuscleGroup }}<span class="meta-dot"> • </span>{{ match.Equipment }}</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
 
