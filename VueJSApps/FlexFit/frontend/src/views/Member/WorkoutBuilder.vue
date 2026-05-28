@@ -53,13 +53,74 @@ const builderTab = ref('plans');
 const scheduleMode = ref('day'); // day | week
 const dayGroups = ref(['Any Day']);
 const weekGroups = ref(['Week 1']);
+const dayGroupOrders = ref([{ label: 'Any Day', sortOrder: 1 }]);
+const weekGroupOrders = ref([{ label: 'Week 1', sortOrder: 1 }]);
 const selectedScheduleGroup = ref(null);
 const newScheduleGroupName = ref('');
 const editingScheduleGroupOriginalName = ref('');
 const showDeleteModal = ref(false);
 const dayToDelete = ref(null);
 
-const activeGroups = computed(() => (scheduleMode.value === 'week' ? weekGroups.value : dayGroups.value));
+const sortGroupsByOrder = (groups = [], orderEntries = []) => {
+  const normalized = Array.isArray(groups)
+    ? groups.map((value) => String(value || '').trim()).filter(Boolean)
+    : [];
+
+  if (!normalized.length) {
+    return [];
+  }
+
+  const fallbackOrderMap = new Map();
+  normalized.forEach((label, index) => {
+    fallbackOrderMap.set(label.toLowerCase(), index + 1);
+  });
+
+  const explicitOrderMap = new Map();
+  if (Array.isArray(orderEntries)) {
+    orderEntries.forEach((entry, index) => {
+      const label = String(entry?.label || '').trim();
+      if (!label) {
+        return;
+      }
+      const parsed = Number(entry?.sortOrder);
+      explicitOrderMap.set(label.toLowerCase(), Number.isFinite(parsed) && parsed > 0 ? parsed : index + 1);
+    });
+  }
+
+  return [...normalized].sort((left, right) => {
+    const leftKey = left.toLowerCase();
+    const rightKey = right.toLowerCase();
+    const leftOrder = explicitOrderMap.get(leftKey) ?? fallbackOrderMap.get(leftKey) ?? Number.MAX_SAFE_INTEGER;
+    const rightOrder = explicitOrderMap.get(rightKey) ?? fallbackOrderMap.get(rightKey) ?? Number.MAX_SAFE_INTEGER;
+    if (leftOrder !== rightOrder) {
+      return leftOrder - rightOrder;
+    }
+    return (fallbackOrderMap.get(leftKey) || 0) - (fallbackOrderMap.get(rightKey) || 0);
+  });
+};
+
+const buildOrderEntries = (groups = []) => {
+  return groups.map((label, index) => ({
+    label,
+    sortOrder: index + 1,
+  }));
+};
+
+const syncGroupOrders = (mode, groups) => {
+  const ordered = buildOrderEntries(groups);
+  if (mode === 'week') {
+    weekGroupOrders.value = ordered;
+  } else {
+    dayGroupOrders.value = ordered;
+  }
+};
+
+const activeGroups = computed(() => {
+  if (scheduleMode.value === 'week') {
+    return sortGroupsByOrder(weekGroups.value, weekGroupOrders.value);
+  }
+  return sortGroupsByOrder(dayGroups.value, dayGroupOrders.value);
+});
 
 const workoutDaysWithExercises = computed(() => {
   return activeGroups.value.map((groupName) => {
@@ -138,6 +199,8 @@ const resetPlannerDraft = () => {
   scheduleMode.value = 'day';
   dayGroups.value = ['Any Day'];
   weekGroups.value = ['Week 1'];
+  dayGroupOrders.value = [{ label: 'Any Day', sortOrder: 1 }];
+  weekGroupOrders.value = [{ label: 'Week 1', sortOrder: 1 }];
   newScheduleGroupName.value = '';
   editingScheduleGroupOriginalName.value = '';
   plannerMessage.value = '';
@@ -157,12 +220,21 @@ const hydratePlanner = (planner = {}, { markSaved = true } = {}) => {
   };
 
   scheduleMode.value = planner?.scheduleMode === 'week' ? 'week' : 'day';
-  dayGroups.value = Array.isArray(planner?.dayGroups) && planner.dayGroups.length > 0
+  const incomingDayGroups = Array.isArray(planner?.dayGroups) && planner.dayGroups.length > 0
     ? planner.dayGroups
     : ['Any Day'];
-  weekGroups.value = Array.isArray(planner?.weekGroups) && planner.weekGroups.length > 0
+  const incomingWeekGroups = Array.isArray(planner?.weekGroups) && planner.weekGroups.length > 0
     ? planner.weekGroups
     : ['Week 1'];
+
+  const incomingDayOrders = Array.isArray(planner?.dayGroupOrders) ? planner.dayGroupOrders : [];
+  const incomingWeekOrders = Array.isArray(planner?.weekGroupOrders) ? planner.weekGroupOrders : [];
+
+  dayGroups.value = sortGroupsByOrder(incomingDayGroups, incomingDayOrders);
+  weekGroups.value = sortGroupsByOrder(incomingWeekGroups, incomingWeekOrders);
+
+  syncGroupOrders('day', dayGroups.value);
+  syncGroupOrders('week', weekGroups.value);
 
   workoutExercises.value = Array.isArray(planner?.exercises)
     ? planner.exercises.map((exercise) => ({
@@ -175,10 +247,26 @@ const hydratePlanner = (planner = {}, { markSaved = true } = {}) => {
     new Set(workoutExercises.value.map((exercise) => String(exercise.scheduleGroup || '').trim()).filter(Boolean))
   );
 
+  const appendMissingGroups = (groups) => {
+    const next = [...groups];
+    assignedGroups.forEach((label) => {
+      const normalized = String(label || '').trim().toLowerCase();
+      if (!normalized) {
+        return;
+      }
+      if (!next.some((group) => String(group || '').trim().toLowerCase() === normalized)) {
+        next.push(label);
+      }
+    });
+    return next;
+  };
+
   if (scheduleMode.value === 'week') {
-    weekGroups.value = Array.from(new Set([...weekGroups.value, ...assignedGroups]));
+    weekGroups.value = appendMissingGroups(weekGroups.value);
+    syncGroupOrders('week', weekGroups.value);
   } else {
-    dayGroups.value = Array.from(new Set([...dayGroups.value, ...assignedGroups]));
+    dayGroups.value = appendMissingGroups(dayGroups.value);
+    syncGroupOrders('day', dayGroups.value);
   }
   
   // Auto-select first group when loading workout
@@ -257,13 +345,18 @@ const createWorkoutPlan = async () => {
     };
 
     scheduleMode.value = planner?.scheduleMode === 'week' ? 'week' : 'day';
-    dayGroups.value = Array.isArray(planner?.dayGroups) && planner.dayGroups.length > 0
-      ? planner.dayGroups
-      : ['Any Day'];
-    weekGroups.value = Array.isArray(planner?.weekGroups) && planner.weekGroups.length > 0
-      ? planner.weekGroups
-      : ['Week 1'];
-    
+    dayGroups.value = sortGroupsByOrder(
+      Array.isArray(planner?.dayGroups) && planner.dayGroups.length > 0 ? planner.dayGroups : ['Any Day'],
+      Array.isArray(planner?.dayGroupOrders) ? planner.dayGroupOrders : []
+    );
+    weekGroups.value = sortGroupsByOrder(
+      Array.isArray(planner?.weekGroups) && planner.weekGroups.length > 0 ? planner.weekGroups : ['Week 1'],
+      Array.isArray(planner?.weekGroupOrders) ? planner.weekGroupOrders : []
+    );
+
+    syncGroupOrders('day', dayGroups.value);
+    syncGroupOrders('week', weekGroups.value);
+
     // Auto-select first group
     selectedScheduleGroup.value = (scheduleMode.value === 'week' ? weekGroups.value[0] : dayGroups.value[0]) || null;
     
@@ -289,9 +382,11 @@ const showAiSuggestionPlaceholder = () => {
 const ensureActiveGroups = () => {
   if (scheduleMode.value === 'week' && weekGroups.value.length === 0) {
     weekGroups.value = ['Week 1'];
+    syncGroupOrders('week', weekGroups.value);
   }
   if (scheduleMode.value === 'day' && dayGroups.value.length === 0) {
     dayGroups.value = ['Any Day'];
+    syncGroupOrders('day', dayGroups.value);
   }
 };
 
@@ -333,6 +428,7 @@ const addScheduleGroup = () => {
   }
 
   target.value = [...target.value, name];
+  syncGroupOrders(scheduleMode.value, target.value);
   
   // Auto-select first day if none is selected
   if (!selectedScheduleGroup.value) {
@@ -383,6 +479,7 @@ const saveEditedScheduleGroup = () => {
   target.value = target.value.map((group) => (
     String(group || '').trim().toLowerCase() === normalizedOld ? suggestedName : group
   ));
+  syncGroupOrders(scheduleMode.value, target.value);
 
   workoutExercises.value = workoutExercises.value.map((exercise) => {
     if (String(exercise.scheduleGroup || '').trim().toLowerCase() === normalizedOld) {
@@ -410,6 +507,7 @@ const removeScheduleGroup = (groupName) => {
     (group) => String(group || '').trim().toLowerCase() !== normalizedRemovedName
   );
   target.value = nextGroups.length > 0 ? nextGroups : [fallback];
+  syncGroupOrders(scheduleMode.value, target.value);
 
   const nextFallback = target.value[0] || fallback;
 
@@ -436,6 +534,13 @@ const changeScheduleMode = (mode) => {
   scheduleMode.value = mode === 'week' ? 'week' : 'day';
   clearScheduleGroupEdit();
   ensureActiveGroups();
+  if (scheduleMode.value === 'week') {
+    weekGroups.value = sortGroupsByOrder(weekGroups.value, weekGroupOrders.value);
+    syncGroupOrders('week', weekGroups.value);
+  } else {
+    dayGroups.value = sortGroupsByOrder(dayGroups.value, dayGroupOrders.value);
+    syncGroupOrders('day', dayGroups.value);
+  }
   plannerMessage.value = '';
   const fallback = activeGroups.value[0];
   
@@ -588,6 +693,49 @@ const moveExerciseDown = (id) => {
   workoutExercises.value = next;
 };
 
+const moveScheduleGroup = (groupName, direction = 'up') => {
+  const targetRef = scheduleMode.value === 'week' ? weekGroups : dayGroups;
+  const ordered = [...targetRef.value];
+  const index = ordered.findIndex(
+    (group) => String(group || '').trim().toLowerCase() === String(groupName || '').trim().toLowerCase()
+  );
+
+  if (index < 0) {
+    return;
+  }
+
+  if (direction === 'up' && index > 0) {
+    [ordered[index - 1], ordered[index]] = [ordered[index], ordered[index - 1]];
+  } else if (direction === 'down' && index < ordered.length - 1) {
+    [ordered[index], ordered[index + 1]] = [ordered[index + 1], ordered[index]];
+  } else {
+    return;
+  }
+
+  targetRef.value = ordered;
+  syncGroupOrders(scheduleMode.value, ordered);
+};
+
+const moveScheduleGroupUp = (groupName) => moveScheduleGroup(groupName, 'up');
+const moveScheduleGroupDown = (groupName) => moveScheduleGroup(groupName, 'down');
+
+const resetScheduleGroupOrder = () => {
+  const targetRef = scheduleMode.value === 'week' ? weekGroups : dayGroups;
+  const ordered = [...targetRef.value];
+  syncGroupOrders(scheduleMode.value, ordered);
+  plannerMessage.value = '';
+};
+
+const isFirstScheduleGroup = (groupName) => {
+  const normalized = String(groupName || '').trim().toLowerCase();
+  return String(activeGroups.value[0] || '').trim().toLowerCase() === normalized;
+};
+
+const isLastScheduleGroup = (groupName) => {
+  const normalized = String(groupName || '').trim().toLowerCase();
+  return String(activeGroups.value[activeGroups.value.length - 1] || '').trim().toLowerCase() === normalized;
+};
+
 const plannerPayload = computed(() => ({
   planId: currentPlanId.value || undefined,
   metadata: {
@@ -596,8 +744,29 @@ const plannerPayload = computed(() => ({
   scheduleMode: scheduleMode.value,
   dayGroups: dayGroups.value,
   weekGroups: weekGroups.value,
+  dayGroupOrders: buildOrderEntries(dayGroups.value),
+  weekGroupOrders: buildOrderEntries(weekGroups.value),
   exercises: workoutExercises.value,
 }));
+
+const requestDeleteDay = (dayName) => {
+  dayToDelete.value = dayName;
+  showDeleteModal.value = true;
+};
+
+const cancelDeleteDay = () => {
+  showDeleteModal.value = false;
+  dayToDelete.value = null;
+};
+
+const confirmDeleteDay = () => {
+  if (!dayToDelete.value) {
+    cancelDeleteDay();
+    return;
+  }
+  removeScheduleGroup(dayToDelete.value);
+  cancelDeleteDay();
+};
 
 const persistWorkout = async ({ detailsOnly = false } = {}) => {
   saveMessage.value = '';
@@ -1026,135 +1195,186 @@ watch(
               </div>
 
               <div class="workout-day-accordion" role="list" aria-label="Workout days">
-                <div
-                  v-for="day in workoutDaysWithExercises"
-                  :key="day.name"
-                  :class="['workout-day-card', { active: selectedScheduleGroup === day.name }]"
-                  role="listitem"
-                >
-                  <button
-                    type="button"
-                    class="workout-day-header"
-                    @click="setActiveDay(day.name)"
+                <transition-group name="day-order" tag="div" class="workout-day-accordion__list">
+                  <div
+                    v-for="day in workoutDaysWithExercises"
+                    :key="day.name"
+                    :class="['workout-day-card', { active: selectedScheduleGroup === day.name }]"
+                    role="listitem"
                   >
-                    <div class="day-title-group">
-                      <strong>{{ day.name }}</strong>
-                      <span v-if="selectedScheduleGroup === day.name" class="selected-badge">Selected</span>
-                      <span class="exercise-count">{{ day.exerciseCount }} exercise{{ day.exerciseCount === 1 ? '' : 's' }}</span>
-                    </div>
+                    <button
+                      type="button"
+                      class="workout-day-header"
+                      @click="setActiveDay(day.name)"
+                    >
+                      <div class="day-title-group">
+                        <strong>{{ day.name }}</strong>
+                        <span v-if="selectedScheduleGroup === day.name" class="selected-badge">Selected</span>
+                        <span class="exercise-count">{{ day.exerciseCount }} exercise{{ day.exerciseCount === 1 ? '' : 's' }}</span>
+                      </div>
 
-                    <!-- Desktop actions (hidden on mobile) -->
-                    <div class="day-actions" @click.stop>
-                      <button
-                        type="button"
-                        :class="['day-action-btn', selectedScheduleGroup === day.name ? 'day-action-btn--selected' : 'day-action-btn--select']"
-                        @click="setActiveDay(day.name)"
-                      >
-                        {{ selectedScheduleGroup === day.name ? 'Selected' : 'Select' }}
-                      </button>
-                      <button
-                        type="button"
-                        class="day-action-btn day-action-btn--edit"
-                        @click="startEditScheduleGroup(day.name)"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        class="day-action-btn day-action-btn--delete"
-                        :disabled="!canRemoveScheduleGroup(day.name)"
-                        @click="requestDeleteDay(day.name)"
-                      >
-                        Delete
-                      </button>
-                      <button
-                        type="button"
-                        class="chevron-btn"
-                        @click="setActiveDay(day.name)"
-                      >
-                        <i :class="selectedScheduleGroup === day.name ? 'fa fa-chevron-up' : 'fa fa-chevron-down'"></i>
-                      </button>
-                    </div>
-
-                    <!-- Mobile kebab menu (hidden on desktop) -->
-                    <div class="day-kebab-wrap" @click.stop>
-                      <button
-                        type="button"
-                        class="day-kebab-btn"
-                        :aria-expanded="openMenuDay === day.name"
-                        @click="toggleDayMenu(day.name)"
-                      >
-                        <i class="fa-solid fa-ellipsis-vertical"></i>
-                      </button>
-                      <div v-if="openMenuDay === day.name" class="day-kebab-menu">
+                      <!-- Desktop actions (hidden on mobile) -->
+                      <div class="day-actions" @click.stop>
                         <button
                           type="button"
-                          class="day-kebab-item"
-                          @click="setActiveDay(day.name); openMenuDay = null"
+                          class="day-action-btn day-action-btn--move"
+                          :disabled="isFirstScheduleGroup(day.name)"
+                          @click="moveScheduleGroupUp(day.name)"
                         >
-                          <i :class="selectedScheduleGroup === day.name ? 'fa-solid fa-check-circle' : 'fa-regular fa-circle'"></i>
-                          {{ selectedScheduleGroup === day.name ? 'Selected' : 'Select Day' }}
+                          Move Up
                         </button>
                         <button
                           type="button"
-                          class="day-kebab-item"
-                          @click="startEditScheduleGroup(day.name); openMenuDay = null"
+                          class="day-action-btn day-action-btn--move"
+                          :disabled="isLastScheduleGroup(day.name)"
+                          @click="moveScheduleGroupDown(day.name)"
                         >
-                          <i class="fa-solid fa-pen"></i>
-                          Edit Day
+                          Move Down
                         </button>
                         <button
                           type="button"
-                          class="day-kebab-item day-kebab-item--delete"
+                          class="day-action-btn day-action-btn--reset"
+                          @click="resetScheduleGroupOrder"
+                        >
+                          Reset
+                        </button>
+                        <button
+                          type="button"
+                          :class="['day-action-btn', selectedScheduleGroup === day.name ? 'day-action-btn--selected' : 'day-action-btn--select']"
+                          @click="setActiveDay(day.name)"
+                        >
+                          {{ selectedScheduleGroup === day.name ? 'Selected' : 'Select' }}
+                        </button>
+                        <button
+                          type="button"
+                          class="day-action-btn day-action-btn--edit"
+                          @click="startEditScheduleGroup(day.name)"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          class="day-action-btn day-action-btn--delete"
                           :disabled="!canRemoveScheduleGroup(day.name)"
-                          @click="requestDeleteDay(day.name); openMenuDay = null"
+                          @click="requestDeleteDay(day.name)"
                         >
-                          <i class="fa-solid fa-trash"></i>
-                          Delete Day
+                          Delete
                         </button>
                         <button
                           type="button"
-                          class="day-kebab-item"
-                          @click="setActiveDay(day.name); openMenuDay = null"
+                          class="chevron-btn"
+                          @click="setActiveDay(day.name)"
                         >
-                          <i :class="selectedScheduleGroup === day.name ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
-                          {{ selectedScheduleGroup === day.name ? 'Collapse' : 'Expand' }}
+                          <i :class="selectedScheduleGroup === day.name ? 'fa fa-chevron-up' : 'fa fa-chevron-down'"></i>
                         </button>
                       </div>
-                    </div>
-                  </button>
 
-                  <transition name="accordion-slide">
-                    <div v-if="selectedScheduleGroup === day.name" class="workout-day-panel">
-                      <div v-if="day.exercises.length > 0" class="day-exercises-list">
-                        <WorkoutExerciseBlock
-                          v-for="(exercise, idx) in day.exercises"
-                          :key="exercise.id"
-                          :exercise="exercise"
-                          :index="workoutExercises.findIndex(ex => ex.id === exercise.id)"
-                          :total="workoutExercises.length"
-                          :schedule-groups="activeGroups"
-                          :schedule-mode="scheduleMode"
-                          @update-field="updateExerciseField"
-                          @remove="removeExercise"
-                          @move-up="moveExerciseUp"
-                          @move-down="moveExerciseDown"
-                        />
-                      </div>
-
-                      <div v-else class="empty-day-state">
-                        <p>No exercises added to {{ day.name }} yet.</p>
-                      </div>
-
-                      <div class="day-panel-actions">
-                        <button type="button" class="btn-add-exercise-day" @click="openPicker">
-                          <span class="btn-add-exercise__icon">＋</span>
-                          <span>Add Exercise</span>
+                      <!-- Mobile kebab menu (hidden on desktop) -->
+                      <div class="day-kebab-wrap" @click.stop>
+                        <button
+                          type="button"
+                          class="day-kebab-btn"
+                          :aria-expanded="openMenuDay === day.name"
+                          @click="toggleDayMenu(day.name)"
+                        >
+                          <i class="fa-solid fa-ellipsis-vertical"></i>
                         </button>
+                        <div v-if="openMenuDay === day.name" class="day-kebab-menu">
+                          <button
+                            type="button"
+                            class="day-kebab-item"
+                            @click="setActiveDay(day.name); openMenuDay = null"
+                          >
+                            <i :class="selectedScheduleGroup === day.name ? 'fa-solid fa-check-circle' : 'fa-regular fa-circle'"></i>
+                            {{ selectedScheduleGroup === day.name ? 'Selected' : 'Select Day' }}
+                          </button>
+                          <button
+                            type="button"
+                            class="day-kebab-item"
+                            :disabled="isFirstScheduleGroup(day.name)"
+                            @click="moveScheduleGroupUp(day.name); openMenuDay = null"
+                          >
+                            <i class="fa-solid fa-arrow-up"></i>
+                            Move Up
+                          </button>
+                          <button
+                            type="button"
+                            class="day-kebab-item"
+                            :disabled="isLastScheduleGroup(day.name)"
+                            @click="moveScheduleGroupDown(day.name); openMenuDay = null"
+                          >
+                            <i class="fa-solid fa-arrow-down"></i>
+                            Move Down
+                          </button>
+                          <button
+                            type="button"
+                            class="day-kebab-item"
+                            @click="resetScheduleGroupOrder(); openMenuDay = null"
+                          >
+                            <i class="fa-solid fa-arrow-rotate-right"></i>
+                            Reset Order
+                          </button>
+                          <button
+                            type="button"
+                            class="day-kebab-item"
+                            @click="startEditScheduleGroup(day.name); openMenuDay = null"
+                          >
+                            <i class="fa-solid fa-pen"></i>
+                            Edit Day
+                          </button>
+                          <button
+                            type="button"
+                            class="day-kebab-item day-kebab-item--delete"
+                            :disabled="!canRemoveScheduleGroup(day.name)"
+                            @click="requestDeleteDay(day.name); openMenuDay = null"
+                          >
+                            <i class="fa-solid fa-trash"></i>
+                            Delete Day
+                          </button>
+                          <button
+                            type="button"
+                            class="day-kebab-item"
+                            @click="setActiveDay(day.name); openMenuDay = null"
+                          >
+                            <i :class="selectedScheduleGroup === day.name ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
+                            {{ selectedScheduleGroup === day.name ? 'Collapse' : 'Expand' }}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  </transition>
-                </div>
+                    </button>
+
+                    <transition name="accordion-slide">
+                      <div v-if="selectedScheduleGroup === day.name" class="workout-day-panel">
+                        <div v-if="day.exercises.length > 0" class="day-exercises-list">
+                          <WorkoutExerciseBlock
+                            v-for="(exercise, idx) in day.exercises"
+                            :key="exercise.id"
+                            :exercise="exercise"
+                            :index="workoutExercises.findIndex(ex => ex.id === exercise.id)"
+                            :total="workoutExercises.length"
+                            :schedule-groups="activeGroups"
+                            :schedule-mode="scheduleMode"
+                            @update-field="updateExerciseField"
+                            @remove="removeExercise"
+                            @move-up="moveExerciseUp"
+                            @move-down="moveExerciseDown"
+                          />
+                        </div>
+
+                        <div v-else class="empty-day-state">
+                          <p>No exercises added to {{ day.name }} yet.</p>
+                        </div>
+
+                        <div class="day-panel-actions">
+                          <button type="button" class="btn-add-exercise-day" @click="openPicker">
+                            <span class="btn-add-exercise__icon">＋</span>
+                            <span>Add Exercise</span>
+                          </button>
+                        </div>
+                      </div>
+                    </transition>
+                  </div>
+                </transition-group>
               </div>
 
               <p v-if="plannerMessage" class="planner-feedback planner-feedback--error">
@@ -1638,6 +1858,11 @@ watch(
   gap: 10px;
 }
 
+.workout-day-accordion__list {
+  display: grid;
+  gap: 10px;
+}
+
 .workout-day-card {
   border: 1px solid #dbe4f0;
   border-radius: 14px;
@@ -1742,6 +1967,28 @@ watch(
 .day-action-btn--selected:hover {
   background: #1d4ed8;
   border-color: #1d4ed8;
+}
+
+.day-action-btn--move {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+}
+
+.day-action-btn--move:hover:not(:disabled) {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+}
+
+.day-action-btn--reset {
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.day-action-btn--reset:hover:not(:disabled) {
+  border-color: #facc15;
+  background: #fef3c7;
 }
 
 .day-action-btn--edit {
@@ -1923,6 +2170,23 @@ watch(
   box-shadow: 0 6px 16px rgba(5, 150, 105, 0.18);
   transition: all 0.2s ease;
   font-size: 0.92rem;
+}
+
+.day-order-move,
+.day-order-enter-active,
+.day-order-leave-active {
+  transition: transform 0.24s ease, opacity 0.24s ease;
+}
+
+.day-order-enter-from,
+.day-order-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.day-order-leave-active {
+  position: absolute;
+  width: calc(100% - 2px);
 }
 
 .btn-add-exercise-day:hover {

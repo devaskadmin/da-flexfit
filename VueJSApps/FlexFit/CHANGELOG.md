@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.82.33] - 2026-05-27 - Workout Day Ordering System
+
+- Fixed Workout Builder day insertion behavior so new workout days always append to the bottom of the day list.
+- Added workout day ordering controls in each day header:
+  - Move Up
+  - Move Down
+  - Reset
+- Added mobile parity for day ordering actions in the day kebab menu.
+- Added stable frontend day rendering behavior based on explicit day order state (no random insertion or object-order rendering).
+- Added subtle day reorder motion with transition-group animation for cleaner move interactions.
+- Extended planner payload with persistent day/week order entries:
+  - `dayGroupOrders`
+  - `weekGroupOrders`
+- Backend now normalizes and persists workout day order using existing `workout_schedule_groups.sort_order` so reload and plan re-selection preserve visual day order.
+- Backend planner response now returns explicit day/week order entries for stable hydration.
+- Kept existing exercise ordering behavior untouched:
+  - Exercise Move Up/Move Down remains unchanged.
+  - Exercise block grouping and selected workout behavior preserved.
+
+---
+
 ## [0.82.32] - 2026-05-27 - Colored CTA Dashboard Polish
 
 - Added final quick-action helper CTA copy polish for dashboard launch cards:

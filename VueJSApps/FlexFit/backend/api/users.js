@@ -91,16 +91,54 @@ const normalizePlannerPayload = (planner = {}) => {
   const defaultDayGroups = ['Any Day'];
   const defaultWeekGroups = ['Week 1'];
 
-  const dayGroups = Array.isArray(planner.dayGroups)
+  const normalizeOrderEntries = (entries, fallbackGroups) => {
+    const source = Array.isArray(entries) ? entries : [];
+    const byLabel = new Map();
+
+    source.forEach((entry, index) => {
+      const label = String(entry?.label || '').trim();
+      if (!label) {
+        return;
+      }
+      const numericOrder = Number(entry?.sortOrder);
+      byLabel.set(
+        label.toLowerCase(),
+        Number.isFinite(numericOrder) && numericOrder > 0 ? numericOrder : index + 1
+      );
+    });
+
+    const normalizedGroups = fallbackGroups.map((label) => String(label || '').trim()).filter(Boolean);
+    const orderedGroups = [...normalizedGroups].sort((left, right) => {
+      const leftOrder = byLabel.get(left.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
+      const rightOrder = byLabel.get(right.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
+      if (leftOrder !== rightOrder) {
+        return leftOrder - rightOrder;
+      }
+      return normalizedGroups.indexOf(left) - normalizedGroups.indexOf(right);
+    });
+
+    return {
+      orderedGroups,
+      orderEntries: orderedGroups.map((label, index) => ({ label, sortOrder: index + 1 })),
+    };
+  };
+
+  const incomingDayGroups = Array.isArray(planner.dayGroups)
     ? planner.dayGroups.map((v) => String(v || '').trim()).filter(Boolean)
     : defaultDayGroups;
 
-  const weekGroups = Array.isArray(planner.weekGroups)
+  const incomingWeekGroups = Array.isArray(planner.weekGroups)
     ? planner.weekGroups.map((v) => String(v || '').trim()).filter(Boolean)
     : defaultWeekGroups;
 
-  const normalizedDayGroups = dayGroups.length > 0 ? dayGroups : defaultDayGroups;
-  const normalizedWeekGroups = weekGroups.length > 0 ? weekGroups : defaultWeekGroups;
+  const normalizedDayGroupsBase = incomingDayGroups.length > 0 ? incomingDayGroups : defaultDayGroups;
+  const normalizedWeekGroupsBase = incomingWeekGroups.length > 0 ? incomingWeekGroups : defaultWeekGroups;
+
+  const dayOrderInfo = normalizeOrderEntries(planner.dayGroupOrders, normalizedDayGroupsBase);
+  const weekOrderInfo = normalizeOrderEntries(planner.weekGroupOrders, normalizedWeekGroupsBase);
+
+  const normalizedDayGroups = dayOrderInfo.orderedGroups.length ? dayOrderInfo.orderedGroups : defaultDayGroups;
+  const normalizedWeekGroups = weekOrderInfo.orderedGroups.length ? weekOrderInfo.orderedGroups : defaultWeekGroups;
   const mode = planner.scheduleMode === 'week' ? 'week' : 'day';
   const fallbackGroup = mode === 'week' ? normalizedWeekGroups[0] : normalizedDayGroups[0];
 
@@ -138,6 +176,8 @@ const normalizePlannerPayload = (planner = {}) => {
     scheduleMode: mode,
     dayGroups: normalizedDayGroups,
     weekGroups: normalizedWeekGroups,
+    dayGroupOrders: dayOrderInfo.orderEntries,
+    weekGroupOrders: weekOrderInfo.orderEntries,
     metadata,
     exercises,
     updatedAt: new Date().toISOString(),
@@ -383,14 +423,30 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
   );
 
   const scheduleMode = String(schedule.schedule_mode || 'day').trim() === 'week' ? 'week' : 'day';
-  const dayGroups = groupRows
-    .filter((g) => ['day', 'any', 'section'].includes(String(g.group_type || '').trim()))
+
+  const dayGroupRows = groupRows.filter((g) => ['day', 'any', 'section'].includes(String(g.group_type || '').trim()));
+  const weekGroupRows = groupRows.filter((g) => String(g.group_type || '').trim() === 'week');
+
+  const dayGroups = dayGroupRows
     .map((g) => String(g.label || '').trim())
     .filter(Boolean);
-  const weekGroups = groupRows
-    .filter((g) => String(g.group_type || '').trim() === 'week')
+  const weekGroups = weekGroupRows
     .map((g) => String(g.label || '').trim())
     .filter(Boolean);
+
+  const dayGroupOrders = dayGroupRows
+    .map((g, index) => ({
+      label: String(g.label || '').trim(),
+      sortOrder: Number(g.sort_order || index + 1) || index + 1,
+    }))
+    .filter((entry) => entry.label);
+
+  const weekGroupOrders = weekGroupRows
+    .map((g, index) => ({
+      label: String(g.label || '').trim(),
+      sortOrder: Number(g.sort_order || index + 1) || index + 1,
+    }))
+    .filter((entry) => entry.label);
 
   const fallbackGroup = scheduleMode === 'week'
     ? (weekGroups[0] || 'Week 1')
@@ -420,6 +476,8 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
     scheduleMode,
     dayGroups: dayGroups.length ? dayGroups : ['Any Day'],
     weekGroups: weekGroups.length ? weekGroups : ['Week 1'],
+    dayGroupOrders: dayGroupOrders.length ? dayGroupOrders : [{ label: 'Any Day', sortOrder: 1 }],
+    weekGroupOrders: weekGroupOrders.length ? weekGroupOrders : [{ label: 'Week 1', sortOrder: 1 }],
     metadata: {
       name: String(schedule.title || '').trim(),
       description: String(schedule.description || '').trim(),
@@ -444,13 +502,31 @@ const replaceScheduleGroupsAndExercises = async (connection, scheduleId, planner
   const normalizedDayGroups = dayGroups.length ? dayGroups : ['Any Day'];
   const normalizedWeekGroups = weekGroups.length ? weekGroups : ['Week 1'];
 
+  const incomingDayOrders = Array.isArray(planner?.dayGroupOrders) ? planner.dayGroupOrders : [];
+  const incomingWeekOrders = Array.isArray(planner?.weekGroupOrders) ? planner.weekGroupOrders : [];
+
+  const findSortOrder = (entries, label, fallbackIndex) => {
+    const normalizedLabel = String(label || '').trim().toLowerCase();
+    const found = entries.find((entry) => String(entry?.label || '').trim().toLowerCase() === normalizedLabel);
+    const parsed = Number(found?.sortOrder);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackIndex + 1;
+  };
+
   const groupEntries = mode === 'week'
-    ? normalizedWeekGroups.map((label, index) => ({ label, groupType: 'week', sortOrder: index + 1 }))
-    : normalizedDayGroups.map((label, index) => ({
+    ? normalizedWeekGroups
+      .map((label, index) => ({
+        label,
+        groupType: 'week',
+        sortOrder: findSortOrder(incomingWeekOrders, label, index),
+      }))
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+    : normalizedDayGroups
+      .map((label, index) => ({
         label,
         groupType: label.toLowerCase() === 'any day' ? 'any' : 'day',
-        sortOrder: index + 1,
-      }));
+        sortOrder: findSortOrder(incomingDayOrders, label, index),
+      }))
+      .sort((a, b) => a.sortOrder - b.sortOrder);
 
   await connection.query('DELETE FROM workout_schedule_exercises WHERE workout_schedule_id = ?', [scheduleId]);
   await connection.query('DELETE FROM workout_schedule_groups WHERE workout_schedule_id = ?', [scheduleId]);
