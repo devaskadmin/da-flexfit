@@ -5,6 +5,90 @@ const router = express.Router();
 const pool = require('../db.js');
 const { sanitizeText } = require('../utils/sanitize.js');
 
+const buildNormalizedGroupOrder = (builderOrder = [], preferredOrder = []) => {
+  const normalizedBuilder = Array.isArray(builderOrder)
+    ? builderOrder.map((value) => String(value || '').trim()).filter(Boolean)
+    : [];
+
+  const preferredKeys = new Set();
+  const ordered = [];
+
+  for (const value of Array.isArray(preferredOrder) ? preferredOrder : []) {
+    const label = String(value || '').trim();
+    const key = label.toLowerCase();
+    if (!label || preferredKeys.has(key)) {
+      continue;
+    }
+
+    if (normalizedBuilder.some((group) => group.toLowerCase() === key)) {
+      preferredKeys.add(key);
+      ordered.push(label);
+    }
+  }
+
+  for (const value of normalizedBuilder) {
+    const key = value.toLowerCase();
+    if (!preferredKeys.has(key)) {
+      preferredKeys.add(key);
+      ordered.push(value);
+    }
+  }
+
+  return ordered;
+};
+
+const getWorkoutLogDayOrdering = async (userId, planId) => {
+  const [[scheduleRow]] = await pool.query(
+    `SELECT id, use_custom_workout_log_order
+     FROM workout_schedules
+     WHERE id = ? AND user_id = ?
+     LIMIT 1`,
+    [planId, userId]
+  );
+
+  if (!scheduleRow) {
+    return null;
+  }
+
+  const [groupRows] = await pool.query(
+    `SELECT label, sort_order, workout_log_display_order
+     FROM workout_schedule_groups
+     WHERE workout_schedule_id = ?
+     ORDER BY sort_order ASC, id ASC`,
+    [planId]
+  );
+
+  const builderOrder = groupRows
+    .map((row) => String(row?.label || '').trim())
+    .filter(Boolean);
+
+  const customOrder = groupRows
+    .filter((row) => Number(row?.workout_log_display_order || 0) > 0)
+    .sort((left, right) => {
+      const leftOrder = Number(left?.workout_log_display_order || 0);
+      const rightOrder = Number(right?.workout_log_display_order || 0);
+      if (leftOrder !== rightOrder) {
+        return leftOrder - rightOrder;
+      }
+      return Number(left?.sort_order || 0) - Number(right?.sort_order || 0);
+    })
+    .map((row) => String(row?.label || '').trim())
+    .filter(Boolean);
+
+  const useCustomWorkoutLogOrder = Number(scheduleRow.use_custom_workout_log_order || 0) === 1;
+  const orderedGroups = useCustomWorkoutLogOrder
+    ? buildNormalizedGroupOrder(builderOrder, customOrder)
+    : [...builderOrder];
+
+  return {
+    planId: String(planId),
+    useCustomWorkoutLogOrder,
+    builderOrder,
+    customOrder,
+    orderedGroups,
+  };
+};
+
 
 
 
@@ -233,6 +317,210 @@ router.get('/has-workouts', async (req, res) => {
   } catch (err) {
     console.error("❌ Error checking user workouts:", err);
     res.status(500).json({ error: 'Failed to check workouts.' });
+  }
+});
+
+// ✅ GET: Resolve workout-log day order mode and active ordering for a plan
+router.get('/day-order', async (req, res) => {
+  if (!req.session?.user?.id) {
+    return res.status(401).json({ error: 'Unauthorized. Please log in.' });
+  }
+
+  const planId = Number(req.query?.planId || 0);
+  if (!planId) {
+    return res.status(400).json({ error: 'planId is required.' });
+  }
+
+  try {
+    const payload = await getWorkoutLogDayOrdering(req.session.user.id, planId);
+    if (!payload) {
+      return res.status(404).json({ error: 'Workout plan not found.' });
+    }
+    return res.status(200).json(payload);
+  } catch (err) {
+    console.error('❌ Failed to fetch workout-log day order:', err);
+    return res.status(500).json({ error: 'Failed to fetch workout-log day order.' });
+  }
+});
+
+// ✅ PUT: Save custom workout-log day order for a plan
+router.put('/day-order', async (req, res) => {
+  if (!req.session?.user?.id) {
+    return res.status(401).json({ error: 'Unauthorized. Please log in.' });
+  }
+
+  const planId = Number(req.body?.planId || 0);
+  if (!planId) {
+    return res.status(400).json({ error: 'planId is required.' });
+  }
+
+  const requestedOrder = Array.isArray(req.body?.orderedGroups) ? req.body.orderedGroups : [];
+  if (!requestedOrder.length) {
+    return res.status(400).json({ error: 'orderedGroups must be a non-empty array.' });
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [[scheduleRow]] = await connection.query(
+      `SELECT id
+       FROM workout_schedules
+       WHERE id = ? AND user_id = ?
+       LIMIT 1`,
+      [planId, req.session.user.id]
+    );
+
+    if (!scheduleRow) {
+      await connection.rollback();
+      return res.status(404).json({ error: 'Workout plan not found.' });
+    }
+
+    const [groupRows] = await connection.query(
+      `SELECT id, label, sort_order
+       FROM workout_schedule_groups
+       WHERE workout_schedule_id = ?
+       ORDER BY sort_order ASC, id ASC`,
+      [planId]
+    );
+
+    if (!groupRows.length) {
+      await connection.rollback();
+      return res.status(400).json({ error: 'Workout plan has no groups to order.' });
+    }
+
+    const groupByLabel = new Map();
+    for (const row of groupRows) {
+      const label = String(row?.label || '').trim();
+      if (!label) {
+        continue;
+      }
+      groupByLabel.set(label.toLowerCase(), {
+        id: Number(row.id),
+        label,
+      });
+    }
+
+    const dedupedRequested = [];
+    const seen = new Set();
+    for (const entry of requestedOrder) {
+      const label = String(entry || '').trim();
+      const key = label.toLowerCase();
+      if (!label || seen.has(key)) {
+        continue;
+      }
+      if (groupByLabel.has(key)) {
+        dedupedRequested.push(groupByLabel.get(key).label);
+        seen.add(key);
+      }
+    }
+
+    if (!dedupedRequested.length) {
+      await connection.rollback();
+      return res.status(400).json({ error: 'orderedGroups does not contain valid group labels for this plan.' });
+    }
+
+    const builderOrder = groupRows
+      .map((row) => String(row?.label || '').trim())
+      .filter(Boolean);
+    const finalOrder = buildNormalizedGroupOrder(builderOrder, dedupedRequested);
+
+    await connection.query(
+      `UPDATE workout_schedules
+       SET use_custom_workout_log_order = 1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND user_id = ?`,
+      [planId, req.session.user.id]
+    );
+
+    for (let index = 0; index < finalOrder.length; index += 1) {
+      const label = finalOrder[index];
+      const row = groupByLabel.get(label.toLowerCase());
+      if (!row?.id) {
+        continue;
+      }
+      await connection.query(
+        `UPDATE workout_schedule_groups
+         SET workout_log_display_order = ?,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND workout_schedule_id = ?`,
+        [index + 1, row.id, planId]
+      );
+    }
+
+    await connection.commit();
+
+    const payload = await getWorkoutLogDayOrdering(req.session.user.id, planId);
+    return res.status(200).json({
+      message: 'Workout log day order saved.',
+      ...payload,
+    });
+  } catch (err) {
+    try {
+      await connection.rollback();
+    } catch (_) {
+      // ignore rollback errors
+    }
+    console.error('❌ Failed to save workout-log day order:', err);
+    return res.status(500).json({ error: 'Failed to save workout-log day order.' });
+  } finally {
+    connection.release();
+  }
+});
+
+// ✅ POST: Reset workout-log ordering back to builder order
+router.post('/day-order/reset', async (req, res) => {
+  if (!req.session?.user?.id) {
+    return res.status(401).json({ error: 'Unauthorized. Please log in.' });
+  }
+
+  const planId = Number(req.body?.planId || 0);
+  if (!planId) {
+    return res.status(400).json({ error: 'planId is required.' });
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [scheduleResult] = await connection.query(
+      `UPDATE workout_schedules
+       SET use_custom_workout_log_order = 0,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND user_id = ?`,
+      [planId, req.session.user.id]
+    );
+
+    if (!scheduleResult.affectedRows) {
+      await connection.rollback();
+      return res.status(404).json({ error: 'Workout plan not found.' });
+    }
+
+    await connection.query(
+      `UPDATE workout_schedule_groups
+       SET workout_log_display_order = NULL,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE workout_schedule_id = ?`,
+      [planId]
+    );
+
+    await connection.commit();
+
+    const payload = await getWorkoutLogDayOrdering(req.session.user.id, planId);
+    return res.status(200).json({
+      message: 'Workout log order reset to builder order.',
+      ...payload,
+    });
+  } catch (err) {
+    try {
+      await connection.rollback();
+    } catch (_) {
+      // ignore rollback errors
+    }
+    console.error('❌ Failed to reset workout-log day order:', err);
+    return res.status(500).json({ error: 'Failed to reset workout-log day order.' });
+  } finally {
+    connection.release();
   }
 });
 

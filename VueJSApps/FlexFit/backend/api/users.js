@@ -383,7 +383,7 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
   const schedule = scheduleRows[0];
 
   const [groupRows] = await pool.query(
-    `SELECT id, label, group_type, sort_order
+    `SELECT id, label, group_type, sort_order, workout_log_display_order
      FROM workout_schedule_groups
      WHERE workout_schedule_id = ?
      ORDER BY sort_order ASC, id ASC`,
@@ -474,6 +474,7 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
     version: 2,
     planId: String(schedule.id),
     scheduleMode,
+    useCustomWorkoutLogOrder: Number(schedule.use_custom_workout_log_order || 0) === 1,
     dayGroups: dayGroups.length ? dayGroups : ['Any Day'],
     weekGroups: weekGroups.length ? weekGroups : ['Week 1'],
     dayGroupOrders: dayGroupOrders.length ? dayGroupOrders : [{ label: 'Any Day', sortOrder: 1 }],
@@ -528,16 +529,57 @@ const replaceScheduleGroupsAndExercises = async (connection, scheduleId, planner
       }))
       .sort((a, b) => a.sortOrder - b.sortOrder);
 
+  const [[scheduleRow]] = await connection.query(
+    `SELECT use_custom_workout_log_order
+     FROM workout_schedules
+     WHERE id = ?
+     LIMIT 1`,
+    [scheduleId]
+  );
+
+  const preserveCustomWorkoutLogOrder = Number(scheduleRow?.use_custom_workout_log_order || 0) === 1;
+  const existingWorkoutLogOrderByLabel = new Map();
+
+  if (preserveCustomWorkoutLogOrder) {
+    const [existingGroupRows] = await connection.query(
+      `SELECT label, workout_log_display_order
+       FROM workout_schedule_groups
+       WHERE workout_schedule_id = ?
+         AND workout_log_display_order IS NOT NULL`,
+      [scheduleId]
+    );
+
+    for (const row of existingGroupRows) {
+      const normalizedLabel = String(row?.label || '').trim().toLowerCase();
+      const orderValue = Number(row?.workout_log_display_order);
+      if (!normalizedLabel || !Number.isFinite(orderValue) || orderValue <= 0) {
+        continue;
+      }
+      existingWorkoutLogOrderByLabel.set(normalizedLabel, orderValue);
+    }
+  }
+
   await connection.query('DELETE FROM workout_schedule_exercises WHERE workout_schedule_id = ?', [scheduleId]);
   await connection.query('DELETE FROM workout_schedule_groups WHERE workout_schedule_id = ?', [scheduleId]);
 
   const groupIdByLabel = new Map();
   for (const groupEntry of groupEntries) {
+    const normalizedLabel = String(groupEntry?.label || '').trim().toLowerCase();
+    const preservedWorkoutLogDisplayOrder = preserveCustomWorkoutLogOrder
+      ? (existingWorkoutLogOrderByLabel.get(normalizedLabel) ?? null)
+      : null;
+
     const [insertGroup] = await connection.query(
       `INSERT INTO workout_schedule_groups
-        (workout_schedule_id, label, group_type, sort_order)
-       VALUES (?, ?, ?, ?)`,
-      [scheduleId, groupEntry.label, groupEntry.groupType, groupEntry.sortOrder]
+        (workout_schedule_id, label, group_type, sort_order, workout_log_display_order)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        scheduleId,
+        groupEntry.label,
+        groupEntry.groupType,
+        groupEntry.sortOrder,
+        preservedWorkoutLogDisplayOrder,
+      ]
     );
     groupIdByLabel.set(groupEntry.label, insertGroup.insertId);
   }

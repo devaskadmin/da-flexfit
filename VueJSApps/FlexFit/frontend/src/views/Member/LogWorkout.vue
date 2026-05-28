@@ -39,6 +39,7 @@ const workoutLists  = ref([]);
 const expandedPlanId    = ref(null);   // accordion open state
 const expandedPlanData  = ref(null);   // full plan detail (with exercises/days)
 const expandedLoading   = ref(false);
+const dayOrderStateByPlanId = ref({});
 
 /* ─── Session state (Day Details) ───────────────────────────────────────── */
 const activeSession    = ref(null);
@@ -110,7 +111,7 @@ const summaryStats = computed(() => {
 /* ─── Workout History grouped view ──────────────────────────────────────────── */
 const scheduleMode = computed(() => expandedPlanData.value?.scheduleMode || 'day');
 
-const groups = computed(() => {
+const builderGroups = computed(() => {
   if (!expandedPlanData.value) return [];
   if (scheduleMode.value === 'week') {
     return Array.isArray(expandedPlanData.value.weekGroups) && expandedPlanData.value.weekGroups.length
@@ -118,6 +119,69 @@ const groups = computed(() => {
   }
   return Array.isArray(expandedPlanData.value.dayGroups) && expandedPlanData.value.dayGroups.length
     ? expandedPlanData.value.dayGroups : ['Any Day'];
+});
+
+const normalizeGroupOrder = (baseGroups = [], preferredGroups = []) => {
+  const normalizedBase = Array.isArray(baseGroups)
+    ? baseGroups.map((value) => String(value || '').trim()).filter(Boolean)
+    : [];
+
+  const normalizedPreferred = [];
+  const seenPreferred = new Set();
+  for (const value of Array.isArray(preferredGroups) ? preferredGroups : []) {
+    const label = String(value || '').trim();
+    const key = label.toLowerCase();
+    if (!label || seenPreferred.has(key)) continue;
+    if (normalizedBase.some((group) => group.toLowerCase() === key)) {
+      normalizedPreferred.push(label);
+      seenPreferred.add(key);
+    }
+  }
+
+  const merged = [...normalizedPreferred];
+  const mergedKeys = new Set(merged.map((label) => label.toLowerCase()));
+  for (const label of normalizedBase) {
+    const key = label.toLowerCase();
+    if (!mergedKeys.has(key)) {
+      merged.push(label);
+      mergedKeys.add(key);
+    }
+  }
+
+  return merged;
+};
+
+const getDayOrderState = (planId) => {
+  if (!planId) return null;
+  return dayOrderStateByPlanId.value[String(planId)] || null;
+};
+
+const setDayOrderState = (planId, nextState) => {
+  if (!planId) return;
+  dayOrderStateByPlanId.value = {
+    ...dayOrderStateByPlanId.value,
+    [String(planId)]: {
+      loading: false,
+      saving: false,
+      error: '',
+      dirty: false,
+      useCustomWorkoutLogOrder: false,
+      customOrder: [],
+      ...nextState,
+    },
+  };
+};
+
+const groups = computed(() => {
+  const base = builderGroups.value;
+  if (!base.length) return [];
+
+  const state = getDayOrderState(expandedPlanId.value);
+  if (!state?.useCustomWorkoutLogOrder) {
+    return [...base];
+  }
+
+  return normalizeGroupOrder(base, state.customOrder || []);
 });
 
 const allExercises = computed(() => expandedPlanData.value?.exercises || []);
@@ -132,6 +196,228 @@ const exercisesByGroup = computed(() =>
     }))
     .filter((g) => g.exercises.length > 0),
 );
+
+const currentDayOrderState = computed(() => getDayOrderState(expandedPlanId.value));
+const dayOrderDirty = computed(() => Boolean(currentDayOrderState.value?.dirty));
+const dayOrderSaving = computed(() => Boolean(currentDayOrderState.value?.saving));
+const dayOrderLoading = computed(() => Boolean(currentDayOrderState.value?.loading));
+
+const ensureLocalCustomOrder = (planId) => {
+  const state = getDayOrderState(planId);
+  if (!state) {
+    setDayOrderState(planId, {
+      useCustomWorkoutLogOrder: true,
+      customOrder: [...groups.value],
+      dirty: true,
+    });
+    return;
+  }
+
+  if (!state.useCustomWorkoutLogOrder || !Array.isArray(state.customOrder) || !state.customOrder.length) {
+    setDayOrderState(planId, {
+      ...state,
+      useCustomWorkoutLogOrder: true,
+      customOrder: [...groups.value],
+      dirty: true,
+      error: '',
+    });
+  }
+};
+
+const loadWorkoutLogDayOrder = async (planId) => {
+  const pid = String(planId || '').trim();
+  if (!pid) return;
+
+  setDayOrderState(pid, {
+    ...getDayOrderState(pid),
+    loading: true,
+    error: '',
+  });
+
+  try {
+    const response = await fetch(
+      `${API_BASE}/api/workout-log/day-order?planId=${encodeURIComponent(pid)}`,
+      { credentials: 'include' }
+    );
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      throw new Error(errBody?.error || 'Failed to load workout log day order.');
+    }
+
+    const payload = await response.json();
+    const baseGroups = builderGroups.value;
+    const customOrder = normalizeGroupOrder(baseGroups, payload?.customOrder || []);
+
+    setDayOrderState(pid, {
+      useCustomWorkoutLogOrder: payload?.useCustomWorkoutLogOrder === true,
+      customOrder,
+      dirty: false,
+      loading: false,
+      saving: false,
+      error: '',
+    });
+  } catch (err) {
+    setDayOrderState(pid, {
+      ...getDayOrderState(pid),
+      loading: false,
+      saving: false,
+      error: err?.message || 'Failed to load workout log day order.',
+    });
+  }
+};
+
+const toggleCustomWorkoutLogOrder = (enabled) => {
+  const pid = String(expandedPlanId.value || '').trim();
+  if (!pid) return;
+
+  const state = getDayOrderState(pid) || {};
+  const nextEnabled = Boolean(enabled);
+  const nextCustomOrder = normalizeGroupOrder(builderGroups.value, state.customOrder || []);
+
+  setDayOrderState(pid, {
+    ...state,
+    useCustomWorkoutLogOrder: nextEnabled,
+    customOrder: nextCustomOrder,
+    dirty: true,
+    error: '',
+  });
+};
+
+const moveGroupUp = (groupName) => {
+  const pid = String(expandedPlanId.value || '').trim();
+  if (!pid) return;
+
+  ensureLocalCustomOrder(pid);
+  const state = getDayOrderState(pid);
+  const order = [...(state?.customOrder || [])];
+  const index = order.findIndex((label) => String(label || '').toLowerCase() === String(groupName || '').toLowerCase());
+  if (index <= 0) return;
+
+  [order[index - 1], order[index]] = [order[index], order[index - 1]];
+  setDayOrderState(pid, {
+    ...state,
+    useCustomWorkoutLogOrder: true,
+    customOrder: order,
+    dirty: true,
+    error: '',
+  });
+};
+
+const moveGroupDown = (groupName) => {
+  const pid = String(expandedPlanId.value || '').trim();
+  if (!pid) return;
+
+  ensureLocalCustomOrder(pid);
+  const state = getDayOrderState(pid);
+  const order = [...(state?.customOrder || [])];
+  const index = order.findIndex((label) => String(label || '').toLowerCase() === String(groupName || '').toLowerCase());
+  if (index < 0 || index >= order.length - 1) return;
+
+  [order[index], order[index + 1]] = [order[index + 1], order[index]];
+  setDayOrderState(pid, {
+    ...state,
+    useCustomWorkoutLogOrder: true,
+    customOrder: order,
+    dirty: true,
+    error: '',
+  });
+};
+
+const saveWorkoutLogDayOrder = async () => {
+  const pid = String(expandedPlanId.value || '').trim();
+  if (!pid) return;
+
+  const state = getDayOrderState(pid);
+  if (!state) return;
+
+  setDayOrderState(pid, {
+    ...state,
+    saving: true,
+    error: '',
+  });
+
+  try {
+    const endpoint = state.useCustomWorkoutLogOrder
+      ? `${API_BASE}/api/workout-log/day-order`
+      : `${API_BASE}/api/workout-log/day-order/reset`;
+
+    const method = state.useCustomWorkoutLogOrder ? 'PUT' : 'POST';
+    const body = state.useCustomWorkoutLogOrder
+      ? { planId: pid, orderedGroups: normalizeGroupOrder(builderGroups.value, state.customOrder || []) }
+      : { planId: pid };
+
+    const response = await fetch(endpoint, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      throw new Error(errBody?.error || 'Failed to save workout log day order.');
+    }
+
+    const payload = await response.json();
+    const customOrder = normalizeGroupOrder(builderGroups.value, payload?.customOrder || state.customOrder || []);
+    setDayOrderState(pid, {
+      ...state,
+      useCustomWorkoutLogOrder: payload?.useCustomWorkoutLogOrder === true,
+      customOrder,
+      dirty: false,
+      saving: false,
+      error: '',
+    });
+  } catch (err) {
+    setDayOrderState(pid, {
+      ...state,
+      saving: false,
+      error: err?.message || 'Failed to save workout log day order.',
+    });
+  }
+};
+
+const resetWorkoutLogDayOrder = async () => {
+  const pid = String(expandedPlanId.value || '').trim();
+  if (!pid) return;
+
+  const state = getDayOrderState(pid) || {};
+  setDayOrderState(pid, {
+    ...state,
+    saving: true,
+    error: '',
+  });
+
+  try {
+    const response = await fetch(`${API_BASE}/api/workout-log/day-order/reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ planId: pid }),
+    });
+
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      throw new Error(errBody?.error || 'Failed to reset workout log order.');
+    }
+
+    const payload = await response.json();
+    setDayOrderState(pid, {
+      ...state,
+      useCustomWorkoutLogOrder: false,
+      customOrder: normalizeGroupOrder(builderGroups.value, payload?.builderOrder || []),
+      dirty: false,
+      saving: false,
+      error: '',
+    });
+  } catch (err) {
+    setDayOrderState(pid, {
+      ...state,
+      saving: false,
+      error: err?.message || 'Failed to reset workout log order.',
+    });
+  }
+};
 
 /* ─── Derived: selected day exercises (for Day Details tab) ─────────────── */
 const dayExercises = computed(() =>
@@ -237,6 +523,9 @@ const togglePlan = async (planId) => {
     if (!res.ok) throw new Error('Failed to load plan details.');
     const data = await res.json();
     expandedPlanData.value = data?.planner || null;
+    if (expandedPlanData.value) {
+      await loadWorkoutLogDayOrder(pid);
+    }
   } catch (_) {
     expandedPlanData.value = null;
   } finally {
@@ -734,6 +1023,45 @@ onMounted(async () => {
               </div>
 
               <div v-else class="wl-day-grid">
+                <div class="wl-day-order-toolbar app-section-card">
+                  <label class="wl-day-order-toggle">
+                    <input
+                      type="checkbox"
+                      :checked="currentDayOrderState?.useCustomWorkoutLogOrder === true"
+                      @change="toggleCustomWorkoutLogOrder($event.target.checked)"
+                    />
+                    <span>Use Custom Workout Log Order</span>
+                  </label>
+                  <span
+                    v-if="currentDayOrderState?.useCustomWorkoutLogOrder"
+                    class="wl-custom-order-badge"
+                  >
+                    Custom Order Enabled
+                  </span>
+                  <div class="wl-day-order-actions">
+                    <button
+                      type="button"
+                      class="wl-btn-preview"
+                      :disabled="dayOrderSaving || dayOrderLoading"
+                      @click="resetWorkoutLogDayOrder"
+                    >
+                      <i class="fa-solid fa-rotate-left"></i> Reset To Builder Order
+                    </button>
+                    <button
+                      type="button"
+                      class="wl-btn-start"
+                      :disabled="dayOrderSaving || dayOrderLoading || !dayOrderDirty"
+                      @click="saveWorkoutLogDayOrder"
+                    >
+                      <i v-if="dayOrderSaving" class="fa-solid fa-spinner fa-spin"></i>
+                      <i v-else class="fa-solid fa-floppy-disk"></i>
+                      Save Workout Log Order
+                    </button>
+                  </div>
+                  <p v-if="currentDayOrderState?.error" class="wl-day-order-error">
+                    {{ currentDayOrderState.error }}
+                  </p>
+                </div>
                 <article
                   v-for="group in exercisesByGroup"
                   :key="group.name"
@@ -758,6 +1086,22 @@ onMounted(async () => {
                       <span v-if="expandedPlanData?.metadata?.type">
                         <i class="fa-solid fa-tag"></i> {{ expandedPlanData.metadata.type }}
                       </span>
+                      <button
+                        type="button"
+                        class="wl-order-btn"
+                        :disabled="!currentDayOrderState?.useCustomWorkoutLogOrder || dayOrderSaving || groups.findIndex((g) => g === group.name) === 0"
+                        @click="moveGroupUp(group.name)"
+                      >
+                        Move Up
+                      </button>
+                      <button
+                        type="button"
+                        class="wl-order-btn"
+                        :disabled="!currentDayOrderState?.useCustomWorkoutLogOrder || dayOrderSaving || groups.findIndex((g) => g === group.name) === groups.length - 1"
+                        @click="moveGroupDown(group.name)"
+                      >
+                        Move Down
+                      </button>
                     </div>
                   </div>
 
@@ -1155,6 +1499,61 @@ onMounted(async () => {
 .wl-toolbar {
   display: flex; justify-content: flex-end; gap: 10px;
   margin-top: 12px; flex-wrap: wrap;
+}
+
+.wl-day-order-toolbar {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+}
+
+.wl-day-order-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.wl-custom-order-badge {
+  display: inline-flex;
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid #86efac;
+}
+
+.wl-day-order-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wl-day-order-error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.wl-order-btn {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #1e293b;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.wl-order-btn:disabled {
+  opacity: 0.55;
 }
 
 /* ── Buttons ───────────────────────────────────────────────────────────── */
