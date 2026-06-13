@@ -55,3 +55,4 @@ build/
 .env
 .env.*
 !.env.example
+DevAsterisks-VSCodeSync/config/synctool-ftp-settings.json
