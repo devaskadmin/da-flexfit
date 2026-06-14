@@ -276,6 +276,12 @@ export const pagesRoutes = [
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {
+        path: '/tools',
+        component: () => import('@/views/ToolsView.vue'),
+        name: 'admin_tools',
+        meta: { layout: 'AppLayout', isPartials: true },
+    },
+    {
         path: '/admin/test-roles',
         component: () => import('@/views/Member/AdminRoleTester.vue'),
         name: 'admin_test_roles',

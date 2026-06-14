@@ -28,21 +28,47 @@ const authStore = useAuth()
 
 const sidebarUser = computed(() => authStore.user?.value || authStore.user || null)
 
+const safeParseStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem('user') || '{}')
+  } catch {
+    return {}
+  }
+}
+
+const normalizeRoleValue = (candidate) => {
+  const value = String(candidate || '').trim().toLowerCase()
+  if (value === 'administrator') return 'admin'
+  return value
+}
+
 // role = RBAC/access control
 // membershipType = membership/billing/profile tier
 const normalizedRole = computed(() =>
-  String(
+  normalizeRoleValue(
     authStore.user?.value?.role ||
+    authStore.user?.value?.roleSlug ||
+    authStore.user?.value?.role_slug ||
+    authStore.user?.value?.user_role ||
     authStore.user?.role ||
+    authStore.user?.roleSlug ||
+    authStore.user?.role_slug ||
+    authStore.user?.user_role ||
     authStore.currentUser?.role ||
+    authStore.currentUser?.roleSlug ||
+    authStore.currentUser?.role_slug ||
+    authStore.currentUser?.user_role ||
     localStorage.getItem('role') ||
     localStorage.getItem('userRole') ||
-    JSON.parse(localStorage.getItem('user') || '{}')?.role ||
+    safeParseStoredUser()?.role ||
+    safeParseStoredUser()?.roleSlug ||
+    safeParseStoredUser()?.role_slug ||
+    safeParseStoredUser()?.user_role ||
     ''
-  ).trim().toLowerCase()
+  )
 )
 
-const isAdmin = computed(() => ['admin', 'administrator'].includes(normalizedRole.value))
+const isAdmin = computed(() => normalizedRole.value === 'admin')
 const isTrainer = computed(() => normalizedRole.value === 'trainer')
 const isUser = computed(() => normalizedRole.value === 'user')
 
