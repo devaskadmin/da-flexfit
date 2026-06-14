@@ -109,6 +109,7 @@
 
     /* ======== Main Sidebar Section Responsive ======== */
     .main-sidebar {
+        --ff-sidebar-offset: 60px;
         width: 230px;
         padding-top: 60px;
         &::after {
@@ -978,6 +979,7 @@
 
     /* ======== Main Sidebar Section Responsive ======== */
     .main-sidebar {
+        --ff-sidebar-offset: 60px;
         width: 230px;
         padding-top: 60px;
         transform: translateX(-100%);
@@ -2198,6 +2200,7 @@
 
     /* ======== Main Sidebar Section Responsive ======== */
     .main-sidebar {
+        --ff-sidebar-offset: 50px;
         width: 230px;
         padding-top: 0;
         margin-top: 50px;
