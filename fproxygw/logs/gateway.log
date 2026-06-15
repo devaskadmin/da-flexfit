@@ -1,0 +1,33 @@
+Gateway running on port 3000
+Gateway running on port 3000
+Gateway running on port 3000
+Gateway running on port 3000
+Gateway running on port 3000
+Gateway running on port 3000
+Gateway running on port 3000
+[2026-06-15T13:16:48.018Z] [TOOLS] Gateway Startup: MINIO Endpoint=http://192.168.2.80:10000
+[2026-06-15T13:16:48.018Z] [TOOLS] Gateway Startup: Bucket Name=flexfit-local-s3
+[2026-06-15T13:16:48.018Z] [TOOLS] Gateway Startup: Region=us-east-1
+[2026-06-15T13:16:48.018Z] [TOOLS] Gateway Startup: MINIO Endpoint=http://192.168.2.80:10000
+[2026-06-15T13:16:48.018Z] [TOOLS] Gateway Startup: Bucket Name=flexfit-local-s3
+[2026-06-15T13:16:48.018Z] [TOOLS] Gateway Startup: Region=us-east-1
+[2026-06-15T13:17:09.825Z] [TOOLS] MinIO auth diagnostics: health check successful
+[2026-06-15T13:17:09.825Z] [TOOLS] MinIO auth diagnostics: health check successful
+[2026-06-15T13:17:09.848Z] [S3] ListBuckets | Bucket=flexfit-local-s3 | ObjectKey=n/a | Endpoint=http://192.168.2.80:10000 | Status=403 | Error=SignatureDoesNotMatch | Message=The request signature we calculated does not match the signature you provided. Check your key and signing method.
+[2026-06-15T13:17:09.851Z] [S3] HeadBucket | Bucket=flexfit-local-s3 | ObjectKey=n/a | Endpoint=http://192.168.2.80:10000 | Status=403 | Error=Unknown | Message=UnknownError
+[2026-06-15T13:17:09.853Z] [S3] HeadObject | Bucket=flexfit-local-s3 | ObjectKey=test/test.jpg | Endpoint=http://192.168.2.80:10000 | Status=403 | Error=Unknown | Message=UnknownError
+[2026-06-15T13:17:09.856Z] [S3] ListBuckets(forcePathStyle=true) | Bucket=flexfit-local-s3 | ObjectKey=n/a | Endpoint=http://192.168.2.80:10000 | Status=403 | Error=SignatureDoesNotMatch | Message=The request signature we calculated does not match the signature you provided. Check your key and signing method.
+[2026-06-15T13:17:09.859Z] [S3] ListBuckets(forcePathStyle=false) | Bucket=flexfit-local-s3 | ObjectKey=n/a | Endpoint=http://192.168.2.80:10000 | Status=403 | Error=SignatureDoesNotMatch | Message=The request signature we calculated does not match the signature you provided. Check your key and signing method.
+[2026-06-15T13:17:09.860Z] endpoint=/api/test/minio-auth ip=69.132.0.8 status=500 responseTime=44ms
+[2026-06-15T13:30:40.775Z] [TOOLS] Gateway Startup: MINIO Endpoint=http://192.168.2.80:10000
+[2026-06-15T13:30:40.777Z] [TOOLS] Gateway Startup: Bucket Name=flexfit-local-s3
+[2026-06-15T13:30:40.777Z] [TOOLS] Gateway Startup: Region=us-east-1
+[2026-06-15T13:30:56.887Z] endpoint=/api/test/minio-auth ip=127.0.0.1 status=404 responseTime=6ms
+[2026-06-15T13:30:57.027Z] endpoint=/api/test/env ip=127.0.0.1 status=404 responseTime=1ms
+[2026-06-15T13:30:57.036Z] [TOOLS] Request received for /api/tools/test-image
+[2026-06-15T13:30:57.085Z] [TOOLS] Connection successful
+[2026-06-15T13:30:57.085Z] [TOOLS] Bucket validation successful
+[2026-06-15T13:30:57.085Z] [S3] HeadBucket | Bucket=flexfit-local-s3 | ObjectKey=n/a | Endpoint=http://192.168.2.80:10000 | Status=200 | Error=none | Message=none
+[2026-06-15T13:30:57.095Z] [S3] GetObject | Bucket=flexfit-local-s3 | ObjectKey=test/test.jpg | Endpoint=http://192.168.2.80:10000 | Status=200 | Error=none | Message=none
+[2026-06-15T13:30:57.096Z] [TOOLS] Object retrieved successfully
+[2026-06-15T13:30:57.097Z] endpoint=/api/tools/test-image ip=127.0.0.1 status=200 responseTime=62ms

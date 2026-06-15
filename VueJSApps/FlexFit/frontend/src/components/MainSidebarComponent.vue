@@ -177,8 +177,18 @@ onMounted(() => {
    @mouseenter="hoverableSidebar"
    @mouseleave="hoverableOutSidebar"
   >
+
+  
     <div v-click-outside="closeMainLeftSidebar" class="main-menu">
-      <div class="scrollable sidebar-menu" :id="horizontalMenuEnabled ? 'accordionExample' : 'testAccordionExample'">
+
+
+
+
+
+
+
+
+      <div class="sidebar-menu" :id="horizontalMenuEnabled ? 'accordionExample' : 'testAccordionExample'" style="overflow-y: scroll;">
           <li
             v-for="(sidebar, index) in sidebarMenus"
             :key="`section-${index}-${sidebar.menu_name}`"
@@ -198,7 +208,14 @@ onMounted(() => {
               </a>
             </template>
 
+
+
             <template v-if="sidebar.menus">
+
+
+
+
+
               <ul class="sidebar-link-group" :class="[horizontalMenuEnabled ? 'dropdown-menu' : 'show']" :aria-labelledby="[horizontalMenuEnabled ? 'parentDropdownMenu'+index  : '']" :id="[horizontalMenuEnabled ? 'AppDropDownId'+index : `collapseExample-${index}`]" data-bs-parent="#testAccordionExample">
                 <template v-for="(menu, mIndex) in sidebar.menus" :key="`${index}-${mIndex}-${menu.name}`">
                 <li v-if="shouldRenderMenuItem(menu)" class="sidebar-dropdown-item">

@@ -82,14 +82,14 @@ export const sidebarMenus = ref([
                 icon: 'fa-solid fa-id-badge'
             },
             {
-                name: 'Tools',
-                link_name: 'admin_tools',
-                icon: 'fa-solid fa-toolbox'
-            },
-            {
                 name: 'Test Roles',
                 link_name: 'admin_test_roles',
                 icon: 'fa-solid fa-vial-circle-check'
+            },
+            {
+                name: 'Tools',
+                link_name: 'admin_tools',
+                icon: 'fa-solid fa-toolbox'
             },
         ]
     },

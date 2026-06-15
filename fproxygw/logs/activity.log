@@ -1,0 +1,41 @@
+[2026-06-13 19:30:26] INFO  Starting DevAsk Gateway
+[2026-06-13 19:30:26] INFO  Gateway Started PID 12605
+[2026-06-13 19:30:26] INFO  Funnel URL: 
+[2026-06-13 19:39:23] INFO Starting DevAsk Gateway
+[2026-06-13 19:39:23] INFO PID 12712
+[2026-06-13 19:39:23] INFO URL https://da-fproxygw-1.tail4f9b60.ts.net
+[2026-06-13 19:45:21] INFO Configuring Tailscale Funnel
+[2026-06-13 19:45:21] INFO Funnel URL https://da-fproxygw-1.tail4f9b60.ts.net
+[2026-06-13 19:56:10] INFO Starting DevAsk Gateway
+[2026-06-13 19:56:10] INFO PID 12840
+[2026-06-13 19:56:10] INFO URL https://da-fproxygw-1.tail4f9b60.ts.net
+[2026-06-13 19:57:09] INFO Starting DevAsk Gateway
+[2026-06-13 19:57:09] INFO PID 1334
+[2026-06-13 19:57:09] INFO URL https://da-fproxygw-1.tail4f9b60.ts.net
+[2026-06-13 22:01:28] INFO  Gateway Reload Requested
+[2026-06-13 22:01:49] INFO  Gateway Reload Requested
+[2026-06-13 22:02:58] INFO Configuring Tailscale Funnel
+[2026-06-13 22:02:58] INFO Funnel URL https://da-fproxygw-1.tail4f9b60.ts.net
+[2026-06-13 22:07:09] INFO  Gateway Reload Requested
+[2026-06-13 22:11:21] INFO  Gateway Reload Requested
+[2026-06-13 22:11:23] INFO Starting DevAsk Gateway
+[2026-06-13 22:11:23] INFO PID 84578
+[2026-06-13 22:11:23] INFO URL https://da-fproxygw-1.tail4f9b60.ts.net
+[2026-06-13 22:11:25] INFO  Gateway Reload Complete
+[2026-06-13 22:17:43] INFO  Gateway Reload Requested
+[2026-06-13 22:17:45] INFO Starting DevAsk Gateway
+[2026-06-13 22:17:45] INFO PID 93574
+[2026-06-13 22:17:45] INFO URL https://da-fproxygw-1.tail4f9b60.ts.net
+[2026-06-13 22:17:47] INFO  Gateway Reload Complete
+[2026-06-13 22:20:53] INFO  Gateway Reload Requested
+[2026-06-13 22:20:55] INFO Starting DevAsk Gateway
+[2026-06-13 22:20:55] INFO PID 93710
+[2026-06-13 22:20:55] INFO URL https://da-fproxygw-1.tail4f9b60.ts.net
+[2026-06-13 22:20:57] INFO  Gateway Reload Complete
+[2026-06-13 22:22:06] INFO  Gateway Reload Requested
+[2026-06-13 22:22:08] INFO Starting DevAsk Gateway
+[2026-06-13 22:22:08] INFO PID 93847
+[2026-06-13 22:22:08] INFO URL https://da-fproxygw-1.tail4f9b60.ts.net
+[2026-06-13 22:22:10] INFO  Gateway Reload Complete
+[2026-06-15 13:16:45] INFO Stopping Gateway
+[2026-06-15 13:16:47] INFO Starting Gateway
