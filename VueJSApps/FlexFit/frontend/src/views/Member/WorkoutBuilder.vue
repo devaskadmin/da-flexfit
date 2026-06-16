@@ -7,6 +7,7 @@ import WorkoutExerciseBlock from '@/components/workout-builder/WorkoutExerciseBl
 import WorkoutScheduleListItem from '@/components/workout-builder/WorkoutScheduleListItem.vue';
 import { API_BASE } from '@/config/env';
 import { refreshWorkoutStatus, setUserWorkoutStatus } from '@/composable/workoutStatusManager';
+import { getExerciseImage } from '@/utils/exerciseImage';
 
 const metadata = ref({
   name: '',
@@ -563,45 +564,9 @@ const toggleSchedulePlanner = () => {
   isSchedulePlannerOpen.value = !isSchedulePlannerOpen.value;
 };
 
-// Helper function to normalize exercise title to folder name format
-const normalizeExerciseFolderName = (title) => {
-  return String(title || '')
-    .trim()
-    .replace(/[^a-zA-Z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-};
-
 // Helper function to resolve exercise image path
 const resolveExerciseImage = (exercise) => {
-  // 1. Try ImageURL field directly
-  if (exercise.ImageURL) {
-    return exercise.ImageURL;
-  }
-  
-  // 2. Try ImageGallery array (parse JSON if string)
-  if (exercise.ImageGallery) {
-    try {
-      const gallery = typeof exercise.ImageGallery === 'string' 
-        ? JSON.parse(exercise.ImageGallery) 
-        : exercise.ImageGallery;
-      if (Array.isArray(gallery) && gallery.length > 0) {
-        return gallery[0];
-      }
-    } catch (e) {
-      console.warn('Failed to parse ImageGallery:', e);
-    }
-  }
-  
-  // 3. Generate fallback path based on ExerciseTitle
-  if (exercise.ExerciseTitle) {
-    const folderName = normalizeExerciseFolderName(exercise.ExerciseTitle);
-    if (folderName) {
-      return `/assets/Excerises/${folderName}/0.jpg`;
-    }
-  }
-  
-  // 4. Final fallback only if all else fails
-  return '/assets/Excerises/default/default.jpg';
+  return getExerciseImage(exercise);
 };
 
 const createBlock = (exercise) => {

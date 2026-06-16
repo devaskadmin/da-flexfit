@@ -5,6 +5,12 @@ const fs = require('fs');
 const path = require('path');
 const { sanitizeText, parseNumber } = require('../utils/sanitize.js');
 const ImageUpload = require('../Components/ImageUpload/ImageUpload');
+const {
+  DEFAULT_IMAGE_NAME,
+  MEDIA_PROVIDER_LOCAL,
+  ensureExerciseMediaColumns,
+  resolveExerciseMediaRow,
+} = require('../services/mediaResolver');
 
 // ✅ DB Connect
 const pool = require('../db');
@@ -32,9 +38,11 @@ const toTinyIntBoolean = (value) => {
   return 0;
 };
 
+const buildLogicalMediaPath = (exerciseId) => `APP/exercise-library/${Number(exerciseId || 0)}/images`;
+
 const getExerciseOwnership = async (exerciseId) => {
   const [rows] = await pool.query(
-    `SELECT ExerciseID, ExerciseTitle, ImageGallery, CreatedByUserID, COALESCE(IsGlobalExercise, 1) AS IsGlobalExercise
+    `SELECT ExerciseID, ExerciseTitle, ImageURL, ImageGallery, CreatedByUserID, COALESCE(IsGlobalExercise, 1) AS IsGlobalExercise
      FROM exercises
      WHERE ExerciseID = ?
      LIMIT 1`,
@@ -108,6 +116,8 @@ const ensureExerciseSchema = async () => {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
 
+  await ensureExerciseMediaColumns(pool);
+
   exerciseSchemaReady = true;
 };
 
@@ -115,7 +125,7 @@ const mapExerciseRowsWithUserFlags = (rows = [], userId = null, isAdmin = false)
   const currentUserId = Number(userId || 0);
   const canAdminManage = Boolean(isAdmin);
   return (Array.isArray(rows) ? rows : []).map((row) => ({
-    ...row,
+    ...resolveExerciseMediaRow(row),
     IsFavorite: Number(row.IsFavorite || 0),
     IsGlobalExercise: Number(row.IsGlobalExercise || 0) === 1 ? 1 : 0,
     IsOwnedByCurrentUser: currentUserId > 0 && Number(row.CreatedByUserID || 0) === currentUserId ? 1 : 0,
@@ -187,25 +197,29 @@ const fetchExercisesForView = async ({ view = 'all', userId, isAdmin = false }) 
 const normalizeFallbackExercises = (rawList = []) => {
   if (!Array.isArray(rawList)) return [];
 
-  return rawList.map((item, index) => ({
-    ExerciseID: index + 1,
-    ExerciseTitle: item?.name || 'Exercise',
-    MuscleGroup: Array.isArray(item?.primaryMuscles) && item.primaryMuscles.length ? item.primaryMuscles[0] : 'General',
-    Equipment: item?.equipment || 'body only',
-    WorkoutType: item?.category || 'general',
-    RecordingType: item?.category === 'cardio' ? 'Cardio' : 'Strength',
-    Instructions: Array.isArray(item?.instructions) ? item.instructions.join(' ') : '',
-    ImageGallery: JSON.stringify(item?.images || []),
-    ImageURL: Array.isArray(item?.images) && item.images[0]
-      ? `/assets/Excerises/${item.images[0]}`
-      : '/assets/Excerises/default/default.jpg',
-    CreatedByUserID: null,
-    IsGlobalExercise: 1,
-    IsFavorite: 0,
-    IsOwnedByCurrentUser: 0,
-    CanEdit: 0,
-    CanDelete: 0,
-  }));
+  return rawList.map((item, index) => {
+    const primaryImage = Array.isArray(item?.images) && item.images[0] ? item.images[0] : DEFAULT_IMAGE_NAME;
+    return resolveExerciseMediaRow({
+      ExerciseID: index + 1,
+      ExerciseTitle: item?.name || 'Exercise',
+      MuscleGroup: Array.isArray(item?.primaryMuscles) && item.primaryMuscles.length ? item.primaryMuscles[0] : 'General',
+      Equipment: item?.equipment || 'body only',
+      WorkoutType: item?.category || 'general',
+      RecordingType: item?.category === 'cardio' ? 'Cardio' : 'Strength',
+      Instructions: Array.isArray(item?.instructions) ? item.instructions.join(' ') : '',
+      ImageGallery: JSON.stringify(item?.images || []),
+      PrimaryImage: primaryImage,
+      ImageURL: primaryImage ? `/assets/Excerises/${primaryImage}` : '',
+      MediaProvider: MEDIA_PROVIDER_LOCAL,
+      MediaPath: buildLogicalMediaPath(index + 1),
+      CreatedByUserID: null,
+      IsGlobalExercise: 1,
+      IsFavorite: 0,
+      IsOwnedByCurrentUser: 0,
+      CanEdit: 0,
+      CanDelete: 0,
+    });
+  });
 };
 
 const readFallbackExercises = () => {
@@ -269,7 +283,8 @@ router.put('/get-exercise/:id', (req, res) => {
         : [];
 
       const imageGallery = [...existingImages, ...newImages].slice(0, 2);
-      const ImageURL = `/assets/Excerises/${imageGallery[0] || 'default/default.jpg'}`;
+      const primaryImage = imageGallery[0] || DEFAULT_IMAGE_NAME;
+      const legacyImageUrl = sanitizeText(req.body?.ImageURL || existingExercise.ImageURL || '', 255);
 
       const clean = {
         ExerciseTitle: sanitizeText(ExerciseTitle, 100),
@@ -277,7 +292,10 @@ router.put('/get-exercise/:id', (req, res) => {
         Equipment: sanitizeText(Equipment, 50),
         WorkoutType: sanitizeText(WorkoutType, 50),
         RecordingType: sanitizeText(RecordingType, 50),
-        ImageURL: sanitizeText(ImageURL, 255),
+        ImageURL: legacyImageUrl,
+        PrimaryImage: sanitizeText(primaryImage, 255),
+        MediaProvider: MEDIA_PROVIDER_LOCAL,
+        MediaPath: buildLogicalMediaPath(exerciseId),
         Instructions: sanitizeText(Instructions, 1000),
         ImageGallery: JSON.stringify(imageGallery),
         Duration: parseNumber(Duration),
@@ -300,6 +318,9 @@ router.put('/get-exercise/:id', (req, res) => {
             WorkoutType = ?,
             RecordingType = ?,
             ImageURL = ?,
+            MediaProvider = ?,
+            MediaPath = ?,
+            PrimaryImage = ?,
             Instructions = ?,
             ImageGallery = ?,
             Duration = ?,
@@ -317,6 +338,9 @@ router.put('/get-exercise/:id', (req, res) => {
             clean.WorkoutType,
             clean.RecordingType,
             clean.ImageURL,
+            clean.MediaProvider,
+            clean.MediaPath,
+            clean.PrimaryImage,
             clean.Instructions,
             clean.ImageGallery,
             clean.Duration,
@@ -338,6 +362,9 @@ router.put('/get-exercise/:id', (req, res) => {
             WorkoutType = ?,
             RecordingType = ?,
             ImageURL = ?,
+            MediaProvider = ?,
+            MediaPath = ?,
+            PrimaryImage = ?,
             Instructions = ?,
             ImageGallery = ?,
             Duration = ?,
@@ -353,6 +380,9 @@ router.put('/get-exercise/:id', (req, res) => {
             clean.WorkoutType,
             clean.RecordingType,
             clean.ImageURL,
+            clean.MediaProvider,
+            clean.MediaPath,
+            clean.PrimaryImage,
             clean.Instructions,
             clean.ImageGallery,
             clean.Duration,
@@ -418,12 +448,12 @@ router.post('/save-exercises', ImageUpload.upload, async (req, res) => {
       ? req.files.map(f => `${folderName}/${f.filename}`)
       : ['default/default.jpg'];
 
-    const ImageURL = `/assets/Excerises/${imageGallery[0]}`;
+    const primaryImage = imageGallery[0] || DEFAULT_IMAGE_NAME;
 
-    await pool.query(
+    const [insertResult] = await pool.query(
       `INSERT INTO exercises
-      (CreatedByUserID, IsGlobalExercise, ExerciseTitle, MuscleGroup, Equipment, WorkoutType, RecordingType, ImageURL, Instructions, ImageGallery)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (CreatedByUserID, IsGlobalExercise, ExerciseTitle, MuscleGroup, Equipment, WorkoutType, RecordingType, ImageURL, MediaProvider, MediaPath, PrimaryImage, Instructions, ImageGallery)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         createdByUserId,
         createAsGlobalExercise,
@@ -432,11 +462,24 @@ router.post('/save-exercises', ImageUpload.upload, async (req, res) => {
         Equipment,
         WorkoutType,
         RecordingType,
-        ImageURL,
+        '',
+        MEDIA_PROVIDER_LOCAL,
+        buildLogicalMediaPath(0),
+        primaryImage,
         Instructions || '',
         JSON.stringify(imageGallery)
       ]
     );
+
+    const insertedExerciseId = Number(insertResult?.insertId || 0);
+    if (insertedExerciseId > 0) {
+      await pool.query(
+        `UPDATE exercises
+         SET MediaPath = ?
+         WHERE ExerciseID = ?`,
+        [buildLogicalMediaPath(insertedExerciseId), insertedExerciseId]
+      );
+    }
 
     res.status(201).json({ message: 'Exercise created successfully' });
   } catch (insertErr) {

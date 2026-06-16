@@ -1,0 +1,6103 @@
+{
+  "runId": "2026-06-16T01-11-56-462Z",
+  "executedAt": "2026-06-16T01:11:56.466Z",
+  "dryRun": false,
+  "backupPath": "C:\\Users\\stephen.karpathakis\\Documents\\VisualStudio-Workspace\\Dev Asterisks Github - StephenK\\VueJSApps\\FlexFit\\backend\\AWS-S3-CONTENT\\TEST\\exercise-content-migration\\backup-2026-06-16T01-11-56-462Z.json",
+  "copiedFiles": [],
+  "planSummary": {
+    "totalExercises": 869,
+    "readyExercises": 0,
+    "missingSourceExercises": 869,
+    "totalImages": 0
+  },
+  "audit": [
+    {
+      "exerciseId": 1,
+      "exerciseTitle": "3/4 Sit-Up",
+      "oldPath": "/api/media/exercises/1/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 2,
+      "exerciseTitle": "90/90 Hamstring",
+      "oldPath": "/api/media/exercises/2/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 3,
+      "exerciseTitle": "Ab Crunch Machine",
+      "oldPath": "/api/media/exercises/3/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 4,
+      "exerciseTitle": "Ab Roller",
+      "oldPath": "/api/media/exercises/4/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 5,
+      "exerciseTitle": "Adductor",
+      "oldPath": "/api/media/exercises/5/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 6,
+      "exerciseTitle": "Adductor/Groin",
+      "oldPath": "/api/media/exercises/6/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 8,
+      "exerciseTitle": "Air Bike",
+      "oldPath": "/api/media/exercises/8/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 9,
+      "exerciseTitle": "All Fours Quad Stretch",
+      "oldPath": "/api/media/exercises/9/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 10,
+      "exerciseTitle": "Alternating Hammer Curl",
+      "oldPath": "/api/media/exercises/10/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 11,
+      "exerciseTitle": "Alternate Heel Touchers",
+      "oldPath": "/api/media/exercises/11/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 12,
+      "exerciseTitle": "Alternate Incline Dumbbell Curl",
+      "oldPath": "/api/media/exercises/12/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 13,
+      "exerciseTitle": "Alternate Leg Diagonal Bound",
+      "oldPath": "/api/media/exercises/13/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 14,
+      "exerciseTitle": "Alternating Cable Shoulder Press",
+      "oldPath": "/api/media/exercises/14/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 15,
+      "exerciseTitle": "Alternating Deltoid Raise",
+      "oldPath": "/api/media/exercises/15/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 16,
+      "exerciseTitle": "Alternating Floor Press",
+      "oldPath": "/api/media/exercises/16/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 17,
+      "exerciseTitle": "Alternating Hang Clean",
+      "oldPath": "/api/media/exercises/17/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 18,
+      "exerciseTitle": "Alternating Kettlebell Press",
+      "oldPath": "/api/media/exercises/18/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 19,
+      "exerciseTitle": "Alternating Kettlebell Row",
+      "oldPath": "/api/media/exercises/19/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 20,
+      "exerciseTitle": "Alternating Renegade Row",
+      "oldPath": "/api/media/exercises/20/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 21,
+      "exerciseTitle": "Ankle Circles",
+      "oldPath": "/api/media/exercises/21/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 22,
+      "exerciseTitle": "Ankle On The Knee",
+      "oldPath": "/api/media/exercises/22/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 23,
+      "exerciseTitle": "Anterior Tibialis-SMR",
+      "oldPath": "/api/media/exercises/23/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 24,
+      "exerciseTitle": "Anti-Gravity Press",
+      "oldPath": "/api/media/exercises/24/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 25,
+      "exerciseTitle": "Arm Circles",
+      "oldPath": "/api/media/exercises/25/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 26,
+      "exerciseTitle": "Arnold Dumbbell Press",
+      "oldPath": "/api/media/exercises/26/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 27,
+      "exerciseTitle": "Around The Worlds",
+      "oldPath": "/api/media/exercises/27/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 28,
+      "exerciseTitle": "Atlas Stone Trainer",
+      "oldPath": "/api/media/exercises/28/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 29,
+      "exerciseTitle": "Atlas Stones",
+      "oldPath": "/api/media/exercises/29/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 30,
+      "exerciseTitle": "Axle Deadlift",
+      "oldPath": "/api/media/exercises/30/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 31,
+      "exerciseTitle": "Back Flyes - With Bands",
+      "oldPath": "/api/media/exercises/31/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 32,
+      "exerciseTitle": "Backward Drag",
+      "oldPath": "/api/media/exercises/32/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 33,
+      "exerciseTitle": "Backward Medicine Ball Throw",
+      "oldPath": "/api/media/exercises/33/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 34,
+      "exerciseTitle": "Balance Board",
+      "oldPath": "/api/media/exercises/34/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 35,
+      "exerciseTitle": "Ball Leg Curl",
+      "oldPath": "/api/media/exercises/35/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 36,
+      "exerciseTitle": "Band Assisted Pull-Up",
+      "oldPath": "/api/media/exercises/36/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 37,
+      "exerciseTitle": "Band Good Morning",
+      "oldPath": "/api/media/exercises/37/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 38,
+      "exerciseTitle": "Band Good Morning (Pull Through)",
+      "oldPath": "/api/media/exercises/38/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 39,
+      "exerciseTitle": "Band Hip Adductions",
+      "oldPath": "/api/media/exercises/39/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 40,
+      "exerciseTitle": "Band Pull Apart",
+      "oldPath": "/api/media/exercises/40/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 41,
+      "exerciseTitle": "Band Skull Crusher",
+      "oldPath": "/api/media/exercises/41/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 42,
+      "exerciseTitle": "Barbell Ab Rollout",
+      "oldPath": "/api/media/exercises/42/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 43,
+      "exerciseTitle": "Barbell Ab Rollout - On Knees",
+      "oldPath": "/api/media/exercises/43/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 44,
+      "exerciseTitle": "Barbell Bench Press - Medium Grip",
+      "oldPath": "/api/media/exercises/44/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 45,
+      "exerciseTitle": "Barbell Curl",
+      "oldPath": "/api/media/exercises/45/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 46,
+      "exerciseTitle": "Barbell Curls Lying Against An Incline",
+      "oldPath": "/api/media/exercises/46/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 47,
+      "exerciseTitle": "Barbell Deadlift",
+      "oldPath": "/api/media/exercises/47/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 48,
+      "exerciseTitle": "Barbell Full Squat",
+      "oldPath": "/api/media/exercises/48/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 49,
+      "exerciseTitle": "Barbell Glute Bridge",
+      "oldPath": "/api/media/exercises/49/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 50,
+      "exerciseTitle": "Barbell Guillotine Bench Press",
+      "oldPath": "/api/media/exercises/50/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 51,
+      "exerciseTitle": "Barbell Hack Squat",
+      "oldPath": "/api/media/exercises/51/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 52,
+      "exerciseTitle": "Barbell Hip Thrust",
+      "oldPath": "/api/media/exercises/52/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 53,
+      "exerciseTitle": "Barbell Incline Bench Press - Medium Grip",
+      "oldPath": "/api/media/exercises/53/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 54,
+      "exerciseTitle": "Barbell Incline Shoulder Raise",
+      "oldPath": "/api/media/exercises/54/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 55,
+      "exerciseTitle": "Barbell Lunge",
+      "oldPath": "/api/media/exercises/55/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 56,
+      "exerciseTitle": "Barbell Rear Delt Row",
+      "oldPath": "/api/media/exercises/56/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 57,
+      "exerciseTitle": "Barbell Rollout from Bench",
+      "oldPath": "/api/media/exercises/57/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 58,
+      "exerciseTitle": "Barbell Seated Calf Raise",
+      "oldPath": "/api/media/exercises/58/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 59,
+      "exerciseTitle": "Barbell Shoulder Press",
+      "oldPath": "/api/media/exercises/59/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 60,
+      "exerciseTitle": "Barbell Shrug",
+      "oldPath": "/api/media/exercises/60/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 61,
+      "exerciseTitle": "Barbell Shrug Behind The Back",
+      "oldPath": "/api/media/exercises/61/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 62,
+      "exerciseTitle": "Barbell Side Bend",
+      "oldPath": "/api/media/exercises/62/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 63,
+      "exerciseTitle": "Barbell Side Split Squat",
+      "oldPath": "/api/media/exercises/63/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 64,
+      "exerciseTitle": "Barbell Squat",
+      "oldPath": "/api/media/exercises/64/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 65,
+      "exerciseTitle": "Barbell Squat To A Bench",
+      "oldPath": "/api/media/exercises/65/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 66,
+      "exerciseTitle": "Barbell Step Ups",
+      "oldPath": "/api/media/exercises/66/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 67,
+      "exerciseTitle": "Barbell Walking Lunge",
+      "oldPath": "/api/media/exercises/67/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 68,
+      "exerciseTitle": "Battling Ropes",
+      "oldPath": "/api/media/exercises/68/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 69,
+      "exerciseTitle": "Bear Crawl Sled Drags",
+      "oldPath": "/api/media/exercises/69/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 70,
+      "exerciseTitle": "Behind Head Chest Stretch",
+      "oldPath": "/api/media/exercises/70/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 71,
+      "exerciseTitle": "Bench Dips",
+      "oldPath": "/api/media/exercises/71/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 72,
+      "exerciseTitle": "Bench Jump",
+      "oldPath": "/api/media/exercises/72/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 73,
+      "exerciseTitle": "Bench Press - Powerlifting",
+      "oldPath": "/api/media/exercises/73/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 74,
+      "exerciseTitle": "Bench Press - With Bands",
+      "oldPath": "/api/media/exercises/74/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 75,
+      "exerciseTitle": "Bench Press with Chains",
+      "oldPath": "/api/media/exercises/75/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 76,
+      "exerciseTitle": "Bench Sprint",
+      "oldPath": "/api/media/exercises/76/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 77,
+      "exerciseTitle": "Bent-Arm Barbell Pullover",
+      "oldPath": "/api/media/exercises/77/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 78,
+      "exerciseTitle": "Bent-Arm Dumbbell Pullover",
+      "oldPath": "/api/media/exercises/78/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 79,
+      "exerciseTitle": "Bent-Knee Hip Raise",
+      "oldPath": "/api/media/exercises/79/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 80,
+      "exerciseTitle": "Bent Over Barbell Row",
+      "oldPath": "/api/media/exercises/80/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 81,
+      "exerciseTitle": "Bent Over Dumbbell Rear Delt Raise With Head On Bench",
+      "oldPath": "/api/media/exercises/81/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 82,
+      "exerciseTitle": "Bent Over Low-Pulley Side Lateral",
+      "oldPath": "/api/media/exercises/82/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 83,
+      "exerciseTitle": "Bent Over One-Arm Long Bar Row",
+      "oldPath": "/api/media/exercises/83/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 84,
+      "exerciseTitle": "Bent Over Two-Arm Long Bar Row",
+      "oldPath": "/api/media/exercises/84/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 85,
+      "exerciseTitle": "Bent Over Two-Dumbbell Row",
+      "oldPath": "/api/media/exercises/85/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 86,
+      "exerciseTitle": "Bent Over Two-Dumbbell Row With Palms In",
+      "oldPath": "/api/media/exercises/86/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 87,
+      "exerciseTitle": "Bent Press",
+      "oldPath": "/api/media/exercises/87/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 88,
+      "exerciseTitle": "Cycling",
+      "oldPath": "/api/media/exercises/88/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 89,
+      "exerciseTitle": "Stationary Bike",
+      "oldPath": "/api/media/exercises/89/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 90,
+      "exerciseTitle": "Board Press",
+      "oldPath": "/api/media/exercises/90/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 91,
+      "exerciseTitle": "Body-Up",
+      "oldPath": "/api/media/exercises/91/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 92,
+      "exerciseTitle": "Body Tricepss Press",
+      "oldPath": "/api/media/exercises/92/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 93,
+      "exerciseTitle": "Bodyweight Flyes",
+      "oldPath": "/api/media/exercises/93/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 94,
+      "exerciseTitle": "Bodyweight Mid Row",
+      "oldPath": "/api/media/exercises/94/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 95,
+      "exerciseTitle": "Bodyweight Squat",
+      "oldPath": "/api/media/exercises/95/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 96,
+      "exerciseTitle": "Bodyweight Walking Lunge",
+      "oldPath": "/api/media/exercises/96/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 97,
+      "exerciseTitle": "Bosu Ball Cable Crunch With Side Bends",
+      "oldPath": "/api/media/exercises/97/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 98,
+      "exerciseTitle": "Bottoms-Up Clean From The Hang Position",
+      "oldPath": "/api/media/exercises/98/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 99,
+      "exerciseTitle": "Bottoms Up",
+      "oldPath": "/api/media/exercises/99/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 100,
+      "exerciseTitle": "Box Jump (Multiple Response)",
+      "oldPath": "/api/media/exercises/100/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 101,
+      "exerciseTitle": "Box Skip",
+      "oldPath": "/api/media/exercises/101/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 102,
+      "exerciseTitle": "Box Squat",
+      "oldPath": "/api/media/exercises/102/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 103,
+      "exerciseTitle": "Box Squat with Bands",
+      "oldPath": "/api/media/exercises/103/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 104,
+      "exerciseTitle": "Box Squat with Chains",
+      "oldPath": "/api/media/exercises/104/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 105,
+      "exerciseTitle": "Brachialis-SMR",
+      "oldPath": "/api/media/exercises/105/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 106,
+      "exerciseTitle": "Bradford/Rocky Presses",
+      "oldPath": "/api/media/exercises/106/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 107,
+      "exerciseTitle": "Butt-Ups",
+      "oldPath": "/api/media/exercises/107/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 108,
+      "exerciseTitle": "Butt Lift (Bridge)",
+      "oldPath": "/api/media/exercises/108/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 109,
+      "exerciseTitle": "Butterfly",
+      "oldPath": "/api/media/exercises/109/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 110,
+      "exerciseTitle": "Cable Chest Press",
+      "oldPath": "/api/media/exercises/110/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 111,
+      "exerciseTitle": "Cable Crossover",
+      "oldPath": "/api/media/exercises/111/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 112,
+      "exerciseTitle": "Cable Crunch",
+      "oldPath": "/api/media/exercises/112/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 113,
+      "exerciseTitle": "Cable Deadlifts",
+      "oldPath": "/api/media/exercises/113/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 114,
+      "exerciseTitle": "Cable Hammer Curls - Rope Attachment",
+      "oldPath": "/api/media/exercises/114/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 115,
+      "exerciseTitle": "Cable Hip Adduction",
+      "oldPath": "/api/media/exercises/115/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 116,
+      "exerciseTitle": "Cable Incline Pushdown",
+      "oldPath": "/api/media/exercises/116/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 117,
+      "exerciseTitle": "Cable Incline Tricepsss Extension",
+      "oldPath": "/api/media/exercises/117/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 118,
+      "exerciseTitle": "Cable Internal Rotation",
+      "oldPath": "/api/media/exercises/118/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 119,
+      "exerciseTitle": "Cable Iron Cross",
+      "oldPath": "/api/media/exercises/119/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 120,
+      "exerciseTitle": "Cable Judo Flip",
+      "oldPath": "/api/media/exercises/120/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 121,
+      "exerciseTitle": "Cable Lying Tricepsss Extension",
+      "oldPath": "/api/media/exercises/121/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 122,
+      "exerciseTitle": "Cable One-Arm Tricepss Extension",
+      "oldPath": "/api/media/exercises/122/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 123,
+      "exerciseTitle": "Cable Preacher Curl",
+      "oldPath": "/api/media/exercises/123/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 124,
+      "exerciseTitle": "Cable Rear Delt Fly",
+      "oldPath": "/api/media/exercises/124/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 125,
+      "exerciseTitle": "Cable Reverse Crunch",
+      "oldPath": "/api/media/exercises/125/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 126,
+      "exerciseTitle": "Cable Rope Overhead Tricepsss Extension",
+      "oldPath": "/api/media/exercises/126/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 127,
+      "exerciseTitle": "Cable Rope Rear-Delt Rows",
+      "oldPath": "/api/media/exercises/127/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 128,
+      "exerciseTitle": "Cable Russian Twists",
+      "oldPath": "/api/media/exercises/128/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 129,
+      "exerciseTitle": "Cable Seated Crunch",
+      "oldPath": "/api/media/exercises/129/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 130,
+      "exerciseTitle": "Cable Seated Lateral Raise",
+      "oldPath": "/api/media/exercises/130/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 131,
+      "exerciseTitle": "Cable Shoulder Press",
+      "oldPath": "/api/media/exercises/131/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 132,
+      "exerciseTitle": "Cable Shrugs",
+      "oldPath": "/api/media/exercises/132/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 133,
+      "exerciseTitle": "Cable Wrist Curl",
+      "oldPath": "/api/media/exercises/133/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 134,
+      "exerciseTitle": "Calf-Machine Shoulder Shrug",
+      "oldPath": "/api/media/exercises/134/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 135,
+      "exerciseTitle": "Calf Press",
+      "oldPath": "/api/media/exercises/135/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 136,
+      "exerciseTitle": "Calf Press On The Leg Press Machine",
+      "oldPath": "/api/media/exercises/136/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 137,
+      "exerciseTitle": "Calf Raise On A Dumbbell",
+      "oldPath": "/api/media/exercises/137/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 138,
+      "exerciseTitle": "Calf Raises - With Bands",
+      "oldPath": "/api/media/exercises/138/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 139,
+      "exerciseTitle": "Calf Stretch Elbows Against Wall",
+      "oldPath": "/api/media/exercises/139/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 140,
+      "exerciseTitle": "Calf Stretch Hands Against Wall",
+      "oldPath": "/api/media/exercises/140/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 141,
+      "exerciseTitle": "Calves-SMR",
+      "oldPath": "/api/media/exercises/141/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 142,
+      "exerciseTitle": "Car Deadlift",
+      "oldPath": "/api/media/exercises/142/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 143,
+      "exerciseTitle": "Car Drivers",
+      "oldPath": "/api/media/exercises/143/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 144,
+      "exerciseTitle": "Carioca Quick Step",
+      "oldPath": "/api/media/exercises/144/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 145,
+      "exerciseTitle": "Cat Stretch",
+      "oldPath": "/api/media/exercises/145/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 146,
+      "exerciseTitle": "Catch and Overhead Throw",
+      "oldPath": "/api/media/exercises/146/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 147,
+      "exerciseTitle": "Chain Handle Extension",
+      "oldPath": "/api/media/exercises/147/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 148,
+      "exerciseTitle": "Chain Press",
+      "oldPath": "/api/media/exercises/148/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 149,
+      "exerciseTitle": "Chair Leg Extended Stretch",
+      "oldPath": "/api/media/exercises/149/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 150,
+      "exerciseTitle": "Chair Lower Back Stretch",
+      "oldPath": "/api/media/exercises/150/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 151,
+      "exerciseTitle": "Chair Squat",
+      "oldPath": "/api/media/exercises/151/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 152,
+      "exerciseTitle": "Chair Upper Body Stretch",
+      "oldPath": "/api/media/exercises/152/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 153,
+      "exerciseTitle": "Chest And Front Of Shoulder Stretch",
+      "oldPath": "/api/media/exercises/153/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 154,
+      "exerciseTitle": "Chest Push from 3 point stance",
+      "oldPath": "/api/media/exercises/154/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 155,
+      "exerciseTitle": "Chest Push (multiple response)",
+      "oldPath": "/api/media/exercises/155/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 156,
+      "exerciseTitle": "Chest Push (single response)",
+      "oldPath": "/api/media/exercises/156/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 157,
+      "exerciseTitle": "Chest Push with Run Release",
+      "oldPath": "/api/media/exercises/157/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 158,
+      "exerciseTitle": "Chest Stretch on Stability Ball",
+      "oldPath": "/api/media/exercises/158/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 159,
+      "exerciseTitle": "Child's Pose",
+      "oldPath": "/api/media/exercises/159/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 160,
+      "exerciseTitle": "Chin-Up",
+      "oldPath": "/api/media/exercises/160/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 161,
+      "exerciseTitle": "Chin To Chest Stretch",
+      "oldPath": "/api/media/exercises/161/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 162,
+      "exerciseTitle": "Circus Bell",
+      "oldPath": "/api/media/exercises/162/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 163,
+      "exerciseTitle": "Clean",
+      "oldPath": "/api/media/exercises/163/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 164,
+      "exerciseTitle": "Clean Deadlift",
+      "oldPath": "/api/media/exercises/164/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 165,
+      "exerciseTitle": "Clean Pull",
+      "oldPath": "/api/media/exercises/165/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 166,
+      "exerciseTitle": "Clean Shrug",
+      "oldPath": "/api/media/exercises/166/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 167,
+      "exerciseTitle": "Clean and Jerk",
+      "oldPath": "/api/media/exercises/167/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 168,
+      "exerciseTitle": "Clean and Press",
+      "oldPath": "/api/media/exercises/168/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 169,
+      "exerciseTitle": "Clean from Blocks",
+      "oldPath": "/api/media/exercises/169/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 170,
+      "exerciseTitle": "Clock Push-Up",
+      "oldPath": "/api/media/exercises/170/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 171,
+      "exerciseTitle": "Close-Grip Barbell Bench Press",
+      "oldPath": "/api/media/exercises/171/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 172,
+      "exerciseTitle": "Close-Grip Dumbbell Press",
+      "oldPath": "/api/media/exercises/172/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 173,
+      "exerciseTitle": "Close-Grip EZ-Bar Curl with Band",
+      "oldPath": "/api/media/exercises/173/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 174,
+      "exerciseTitle": "Close-Grip EZ-Bar Press",
+      "oldPath": "/api/media/exercises/174/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 175,
+      "exerciseTitle": "Close-Grip EZ Bar Curl",
+      "oldPath": "/api/media/exercises/175/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 176,
+      "exerciseTitle": "Close-Grip Front Lat Pulldown",
+      "oldPath": "/api/media/exercises/176/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 177,
+      "exerciseTitle": "Close-Grip Push-Up off of a Dumbbell",
+      "oldPath": "/api/media/exercises/177/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 178,
+      "exerciseTitle": "Close-Grip Standing Barbell Curl",
+      "oldPath": "/api/media/exercises/178/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 179,
+      "exerciseTitle": "Cocoons",
+      "oldPath": "/api/media/exercises/179/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 180,
+      "exerciseTitle": "Conan's Wheel",
+      "oldPath": "/api/media/exercises/180/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 181,
+      "exerciseTitle": "Concentration Curls",
+      "oldPath": "/api/media/exercises/181/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 182,
+      "exerciseTitle": "Cross-Body Crunch",
+      "oldPath": "/api/media/exercises/182/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 183,
+      "exerciseTitle": "Cross Body Hammer Curl",
+      "oldPath": "/api/media/exercises/183/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 184,
+      "exerciseTitle": "Cross Over - With Bands",
+      "oldPath": "/api/media/exercises/184/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 185,
+      "exerciseTitle": "Crossover Reverse Lunge",
+      "oldPath": "/api/media/exercises/185/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 186,
+      "exerciseTitle": "Crucifix",
+      "oldPath": "/api/media/exercises/186/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 187,
+      "exerciseTitle": "Crunch - Hands Overhead",
+      "oldPath": "/api/media/exercises/187/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 188,
+      "exerciseTitle": "Crunch - Legs On Exercise Ball",
+      "oldPath": "/api/media/exercises/188/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 189,
+      "exerciseTitle": "Crunches",
+      "oldPath": "/api/media/exercises/189/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 190,
+      "exerciseTitle": "Cuban Press",
+      "oldPath": "/api/media/exercises/190/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 191,
+      "exerciseTitle": "Dancer's Stretch",
+      "oldPath": "/api/media/exercises/191/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 192,
+      "exerciseTitle": "Dead Bug",
+      "oldPath": "/api/media/exercises/192/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 193,
+      "exerciseTitle": "Deadlift with Bands",
+      "oldPath": "/api/media/exercises/193/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 194,
+      "exerciseTitle": "Deadlift with Chains",
+      "oldPath": "/api/media/exercises/194/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 195,
+      "exerciseTitle": "Decline Barbell Bench Press",
+      "oldPath": "/api/media/exercises/195/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 196,
+      "exerciseTitle": "Decline Close-Grip Bench To Skull Crusher",
+      "oldPath": "/api/media/exercises/196/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 197,
+      "exerciseTitle": "Decline Crunch",
+      "oldPath": "/api/media/exercises/197/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 198,
+      "exerciseTitle": "Decline Dumbbell Bench Press",
+      "oldPath": "/api/media/exercises/198/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 199,
+      "exerciseTitle": "Decline Dumbbell Flyes",
+      "oldPath": "/api/media/exercises/199/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 200,
+      "exerciseTitle": "Decline Dumbbell Tricepsss Extension",
+      "oldPath": "/api/media/exercises/200/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 201,
+      "exerciseTitle": "Decline EZ Bar Tricepsss Extension",
+      "oldPath": "/api/media/exercises/201/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 202,
+      "exerciseTitle": "Decline Oblique Crunch",
+      "oldPath": "/api/media/exercises/202/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 203,
+      "exerciseTitle": "Decline Push-Up",
+      "oldPath": "/api/media/exercises/203/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 204,
+      "exerciseTitle": "Decline Reverse Crunch",
+      "oldPath": "/api/media/exercises/204/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 205,
+      "exerciseTitle": "Decline Smith Press",
+      "oldPath": "/api/media/exercises/205/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 206,
+      "exerciseTitle": "Deficit Deadlift",
+      "oldPath": "/api/media/exercises/206/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 207,
+      "exerciseTitle": "Depth Jump Leap",
+      "oldPath": "/api/media/exercises/207/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 208,
+      "exerciseTitle": "Dip Machine",
+      "oldPath": "/api/media/exercises/208/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 209,
+      "exerciseTitle": "Dips - Chest Version",
+      "oldPath": "/api/media/exercises/209/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 210,
+      "exerciseTitle": "Dips - Tricepsss Version",
+      "oldPath": "/api/media/exercises/210/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 211,
+      "exerciseTitle": "Donkey Calf Raises",
+      "oldPath": "/api/media/exercises/211/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 212,
+      "exerciseTitle": "Double Kettlebell Alternating Hang Clean",
+      "oldPath": "/api/media/exercises/212/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 213,
+      "exerciseTitle": "Double Kettlebell Jerk",
+      "oldPath": "/api/media/exercises/213/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 214,
+      "exerciseTitle": "Double Kettlebell Push Press",
+      "oldPath": "/api/media/exercises/214/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 215,
+      "exerciseTitle": "Double Kettlebell Snatch",
+      "oldPath": "/api/media/exercises/215/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 216,
+      "exerciseTitle": "Double Kettlebell Windmill",
+      "oldPath": "/api/media/exercises/216/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 217,
+      "exerciseTitle": "Double Leg Butt Kick",
+      "oldPath": "/api/media/exercises/217/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 218,
+      "exerciseTitle": "Downward Facing Balance",
+      "oldPath": "/api/media/exercises/218/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 219,
+      "exerciseTitle": "Drag Curl",
+      "oldPath": "/api/media/exercises/219/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 220,
+      "exerciseTitle": "Drop Push",
+      "oldPath": "/api/media/exercises/220/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 221,
+      "exerciseTitle": "Alternating Dumbbell Curl",
+      "oldPath": "/api/media/exercises/221/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 222,
+      "exerciseTitle": "Dumbbell Bench Press",
+      "oldPath": "/api/media/exercises/222/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 223,
+      "exerciseTitle": "Dumbbell Bench Press with Neutral Grip",
+      "oldPath": "/api/media/exercises/223/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 224,
+      "exerciseTitle": "Dumbbell Curl",
+      "oldPath": "/api/media/exercises/224/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 225,
+      "exerciseTitle": "Dumbbell Clean",
+      "oldPath": "/api/media/exercises/225/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 226,
+      "exerciseTitle": "Dumbbell Floor Press",
+      "oldPath": "/api/media/exercises/226/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 227,
+      "exerciseTitle": "Dumbbell Flyes",
+      "oldPath": "/api/media/exercises/227/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 228,
+      "exerciseTitle": "Dumbbell Incline Row",
+      "oldPath": "/api/media/exercises/228/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 229,
+      "exerciseTitle": "Dumbbell Incline Shoulder Raise",
+      "oldPath": "/api/media/exercises/229/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 230,
+      "exerciseTitle": "Dumbbell Lunges",
+      "oldPath": "/api/media/exercises/230/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 231,
+      "exerciseTitle": "Dumbbell Lying One-Arm Rear Lateral Raise",
+      "oldPath": "/api/media/exercises/231/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 232,
+      "exerciseTitle": "Dumbbell Lying Pronation",
+      "oldPath": "/api/media/exercises/232/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 233,
+      "exerciseTitle": "Dumbbell Lying Rear Lateral Raise",
+      "oldPath": "/api/media/exercises/233/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 234,
+      "exerciseTitle": "Dumbbell Lying Supination",
+      "oldPath": "/api/media/exercises/234/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 235,
+      "exerciseTitle": "Dumbbell One-Arm Shoulder Press",
+      "oldPath": "/api/media/exercises/235/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 236,
+      "exerciseTitle": "Dumbbell One-Arm Tricepsss Extension",
+      "oldPath": "/api/media/exercises/236/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 237,
+      "exerciseTitle": "Dumbbell One-Arm Upright Row",
+      "oldPath": "/api/media/exercises/237/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 238,
+      "exerciseTitle": "Dumbbell Prone Incline Curl",
+      "oldPath": "/api/media/exercises/238/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 239,
+      "exerciseTitle": "Dumbbell Raise",
+      "oldPath": "/api/media/exercises/239/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 240,
+      "exerciseTitle": "Dumbbell Rear Lunge",
+      "oldPath": "/api/media/exercises/240/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 241,
+      "exerciseTitle": "Dumbbell Scaption",
+      "oldPath": "/api/media/exercises/241/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 242,
+      "exerciseTitle": "Dumbbell Seated Box Jump",
+      "oldPath": "/api/media/exercises/242/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 243,
+      "exerciseTitle": "Dumbbell Seated One-Leg Calf Raise",
+      "oldPath": "/api/media/exercises/243/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 244,
+      "exerciseTitle": "Dumbbell Shoulder Press",
+      "oldPath": "/api/media/exercises/244/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 245,
+      "exerciseTitle": "Dumbbell Shrug",
+      "oldPath": "/api/media/exercises/245/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 246,
+      "exerciseTitle": "Dumbbell Side Bend",
+      "oldPath": "/api/media/exercises/246/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 247,
+      "exerciseTitle": "Dumbbell Squat",
+      "oldPath": "/api/media/exercises/247/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 248,
+      "exerciseTitle": "Dumbbell Squat To A Bench",
+      "oldPath": "/api/media/exercises/248/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 249,
+      "exerciseTitle": "Dumbbell Step Ups",
+      "oldPath": "/api/media/exercises/249/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 250,
+      "exerciseTitle": "Dumbbell Tricepss Extension -Pronated Grip",
+      "oldPath": "/api/media/exercises/250/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 251,
+      "exerciseTitle": "Dynamic Back Stretch",
+      "oldPath": "/api/media/exercises/251/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 252,
+      "exerciseTitle": "Dynamic Chest Stretch",
+      "oldPath": "/api/media/exercises/252/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 253,
+      "exerciseTitle": "EZ-Bar Curl",
+      "oldPath": "/api/media/exercises/253/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 254,
+      "exerciseTitle": "EZ-Bar Skullcrusher",
+      "oldPath": "/api/media/exercises/254/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 255,
+      "exerciseTitle": "Elbow Circles",
+      "oldPath": "/api/media/exercises/255/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 256,
+      "exerciseTitle": "Elbow to Knee",
+      "oldPath": "/api/media/exercises/256/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 257,
+      "exerciseTitle": "Elbows Back",
+      "oldPath": "/api/media/exercises/257/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 258,
+      "exerciseTitle": "Elevated Back Lunge",
+      "oldPath": "/api/media/exercises/258/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 259,
+      "exerciseTitle": "Elevated Cable Rows",
+      "oldPath": "/api/media/exercises/259/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 260,
+      "exerciseTitle": "Elliptical",
+      "oldPath": "/api/media/exercises/260/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 261,
+      "exerciseTitle": "Exercise Ball Crunch",
+      "oldPath": "/api/media/exercises/261/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 262,
+      "exerciseTitle": "Exercise Ball Pull-In",
+      "oldPath": "/api/media/exercises/262/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 263,
+      "exerciseTitle": "Extended Range One-Arm Kettlebell Floor Press",
+      "oldPath": "/api/media/exercises/263/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 264,
+      "exerciseTitle": "External Rotation",
+      "oldPath": "/api/media/exercises/264/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 265,
+      "exerciseTitle": "External Rotation with Band",
+      "oldPath": "/api/media/exercises/265/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 266,
+      "exerciseTitle": "External Rotation with Cable",
+      "oldPath": "/api/media/exercises/266/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 267,
+      "exerciseTitle": "Face Pull",
+      "oldPath": "/api/media/exercises/267/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 268,
+      "exerciseTitle": "Farmer's Walk",
+      "oldPath": "/api/media/exercises/268/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 269,
+      "exerciseTitle": "Fast Skipping",
+      "oldPath": "/api/media/exercises/269/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 270,
+      "exerciseTitle": "Finger Curls",
+      "oldPath": "/api/media/exercises/270/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 271,
+      "exerciseTitle": "Flat Bench Cable Flyes",
+      "oldPath": "/api/media/exercises/271/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 272,
+      "exerciseTitle": "Flat Bench Leg Pull-In",
+      "oldPath": "/api/media/exercises/272/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 273,
+      "exerciseTitle": "Flat Bench Lying Leg Raise",
+      "oldPath": "/api/media/exercises/273/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 275,
+      "exerciseTitle": "Floor Glute-Ham Raise",
+      "oldPath": "/api/media/exercises/275/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 276,
+      "exerciseTitle": "Floor Press",
+      "oldPath": "/api/media/exercises/276/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 277,
+      "exerciseTitle": "Floor Press with Chains",
+      "oldPath": "/api/media/exercises/277/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 278,
+      "exerciseTitle": "Flutter Kicks",
+      "oldPath": "/api/media/exercises/278/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 279,
+      "exerciseTitle": "Foot-SMR",
+      "oldPath": "/api/media/exercises/279/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 280,
+      "exerciseTitle": "Forward Drag with Press",
+      "oldPath": "/api/media/exercises/280/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 281,
+      "exerciseTitle": "Frankenstein Squat",
+      "oldPath": "/api/media/exercises/281/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 282,
+      "exerciseTitle": "Freehand Jump Squat",
+      "oldPath": "/api/media/exercises/282/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 283,
+      "exerciseTitle": "Frog Hops",
+      "oldPath": "/api/media/exercises/283/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 284,
+      "exerciseTitle": "Frog Sit-Ups",
+      "oldPath": "/api/media/exercises/284/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 285,
+      "exerciseTitle": "Front Barbell Squat",
+      "oldPath": "/api/media/exercises/285/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 286,
+      "exerciseTitle": "Front Barbell Squat To A Bench",
+      "oldPath": "/api/media/exercises/286/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 287,
+      "exerciseTitle": "Front Box Jump",
+      "oldPath": "/api/media/exercises/287/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 288,
+      "exerciseTitle": "Front Cable Raise",
+      "oldPath": "/api/media/exercises/288/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 289,
+      "exerciseTitle": "Front Cone Hops (or hurdle hops)",
+      "oldPath": "/api/media/exercises/289/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 290,
+      "exerciseTitle": "Front Dumbbell Raise",
+      "oldPath": "/api/media/exercises/290/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 291,
+      "exerciseTitle": "Front Incline Dumbbell Raise",
+      "oldPath": "/api/media/exercises/291/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 292,
+      "exerciseTitle": "Front Leg Raises",
+      "oldPath": "/api/media/exercises/292/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 293,
+      "exerciseTitle": "Front Plate Raise",
+      "oldPath": "/api/media/exercises/293/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 294,
+      "exerciseTitle": "Front Raise And Pullover",
+      "oldPath": "/api/media/exercises/294/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 295,
+      "exerciseTitle": "Front Squat (Clean Grip)",
+      "oldPath": "/api/media/exercises/295/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 296,
+      "exerciseTitle": "Front Squats With Two Kettlebells",
+      "oldPath": "/api/media/exercises/296/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 297,
+      "exerciseTitle": "Front Two-Dumbbell Raise",
+      "oldPath": "/api/media/exercises/297/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 298,
+      "exerciseTitle": "Full Range-Of-Motion Lat Pulldown",
+      "oldPath": "/api/media/exercises/298/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 299,
+      "exerciseTitle": "Gironda Sternum Chins",
+      "oldPath": "/api/media/exercises/299/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 300,
+      "exerciseTitle": "Glute Ham Raise",
+      "oldPath": "/api/media/exercises/300/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 301,
+      "exerciseTitle": "Glute Kickback",
+      "oldPath": "/api/media/exercises/301/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 302,
+      "exerciseTitle": "Goblet Squat",
+      "oldPath": "/api/media/exercises/302/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 303,
+      "exerciseTitle": "Good Morning",
+      "oldPath": "/api/media/exercises/303/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 304,
+      "exerciseTitle": "Good Morning off Pins",
+      "oldPath": "/api/media/exercises/304/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 305,
+      "exerciseTitle": "Gorilla Chin/Crunch",
+      "oldPath": "/api/media/exercises/305/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 306,
+      "exerciseTitle": "Groin and Back Stretch",
+      "oldPath": "/api/media/exercises/306/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 307,
+      "exerciseTitle": "Groiners",
+      "oldPath": "/api/media/exercises/307/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 308,
+      "exerciseTitle": "Hack Squat",
+      "oldPath": "/api/media/exercises/308/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 309,
+      "exerciseTitle": "Hammer Curl",
+      "oldPath": "/api/media/exercises/309/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 310,
+      "exerciseTitle": "Hammer Grip Incline DB Bench Press",
+      "oldPath": "/api/media/exercises/310/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 311,
+      "exerciseTitle": "Hamstring-SMR",
+      "oldPath": "/api/media/exercises/311/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 312,
+      "exerciseTitle": "Hamstring Stretch",
+      "oldPath": "/api/media/exercises/312/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 313,
+      "exerciseTitle": "Handstand Push-Ups",
+      "oldPath": "/api/media/exercises/313/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 314,
+      "exerciseTitle": "Hang Clean",
+      "oldPath": "/api/media/exercises/314/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 315,
+      "exerciseTitle": "Hang Clean - Below the Knees",
+      "oldPath": "/api/media/exercises/315/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 316,
+      "exerciseTitle": "Hang Snatch",
+      "oldPath": "/api/media/exercises/316/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 317,
+      "exerciseTitle": "Hang Snatch - Below Knees",
+      "oldPath": "/api/media/exercises/317/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 318,
+      "exerciseTitle": "Hanging Bar Good Morning",
+      "oldPath": "/api/media/exercises/318/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 319,
+      "exerciseTitle": "Hanging Leg Raise",
+      "oldPath": "/api/media/exercises/319/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 320,
+      "exerciseTitle": "Hanging Pike",
+      "oldPath": "/api/media/exercises/320/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 321,
+      "exerciseTitle": "Heaving Snatch Balance",
+      "oldPath": "/api/media/exercises/321/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 322,
+      "exerciseTitle": "Heavy Bag Thrust",
+      "oldPath": "/api/media/exercises/322/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 323,
+      "exerciseTitle": "High Cable Curls",
+      "oldPath": "/api/media/exercises/323/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 324,
+      "exerciseTitle": "Hip Circles (prone)",
+      "oldPath": "/api/media/exercises/324/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 325,
+      "exerciseTitle": "Hip Extension with Bands",
+      "oldPath": "/api/media/exercises/325/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 326,
+      "exerciseTitle": "Hip Flexion with Band",
+      "oldPath": "/api/media/exercises/326/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 327,
+      "exerciseTitle": "Hip Lift with Band",
+      "oldPath": "/api/media/exercises/327/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 328,
+      "exerciseTitle": "Hug A Ball",
+      "oldPath": "/api/media/exercises/328/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 329,
+      "exerciseTitle": "Hug Knees To Chest",
+      "oldPath": "/api/media/exercises/329/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 330,
+      "exerciseTitle": "Hurdle Hops",
+      "oldPath": "/api/media/exercises/330/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 331,
+      "exerciseTitle": "Hyperextensions (Back Extensions)",
+      "oldPath": "/api/media/exercises/331/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 332,
+      "exerciseTitle": "Hyperextensions With No Hyperextension Bench",
+      "oldPath": "/api/media/exercises/332/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 333,
+      "exerciseTitle": "IT Band and Glute Stretch",
+      "oldPath": "/api/media/exercises/333/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 334,
+      "exerciseTitle": "Iliotibial Tract-SMR",
+      "oldPath": "/api/media/exercises/334/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 335,
+      "exerciseTitle": "Inchworm",
+      "oldPath": "/api/media/exercises/335/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 336,
+      "exerciseTitle": "Incline Barbell Tricepsss Extension",
+      "oldPath": "/api/media/exercises/336/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 337,
+      "exerciseTitle": "Incline Bench Pull",
+      "oldPath": "/api/media/exercises/337/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 338,
+      "exerciseTitle": "Incline Cable Chest Press",
+      "oldPath": "/api/media/exercises/338/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 339,
+      "exerciseTitle": "Incline Cable Flye",
+      "oldPath": "/api/media/exercises/339/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 340,
+      "exerciseTitle": "Incline Dumbbell Bench With Palms Facing In",
+      "oldPath": "/api/media/exercises/340/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 341,
+      "exerciseTitle": "Incline Dumbbell Curl",
+      "oldPath": "/api/media/exercises/341/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 342,
+      "exerciseTitle": "Incline Dumbbell Flyes",
+      "oldPath": "/api/media/exercises/342/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 343,
+      "exerciseTitle": "Incline Dumbbell Flyes - With A Twist",
+      "oldPath": "/api/media/exercises/343/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 344,
+      "exerciseTitle": "Incline Dumbbell Press",
+      "oldPath": "/api/media/exercises/344/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 345,
+      "exerciseTitle": "Incline Hammer Curls",
+      "oldPath": "/api/media/exercises/345/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 346,
+      "exerciseTitle": "Incline Inner Biceps Curl",
+      "oldPath": "/api/media/exercises/346/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 347,
+      "exerciseTitle": "Incline Push-Up",
+      "oldPath": "/api/media/exercises/347/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 348,
+      "exerciseTitle": "Incline Push-Up Close-Grip",
+      "oldPath": "/api/media/exercises/348/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 349,
+      "exerciseTitle": "Incline Push-Up Depth Jump",
+      "oldPath": "/api/media/exercises/349/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 350,
+      "exerciseTitle": "Incline Push-Up Medium",
+      "oldPath": "/api/media/exercises/350/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 351,
+      "exerciseTitle": "Incline Push-Up Reverse Grip",
+      "oldPath": "/api/media/exercises/351/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 352,
+      "exerciseTitle": "Incline Push-Up Wide",
+      "oldPath": "/api/media/exercises/352/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 353,
+      "exerciseTitle": "Intermediate Groin Stretch",
+      "oldPath": "/api/media/exercises/353/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 354,
+      "exerciseTitle": "Intermediate Hip Flexor and Quad Stretch",
+      "oldPath": "/api/media/exercises/354/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 355,
+      "exerciseTitle": "Internal Rotation with Band",
+      "oldPath": "/api/media/exercises/355/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 356,
+      "exerciseTitle": "Inverted Row",
+      "oldPath": "/api/media/exercises/356/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 357,
+      "exerciseTitle": "Inverted Row with Straps",
+      "oldPath": "/api/media/exercises/357/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 358,
+      "exerciseTitle": "Iron Cross",
+      "oldPath": "/api/media/exercises/358/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 359,
+      "exerciseTitle": "Iron Crosses (stretch)",
+      "oldPath": "/api/media/exercises/359/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 360,
+      "exerciseTitle": "Isometric Chest Squeezes",
+      "oldPath": "/api/media/exercises/360/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 361,
+      "exerciseTitle": "Isometric Neck Exercise - Front And Back",
+      "oldPath": "/api/media/exercises/361/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 362,
+      "exerciseTitle": "Isometric Neck Exercise - Sides",
+      "oldPath": "/api/media/exercises/362/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 363,
+      "exerciseTitle": "Isometric Wipers",
+      "oldPath": "/api/media/exercises/363/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 364,
+      "exerciseTitle": "JM Press",
+      "oldPath": "/api/media/exercises/364/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 365,
+      "exerciseTitle": "Jackknife Sit-Up",
+      "oldPath": "/api/media/exercises/365/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 366,
+      "exerciseTitle": "Janda Sit-Up",
+      "oldPath": "/api/media/exercises/366/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 367,
+      "exerciseTitle": "Jefferson Squats",
+      "oldPath": "/api/media/exercises/367/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 368,
+      "exerciseTitle": "Jerk Balance",
+      "oldPath": "/api/media/exercises/368/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 369,
+      "exerciseTitle": "Jerk Dip Squat",
+      "oldPath": "/api/media/exercises/369/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 370,
+      "exerciseTitle": "Treadmill Jogging",
+      "oldPath": "/api/media/exercises/370/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 371,
+      "exerciseTitle": "Keg Load",
+      "oldPath": "/api/media/exercises/371/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 372,
+      "exerciseTitle": "Kettlebell Arnold Press",
+      "oldPath": "/api/media/exercises/372/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 373,
+      "exerciseTitle": "Kettlebell Dead Clean",
+      "oldPath": "/api/media/exercises/373/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 374,
+      "exerciseTitle": "Kettlebell Figure 8",
+      "oldPath": "/api/media/exercises/374/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 375,
+      "exerciseTitle": "Kettlebell Hang Clean",
+      "oldPath": "/api/media/exercises/375/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 376,
+      "exerciseTitle": "Kettlebell One-Legged Deadlift",
+      "oldPath": "/api/media/exercises/376/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 377,
+      "exerciseTitle": "Kettlebell Pass Between The Legs",
+      "oldPath": "/api/media/exercises/377/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 378,
+      "exerciseTitle": "Kettlebell Pirate Ships",
+      "oldPath": "/api/media/exercises/378/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 379,
+      "exerciseTitle": "Kettlebell Pistol Squat",
+      "oldPath": "/api/media/exercises/379/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 380,
+      "exerciseTitle": "Kettlebell Seated Press",
+      "oldPath": "/api/media/exercises/380/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 381,
+      "exerciseTitle": "Kettlebell Seesaw Press",
+      "oldPath": "/api/media/exercises/381/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 382,
+      "exerciseTitle": "Kettlebell Sumo High Pull",
+      "oldPath": "/api/media/exercises/382/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 383,
+      "exerciseTitle": "Kettlebell Thruster",
+      "oldPath": "/api/media/exercises/383/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 384,
+      "exerciseTitle": "Kettlebell Turkish Get-Up (Lunge style)",
+      "oldPath": "/api/media/exercises/384/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 385,
+      "exerciseTitle": "Kettlebell Turkish Get-Up (Squat style)",
+      "oldPath": "/api/media/exercises/385/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 386,
+      "exerciseTitle": "Kettlebell Windmill",
+      "oldPath": "/api/media/exercises/386/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 387,
+      "exerciseTitle": "Kipping Muscle Up",
+      "oldPath": "/api/media/exercises/387/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 388,
+      "exerciseTitle": "Knee Across The Body",
+      "oldPath": "/api/media/exercises/388/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 389,
+      "exerciseTitle": "Knee Circles",
+      "oldPath": "/api/media/exercises/389/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 390,
+      "exerciseTitle": "Knee/Hip Raise On Parallel Bars",
+      "oldPath": "/api/media/exercises/390/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 391,
+      "exerciseTitle": "Knee Tuck Jump",
+      "oldPath": "/api/media/exercises/391/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 392,
+      "exerciseTitle": "Kneeling Arm Drill",
+      "oldPath": "/api/media/exercises/392/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 393,
+      "exerciseTitle": "Kneeling Cable Crunch With Alternating Oblique Twists",
+      "oldPath": "/api/media/exercises/393/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 394,
+      "exerciseTitle": "Kneeling Cable Tricepsss Extension",
+      "oldPath": "/api/media/exercises/394/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 395,
+      "exerciseTitle": "Kneeling Forearm Stretch",
+      "oldPath": "/api/media/exercises/395/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 396,
+      "exerciseTitle": "Kneeling High Pulley Row",
+      "oldPath": "/api/media/exercises/396/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 397,
+      "exerciseTitle": "Kneeling Hip Flexor",
+      "oldPath": "/api/media/exercises/397/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 398,
+      "exerciseTitle": "Kneeling Jump Squat",
+      "oldPath": "/api/media/exercises/398/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 399,
+      "exerciseTitle": "Kneeling Single-Arm High Pulley Row",
+      "oldPath": "/api/media/exercises/399/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 400,
+      "exerciseTitle": "Kneeling Squat",
+      "oldPath": "/api/media/exercises/400/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 401,
+      "exerciseTitle": "Landmine 180's",
+      "oldPath": "/api/media/exercises/401/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 402,
+      "exerciseTitle": "Landmine Linear Jammer",
+      "oldPath": "/api/media/exercises/402/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 403,
+      "exerciseTitle": "Lateral Bound",
+      "oldPath": "/api/media/exercises/403/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 404,
+      "exerciseTitle": "Lateral Box Jump",
+      "oldPath": "/api/media/exercises/404/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 405,
+      "exerciseTitle": "Lateral Cone Hops",
+      "oldPath": "/api/media/exercises/405/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 406,
+      "exerciseTitle": "Lateral Raise - With Bands",
+      "oldPath": "/api/media/exercises/406/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 407,
+      "exerciseTitle": "Latissimus Dorsi-SMR",
+      "oldPath": "/api/media/exercises/407/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 408,
+      "exerciseTitle": "Leg-Over Floor Press",
+      "oldPath": "/api/media/exercises/408/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 409,
+      "exerciseTitle": "Leg-Up Hamstring Stretch",
+      "oldPath": "/api/media/exercises/409/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 410,
+      "exerciseTitle": "Leg Extensions",
+      "oldPath": "/api/media/exercises/410/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 411,
+      "exerciseTitle": "Leg Lift",
+      "oldPath": "/api/media/exercises/411/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 412,
+      "exerciseTitle": "Leg Press",
+      "oldPath": "/api/media/exercises/412/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 413,
+      "exerciseTitle": "Leg Pull-In",
+      "oldPath": "/api/media/exercises/413/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 414,
+      "exerciseTitle": "Leverage Chest Press",
+      "oldPath": "/api/media/exercises/414/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 415,
+      "exerciseTitle": "Leverage Deadlift",
+      "oldPath": "/api/media/exercises/415/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 416,
+      "exerciseTitle": "Leverage Decline Chest Press",
+      "oldPath": "/api/media/exercises/416/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 417,
+      "exerciseTitle": "Leverage High Row",
+      "oldPath": "/api/media/exercises/417/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 418,
+      "exerciseTitle": "Leverage Incline Chest Press",
+      "oldPath": "/api/media/exercises/418/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 419,
+      "exerciseTitle": "Leverage Iso Row",
+      "oldPath": "/api/media/exercises/419/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 420,
+      "exerciseTitle": "Leverage Shoulder Press",
+      "oldPath": "/api/media/exercises/420/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 421,
+      "exerciseTitle": "Leverage Shrug",
+      "oldPath": "/api/media/exercises/421/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 422,
+      "exerciseTitle": "Linear 3-Part Start Technique",
+      "oldPath": "/api/media/exercises/422/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 423,
+      "exerciseTitle": "Linear Acceleration Wall Drill",
+      "oldPath": "/api/media/exercises/423/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 424,
+      "exerciseTitle": "Linear Depth Jump",
+      "oldPath": "/api/media/exercises/424/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 425,
+      "exerciseTitle": "Log Lift",
+      "oldPath": "/api/media/exercises/425/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 426,
+      "exerciseTitle": "London Bridges",
+      "oldPath": "/api/media/exercises/426/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 427,
+      "exerciseTitle": "Looking At Ceiling",
+      "oldPath": "/api/media/exercises/427/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 428,
+      "exerciseTitle": "Low Cable Crossover",
+      "oldPath": "/api/media/exercises/428/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 429,
+      "exerciseTitle": "Low Cable Tricepsss Extension",
+      "oldPath": "/api/media/exercises/429/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 430,
+      "exerciseTitle": "Low Pulley Row To Neck",
+      "oldPath": "/api/media/exercises/430/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 431,
+      "exerciseTitle": "Lower Back-SMR",
+      "oldPath": "/api/media/exercises/431/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 432,
+      "exerciseTitle": "Lower Back Curl",
+      "oldPath": "/api/media/exercises/432/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 433,
+      "exerciseTitle": "Lunge Pass Through",
+      "oldPath": "/api/media/exercises/433/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 434,
+      "exerciseTitle": "Lunge Sprint",
+      "oldPath": "/api/media/exercises/434/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 435,
+      "exerciseTitle": "Lying Bent Leg Groin",
+      "oldPath": "/api/media/exercises/435/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 436,
+      "exerciseTitle": "Lying Cable Curl",
+      "oldPath": "/api/media/exercises/436/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 437,
+      "exerciseTitle": "Lying Cambered Barbell Row",
+      "oldPath": "/api/media/exercises/437/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 438,
+      "exerciseTitle": "Lying Close-Grip Bar Curl On High Pulley",
+      "oldPath": "/api/media/exercises/438/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 439,
+      "exerciseTitle": "Lying Close-Grip Barbell Tricepsss Extension Behind The Head",
+      "oldPath": "/api/media/exercises/439/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 440,
+      "exerciseTitle": "Lying Close-Grip Barbell Tricepsss Press To Chin",
+      "oldPath": "/api/media/exercises/440/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 441,
+      "exerciseTitle": "Lying Crossover",
+      "oldPath": "/api/media/exercises/441/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 442,
+      "exerciseTitle": "Lying Dumbbell Tricepss Extension",
+      "oldPath": "/api/media/exercises/442/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 443,
+      "exerciseTitle": "Lying Face Down Plate Neck Resistance",
+      "oldPath": "/api/media/exercises/443/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 444,
+      "exerciseTitle": "Lying Face Up Plate Neck Resistance",
+      "oldPath": "/api/media/exercises/444/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 445,
+      "exerciseTitle": "Lying Glute",
+      "oldPath": "/api/media/exercises/445/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 446,
+      "exerciseTitle": "Lying Hamstring",
+      "oldPath": "/api/media/exercises/446/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 447,
+      "exerciseTitle": "Lying High Bench Barbell Curl",
+      "oldPath": "/api/media/exercises/447/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 448,
+      "exerciseTitle": "Lying Leg Curls",
+      "oldPath": "/api/media/exercises/448/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 449,
+      "exerciseTitle": "Lying Machine Squat",
+      "oldPath": "/api/media/exercises/449/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 450,
+      "exerciseTitle": "Lying One-Arm Lateral Raise",
+      "oldPath": "/api/media/exercises/450/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 451,
+      "exerciseTitle": "Lying Prone Quadriceps",
+      "oldPath": "/api/media/exercises/451/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 452,
+      "exerciseTitle": "Lying Rear Delt Raise",
+      "oldPath": "/api/media/exercises/452/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 453,
+      "exerciseTitle": "Lying Supine Dumbbell Curl",
+      "oldPath": "/api/media/exercises/453/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 454,
+      "exerciseTitle": "Lying T-Bar Row",
+      "oldPath": "/api/media/exercises/454/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 455,
+      "exerciseTitle": "Lying Tricepsss Press",
+      "oldPath": "/api/media/exercises/455/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 456,
+      "exerciseTitle": "Machine Bench Press",
+      "oldPath": "/api/media/exercises/456/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 457,
+      "exerciseTitle": "Machine Bicep Curl",
+      "oldPath": "/api/media/exercises/457/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 458,
+      "exerciseTitle": "Machine Preacher Curls",
+      "oldPath": "/api/media/exercises/458/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 459,
+      "exerciseTitle": "Machine Shoulder (Military) Press",
+      "oldPath": "/api/media/exercises/459/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 460,
+      "exerciseTitle": "Machine Tricepsss Extension",
+      "oldPath": "/api/media/exercises/460/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 461,
+      "exerciseTitle": "Medicine Ball Chest Pass",
+      "oldPath": "/api/media/exercises/461/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 462,
+      "exerciseTitle": "Medicine Ball Full Twist",
+      "oldPath": "/api/media/exercises/462/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 463,
+      "exerciseTitle": "Medicine Ball Scoop Throw",
+      "oldPath": "/api/media/exercises/463/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 464,
+      "exerciseTitle": "Middle Back Shrug",
+      "oldPath": "/api/media/exercises/464/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 465,
+      "exerciseTitle": "Middle Back Stretch",
+      "oldPath": "/api/media/exercises/465/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 466,
+      "exerciseTitle": "Mixed Grip Chin",
+      "oldPath": "/api/media/exercises/466/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 467,
+      "exerciseTitle": "Monster Walk",
+      "oldPath": "/api/media/exercises/467/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 468,
+      "exerciseTitle": "Mountain Climbers",
+      "oldPath": "/api/media/exercises/468/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 469,
+      "exerciseTitle": "Moving Claw Series",
+      "oldPath": "/api/media/exercises/469/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 470,
+      "exerciseTitle": "Muscle Snatch",
+      "oldPath": "/api/media/exercises/470/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 471,
+      "exerciseTitle": "Muscle Up",
+      "oldPath": "/api/media/exercises/471/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 472,
+      "exerciseTitle": "Narrow Stance Hack Squats",
+      "oldPath": "/api/media/exercises/472/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 473,
+      "exerciseTitle": "Narrow Stance Leg Press",
+      "oldPath": "/api/media/exercises/473/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 474,
+      "exerciseTitle": "Narrow Stance Squats",
+      "oldPath": "/api/media/exercises/474/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 475,
+      "exerciseTitle": "Natural Glute Ham Raise",
+      "oldPath": "/api/media/exercises/475/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 476,
+      "exerciseTitle": "Neck-SMR",
+      "oldPath": "/api/media/exercises/476/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 477,
+      "exerciseTitle": "Neck Press",
+      "oldPath": "/api/media/exercises/477/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 478,
+      "exerciseTitle": "Oblique Crunches",
+      "oldPath": "/api/media/exercises/478/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 479,
+      "exerciseTitle": "Oblique Crunches - On The Floor",
+      "oldPath": "/api/media/exercises/479/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 480,
+      "exerciseTitle": "Olympic Squat",
+      "oldPath": "/api/media/exercises/480/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 481,
+      "exerciseTitle": "On-Your-Back Quad Stretch",
+      "oldPath": "/api/media/exercises/481/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 482,
+      "exerciseTitle": "On Your Side Quad Stretch",
+      "oldPath": "/api/media/exercises/482/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 483,
+      "exerciseTitle": "One-Arm Dumbbell Row",
+      "oldPath": "/api/media/exercises/483/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 484,
+      "exerciseTitle": "One-Arm Flat Bench Dumbbell Flye",
+      "oldPath": "/api/media/exercises/484/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 485,
+      "exerciseTitle": "One-Arm High-Pulley Cable Side Bends",
+      "oldPath": "/api/media/exercises/485/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 486,
+      "exerciseTitle": "One-Arm Incline Lateral Raise",
+      "oldPath": "/api/media/exercises/486/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 487,
+      "exerciseTitle": "One-Arm Kettlebell Clean",
+      "oldPath": "/api/media/exercises/487/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 488,
+      "exerciseTitle": "One-Arm Kettlebell Clean and Jerk",
+      "oldPath": "/api/media/exercises/488/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 489,
+      "exerciseTitle": "One-Arm Kettlebell Floor Press",
+      "oldPath": "/api/media/exercises/489/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 490,
+      "exerciseTitle": "One-Arm Kettlebell Jerk",
+      "oldPath": "/api/media/exercises/490/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 491,
+      "exerciseTitle": "One-Arm Kettlebell Military Press To The Side",
+      "oldPath": "/api/media/exercises/491/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 492,
+      "exerciseTitle": "One-Arm Kettlebell Para Press",
+      "oldPath": "/api/media/exercises/492/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 493,
+      "exerciseTitle": "One-Arm Kettlebell Push Press",
+      "oldPath": "/api/media/exercises/493/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 494,
+      "exerciseTitle": "One-Arm Kettlebell Row",
+      "oldPath": "/api/media/exercises/494/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 495,
+      "exerciseTitle": "One-Arm Kettlebell Snatch",
+      "oldPath": "/api/media/exercises/495/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 496,
+      "exerciseTitle": "One-Arm Kettlebell Split Jerk",
+      "oldPath": "/api/media/exercises/496/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 497,
+      "exerciseTitle": "One-Arm Kettlebell Split Snatch",
+      "oldPath": "/api/media/exercises/497/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 498,
+      "exerciseTitle": "One-Arm Kettlebell Swings",
+      "oldPath": "/api/media/exercises/498/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 499,
+      "exerciseTitle": "One-Arm Long Bar Row",
+      "oldPath": "/api/media/exercises/499/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 500,
+      "exerciseTitle": "One-Arm Medicine Ball Slam",
+      "oldPath": "/api/media/exercises/500/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 501,
+      "exerciseTitle": "One-Arm Open Palm Kettlebell Clean",
+      "oldPath": "/api/media/exercises/501/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 502,
+      "exerciseTitle": "One-Arm Overhead Kettlebell Squats",
+      "oldPath": "/api/media/exercises/502/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 503,
+      "exerciseTitle": "One-Arm Side Deadlift",
+      "oldPath": "/api/media/exercises/503/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 504,
+      "exerciseTitle": "One-Arm Side Laterals",
+      "oldPath": "/api/media/exercises/504/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 505,
+      "exerciseTitle": "One-Legged Cable Kickback",
+      "oldPath": "/api/media/exercises/505/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 506,
+      "exerciseTitle": "One-Arm Against Wall",
+      "oldPath": "/api/media/exercises/506/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 507,
+      "exerciseTitle": "One-Arm Chin-Up",
+      "oldPath": "/api/media/exercises/507/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 508,
+      "exerciseTitle": "One-Arm Dumbbell Bench Press",
+      "oldPath": "/api/media/exercises/508/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 509,
+      "exerciseTitle": "One-Arm Dumbbell Preacher Curl",
+      "oldPath": "/api/media/exercises/509/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 510,
+      "exerciseTitle": "One-Arm Floor Press",
+      "oldPath": "/api/media/exercises/510/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 511,
+      "exerciseTitle": "One-Arm Lat Pulldown",
+      "oldPath": "/api/media/exercises/511/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 512,
+      "exerciseTitle": "One-Arm Pronated Dumbbell Tricepsss Extension",
+      "oldPath": "/api/media/exercises/512/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 513,
+      "exerciseTitle": "One-Arm Supinated Dumbbell Tricepsss Extension",
+      "oldPath": "/api/media/exercises/513/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 514,
+      "exerciseTitle": "One Half Locust",
+      "oldPath": "/api/media/exercises/514/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 515,
+      "exerciseTitle": "One Handed Hang",
+      "oldPath": "/api/media/exercises/515/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 516,
+      "exerciseTitle": "One Knee To Chest",
+      "oldPath": "/api/media/exercises/516/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 517,
+      "exerciseTitle": "One Leg Barbell Squat",
+      "oldPath": "/api/media/exercises/517/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 518,
+      "exerciseTitle": "Open Palm Kettlebell Clean",
+      "oldPath": "/api/media/exercises/518/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 519,
+      "exerciseTitle": "Otis-Up",
+      "oldPath": "/api/media/exercises/519/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 520,
+      "exerciseTitle": "Overhead Cable Curl",
+      "oldPath": "/api/media/exercises/520/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 521,
+      "exerciseTitle": "Overhead Lat",
+      "oldPath": "/api/media/exercises/521/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 522,
+      "exerciseTitle": "Overhead Slam",
+      "oldPath": "/api/media/exercises/522/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 523,
+      "exerciseTitle": "Overhead Squat",
+      "oldPath": "/api/media/exercises/523/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 524,
+      "exerciseTitle": "Overhead Stretch",
+      "oldPath": "/api/media/exercises/524/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 525,
+      "exerciseTitle": "Overhead Tricepsss",
+      "oldPath": "/api/media/exercises/525/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 526,
+      "exerciseTitle": "Pallof Press",
+      "oldPath": "/api/media/exercises/526/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 527,
+      "exerciseTitle": "Pallof Press With Rotation",
+      "oldPath": "/api/media/exercises/527/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 528,
+      "exerciseTitle": "Palms-Down Dumbbell Wrist Curl Over A Bench",
+      "oldPath": "/api/media/exercises/528/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 529,
+      "exerciseTitle": "Palms-Down Wrist Curl Over A Bench",
+      "oldPath": "/api/media/exercises/529/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 530,
+      "exerciseTitle": "Palms-Up Barbell Wrist Curl Over A Bench",
+      "oldPath": "/api/media/exercises/530/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 531,
+      "exerciseTitle": "Palms-Up Dumbbell Wrist Curl Over A Bench",
+      "oldPath": "/api/media/exercises/531/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 532,
+      "exerciseTitle": "Parallel Bar Dip",
+      "oldPath": "/api/media/exercises/532/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 533,
+      "exerciseTitle": "Pelvic Tilt Into Bridge",
+      "oldPath": "/api/media/exercises/533/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 534,
+      "exerciseTitle": "Peroneals-SMR",
+      "oldPath": "/api/media/exercises/534/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 535,
+      "exerciseTitle": "Peroneals Stretch",
+      "oldPath": "/api/media/exercises/535/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 536,
+      "exerciseTitle": "Physioball Hip Bridge",
+      "oldPath": "/api/media/exercises/536/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 537,
+      "exerciseTitle": "Pin Presses",
+      "oldPath": "/api/media/exercises/537/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 538,
+      "exerciseTitle": "Piriformis-SMR",
+      "oldPath": "/api/media/exercises/538/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 539,
+      "exerciseTitle": "Plank",
+      "oldPath": "/api/media/exercises/539/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 540,
+      "exerciseTitle": "Plate Pinch",
+      "oldPath": "/api/media/exercises/540/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 541,
+      "exerciseTitle": "Plate Twist",
+      "oldPath": "/api/media/exercises/541/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 542,
+      "exerciseTitle": "Platform Hamstring Slides",
+      "oldPath": "/api/media/exercises/542/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 543,
+      "exerciseTitle": "Plie Dumbbell Squat",
+      "oldPath": "/api/media/exercises/543/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 544,
+      "exerciseTitle": "Plyo Kettlebell Pushups",
+      "oldPath": "/api/media/exercises/544/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 545,
+      "exerciseTitle": "Plyo Push-up",
+      "oldPath": "/api/media/exercises/545/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 546,
+      "exerciseTitle": "Posterior Tibialis Stretch",
+      "oldPath": "/api/media/exercises/546/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 547,
+      "exerciseTitle": "Power Clean",
+      "oldPath": "/api/media/exercises/547/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 548,
+      "exerciseTitle": "Power Clean from Blocks",
+      "oldPath": "/api/media/exercises/548/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 549,
+      "exerciseTitle": "Power Jerk",
+      "oldPath": "/api/media/exercises/549/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 550,
+      "exerciseTitle": "Power Partials",
+      "oldPath": "/api/media/exercises/550/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 551,
+      "exerciseTitle": "Power Snatch",
+      "oldPath": "/api/media/exercises/551/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 552,
+      "exerciseTitle": "Power Snatch from Blocks",
+      "oldPath": "/api/media/exercises/552/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 553,
+      "exerciseTitle": "Power Stairs",
+      "oldPath": "/api/media/exercises/553/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 554,
+      "exerciseTitle": "Preacher Curl",
+      "oldPath": "/api/media/exercises/554/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 555,
+      "exerciseTitle": "Preacher Hammer Dumbbell Curl",
+      "oldPath": "/api/media/exercises/555/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 556,
+      "exerciseTitle": "Press Sit-Up",
+      "oldPath": "/api/media/exercises/556/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 557,
+      "exerciseTitle": "Prone Manual Hamstring",
+      "oldPath": "/api/media/exercises/557/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 558,
+      "exerciseTitle": "Prowler Sprint",
+      "oldPath": "/api/media/exercises/558/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 559,
+      "exerciseTitle": "Pull Through",
+      "oldPath": "/api/media/exercises/559/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 560,
+      "exerciseTitle": "Pullups",
+      "oldPath": "/api/media/exercises/560/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 561,
+      "exerciseTitle": "Wide Push-Up",
+      "oldPath": "/api/media/exercises/561/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 562,
+      "exerciseTitle": "Close-Grip Push-Up",
+      "oldPath": "/api/media/exercises/562/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 563,
+      "exerciseTitle": "Push-Ups With Feet Elevated",
+      "oldPath": "/api/media/exercises/563/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 564,
+      "exerciseTitle": "Push-Ups With Feet On An Exercise Ball",
+      "oldPath": "/api/media/exercises/564/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 565,
+      "exerciseTitle": "Push Press",
+      "oldPath": "/api/media/exercises/565/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 566,
+      "exerciseTitle": "Push Press - Behind the Neck",
+      "oldPath": "/api/media/exercises/566/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 567,
+      "exerciseTitle": "Push-Up To Side Plank",
+      "oldPath": "/api/media/exercises/567/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 568,
+      "exerciseTitle": "Push-Up",
+      "oldPath": "/api/media/exercises/568/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 569,
+      "exerciseTitle": "Push-Up (Close/Wide)",
+      "oldPath": "/api/media/exercises/569/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 570,
+      "exerciseTitle": "Pyramid",
+      "oldPath": "/api/media/exercises/570/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 571,
+      "exerciseTitle": "Quad Stretch",
+      "oldPath": "/api/media/exercises/571/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 572,
+      "exerciseTitle": "Quadriceps-SMR",
+      "oldPath": "/api/media/exercises/572/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 573,
+      "exerciseTitle": "Quick Leap",
+      "oldPath": "/api/media/exercises/573/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 574,
+      "exerciseTitle": "Rack Delivery",
+      "oldPath": "/api/media/exercises/574/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 575,
+      "exerciseTitle": "Rack Pull with Bands",
+      "oldPath": "/api/media/exercises/575/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 576,
+      "exerciseTitle": "Rack Pulls",
+      "oldPath": "/api/media/exercises/576/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 577,
+      "exerciseTitle": "Rear Leg Raises",
+      "oldPath": "/api/media/exercises/577/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 578,
+      "exerciseTitle": "Recumbent Bike",
+      "oldPath": "/api/media/exercises/578/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 579,
+      "exerciseTitle": "Return Push from Stance",
+      "oldPath": "/api/media/exercises/579/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 580,
+      "exerciseTitle": "Reverse Band Bench Press",
+      "oldPath": "/api/media/exercises/580/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 581,
+      "exerciseTitle": "Reverse Band Box Squat",
+      "oldPath": "/api/media/exercises/581/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 582,
+      "exerciseTitle": "Reverse Band Deadlift",
+      "oldPath": "/api/media/exercises/582/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 583,
+      "exerciseTitle": "Reverse Band Power Squat",
+      "oldPath": "/api/media/exercises/583/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 584,
+      "exerciseTitle": "Reverse Band Sumo Deadlift",
+      "oldPath": "/api/media/exercises/584/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 585,
+      "exerciseTitle": "Reverse Barbell Curl",
+      "oldPath": "/api/media/exercises/585/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 586,
+      "exerciseTitle": "Reverse Barbell Preacher Curls",
+      "oldPath": "/api/media/exercises/586/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 587,
+      "exerciseTitle": "Reverse Cable Curl",
+      "oldPath": "/api/media/exercises/587/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 588,
+      "exerciseTitle": "Reverse Crunch",
+      "oldPath": "/api/media/exercises/588/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 589,
+      "exerciseTitle": "Reverse Flyes",
+      "oldPath": "/api/media/exercises/589/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 590,
+      "exerciseTitle": "Reverse Flyes With External Rotation",
+      "oldPath": "/api/media/exercises/590/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 591,
+      "exerciseTitle": "Reverse Grip Bent-Over Rows",
+      "oldPath": "/api/media/exercises/591/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 592,
+      "exerciseTitle": "Reverse Grip Tricepsss Pushdown",
+      "oldPath": "/api/media/exercises/592/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 593,
+      "exerciseTitle": "Reverse Hyperextension",
+      "oldPath": "/api/media/exercises/593/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 594,
+      "exerciseTitle": "Reverse Machine Flyes",
+      "oldPath": "/api/media/exercises/594/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 595,
+      "exerciseTitle": "Reverse Plate Curls",
+      "oldPath": "/api/media/exercises/595/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 596,
+      "exerciseTitle": "Reverse Tricepsss Bench Press",
+      "oldPath": "/api/media/exercises/596/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 597,
+      "exerciseTitle": "Rhomboids-SMR",
+      "oldPath": "/api/media/exercises/597/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 598,
+      "exerciseTitle": "Rickshaw Carry",
+      "oldPath": "/api/media/exercises/598/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 599,
+      "exerciseTitle": "Rickshaw Deadlift",
+      "oldPath": "/api/media/exercises/599/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 600,
+      "exerciseTitle": "Ring Dips",
+      "oldPath": "/api/media/exercises/600/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 601,
+      "exerciseTitle": "Rocket Jump",
+      "oldPath": "/api/media/exercises/601/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 602,
+      "exerciseTitle": "Rocking Standing Calf Raise",
+      "oldPath": "/api/media/exercises/602/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 603,
+      "exerciseTitle": "Rocky Pull-Ups/Pulldowns",
+      "oldPath": "/api/media/exercises/603/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 604,
+      "exerciseTitle": "Romanian Deadlift",
+      "oldPath": "/api/media/exercises/604/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 605,
+      "exerciseTitle": "Romanian Deadlift from Deficit",
+      "oldPath": "/api/media/exercises/605/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 606,
+      "exerciseTitle": "Rope Climb",
+      "oldPath": "/api/media/exercises/606/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 607,
+      "exerciseTitle": "Rope Crunch",
+      "oldPath": "/api/media/exercises/607/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 608,
+      "exerciseTitle": "Rope Jumping",
+      "oldPath": "/api/media/exercises/608/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 609,
+      "exerciseTitle": "Rope Straight-Arm Pulldown",
+      "oldPath": "/api/media/exercises/609/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 610,
+      "exerciseTitle": "Round The World Shoulder Stretch",
+      "oldPath": "/api/media/exercises/610/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 611,
+      "exerciseTitle": "Rowing, Stationary",
+      "oldPath": "/api/media/exercises/611/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 612,
+      "exerciseTitle": "Runner's Stretch",
+      "oldPath": "/api/media/exercises/612/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 613,
+      "exerciseTitle": "Treadmill Run",
+      "oldPath": "/api/media/exercises/613/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 614,
+      "exerciseTitle": "Russian Twist",
+      "oldPath": "/api/media/exercises/614/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 615,
+      "exerciseTitle": "Sandbag Load",
+      "oldPath": "/api/media/exercises/615/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 616,
+      "exerciseTitle": "Scapular Pull-Up",
+      "oldPath": "/api/media/exercises/616/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 617,
+      "exerciseTitle": "Scissor Kick",
+      "oldPath": "/api/media/exercises/617/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 618,
+      "exerciseTitle": "Scissors Jump",
+      "oldPath": "/api/media/exercises/618/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 619,
+      "exerciseTitle": "Seated Band Hamstring Curl",
+      "oldPath": "/api/media/exercises/619/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 620,
+      "exerciseTitle": "Seated Barbell Military Press",
+      "oldPath": "/api/media/exercises/620/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 621,
+      "exerciseTitle": "Seated Barbell Twist",
+      "oldPath": "/api/media/exercises/621/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 622,
+      "exerciseTitle": "Seated Bent-Over One-Arm Dumbbell Tricepsss Extension",
+      "oldPath": "/api/media/exercises/622/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 623,
+      "exerciseTitle": "Seated Bent-Over Rear Delt Raise",
+      "oldPath": "/api/media/exercises/623/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 624,
+      "exerciseTitle": "Seated Bent-Over Two-Arm Dumbbell Tricepsss Extension",
+      "oldPath": "/api/media/exercises/624/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 625,
+      "exerciseTitle": "Seated Biceps",
+      "oldPath": "/api/media/exercises/625/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 626,
+      "exerciseTitle": "Seated Cable Rows",
+      "oldPath": "/api/media/exercises/626/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 627,
+      "exerciseTitle": "Seated Cable Shoulder Press",
+      "oldPath": "/api/media/exercises/627/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 628,
+      "exerciseTitle": "Seated Calf Raise",
+      "oldPath": "/api/media/exercises/628/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 629,
+      "exerciseTitle": "Seated Calf Stretch",
+      "oldPath": "/api/media/exercises/629/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 630,
+      "exerciseTitle": "Seated Close-Grip Concentration Barbell Curl",
+      "oldPath": "/api/media/exercises/630/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 631,
+      "exerciseTitle": "Seated Dumbbell Curl",
+      "oldPath": "/api/media/exercises/631/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 632,
+      "exerciseTitle": "Seated Dumbbell Inner Biceps Curl",
+      "oldPath": "/api/media/exercises/632/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 633,
+      "exerciseTitle": "Seated Dumbbell Palms-Down Wrist Curl",
+      "oldPath": "/api/media/exercises/633/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 634,
+      "exerciseTitle": "Seated Dumbbell Palms-Up Wrist Curl",
+      "oldPath": "/api/media/exercises/634/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 635,
+      "exerciseTitle": "Seated Dumbbell Press",
+      "oldPath": "/api/media/exercises/635/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 636,
+      "exerciseTitle": "Seated Flat Bench Leg Pull-In",
+      "oldPath": "/api/media/exercises/636/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 637,
+      "exerciseTitle": "Seated Floor Hamstring Stretch",
+      "oldPath": "/api/media/exercises/637/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 638,
+      "exerciseTitle": "Seated Front Deltoid",
+      "oldPath": "/api/media/exercises/638/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 639,
+      "exerciseTitle": "Seated Glute",
+      "oldPath": "/api/media/exercises/639/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 640,
+      "exerciseTitle": "Seated Good Mornings",
+      "oldPath": "/api/media/exercises/640/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 641,
+      "exerciseTitle": "Seated Hamstring",
+      "oldPath": "/api/media/exercises/641/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 642,
+      "exerciseTitle": "Seated Hamstring and Calf Stretch",
+      "oldPath": "/api/media/exercises/642/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 643,
+      "exerciseTitle": "Seated Head Harness Neck Resistance",
+      "oldPath": "/api/media/exercises/643/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 644,
+      "exerciseTitle": "Seated Leg Curl",
+      "oldPath": "/api/media/exercises/644/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 645,
+      "exerciseTitle": "Seated Leg Tucks",
+      "oldPath": "/api/media/exercises/645/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 646,
+      "exerciseTitle": "Seated One-Arm Dumbbell Palms-Down Wrist Curl",
+      "oldPath": "/api/media/exercises/646/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 647,
+      "exerciseTitle": "Seated One-Arm Dumbbell Palms-Up Wrist Curl",
+      "oldPath": "/api/media/exercises/647/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 648,
+      "exerciseTitle": "Seated One-Arm Cable Pulley Rows",
+      "oldPath": "/api/media/exercises/648/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 649,
+      "exerciseTitle": "Seated Overhead Stretch",
+      "oldPath": "/api/media/exercises/649/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 650,
+      "exerciseTitle": "Seated Palm-Up Barbell Wrist Curl",
+      "oldPath": "/api/media/exercises/650/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 651,
+      "exerciseTitle": "Seated Palms-Down Barbell Wrist Curl",
+      "oldPath": "/api/media/exercises/651/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 652,
+      "exerciseTitle": "Seated Side Lateral Raise",
+      "oldPath": "/api/media/exercises/652/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 653,
+      "exerciseTitle": "Seated Tricepsss Press",
+      "oldPath": "/api/media/exercises/653/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 654,
+      "exerciseTitle": "Seated Two-Arm Palms-Up Low-Pulley Wrist Curl",
+      "oldPath": "/api/media/exercises/654/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 655,
+      "exerciseTitle": "See-Saw Press (Alternating Side Press)",
+      "oldPath": "/api/media/exercises/655/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 656,
+      "exerciseTitle": "Shotgun Row",
+      "oldPath": "/api/media/exercises/656/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 657,
+      "exerciseTitle": "Shoulder Circles",
+      "oldPath": "/api/media/exercises/657/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 658,
+      "exerciseTitle": "Shoulder Press - With Bands",
+      "oldPath": "/api/media/exercises/658/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 659,
+      "exerciseTitle": "Shoulder Raise",
+      "oldPath": "/api/media/exercises/659/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 660,
+      "exerciseTitle": "Shoulder Stretch",
+      "oldPath": "/api/media/exercises/660/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 661,
+      "exerciseTitle": "Side-Lying Floor Stretch",
+      "oldPath": "/api/media/exercises/661/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 662,
+      "exerciseTitle": "Side Bridge",
+      "oldPath": "/api/media/exercises/662/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 663,
+      "exerciseTitle": "Side Hop-Sprint",
+      "oldPath": "/api/media/exercises/663/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 664,
+      "exerciseTitle": "Side Jackknife",
+      "oldPath": "/api/media/exercises/664/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 665,
+      "exerciseTitle": "Side Lateral Raise",
+      "oldPath": "/api/media/exercises/665/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 666,
+      "exerciseTitle": "Side Laterals to Front Raise",
+      "oldPath": "/api/media/exercises/666/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 667,
+      "exerciseTitle": "Side Leg Raises",
+      "oldPath": "/api/media/exercises/667/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 668,
+      "exerciseTitle": "Side Lying Groin Stretch",
+      "oldPath": "/api/media/exercises/668/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 669,
+      "exerciseTitle": "Side Neck Stretch",
+      "oldPath": "/api/media/exercises/669/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 670,
+      "exerciseTitle": "Side Standing Long Jump",
+      "oldPath": "/api/media/exercises/670/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 671,
+      "exerciseTitle": "Side To Side Chins",
+      "oldPath": "/api/media/exercises/671/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 672,
+      "exerciseTitle": "Side Wrist Pull",
+      "oldPath": "/api/media/exercises/672/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 673,
+      "exerciseTitle": "Side to Side Box Shuffle",
+      "oldPath": "/api/media/exercises/673/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 674,
+      "exerciseTitle": "Single-Arm Cable Crossover",
+      "oldPath": "/api/media/exercises/674/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 675,
+      "exerciseTitle": "Single-Arm Linear Jammer",
+      "oldPath": "/api/media/exercises/675/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 676,
+      "exerciseTitle": "Single-Arm Push-Up",
+      "oldPath": "/api/media/exercises/676/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 677,
+      "exerciseTitle": "Single-Cone Sprint Drill",
+      "oldPath": "/api/media/exercises/677/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 678,
+      "exerciseTitle": "Single-Leg High Box Squat",
+      "oldPath": "/api/media/exercises/678/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 679,
+      "exerciseTitle": "Single-Leg Hop Progression",
+      "oldPath": "/api/media/exercises/679/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 680,
+      "exerciseTitle": "Single-Leg Lateral Hop",
+      "oldPath": "/api/media/exercises/680/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 681,
+      "exerciseTitle": "Single-Leg Leg Extension",
+      "oldPath": "/api/media/exercises/681/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 682,
+      "exerciseTitle": "Single-Leg Stride Jump",
+      "oldPath": "/api/media/exercises/682/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 683,
+      "exerciseTitle": "Single Dumbbell Raise",
+      "oldPath": "/api/media/exercises/683/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 684,
+      "exerciseTitle": "Single Leg Butt Kick",
+      "oldPath": "/api/media/exercises/684/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 685,
+      "exerciseTitle": "Single Leg Glute Bridge",
+      "oldPath": "/api/media/exercises/685/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 686,
+      "exerciseTitle": "Single Leg Push-off",
+      "oldPath": "/api/media/exercises/686/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 687,
+      "exerciseTitle": "Sit-Up",
+      "oldPath": "/api/media/exercises/687/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 688,
+      "exerciseTitle": "Sit Squats",
+      "oldPath": "/api/media/exercises/688/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 689,
+      "exerciseTitle": "Skating",
+      "oldPath": "/api/media/exercises/689/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 690,
+      "exerciseTitle": "Sled Drag - Harness",
+      "oldPath": "/api/media/exercises/690/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 691,
+      "exerciseTitle": "Sled Overhead Backward Walk",
+      "oldPath": "/api/media/exercises/691/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 692,
+      "exerciseTitle": "Sled Overhead Tricepsss Extension",
+      "oldPath": "/api/media/exercises/692/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 693,
+      "exerciseTitle": "Sled Push",
+      "oldPath": "/api/media/exercises/693/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 694,
+      "exerciseTitle": "Sled Reverse Flye",
+      "oldPath": "/api/media/exercises/694/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 695,
+      "exerciseTitle": "Sled Row",
+      "oldPath": "/api/media/exercises/695/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 696,
+      "exerciseTitle": "Sledgehammer Swings",
+      "oldPath": "/api/media/exercises/696/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 697,
+      "exerciseTitle": "Smith Incline Shoulder Raise",
+      "oldPath": "/api/media/exercises/697/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 698,
+      "exerciseTitle": "Smith Machine Behind the Back Shrug",
+      "oldPath": "/api/media/exercises/698/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 699,
+      "exerciseTitle": "Smith Machine Bench Press",
+      "oldPath": "/api/media/exercises/699/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 700,
+      "exerciseTitle": "Smith Machine Bent Over Row",
+      "oldPath": "/api/media/exercises/700/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 701,
+      "exerciseTitle": "Smith Machine Calf Raise",
+      "oldPath": "/api/media/exercises/701/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 702,
+      "exerciseTitle": "Smith Machine Close-Grip Bench Press",
+      "oldPath": "/api/media/exercises/702/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 703,
+      "exerciseTitle": "Smith Machine Decline Press",
+      "oldPath": "/api/media/exercises/703/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 704,
+      "exerciseTitle": "Smith Machine Hang Power Clean",
+      "oldPath": "/api/media/exercises/704/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 705,
+      "exerciseTitle": "Smith Machine Hip Raise",
+      "oldPath": "/api/media/exercises/705/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 706,
+      "exerciseTitle": "Smith Machine Incline Bench Press",
+      "oldPath": "/api/media/exercises/706/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 707,
+      "exerciseTitle": "Smith Machine Leg Press",
+      "oldPath": "/api/media/exercises/707/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 708,
+      "exerciseTitle": "Smith Machine One-Arm Upright Row",
+      "oldPath": "/api/media/exercises/708/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 709,
+      "exerciseTitle": "Smith Machine Overhead Shoulder Press",
+      "oldPath": "/api/media/exercises/709/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 710,
+      "exerciseTitle": "Smith Machine Pistol Squat",
+      "oldPath": "/api/media/exercises/710/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 711,
+      "exerciseTitle": "Smith Machine Reverse Calf Raises",
+      "oldPath": "/api/media/exercises/711/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 712,
+      "exerciseTitle": "Smith Machine Squat",
+      "oldPath": "/api/media/exercises/712/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 713,
+      "exerciseTitle": "Smith Machine Stiff-Legged Deadlift",
+      "oldPath": "/api/media/exercises/713/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 714,
+      "exerciseTitle": "Smith Machine Upright Row",
+      "oldPath": "/api/media/exercises/714/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 715,
+      "exerciseTitle": "Smith Single-Leg Split Squat",
+      "oldPath": "/api/media/exercises/715/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 716,
+      "exerciseTitle": "Snatch",
+      "oldPath": "/api/media/exercises/716/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 717,
+      "exerciseTitle": "Snatch Balance",
+      "oldPath": "/api/media/exercises/717/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 718,
+      "exerciseTitle": "Snatch Deadlift",
+      "oldPath": "/api/media/exercises/718/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 719,
+      "exerciseTitle": "Snatch Pull",
+      "oldPath": "/api/media/exercises/719/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 720,
+      "exerciseTitle": "Snatch Shrug",
+      "oldPath": "/api/media/exercises/720/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 721,
+      "exerciseTitle": "Snatch from Blocks",
+      "oldPath": "/api/media/exercises/721/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 722,
+      "exerciseTitle": "Speed Band Overhead Tricepsss",
+      "oldPath": "/api/media/exercises/722/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 723,
+      "exerciseTitle": "Speed Box Squat",
+      "oldPath": "/api/media/exercises/723/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 724,
+      "exerciseTitle": "Speed Squats",
+      "oldPath": "/api/media/exercises/724/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 725,
+      "exerciseTitle": "Spell Caster",
+      "oldPath": "/api/media/exercises/725/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 726,
+      "exerciseTitle": "Spider Crawl",
+      "oldPath": "/api/media/exercises/726/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 727,
+      "exerciseTitle": "Spider Curl",
+      "oldPath": "/api/media/exercises/727/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 728,
+      "exerciseTitle": "Spinal Stretch",
+      "oldPath": "/api/media/exercises/728/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 729,
+      "exerciseTitle": "Split Clean",
+      "oldPath": "/api/media/exercises/729/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 730,
+      "exerciseTitle": "Split Jerk",
+      "oldPath": "/api/media/exercises/730/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 731,
+      "exerciseTitle": "Split Jump",
+      "oldPath": "/api/media/exercises/731/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 732,
+      "exerciseTitle": "Split Snatch",
+      "oldPath": "/api/media/exercises/732/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 733,
+      "exerciseTitle": "Split Squat with Dumbbells",
+      "oldPath": "/api/media/exercises/733/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 734,
+      "exerciseTitle": "Split Squats",
+      "oldPath": "/api/media/exercises/734/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 735,
+      "exerciseTitle": "Squat Jerk",
+      "oldPath": "/api/media/exercises/735/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 736,
+      "exerciseTitle": "Squat with Bands",
+      "oldPath": "/api/media/exercises/736/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 737,
+      "exerciseTitle": "Squat with Chains",
+      "oldPath": "/api/media/exercises/737/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 738,
+      "exerciseTitle": "Squat with Plate Movers",
+      "oldPath": "/api/media/exercises/738/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 739,
+      "exerciseTitle": "Squats - With Bands",
+      "oldPath": "/api/media/exercises/739/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 740,
+      "exerciseTitle": "Stairmaster",
+      "oldPath": "/api/media/exercises/740/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 741,
+      "exerciseTitle": "Standing Alternating Dumbbell Press",
+      "oldPath": "/api/media/exercises/741/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 742,
+      "exerciseTitle": "Standing Barbell Calf Raise",
+      "oldPath": "/api/media/exercises/742/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 743,
+      "exerciseTitle": "Standing Barbell Press Behind Neck",
+      "oldPath": "/api/media/exercises/743/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 744,
+      "exerciseTitle": "Standing Bent-Over One-Arm Dumbbell Tricepsss Extension",
+      "oldPath": "/api/media/exercises/744/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 745,
+      "exerciseTitle": "Standing Bent-Over Two-Arm Dumbbell Tricepsss Extension",
+      "oldPath": "/api/media/exercises/745/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 746,
+      "exerciseTitle": "Standing Biceps Cable Curl",
+      "oldPath": "/api/media/exercises/746/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 747,
+      "exerciseTitle": "Standing Biceps Stretch",
+      "oldPath": "/api/media/exercises/747/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 748,
+      "exerciseTitle": "Standing Bradford Press",
+      "oldPath": "/api/media/exercises/748/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 749,
+      "exerciseTitle": "Standing Cable Chest Press",
+      "oldPath": "/api/media/exercises/749/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 750,
+      "exerciseTitle": "Standing Cable Lift",
+      "oldPath": "/api/media/exercises/750/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 751,
+      "exerciseTitle": "Standing Cable Wood Chop",
+      "oldPath": "/api/media/exercises/751/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 752,
+      "exerciseTitle": "Standing Calf Raises",
+      "oldPath": "/api/media/exercises/752/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 753,
+      "exerciseTitle": "Standing Concentration Curl",
+      "oldPath": "/api/media/exercises/753/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 754,
+      "exerciseTitle": "Standing Dumbbell Calf Raise",
+      "oldPath": "/api/media/exercises/754/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 755,
+      "exerciseTitle": "Standing Dumbbell Press",
+      "oldPath": "/api/media/exercises/755/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 756,
+      "exerciseTitle": "Standing Dumbbell Reverse Curl",
+      "oldPath": "/api/media/exercises/756/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 757,
+      "exerciseTitle": "Standing Dumbbell Straight-Arm Front Delt Raise Above Head",
+      "oldPath": "/api/media/exercises/757/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 758,
+      "exerciseTitle": "Standing Dumbbell Tricepsss Extension",
+      "oldPath": "/api/media/exercises/758/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 759,
+      "exerciseTitle": "Standing Dumbbell Upright Row",
+      "oldPath": "/api/media/exercises/759/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 760,
+      "exerciseTitle": "Standing Elevated Quad Stretch",
+      "oldPath": "/api/media/exercises/760/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 761,
+      "exerciseTitle": "Standing Front Barbell Raise Over Head",
+      "oldPath": "/api/media/exercises/761/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 762,
+      "exerciseTitle": "Standing Gastrocnemius Calf Stretch",
+      "oldPath": "/api/media/exercises/762/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 763,
+      "exerciseTitle": "Standing Hamstring and Calf Stretch",
+      "oldPath": "/api/media/exercises/763/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 764,
+      "exerciseTitle": "Standing Hip Circles",
+      "oldPath": "/api/media/exercises/764/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 765,
+      "exerciseTitle": "Standing Hip Flexors",
+      "oldPath": "/api/media/exercises/765/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 766,
+      "exerciseTitle": "Standing Inner-Biceps Curl",
+      "oldPath": "/api/media/exercises/766/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 767,
+      "exerciseTitle": "Standing Lateral Stretch",
+      "oldPath": "/api/media/exercises/767/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 768,
+      "exerciseTitle": "Standing Leg Curl",
+      "oldPath": "/api/media/exercises/768/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 769,
+      "exerciseTitle": "Standing Long Jump",
+      "oldPath": "/api/media/exercises/769/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 770,
+      "exerciseTitle": "Standing Low-Pulley Deltoid Raise",
+      "oldPath": "/api/media/exercises/770/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 771,
+      "exerciseTitle": "Standing Low-Pulley One-Arm Tricepsss Extension",
+      "oldPath": "/api/media/exercises/771/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 772,
+      "exerciseTitle": "Standing Military Press",
+      "oldPath": "/api/media/exercises/772/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 773,
+      "exerciseTitle": "Standing Olympic Plate Hand Squeeze",
+      "oldPath": "/api/media/exercises/773/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 774,
+      "exerciseTitle": "Standing One-Arm Cable Curl",
+      "oldPath": "/api/media/exercises/774/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 775,
+      "exerciseTitle": "Standing One-Arm Dumbbell Curl Over Incline Bench",
+      "oldPath": "/api/media/exercises/775/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 776,
+      "exerciseTitle": "Standing One-Arm Dumbbell Tricepsss Extension",
+      "oldPath": "/api/media/exercises/776/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 777,
+      "exerciseTitle": "Standing Overhead Barbell Tricepsss Extension",
+      "oldPath": "/api/media/exercises/777/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 778,
+      "exerciseTitle": "Standing Palm-In One-Arm Dumbbell Press",
+      "oldPath": "/api/media/exercises/778/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 779,
+      "exerciseTitle": "Standing Palms-In Dumbbell Press",
+      "oldPath": "/api/media/exercises/779/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 780,
+      "exerciseTitle": "Standing Palms-Up Barbell Behind The Back Wrist Curl",
+      "oldPath": "/api/media/exercises/780/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 781,
+      "exerciseTitle": "Standing Pelvic Tilt",
+      "oldPath": "/api/media/exercises/781/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 782,
+      "exerciseTitle": "Standing Rope Crunch",
+      "oldPath": "/api/media/exercises/782/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 783,
+      "exerciseTitle": "Standing Soleus And Achilles Stretch",
+      "oldPath": "/api/media/exercises/783/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 784,
+      "exerciseTitle": "Standing Toe Touches",
+      "oldPath": "/api/media/exercises/784/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 785,
+      "exerciseTitle": "Standing Towel Tricepsss Extension",
+      "oldPath": "/api/media/exercises/785/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 786,
+      "exerciseTitle": "Standing Two-Arm Overhead Throw",
+      "oldPath": "/api/media/exercises/786/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 787,
+      "exerciseTitle": "Star Jump",
+      "oldPath": "/api/media/exercises/787/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 788,
+      "exerciseTitle": "Step-up with Knee Raise",
+      "oldPath": "/api/media/exercises/788/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 789,
+      "exerciseTitle": "Step Mill",
+      "oldPath": "/api/media/exercises/789/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 790,
+      "exerciseTitle": "Stiff-Legged Barbell Deadlift",
+      "oldPath": "/api/media/exercises/790/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 791,
+      "exerciseTitle": "Stiff-Legged Dumbbell Deadlift",
+      "oldPath": "/api/media/exercises/791/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 792,
+      "exerciseTitle": "Stiff Leg Barbell Good Morning",
+      "oldPath": "/api/media/exercises/792/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 793,
+      "exerciseTitle": "Stomach Vacuum",
+      "oldPath": "/api/media/exercises/793/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 794,
+      "exerciseTitle": "Straight-Arm Dumbbell Pullover",
+      "oldPath": "/api/media/exercises/794/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 795,
+      "exerciseTitle": "Straight-Arm Pulldown",
+      "oldPath": "/api/media/exercises/795/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 796,
+      "exerciseTitle": "Straight Bar Bench Mid Rows",
+      "oldPath": "/api/media/exercises/796/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 797,
+      "exerciseTitle": "Straight Raises on Incline Bench",
+      "oldPath": "/api/media/exercises/797/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 798,
+      "exerciseTitle": "Stride Jump Crossover",
+      "oldPath": "/api/media/exercises/798/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 799,
+      "exerciseTitle": "Sumo Deadlift",
+      "oldPath": "/api/media/exercises/799/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 800,
+      "exerciseTitle": "Sumo Deadlift with Bands",
+      "oldPath": "/api/media/exercises/800/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 801,
+      "exerciseTitle": "Sumo Deadlift with Chains",
+      "oldPath": "/api/media/exercises/801/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 802,
+      "exerciseTitle": "Superman",
+      "oldPath": "/api/media/exercises/802/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 803,
+      "exerciseTitle": "Supine Chest Throw",
+      "oldPath": "/api/media/exercises/803/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 804,
+      "exerciseTitle": "Supine One-Arm Overhead Throw",
+      "oldPath": "/api/media/exercises/804/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 805,
+      "exerciseTitle": "Supine Two-Arm Overhead Throw",
+      "oldPath": "/api/media/exercises/805/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 806,
+      "exerciseTitle": "Suspended Fallout",
+      "oldPath": "/api/media/exercises/806/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 807,
+      "exerciseTitle": "Suspended Push-Up",
+      "oldPath": "/api/media/exercises/807/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 808,
+      "exerciseTitle": "Suspended Reverse Crunch",
+      "oldPath": "/api/media/exercises/808/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 809,
+      "exerciseTitle": "Suspended Row",
+      "oldPath": "/api/media/exercises/809/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 810,
+      "exerciseTitle": "Suspended Split Squat",
+      "oldPath": "/api/media/exercises/810/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 811,
+      "exerciseTitle": "Svend Press",
+      "oldPath": "/api/media/exercises/811/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 812,
+      "exerciseTitle": "T-Bar Row with Handle",
+      "oldPath": "/api/media/exercises/812/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 813,
+      "exerciseTitle": "Tate Press",
+      "oldPath": "/api/media/exercises/813/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 814,
+      "exerciseTitle": "The Straddle",
+      "oldPath": "/api/media/exercises/814/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 815,
+      "exerciseTitle": "Thigh Abductor",
+      "oldPath": "/api/media/exercises/815/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 816,
+      "exerciseTitle": "Thigh Adductor",
+      "oldPath": "/api/media/exercises/816/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 817,
+      "exerciseTitle": "Tire Flip",
+      "oldPath": "/api/media/exercises/817/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 818,
+      "exerciseTitle": "Toe Touchers",
+      "oldPath": "/api/media/exercises/818/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 819,
+      "exerciseTitle": "Torso Rotation",
+      "oldPath": "/api/media/exercises/819/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 820,
+      "exerciseTitle": "Trail Running/Walking",
+      "oldPath": "/api/media/exercises/820/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 821,
+      "exerciseTitle": "Trap Bar Deadlift",
+      "oldPath": "/api/media/exercises/821/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 822,
+      "exerciseTitle": "Tricepss Dumbbell Kickback",
+      "oldPath": "/api/media/exercises/822/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 823,
+      "exerciseTitle": "Tricepss Side Stretch",
+      "oldPath": "/api/media/exercises/823/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 824,
+      "exerciseTitle": "Tricepsss Overhead Extension with Rope",
+      "oldPath": "/api/media/exercises/824/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 825,
+      "exerciseTitle": "Tricepsss Pushdown",
+      "oldPath": "/api/media/exercises/825/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 826,
+      "exerciseTitle": "Tricepsss Pushdown - Rope Attachment",
+      "oldPath": "/api/media/exercises/826/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 827,
+      "exerciseTitle": "Tricepsss Pushdown - V-Bar Attachment",
+      "oldPath": "/api/media/exercises/827/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 828,
+      "exerciseTitle": "Tricepsss Stretch",
+      "oldPath": "/api/media/exercises/828/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 829,
+      "exerciseTitle": "Tuck Crunch",
+      "oldPath": "/api/media/exercises/829/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 830,
+      "exerciseTitle": "Two-Arm Dumbbell Preacher Curl",
+      "oldPath": "/api/media/exercises/830/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 831,
+      "exerciseTitle": "Two-Arm Kettlebell Clean",
+      "oldPath": "/api/media/exercises/831/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 832,
+      "exerciseTitle": "Two-Arm Kettlebell Jerk",
+      "oldPath": "/api/media/exercises/832/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 833,
+      "exerciseTitle": "Two-Arm Kettlebell Military Press",
+      "oldPath": "/api/media/exercises/833/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 834,
+      "exerciseTitle": "Two-Arm Kettlebell Row",
+      "oldPath": "/api/media/exercises/834/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 835,
+      "exerciseTitle": "Underhand Cable Pulldowns",
+      "oldPath": "/api/media/exercises/835/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 836,
+      "exerciseTitle": "Upper Back-Leg Grab",
+      "oldPath": "/api/media/exercises/836/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 837,
+      "exerciseTitle": "Upper Back Stretch",
+      "oldPath": "/api/media/exercises/837/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 838,
+      "exerciseTitle": "Upright Barbell Row",
+      "oldPath": "/api/media/exercises/838/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 839,
+      "exerciseTitle": "Upright Cable Row",
+      "oldPath": "/api/media/exercises/839/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 840,
+      "exerciseTitle": "Upright Row - With Bands",
+      "oldPath": "/api/media/exercises/840/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 841,
+      "exerciseTitle": "Upward Stretch",
+      "oldPath": "/api/media/exercises/841/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 842,
+      "exerciseTitle": "V-Bar Pulldown",
+      "oldPath": "/api/media/exercises/842/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 843,
+      "exerciseTitle": "V-Bar Pullup",
+      "oldPath": "/api/media/exercises/843/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 844,
+      "exerciseTitle": "Vertical Swing",
+      "oldPath": "/api/media/exercises/844/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 845,
+      "exerciseTitle": "Treadmill Walk",
+      "oldPath": "/api/media/exercises/845/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 846,
+      "exerciseTitle": "Weighted Ball Hyperextension",
+      "oldPath": "/api/media/exercises/846/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 847,
+      "exerciseTitle": "Weighted Ball Side Bend",
+      "oldPath": "/api/media/exercises/847/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 848,
+      "exerciseTitle": "Weighted Bench Dip",
+      "oldPath": "/api/media/exercises/848/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 849,
+      "exerciseTitle": "Weighted Crunches",
+      "oldPath": "/api/media/exercises/849/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 850,
+      "exerciseTitle": "Weighted Jump Squat",
+      "oldPath": "/api/media/exercises/850/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 851,
+      "exerciseTitle": "Weighted Pull Ups",
+      "oldPath": "/api/media/exercises/851/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 852,
+      "exerciseTitle": "Weighted Sissy Squat",
+      "oldPath": "/api/media/exercises/852/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 853,
+      "exerciseTitle": "Weighted Sit-Ups - With Bands",
+      "oldPath": "/api/media/exercises/853/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 854,
+      "exerciseTitle": "Weighted Squat",
+      "oldPath": "/api/media/exercises/854/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 855,
+      "exerciseTitle": "Wide-Grip Barbell Bench Press",
+      "oldPath": "/api/media/exercises/855/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 856,
+      "exerciseTitle": "Wide-Grip Decline Barbell Bench Press",
+      "oldPath": "/api/media/exercises/856/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 857,
+      "exerciseTitle": "Wide-Grip Decline Barbell Pullover",
+      "oldPath": "/api/media/exercises/857/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 858,
+      "exerciseTitle": "Wide-Grip Lat Pulldown",
+      "oldPath": "/api/media/exercises/858/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 859,
+      "exerciseTitle": "Wide-Grip Pulldown Behind The Neck",
+      "oldPath": "/api/media/exercises/859/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 860,
+      "exerciseTitle": "Wide-Grip Rear Pull-Up",
+      "oldPath": "/api/media/exercises/860/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 862,
+      "exerciseTitle": "Wide Stance Barbell Squat",
+      "oldPath": "/api/media/exercises/862/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 863,
+      "exerciseTitle": "Wide Stance Stiff Legs",
+      "oldPath": "/api/media/exercises/863/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 864,
+      "exerciseTitle": "Wind Sprints",
+      "oldPath": "/api/media/exercises/864/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 865,
+      "exerciseTitle": "Windmills",
+      "oldPath": "/api/media/exercises/865/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 867,
+      "exerciseTitle": "Wrist Circles",
+      "oldPath": "/api/media/exercises/867/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 868,
+      "exerciseTitle": "Wrist Roller",
+      "oldPath": "/api/media/exercises/868/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 869,
+      "exerciseTitle": "Wrist Rotations with Straight Bar",
+      "oldPath": "/api/media/exercises/869/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 870,
+      "exerciseTitle": "Yoke Walk",
+      "oldPath": "/api/media/exercises/870/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 871,
+      "exerciseTitle": "Zercher Squats",
+      "oldPath": "/api/media/exercises/871/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 872,
+      "exerciseTitle": "Zottman Curl",
+      "oldPath": "/api/media/exercises/872/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    },
+    {
+      "exerciseId": 873,
+      "exerciseTitle": "Zottman Preacher Curl",
+      "oldPath": "/api/media/exercises/873/image?name=1.jpg",
+      "newPath": null,
+      "status": "SKIPPED_NO_SOURCE"
+    }
+  ],
+  "successCount": 0,
+  "failureCount": 0,
+  "skippedCount": 869,
+  "readyCount": 0,
+  "auditCsvPath": "C:\\Users\\stephen.karpathakis\\Documents\\VisualStudio-Workspace\\Dev Asterisks Github - StephenK\\VueJSApps\\FlexFit\\backend\\AWS-S3-CONTENT\\TEST\\exercise-content-migration\\last-audit.csv"
+}

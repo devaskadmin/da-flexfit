@@ -327,7 +327,13 @@ const saveWorkout = async () => {
       speed: log.Speed,
       'Laps-Rep': log['Laps-Rep'],
       date: log.WorkoutDate,
-      image: log.ImageGallery ? `/assets/Excerises/${JSON.parse(log.ImageGallery)[0]}` : '/assets/Excerises/default/default.jpg'
+      image: getExerciseImage({
+        ExerciseID: log.ExerciseID,
+        ImageURL: log.ImageURL,
+        ImageGallery: log.ImageGallery,
+        PrimaryImage: log.PrimaryImage,
+        ResolvedImageURL: log.ResolvedImageURL,
+      })
     }));
 
   } catch (err) {
@@ -360,7 +366,13 @@ const loadWorkoutLogs = async () => {
           speed: log.Speed,
           'Laps-Rep': log['Laps-Rep'],
           date: log.WorkoutDate,
-          image: log.ImageGallery ? `/assets/Excerises/${JSON.parse(log.ImageGallery)[0]}` : '/assets/Excerises/default/default.jpg',
+          image: getExerciseImage({
+            ExerciseID: log.ExerciseID,
+            ImageURL: log.ImageURL,
+            ImageGallery: log.ImageGallery,
+            PrimaryImage: log.PrimaryImage,
+            ResolvedImageURL: log.ResolvedImageURL,
+          }),
           WorkoutLogID: log.WorkoutLogID // for remove/edit
         }))
       : [];
@@ -626,7 +638,7 @@ function autoSwitchTabToLogOrLibrary() {
    const currentPage = ref(1); // start from 1
    
    
-   const getFirstImage = (gallery) => getExerciseImageFromGallery(gallery);
+  const getFirstImage = (gallery, exerciseId = 0) => getExerciseImageFromGallery(gallery, exerciseId);
 
    
    const loadMore = () => {
@@ -1361,7 +1373,7 @@ const clearFilters = () => {
                                     </template>
                                     <template v-for="(img, index) in existingImages" :key="'exist-edit-' + index">
                                       <div class="mb-2 position-relative">
-                                        <img :src="`/assets/Excerises/${img}`" style="max-width: 200px; border: 1px solid #ccc; border-radius: 12px;" />
+                                        <img :src="getExerciseImage({ ExerciseID: editExercise.ExerciseID, PrimaryImage: img, ImageGallery: [img] })" style="max-width: 200px; border: 1px solid #ccc; border-radius: 12px;" />
                                         <span @click="removeExistingImage(img)" style="position:absolute;top:0;right:0;color:red;cursor:pointer;font-size:3em;">&times;</span>
                                         <div class="small text-center">{{ img.split('/').pop() }}</div>
                                       </div>
@@ -1497,7 +1509,7 @@ const clearFilters = () => {
       <span @click="removeNewImage(index)" style="position:absolute;top:0;right:0;color:red;cursor:pointer;font-size:3em;">&times;</span>
     </div>
     <div v-for="(img, index) in existingImages" :key="'exist-' + index" class="mb-2 position-relative">
-      <img :src="`/assets/Excerises/${img}`" style="max-width: 200px; border: 1px solid #ccc; border-radius: 12px;" />
+      <img :src="getExerciseImage({ ExerciseID: newExercise.ExerciseID, PrimaryImage: img, ImageGallery: [img] })" style="max-width: 200px; border: 1px solid #ccc; border-radius: 12px;" />
       <span @click="removeExistingImage(img)" style="position:absolute;top:0;right:0;color:red;cursor:pointer;font-size:3em;">&times;</span>
       <div class="small text-center">{{ img.split('/').pop() }}</div>
     </div>
@@ -1549,7 +1561,7 @@ const clearFilters = () => {
                             <div class="exercise-row" v-for="ex in pagedExercises" :key="ex.ExerciseID">
                               <div class="exercise-img">
                                   <img
-                                    :src="getFirstImage(ex.ImageGallery)"
+                                    :src="getFirstImage(ex.ImageGallery, ex.ExerciseID)"
                                     @click="selectExerciseFromList(ex)"
                                     class="clickable"
                                   />
@@ -1690,7 +1702,7 @@ const clearFilters = () => {
         <div v-else class="exercise-list">
           <div class="exercise-row" v-for="myEx in myCustomExercises" :key="`mine-${myEx.ExerciseID}`">
             <div class="exercise-img">
-              <img :src="getFirstImage(myEx.ImageGallery)" class="clickable" @click="selectExerciseForLog(myEx)" />
+              <img :src="getFirstImage(myEx.ImageGallery, myEx.ExerciseID)" class="clickable" @click="selectExerciseForLog(myEx)" />
             </div>
             <div class="exercise-info">
               <h5 class="exercise-title">{{ myEx.ExerciseTitle }}</h5>
@@ -1773,7 +1785,7 @@ const clearFilters = () => {
                   @click="selectExerciseForLog(match)"
                 >
                   <div class="exercise-img">
-                    <img :src="getFirstImage(match.ImageGallery)" class="clickable" />
+                    <img :src="getFirstImage(match.ImageGallery, match.ExerciseID)" class="clickable" />
                   </div>
                   <div class="exercise-info">
                     <h5 class="exercise-title">{{ match.ExerciseTitle }}</h5>
@@ -1921,7 +1933,7 @@ Please Select an excerise
   <div style="flex-basis: 20%; max-width: 20%; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; padding-right: 15px;">
     <div class="logged-exercise-title" style="font-weight: bold; font-size: 0.92rem; margin-bottom: 4px; line-height: 1.1;">{{ log.name || log.ExerciseTitle }}</div>
     <img
-      :src="log.image || getFirstImage(log.ImageGallery)"
+      :src="log.image || getFirstImage(log.ImageGallery, log.ExerciseID)"
       class="summary-img me-3 img-fluid"
       style="width: 100%; height: auto; max-width: 100%; object-fit: cover; border-radius: 8px; margin-left: 0; align-self: flex-start; vertical-align: top;"
     />

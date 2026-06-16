@@ -201,6 +201,7 @@ const workoutSessionRoutes  = require('./api/workout-sessions'); // ✅ 0.77 ses
 const openFoodFactsRoutes   = require('./api/OpenFoodFactsAPI/main-api.js');
 const avatarRoutes          = require('./src/routes/avatar.js');
 const toolsRoutes           = require('./api/tools.js');
+const mediaRoutes           = require('./api/media.js');
 
 // Import routes
 app.use('/api', require('./api/auth.js'));
@@ -215,6 +216,7 @@ app.use('/api/admin', require('./api/admin.js')); // 🔒 Admin-only routes
 app.use('/api/progress', require('./api/progress.js')); // 📊 v0.82 Progress Stats
 app.use('/api', require('./api/dashboard.js')); // 📊 v0.82.20 Dashboard Live Metrics
 app.use('/api', toolsRoutes); // 🧰 v0.83.5 Tools diagnostics
+app.use('/api', mediaRoutes); // 🖼️ v0.83.7 media resolver
 
 // ✅ Global JSON error handler — MUST be registered after all routes.
 // Catches express-session store failures (which call next(err) before any route

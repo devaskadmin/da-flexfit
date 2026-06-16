@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-import { API_BASE } from '@/config/env';
+import { DEFAULT_EXERCISE_IMAGE, getExerciseImage } from '@/utils/exerciseImage';
 
 const props = defineProps({
   exercise: {
@@ -27,65 +27,14 @@ const props = defineProps({
 
 const emit = defineEmits(['update-field', 'remove', 'move-up', 'move-down']);
 
-const FALLBACK_EXERCISE_IMAGE = '/assets/Excerises/default/default.jpg';
-
-const getFirstImageFromGallery = (gallery) => {
-  if (!gallery) return null;
-
-  try {
-    const parsed = typeof gallery === 'string' ? JSON.parse(gallery) : gallery;
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed[0];
-    }
-  } catch (err) {
-    console.warn('[IMAGE GALLERY PARSE ERROR]', err);
-  }
-
-  return null;
-};
-
 const getExerciseImageSrc = (exercise) => {
-  // Try multiple possible field names for the image
-  const raw =
-    exercise.ImageURL ||
-    exercise.imageURL ||
-    exercise.imageUrl ||
-    exercise.image ||
-    exercise.imagePath ||
-    getFirstImageFromGallery(exercise.ImageGallery || exercise.imageGallery);
-
-  if (!raw) {
-    return resolveImagePath(FALLBACK_EXERCISE_IMAGE);
-  }
-
-  return resolveImagePath(raw);
-};
-
-const resolveImagePath = (value) => {
-  const raw = String(value || '').trim();
-
-  if (!raw) {
-    return resolveImagePath(FALLBACK_EXERCISE_IMAGE);
-  }
-
-  // Already absolute URL (http/https or data URI)
-  if (/^https?:\/\//i.test(raw) || raw.startsWith('data:')) {
-    return raw;
-  }
-
-  // Absolute path from root
-  if (raw.startsWith('/')) {
-    return `${API_BASE}${raw}`;
-  }
-
-  // Relative path - prepend API base and slash
-  return `${API_BASE}/${raw}`;
+  return getExerciseImage(exercise);
 };
 
 const handleImageError = (event) => {
   if (!event?.target) return;
   console.error('[EXERCISE IMAGE ERROR] Failed to load image:', event.target.src);
-  event.target.src = resolveImagePath(FALLBACK_EXERCISE_IMAGE);
+  event.target.src = DEFAULT_EXERCISE_IMAGE;
 };
 
 const normalizedWorkoutType = computed(() =>
