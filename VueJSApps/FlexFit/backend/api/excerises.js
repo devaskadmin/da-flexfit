@@ -42,7 +42,9 @@ const buildLogicalMediaPath = (exerciseId) => `APP/exercise-library/${Number(exe
 
 const getExerciseOwnership = async (exerciseId) => {
   const [rows] = await pool.query(
-    `SELECT ExerciseID, ExerciseTitle, ImageURL, ImageGallery, CreatedByUserID, COALESCE(IsGlobalExercise, 1) AS IsGlobalExercise
+    `SELECT ExerciseID, ExerciseTitle, ImageURL, ImageGallery, CreatedByUserID,
+            COALESCE(IsGlobalExercise, 1) AS IsGlobalExercise,
+            COALESCE(IsSystemExercise, 0) AS IsSystemExercise
      FROM exercises
      WHERE ExerciseID = ?
      LIMIT 1`,
@@ -52,10 +54,12 @@ const getExerciseOwnership = async (exerciseId) => {
   return rows?.[0] || null;
 };
 
-const canManageExercise = ({ req, exerciseOwnerId }) => {
+const canManageExercise = ({ req, exercise }) => {
   if (isAdminUser(req)) return true;
+  // System exercises can only be modified by administrators.
+  if (Number(exercise?.IsSystemExercise || 0) === 1) return false;
   const currentUserId = Number(req?.session?.user?.id || 0);
-  return currentUserId > 0 && Number(exerciseOwnerId || 0) === currentUserId;
+  return currentUserId > 0 && Number(exercise?.CreatedByUserID || 0) === currentUserId;
 };
 
 const ensureExerciseSchema = async () => {
@@ -128,9 +132,18 @@ const mapExerciseRowsWithUserFlags = (rows = [], userId = null, isAdmin = false)
     ...resolveExerciseMediaRow(row),
     IsFavorite: Number(row.IsFavorite || 0),
     IsGlobalExercise: Number(row.IsGlobalExercise || 0) === 1 ? 1 : 0,
+    IsSystemExercise: Number(row.IsSystemExercise ?? 0) === 1 ? 1 : 0,
     IsOwnedByCurrentUser: currentUserId > 0 && Number(row.CreatedByUserID || 0) === currentUserId ? 1 : 0,
-    CanEdit: canAdminManage || (currentUserId > 0 && Number(row.CreatedByUserID || 0) === currentUserId) ? 1 : 0,
-    CanDelete: canAdminManage || (currentUserId > 0 && Number(row.CreatedByUserID || 0) === currentUserId) ? 1 : 0,
+    CanEdit: (() => {
+      if (canAdminManage) return 1;
+      if (Number(row.IsSystemExercise ?? 0) === 1) return 0;
+      return currentUserId > 0 && Number(row.CreatedByUserID || 0) === currentUserId ? 1 : 0;
+    })(),
+    CanDelete: (() => {
+      if (canAdminManage) return 1;
+      if (Number(row.IsSystemExercise ?? 0) === 1) return 0;
+      return currentUserId > 0 && Number(row.CreatedByUserID || 0) === currentUserId ? 1 : 0;
+    })(),
   }));
 };
 
@@ -214,6 +227,7 @@ const normalizeFallbackExercises = (rawList = []) => {
       MediaPath: buildLogicalMediaPath(index + 1),
       CreatedByUserID: null,
       IsGlobalExercise: 1,
+      IsSystemExercise: 1,
       IsFavorite: 0,
       IsOwnedByCurrentUser: 0,
       CanEdit: 0,
@@ -249,7 +263,7 @@ router.put('/get-exercise/:id', (req, res) => {
         return res.status(404).json({ success: false, message: 'Exercise not found' });
       }
 
-      if (!canManageExercise({ req, exerciseOwnerId: existingExercise.CreatedByUserID })) {
+      if (!canManageExercise({ req, exercise: existingExercise })) {
         return res.status(403).json({ success: false, message: 'Unauthorized to edit this exercise' });
       }
 
@@ -452,11 +466,12 @@ router.post('/save-exercises', ImageUpload.upload, async (req, res) => {
 
     const [insertResult] = await pool.query(
       `INSERT INTO exercises
-      (CreatedByUserID, IsGlobalExercise, ExerciseTitle, MuscleGroup, Equipment, WorkoutType, RecordingType, ImageURL, MediaProvider, MediaPath, PrimaryImage, Instructions, ImageGallery)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (CreatedByUserID, IsGlobalExercise, IsSystemExercise, ExerciseTitle, MuscleGroup, Equipment, WorkoutType, RecordingType, ImageURL, MediaProvider, MediaPath, PrimaryImage, Instructions, ImageGallery)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         createdByUserId,
         createAsGlobalExercise,
+        0,
         ExerciseTitle,
         MuscleGroup,
         Equipment,
@@ -652,7 +667,7 @@ router.delete('/delete-exercise/:id', async (req, res) => {
       return res.status(404).json({ error: 'Exercise not found' });
     }
 
-    if (!canManageExercise({ req, exerciseOwnerId: exerciseRow.CreatedByUserID })) {
+    if (!canManageExercise({ req, exercise: exerciseRow })) {
       return res.status(403).json({ success: false, message: 'Unauthorized to delete this exercise' });
     }
 

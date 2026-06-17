@@ -7,9 +7,20 @@ html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 body {
   font-size: 1rem;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+#app {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 /* ─────────────────────────────────────────────────────────────────── */
 

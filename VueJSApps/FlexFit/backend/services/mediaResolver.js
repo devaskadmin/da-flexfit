@@ -319,6 +319,7 @@ async function ensureExerciseMediaColumns(pool) {
     "ALTER TABLE exercises ADD COLUMN IF NOT EXISTS MediaProvider VARCHAR(20) NOT NULL DEFAULT 'LOCAL' AFTER IsGlobalExercise",
     "ALTER TABLE exercises ADD COLUMN IF NOT EXISTS MediaPath VARCHAR(255) NOT NULL DEFAULT 'APP/exercise-library/0/images' AFTER MediaProvider",
     "ALTER TABLE exercises ADD COLUMN IF NOT EXISTS PrimaryImage VARCHAR(255) NULL AFTER MediaPath",
+    "ALTER TABLE exercises ADD COLUMN IsSystemExercise BOOLEAN NOT NULL DEFAULT FALSE AFTER PrimaryImage",
   ];
 
   for (const statement of statements) {
@@ -333,18 +334,10 @@ async function ensureExerciseMediaColumns(pool) {
 }
 
 module.exports = {
-  CONTENT_ROOT,
-  LEGACY_EXERCISE_ROOT,
   MEDIA_PROVIDER_LOCAL,
   DEFAULT_IMAGE_NAME,
-  buildExerciseImagePath,
-  buildExerciseImageUrl,
   ensureExerciseMediaColumns,
-  parseJsonArray,
-  pickPrimaryImageFromRow,
   resolveExerciseMediaRow,
-  shouldUseGateway,
   streamExerciseImage,
-  toSafeFileName,
   toSafeRelativePath,
 };

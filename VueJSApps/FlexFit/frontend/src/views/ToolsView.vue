@@ -35,14 +35,6 @@ const imageLoadedAt = ref('')
 const imageDimensions = ref('')
 const statusTimestamp = ref('')
 
-const migrationBusy = ref(false)
-const migrationMessage = ref('')
-const migrationError = ref('')
-const migrationSummary = ref(null)
-const migrationEntries = ref([])
-const migrationVerification = ref(null)
-const migrationRun = ref(null)
-
 function statusLabel(status) {
   if (status === 'online') return 'Online'
   if (status === 'offline') return 'Offline'
@@ -119,88 +111,6 @@ async function refreshToolsPage() {
   await loadToolsStatus()
 
   resetImagePreview()
-}
-
-async function runMigrationAction(action, options = {}) {
-  migrationBusy.value = true
-  migrationError.value = ''
-  migrationMessage.value = ''
-
-  try {
-    let response
-
-    if (action === 'scan') {
-      response = await fetch(`${API_BASE}/api/tools/migration/scan`, {
-        method: 'GET',
-        credentials: 'include',
-      })
-    } else if (action === 'plan') {
-      response = await fetch(`${API_BASE}/api/tools/migration/plan`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      })
-    } else if (action === 'execute') {
-      response = await fetch(`${API_BASE}/api/tools/migration/execute`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dryRun: Boolean(options.dryRun) }),
-      })
-    } else if (action === 'verify') {
-      response = await fetch(`${API_BASE}/api/tools/migration/verify`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      })
-    } else if (action === 'rollback') {
-      response = await fetch(`${API_BASE}/api/tools/migration/rollback`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deleteCopiedFiles: false }),
-      })
-    }
-
-    if (!response || !response.ok) {
-      const errorPayload = response ? await response.json().catch(() => ({})) : {}
-      throw new Error(errorPayload.error || `Migration action failed (${response?.status || 'unknown'})`)
-    }
-
-    const payload = await response.json()
-
-    if (payload.summary) {
-      migrationSummary.value = payload.summary
-    }
-    if (Array.isArray(payload.entries)) {
-      migrationEntries.value = payload.entries.slice(0, 100)
-    }
-    if (Array.isArray(payload.sample)) {
-      migrationEntries.value = payload.sample
-    }
-    if (payload.run) {
-      migrationRun.value = payload.run
-    }
-    if (payload.results || payload.failed) {
-      migrationVerification.value = payload
-    }
-
-    if (action === 'execute') {
-      migrationMessage.value = options.dryRun
-        ? 'Dry run completed. Review the audit report before executing migration.'
-        : 'Migration executed. Run verification before any cleanup steps.'
-    } else if (action === 'rollback') {
-      migrationMessage.value = 'Rollback completed. Database media fields were restored from backup snapshot.'
-    } else {
-      migrationMessage.value = 'Migration action completed successfully.'
-    }
-  } catch (error) {
-    migrationError.value = error?.message || 'Migration action failed.'
-  } finally {
-    migrationBusy.value = false
-  }
 }
 
 onMounted(() => {
@@ -286,70 +196,6 @@ onMounted(() => {
       </div>
     </div>
 
-    <div class="panel-bg image-card mt-20">
-      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-12">
-        <div>
-          <h5 class="mb-1">Exercise Content Migration</h5>
-          <small class="text-muted">Prepare and migrate exercise media from frontend assets into backend content storage.</small>
-        </div>
-        <span class="badge" :class="migrationBusy ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle' : 'bg-info-subtle text-info-emphasis border border-info-subtle'">
-          {{ migrationBusy ? 'Running' : 'Ready' }}
-        </span>
-      </div>
-
-      <div class="d-flex flex-wrap gap-2 mb-12">
-        <button class="btn btn-sm btn-outline-primary" type="button" :disabled="migrationBusy" @click="runMigrationAction('scan')">Scan Existing Exercise Media</button>
-        <button class="btn btn-sm btn-outline-secondary" type="button" :disabled="migrationBusy" @click="runMigrationAction('plan')">Generate Migration Plan</button>
-        <button class="btn btn-sm btn-primary" type="button" :disabled="migrationBusy" @click="runMigrationAction('execute', { dryRun: false })">Execute Migration</button>
-        <button class="btn btn-sm btn-outline-success" type="button" :disabled="migrationBusy" @click="runMigrationAction('verify')">Verify Migration</button>
-        <button class="btn btn-sm btn-outline-danger" type="button" :disabled="migrationBusy" @click="runMigrationAction('rollback')">Rollback Migration</button>
-      </div>
-
-      <div v-if="migrationError" class="alert alert-danger py-2 mb-2" role="alert">{{ migrationError }}</div>
-      <div v-else-if="migrationMessage" class="alert alert-success py-2 mb-2" role="alert">{{ migrationMessage }}</div>
-
-      <div v-if="migrationSummary" class="meta-grid mt-12">
-        <div><strong>Total Exercises:</strong> {{ migrationSummary.totalExercises || migrationSummary.total || '-' }}</div>
-        <div><strong>Ready:</strong> {{ migrationSummary.readyExercises || '-' }}</div>
-        <div><strong>Missing Source:</strong> {{ migrationSummary.missingSourceExercises || '-' }}</div>
-        <div><strong>Total Images:</strong> {{ migrationSummary.totalImages || '-' }}</div>
-      </div>
-
-      <div v-if="migrationRun" class="meta-grid mt-12">
-        <div><strong>Run ID:</strong> {{ migrationRun.runId || '-' }}</div>
-        <div><strong>Success Count:</strong> {{ migrationRun.successCount ?? '-' }}</div>
-        <div><strong>Failed Count:</strong> {{ migrationRun.failureCount ?? '-' }}</div>
-        <div><strong>Skipped Count:</strong> {{ migrationRun.skippedCount ?? '-' }}</div>
-      </div>
-
-      <div v-if="migrationVerification?.summary" class="meta-grid mt-12">
-        <div><strong>Verified:</strong> {{ migrationVerification.summary.verified ?? '-' }}</div>
-        <div><strong>Verification Failed:</strong> {{ migrationVerification.summary.failed ?? '-' }}</div>
-      </div>
-
-      <div class="table-responsive mt-12" v-if="migrationEntries.length">
-        <table class="table table-sm align-middle mb-0">
-          <thead>
-            <tr>
-              <th>ExerciseID</th>
-              <th>ExerciseTitle</th>
-              <th>OldPath</th>
-              <th>NewPath</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="entry in migrationEntries" :key="entry.exerciseId || entry.ExerciseID">
-              <td>{{ entry.exerciseId || entry.ExerciseID }}</td>
-              <td>{{ entry.exerciseTitle || entry.ExerciseTitle }}</td>
-              <td class="small">{{ entry.oldPath || entry.OldPath || '-' }}</td>
-              <td class="small">{{ entry.newPath || entry.NewPath || '-' }}</td>
-              <td>{{ entry.status || entry.Status || '-' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -378,12 +224,11 @@ onMounted(() => {
   background: rgba(15, 23, 42, 0.03);
   border: 1px dashed rgba(15, 23, 42, 0.15);
   border-radius: 10px;
-  min-height: 220px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding: 10px;
+  padding: 16px;
 }
 
 :global(body.dark-theme) .image-stage {
@@ -397,8 +242,9 @@ onMounted(() => {
 }
 
 .gateway-image {
+  max-width: 250px;
   width: 100%;
-  max-height: 460px;
+  height: auto;
   object-fit: contain;
   border-radius: 8px;
 }
@@ -415,9 +261,5 @@ onMounted(() => {
   font-size: 0.92rem;
 }
 
-@media (max-width: 768px) {
-  .image-stage {
-    min-height: 180px;
-  }
-}
+
 </style>

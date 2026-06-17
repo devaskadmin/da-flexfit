@@ -186,3 +186,52 @@
     border-color: rgba(255,255,255,0.12) !important;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   FlexFit v0.83.14 — Mobile Viewport Stability & Cross-Platform Fixes
+   Covers: Android Chrome, Samsung Internet, iOS Safari, iPadOS Safari.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Input zoom prevention ───────────────────────────────────────────
+   Android Chrome and iOS Safari both zoom when a focused input,
+   textarea, or select has font-size < 16px. Enforced on all touch
+   viewports (≤ 1024px covers phones and tablets).                   */
+@media (max-width: 1024px) {
+  input,
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="date"],
+  input[type="time"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* ── iOS safe area insets ────────────────────────────────────────────
+   Supports Dynamic Island, notch, and home indicator padding.
+   Requires viewport-fit=cover in the meta viewport tag.
+   env() evaluates to 0 on non-supporting browsers — safe globally.  */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* ── Horizontal overflow lock ────────────────────────────────────────
+   Prevents any content wider than the viewport from causing
+   horizontal scrolling or triggering viewport width changes.        */
+html,
+body,
+#app {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
