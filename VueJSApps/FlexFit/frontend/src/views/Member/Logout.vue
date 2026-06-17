@@ -2,6 +2,7 @@
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAuth } from '@/composable/useAuth';
+import { API_BASE } from '@/config/env';
 
 const router = useRouter();
 const { user, logout: authLogout, logoutInProgress } = useAuth();
@@ -13,7 +14,6 @@ const showConfirmation = ref(true); // ✅ Show confirmation first
 // ✅ Fetch the logged-in user from session
 const fetchUserSession = async () => {
   try {
-    const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
     const response = await fetch(`${API_BASE}/api/session`, { credentials: 'include' });
     const data = await response.json();
 

@@ -176,7 +176,7 @@ onUnmounted(() => {
     <!-- Left: Logo + Hamburger -->
     <div class="navbar-left">
       <router-link :to="{name: 'dashboard_index'}" class="navbar-logo">
-        <img :src="[isLightTheme ? lightThemeLogo : darkThemeLogo]" alt="FlexFit Logo" class="navbar-logo-img">
+        <img :src="[isLightTheme ? lightThemeLogo : darkThemeLogo]" alt="WorkoutAtlas Logo" class="navbar-logo-img">
       </router-link>
 
       <button v-if="layoutPosition !== 'horizontal'" class="hamburger-btn" @click="onNavCloseClick" title="Toggle sidebar" aria-label="Toggle sidebar">

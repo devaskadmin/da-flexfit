@@ -89,11 +89,11 @@ const buildSafariLoginFailureMessage = ({
   if (arch.isCrossSiteParentDomain) {
     detailLines.push(
       'Cross-site cookie architecture detected.',
-      'Use custom same-site domains for production: app.flexfit.com and api.flexfit.com.'
+      'Use custom same-site domains for production: workoutatlas.com and api.workoutatlas.com.'
     );
   } else {
     detailLines.push(
-      'Use production custom domains with shared parent domain and COOKIE_DOMAIN=.flexfit.com for stable Safari auth persistence.'
+      'Use production custom domains with shared parent domain and COOKIE_DOMAIN=.workoutatlas.com for stable Safari auth persistence.'
     );
   }
 
@@ -120,7 +120,7 @@ const buildLoginDiagnostics = ({
   const arch = detectCrossSiteArchitecture();
 
   return [
-    'FlexFit Login Diagnostics',
+    'WorkoutAtlas Login Diagnostics',
     `- Timestamp: ${now}`,
     `- Browser: ${userAgent}`,
     `- Is Safari: ${isSafariBrowser()}`,
@@ -145,7 +145,7 @@ const buildLoginDiagnostics = ({
     ...(arch.isCrossSiteParentDomain
       ? [
           '- Architecture Notice: Cross-site cookie architecture detected.',
-          '- Production Fix: Use custom same-site domains app.flexfit.com and api.flexfit.com.',
+          '- Production Fix: Use custom same-site domains workoutatlas.com and api.workoutatlas.com.',
         ]
       : []),
   ].join('\n');
@@ -153,7 +153,7 @@ const buildLoginDiagnostics = ({
 
 const buildCompactLoginMessage = ({ status, fallbackMessage, code = '' } = {}) => {
   if (code === 'ER_ACCESS_DENIED_ERROR') {
-    return 'Database connection failed. The FlexFit server reached the database but authentication was rejected. Please verify Render environment variables: DB_HOST, DB_USER, DB_PASSWORD, DB_DATABASE.';
+    return 'Database connection failed. The WorkoutAtlas server reached the database but authentication was rejected. Please verify environment variables: DB_HOST, DB_USER, DB_PASSWORD, DB_DATABASE.';
   }
   if (code === 'ECONNREFUSED') {
     return 'Database offline. Sign-in is unavailable until the database server is reachable.';
@@ -162,7 +162,7 @@ const buildCompactLoginMessage = ({ status, fallbackMessage, code = '' } = {}) =
     return 'Database unavailable. The connection timed out. Please retry in a moment.';
   }
   if (String(fallbackMessage || '').includes('ER_TOO_MANY_USER_CONNECTIONS')) {
-    return 'FlexFit database connection limit reached. The hosting provider rejected additional database connections. Please wait a minute and retry.';
+    return 'WorkoutAtlas database connection limit reached. The hosting provider rejected additional database connections. Please wait a minute and retry.';
   }
 
   if (
@@ -576,7 +576,7 @@ const demoLogin = async (role) => {
             <!-- Connection limit banner -->
             <div v-if="isConnectionLimitError" class="login-diag-conn-limit">
               <p class="login-diag-conn-title">Database server connection limit reached.</p>
-              <p class="login-diag-conn-sub">FlexFit login succeeded but database resources were unavailable.</p>
+              <p class="login-diag-conn-sub">WorkoutAtlas login succeeded but database resources were unavailable.</p>
               <p class="login-diag-conn-error">Error: <code>ER_TOO_MANY_USER_CONNECTIONS</code></p>
               <p class="login-diag-conn-suggestions">Suggestions:</p>
               <ul class="login-diag-conn-list">
@@ -589,9 +589,9 @@ const demoLogin = async (role) => {
             <!-- DB auth error banner -->
             <div v-if="isDbAuthError" class="login-diag-conn-limit">
               <p class="login-diag-conn-title">Database authentication failed.</p>
-              <p class="login-diag-conn-sub">The FlexFit server reached the database but authentication was rejected.</p>
+              <p class="login-diag-conn-sub">The WorkoutAtlas server reached the database but authentication was rejected.</p>
               <p class="login-diag-conn-error">Error: <code>ER_ACCESS_DENIED_ERROR</code></p>
-              <p class="login-diag-conn-suggestions">Please verify these Render environment variables:</p>
+              <p class="login-diag-conn-suggestions">Please verify these environment variables:</p>
               <ul class="login-diag-conn-list">
                 <li><code>DB_HOST</code></li>
                 <li><code>DB_USER</code></li>

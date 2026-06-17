@@ -2,6 +2,7 @@
 // Module-level refs act as shared singleton state — one fetch, many consumers.
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { API_BASE } from '@/config/env';
 
 /** Raw session user object from /api/session */
 const user = ref(null);
@@ -37,7 +38,7 @@ export function useAuth() {
 
   const fetchUser = async () => {
     try {
-      const res = await fetch(import.meta.env.VITE_API_BASE + '/api/session', {
+      const res = await fetch(`${API_BASE}/api/session`, {
         credentials: 'include',
       });
       const data = await res.json();
@@ -89,7 +90,6 @@ export function useAuth() {
       const timeoutId = setTimeout(() => controller.abort(), 3000);
 
       try {
-        const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
         await fetch(`${API_BASE}/api/logout`, {
           method: 'POST',
           credentials: 'include',

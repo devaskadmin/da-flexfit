@@ -4,8 +4,8 @@ const forceProdMode = ['production', 'prod', 'render', 'remote'].includes(envTar
 const isDevMode = forceProdMode ? false : forceDevMode ? true : Boolean(import.meta.env.DEV);
 const defaultApiBase = isDevMode
   ? 'http://localhost:5000'
-  : 'https://dev-asterisks-github.onrender.com';
-const rawApiBase = import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL || defaultApiBase;
+  : 'https://api.workoutatlas.com';
+const rawApiBase = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || defaultApiBase;
 
 const normalizeApiBase = (value) => {
   const trimmed = String(value || '').trim();

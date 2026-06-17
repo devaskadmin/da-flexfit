@@ -73,12 +73,12 @@ onUnmounted(() => {
         @click="handleOverlayClick"
         role="dialog"
         aria-modal="true"
-        aria-label="Search FlexFit"
+        aria-label="Search WorkoutAtlas"
       >
         <div class="mobile-search-modal">
           <!-- Header -->
           <div class="modal-header">
-            <span class="modal-title">Search FlexFit</span>
+            <span class="modal-title">Search WorkoutAtlas</span>
             <button class="modal-close-btn" @click="close" aria-label="Close search">
               <i class="fa-light fa-xmark"></i>
             </button>

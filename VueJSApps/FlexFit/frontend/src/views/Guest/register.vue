@@ -513,7 +513,7 @@ onMounted(() => {
       <form @submit.prevent="register" class="auth-form">
         <transition name="step-slide" mode="out-in">
           <section v-if="currentStep === 1" key="step-1" class="wizard-panel">
-            <p class="wizard-subtitle">Choose the type of FlexFit account you want to create.</p>
+            <p class="wizard-subtitle">Choose the type of WorkoutAtlas account you want to create.</p>
 
             <div class="account-type-grid">
               <button
@@ -746,15 +746,15 @@ onMounted(() => {
         </div>
 
         <div class="terms-modal-body" @scroll="onTermsScroll">
-          <p><strong>Welcome to FlexFit.</strong> Please review the following terms before creating your account.</p>
-          <p>By using FlexFit, you agree to provide accurate account information, keep your credentials secure, and use the platform in accordance with applicable laws and acceptable-use expectations.</p>
+          <p><strong>Welcome to WorkoutAtlas.</strong> Please review the following terms before creating your account.</p>
+          <p>By using WorkoutAtlas, you agree to provide accurate account information, keep your credentials secure, and use the platform in accordance with applicable laws and acceptable-use expectations.</p>
           <p>Your account type determines available features and access. Demo-only administrative access is intended strictly for testing and internal review scenarios.</p>
-          <p>Fitness content, schedules, and recommendations available through FlexFit are intended for informational purposes and do not replace professional medical advice.</p>
+          <p>Fitness content, schedules, and recommendations available through WorkoutAtlas are intended for informational purposes and do not replace professional medical advice.</p>
           <p>You are responsible for reviewing your workouts, training plans, and personal profile details before relying on any in-app recommendations.</p>
           <p>We may store account information necessary to operate the service, support authentication, and improve product reliability and onboarding flows.</p>
           <p>Passwords must meet security requirements to help protect your account. You should never share your credentials with other users.</p>
           <p>Abuse of demo access, attempts to bypass security controls, or misuse of role-based features may result in removal of access.</p>
-          <p>By continuing, you confirm that you understand FlexFit is evolving and that some features may change as the product improves.</p>
+          <p>By continuing, you confirm that you understand WorkoutAtlas is evolving and that some features may change as the product improves.</p>
           <p>Continue scrolling to the end of these terms to enable the agreement button.</p>
           <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras fermentum orci at nibh dignissim, vitae vulputate nunc porta. Integer accumsan, velit ut cursus vehicula, magna libero pulvinar nunc, non commodo augue velit et massa.</p>
           <p>Vivamus luctus, est sed blandit imperdiet, risus eros pellentesque nibh, in congue est lacus sed augue. Nullam sed arcu quis neque porttitor vestibulum. In hac habitasse platea dictumst.</p>

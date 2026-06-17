@@ -22,11 +22,14 @@ const CORS_ORIGINS = String(process.env.CORS_ORIGINS || '')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-// Always include the current Render frontend URL as a hard fallback.
-// CLIENT_ORIGIN in env can override/extend this for custom domains.
-const RENDER_FRONTEND_ORIGIN = 'https://flex-fit-lkzh.onrender.com';
+// Always include production and local frontend origins as hard fallbacks.
+const DEFAULT_FRONTEND_ORIGINS = [
+  'https://workoutatlas.com',
+  'https://www.workoutatlas.com',
+  'http://localhost:5173',
+];
 const allowedOrigins = new Set(
-  [RENDER_FRONTEND_ORIGIN, CLIENT_ORIGIN, FRONTEND_URL, ...CORS_ORIGINS].filter(Boolean)
+  [...DEFAULT_FRONTEND_ORIGINS, CLIENT_ORIGIN, FRONTEND_URL, ...CORS_ORIGINS].filter(Boolean)
 );
 
 console.log(`🚀 CLIENT_ORIGIN=${CLIENT_ORIGIN || '(not set)'}`);

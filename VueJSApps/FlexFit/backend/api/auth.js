@@ -124,13 +124,13 @@ const sendResetPasswordEmail = async ({ to, temporaryPassword }) => {
   }
 
   const from = process.env.SMTP_FROM || process.env.SMTP_USER;
-  const frontendUrl = process.env.FRONTEND_URL || process.env.FRONTEND_ORIGIN || '';
+  const frontendUrl = process.env.FRONTEND_URL || process.env.FRONTEND_ORIGIN || 'https://workoutatlas.com';
   const resetUrl = process.env.RESET_PASSWORD_URL || `${frontendUrl}/update-password`;
 
   await transporter.sendMail({
     from,
     to,
-    subject: 'FlexFit Password Reset',
+    subject: 'WorkoutAtlas Password Reset',
     text: `Your temporary password is: ${temporaryPassword}\n\nUse it to sign in, then update your password immediately.\n\nReset link: ${resetUrl}`,
     html: `
       <p>Your temporary password is:</p>
@@ -175,7 +175,7 @@ router.get('/debug/ping', (req, res) => {
   return res.json({
     ok: true,
     message: 'Backend reachable',
-    service: 'FlexFit Backend',
+    service: 'WorkoutAtlas Backend',
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV || 'unknown',
     origin: req.headers.origin || null,

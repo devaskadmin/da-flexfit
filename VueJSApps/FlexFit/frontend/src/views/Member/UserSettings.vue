@@ -679,7 +679,7 @@ watch(
         <section v-if="activeTab==='notifications'" class="s-panel panel-bg">
           <div class="s-panel-head">
             <h4 class="s-panel-title">Notifications</h4>
-            <p class="s-panel-sub">Control what FlexFit notifies you about</p>
+            <p class="s-panel-sub">Control what WorkoutAtlas notifies you about</p>
           </div>
           <div class="notif-list">
             <div v-for="item in notifOptions" :key="item.key" class="notif-row">

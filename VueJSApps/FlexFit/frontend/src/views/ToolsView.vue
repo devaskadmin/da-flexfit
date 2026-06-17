@@ -9,7 +9,7 @@ const imageStatus = ref('warning')
 const tools = computed(() => [
   {
     name: 'Gateway Connectivity',
-    description: 'Verify communication with the FlexFit Gateway.',
+    description: 'Verify communication with the WorkoutAtlas Gateway.',
     status: gatewayStatus.value,
   },
   {
