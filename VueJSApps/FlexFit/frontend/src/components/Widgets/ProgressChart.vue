@@ -1,130 +1,340 @@
 <script setup>
-import { ref } from "vue";
-import vueApexcharts from "vue3-apexcharts";
+import { computed, onMounted, ref, watch } from 'vue';
+import axios from 'axios';
+import vueApexcharts from 'vue3-apexcharts';
+import { API_BASE } from '@/config/env';
 
+const props = defineProps({
+  startDate: { type: String, default: null },
+  endDate: { type: String, default: null },
+});
 
-const balanceOverviewSeries = ref([
+const chartLoading = ref(false);
+const chartError = ref('');
+const chartData = ref([]);
+const groupBy = ref('day');
+const chartType = ref('bar');
+
+const chartTitle = computed(() => 'Workouts Logged');
+const chartSubtitle = computed(() => {
+  if (groupBy.value === 'month') return 'All Exercises · Monthly View';
+  if (groupBy.value === 'year') return 'All Exercises · Yearly View';
+  return 'All Exercises · Daily View';
+});
+
+const chartHeight = computed(() => (chartData.value.length > 0 && chartData.value.length <= 3 ? 240 : 300));
+
+const chartSeries = computed(() => ([
   {
-    name: "Stock",
-    color: "#0D99FF",
-    data: [31, 40, 28, 51, 42, 109, 100, 40, 28, 51, 42, 109],
+    name: 'Workouts Logged',
+    data: chartData.value.map((item) => item.value),
   },
-  {
-    name: "Order",
-    color: "#a9b4cc",
-    data: [11, 32, 45, 32, 34, 52, 41, 32, 45, 32, 34, 52],
-  },
-]);
+]));
 
-const balanceOverviewOptions = ref({
+const chartCategories = computed(() => chartData.value.map((item) => item.label || item.date));
+
+const chartOptions = computed(() => ({
   chart: {
-    height: 360, // Adjusted height for better fit
-    type: "bar",
-    stacked: true,
-    toolbar: {
-      show: false,
-    },
+    type: chartType.value,
+    height: 340,
+    toolbar: { show: false },
+    fontFamily: 'inherit',
+    background: 'transparent',
+    animations: { enabled: true, easing: 'easeinout', speed: 600 },
   },
-  dataLabels: {
-    enabled: false,
-  },
+  dataLabels: { enabled: false },
   stroke: {
-    width: 0,
-    curve: "smooth",
+    curve: 'smooth',
+    width: chartType.value === 'bar' ? 0 : 2.5,
   },
+  fill: chartType.value === 'bar'
+    ? {
+        type: 'gradient',
+        gradient: {
+          shade: 'light',
+          type: 'vertical',
+          shadeIntensity: 0.25,
+          gradientToColors: ['#60a5fa'],
+          inverseColors: false,
+          opacityFrom: 0.92,
+          opacityTo: 0.72,
+          stops: [0, 100],
+        },
+      }
+    : { opacity: 1 },
+  colors: ['#3b82f6'],
   xaxis: {
-    fill: "#FFFFFF",
-    type: "datetime",
-    categories: [
-      "2022-12-19T00:00:00.000Z",
-      "2022-12-20T00:00:00.000Z",
-      "2022-12-21T00:00:00.000Z",
-      "2022-12-22T00:00:00.000Z",
-      "2022-12-23T00:00:00.000Z",
-      "2022-12-24T00:00:00.000Z",
-      "2022-12-25T00:00:00.000Z",
-      "2022-12-26T00:00:00.000Z",
-      "2022-12-27T00:00:00.000Z",
-      "2022-12-28T00:00:00.000Z",
-      "2022-12-29T00:00:00.000Z",
-      "2022-12-30T00:00:00.000Z",
-    ],
+    categories: chartCategories.value,
     labels: {
-      datetimeFormatter: {
-        month: "MMMM",
-      },
+      style: { fontSize: '10px', colors: '#94a3b8' },
+      rotate: chartData.value.length > 14 ? -35 : 0,
+      maxHeight: 50,
     },
-    axisBorder: {
-      show: false,
-    },
-    axisTicks: {
-      show: false,
+    axisBorder: { show: false },
+    axisTicks: { show: false },
+  },
+  yaxis: {
+    labels: {
+      style: { fontSize: '10px', colors: '#94a3b8' },
+      formatter: (value) => Number(value).toLocaleString(),
     },
   },
   grid: {
-    borderColor: "#334652",
-    strokeDashArray: 3,
-    xaxis: {
-      lines: {
-        show: true,
-      },
-    },
-    padding: {
-      bottom: 15,
-    },
+    borderColor: '#f1f5f9',
+    strokeDashArray: 5,
+    padding: { top: 0, right: 8, bottom: 0, left: 4 },
+  },
+  tooltip: {
+    theme: 'light',
+    y: { formatter: (value) => Number(value).toLocaleString() },
+  },
+  markers: {
+    size: chartType.value === 'line' ? 3 : 0,
+    colors: ['#fff'],
+    strokeColors: ['#3b82f6'],
+    strokeWidth: 2,
+    hover: { size: 5 },
+  },
+  plotOptions: {
+    bar: { borderRadius: 6, columnWidth: chartData.value.length <= 5 ? '28%' : '58%' },
   },
   responsive: [
-    {
-      breakpoint: 1199,
-      options: {
-        chart: {
-          height: 340,
-        },
-      },
-    },
-    {
-      breakpoint: 991,
-      options: {
-        chart: {
-          height: 300,
-        },
-      },
-    },
-    {
-      breakpoint: 479,
-      options: {
-        chart: {
-          height: 250,
-        },
-      },
-    },
+    { breakpoint: 1024, options: { chart: { height: 260 } } },
+    { breakpoint: 640, options: { chart: { height: 220 } } },
   ],
-});
+}));
+
+async function loadChart() {
+  chartLoading.value = true;
+  chartError.value = '';
+  try {
+    const params = { groupBy: groupBy.value };
+    if (props.startDate) params.startDate = props.startDate;
+    if (props.endDate) params.endDate = props.endDate;
+
+    const { data } = await axios.get(`${API_BASE}/api/dashboard/metrics`, {
+      params,
+      withCredentials: true,
+    });
+
+    chartData.value = Array.isArray(data?.workoutsLoggedChart) ? data.workoutsLoggedChart : [];
+  } catch (err) {
+    console.error('Dashboard progress chart error', err);
+    chartError.value = err?.response?.status === 401
+      ? 'Session expired. Please log in again.'
+      : 'Unable to load chart data. Please try again.';
+    chartData.value = [];
+  } finally {
+    chartLoading.value = false;
+  }
+}
+
+watch([() => props.startDate, () => props.endDate, groupBy], loadChart);
+
+onMounted(loadChart);
 </script>
 
 <template>
-  <div class="panel chart-panel-1">
-    <div class="panel-header d-flex justify-content-between align-items-center">
-      <h5>Workouts Logged</h5>
-      <div class="btn-box">
-        <button class="btn btn-sm btn-outline-primary">Week</button>
-        <button class="btn btn-sm btn-outline-primary">Month</button>
-        <button class="btn btn-sm btn-outline-primary">Year</button>
+  <div class="ps-card dashboard-progress-card">
+    <div class="ps-card__header">
+      <div class="ps-chart-header">
+        <div class="ps-chart-header__left">
+          <h5>Training Progress</h5>
+          <span class="ps-chart-sub">{{ chartTitle }} · {{ chartSubtitle }}</span>
+        </div>
+        <div class="ps-chart-controls">
+          <div class="ps-group-btns">
+            <button class="ps-group-btn" :class="{ 'ps-group-btn--active': groupBy === 'day' }" @click="groupBy = 'day'">Week</button>
+            <button class="ps-group-btn" :class="{ 'ps-group-btn--active': groupBy === 'month' }" @click="groupBy = 'month'">Month</button>
+            <button class="ps-group-btn" :class="{ 'ps-group-btn--active': groupBy === 'year' }" @click="groupBy = 'year'">Year</button>
+          </div>
+          <div class="ps-chart-type-btns">
+            <button class="ps-type-btn" :class="{ 'ps-type-btn--active': chartType === 'bar' }" @click="chartType = 'bar'">
+              <i class="fa-solid fa-chart-bar"></i>
+            </button>
+            <button class="ps-type-btn" :class="{ 'ps-type-btn--active': chartType === 'line' }" @click="chartType = 'line'">
+              <i class="fa-solid fa-chart-line"></i>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="panel-body">
-      <vueApexcharts
-        type="bar"
-        height="360"
-        :options="balanceOverviewOptions"
-        :series="balanceOverviewSeries"
-      ></vueApexcharts>
+
+    <div class="ps-chart-body">
+      <div v-if="chartLoading" class="ps-state">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <span>Loading chart…</span>
+      </div>
+      <div v-else-if="chartError" class="ps-state ps-state--error">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>{{ chartError }}</span>
+      </div>
+      <div v-else-if="!chartData.length" class="ps-empty-state">
+        <div class="ps-empty-icon">📊</div>
+        <h6 class="ps-empty-title">No workout history found</h6>
+        <div class="ps-empty-tips">
+          <span>Complete workouts to generate analytics</span>
+          <span>Or try a wider date range</span>
+        </div>
+      </div>
+      <div v-else class="ps-chart-wrap">
+        <vueApexcharts :type="chartType" :height="chartHeight" :options="chartOptions" :series="chartSeries" />
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.panel {
-  margin-bottom: 20px;
+.dashboard-progress-card {
+  border: 1px solid rgba(120, 130, 150, 0.32);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(20, 30, 50, 0.05);
+  overflow: hidden;
+}
+
+.ps-card__header {
+  padding: 14px 18px;
+  background: rgba(235, 240, 248, 0.65);
+  border-bottom: 1px solid rgba(120, 130, 150, 0.25);
+}
+
+.ps-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ps-chart-header__left h5 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.ps-chart-sub {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--text-color-secondary);
+  margin-top: 2px;
+}
+
+.ps-chart-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ps-group-btns {
+  display: flex;
+  gap: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ps-group-btn {
+  border: none;
+  background: #f8fafc;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  border-right: 1px solid #e2e8f0;
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.ps-group-btn:last-child { border-right: none; }
+.ps-group-btn:hover { background: #eff6ff; color: #3b82f6; }
+.ps-group-btn--active { background: #3b82f6; color: #fff; }
+.ps-group-btn--active:hover { background: #2563eb; color: #fff; }
+
+.ps-chart-type-btns {
+  display: flex;
+  gap: 4px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.ps-type-btn {
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.ps-type-btn:hover { color: #3b82f6; }
+
+.ps-type-btn--active {
+  background: #fff;
+  color: #3b82f6;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.ps-chart-body { padding: 8px 14px 16px; }
+.ps-chart-wrap { overflow: hidden; max-height: 340px; transition: height 0.3s ease; }
+
+.ps-state,
+.ps-empty-state {
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  color: var(--text-color-secondary);
+}
+
+.ps-state--error {
+  color: #dc2626;
+}
+
+.ps-empty-icon {
+  font-size: 1.5rem;
+}
+
+.ps-empty-title {
+  margin: 0;
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: var(--text-color);
+}
+
+.ps-empty-tips {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 768px) {
+  .ps-card__header {
+    padding: 10px 12px;
+  }
+
+  .ps-chart-body {
+    padding: 8px 10px 12px;
+  }
+
+  .ps-group-btn {
+    padding: 4px 10px;
+    font-size: 0.72rem;
+  }
+
+  .ps-type-btn {
+    padding: 4px 8px;
+    font-size: 0.74rem;
+  }
 }
 </style>

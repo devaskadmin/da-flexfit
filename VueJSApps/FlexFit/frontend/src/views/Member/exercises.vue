@@ -1,9 +1,10 @@
-<script setup>
+﻿<script setup>
    //Import libaries
    import { ref, reactive, computed, onMounted, watch, nextTick } from "vue";
    import DateDropDown from "@/components/DropDownDate.vue"; // not template folder
   import { API_BASE } from '@/config/env';
   import { DEFAULT_EXERCISE_IMAGE, getExerciseImage, getExerciseImageFromGallery } from '@/utils/exerciseImage';
+  import { useExerciseFiltering } from '@/composable/exerciseFilters';
    import '@fortawesome/fontawesome-free/css/all.min.css';
    
    // ---- VARIABLES ----
@@ -15,10 +16,23 @@
    const searchExercise = ref("");
    const workoutList = ref([]);
    const activeTab = ref('search-exercises'); // default tab
+   const filtersOpen = ref(false); // mobile accordion â€“ collapsed by default
    const existingLogs = ref([]);
   const exercisesLoadError = ref("");
   const exerciseView = ref('all');
   const favoriteExerciseIds = ref(new Set());
+  const favoriteExercises = ref([]);
+  const loadingFavorites = ref(false);
+  const favoritesLoadError = ref("");
+  const myCustomExercises = ref([]);
+  const customExercisesLoadError = ref('');
+  const currentUserRole = ref('');
+  const logSearchExercise = ref('');
+  const logWorkoutTypeFilter = ref('All');
+  const logMuscleGroupFilter = ref('All');
+  const logEquipmentFilter = ref('All');
+  const logOwnershipFilter = ref('all');
+  const logSuggestionIndex = ref(-1);
    
    
    
@@ -39,43 +53,49 @@
      WorkoutType: '',
      RecordingType: '',
      Instructions: '',
-     ImageGallery: '[]'
+    ImageGallery: '[]',
+    CreateAsGlobalExercise: false,
+    CanDelete: 0,
+    CanEdit: 0,
    });
+
+   // Error and success state for edit form
+   const updateError = ref('');
+   const updateSuccess = ref('');
+   const isSaving = ref(false);
+  const isAdminUser = computed(() => {
+    const normalized = String(currentUserRole.value || '').trim().toLowerCase();
+    return normalized === 'admin' || normalized === 'administrator';
+  });
    
    // ---- FILTER EXERCISES ----
-   const filteredExercises = computed(() => {
-  let list = allExercises.value;
+   const searchFilters = computed(() => ({
+    search: searchExercise.value,
+    workoutType: workoutType.value,
+    muscleGroup: selectedMuscleGroup.value,
+    equipment: selectedEquipment.value,
+    ownership: 'all',
+   }));
 
-  if (workoutType.value !== "All") {
-    list = list.filter(ex => ex.WorkoutType?.toLowerCase() === workoutType.value.toLowerCase());
-  }
+   const logFilters = computed(() => ({
+    search: logSearchExercise.value,
+    workoutType: logWorkoutTypeFilter.value,
+    muscleGroup: logMuscleGroupFilter.value,
+    equipment: logEquipmentFilter.value,
+    ownership: logOwnershipFilter.value,
+   }));
 
-  if (selectedMuscleGroup.value !== "All") {
-    list = list.filter(ex => ex.MuscleGroup === selectedMuscleGroup.value);
-  }
+   const filteredExercises = useExerciseFiltering({
+    rowsRef: allExercises,
+    filtersRef: searchFilters,
+   });
 
-  if (selectedEquipment.value !== "All") {
-    list = list.filter(ex => ex.Equipment === selectedEquipment.value);
-  }
+   const filteredLogExercises = useExerciseFiltering({
+    rowsRef: allExercises,
+    filtersRef: logFilters,
+   });
 
-
-  if (searchExercise.value) {
-    const term = searchExercise.value.toLowerCase();
-    list = list.filter(ex => {
-      const title = ex.ExerciseTitle ? ex.ExerciseTitle.toLowerCase() : '';
-      const muscle = ex.MuscleGroup ? ex.MuscleGroup.toLowerCase() : '';
-      const equip = ex.Equipment ? ex.Equipment.toLowerCase() : '';
-      // Partial match anywhere in the string (not just start)
-      return (
-        title.includes(term) ||
-        muscle.includes(term) ||
-        equip.includes(term)
-      );
-    });
-  }
-
-  return list;
-});
+   const logExerciseMatches = computed(() => filteredLogExercises.value.slice(0, 8));
 
    
    // ---- GET MUSCLE GROUPS + EQUIPMENT ----
@@ -275,7 +295,7 @@ const saveWorkout = async () => {
   if (errors.length > 0) {
     alert('Some logs failed to save:\n' + errors.join('\n'));
   } else {
-    alert('✅ All workout logs saved!');
+    alert('âœ… All workout logs saved!');
     workoutList.value = [];
     await loadWorkoutLogs();
   }
@@ -307,11 +327,17 @@ const saveWorkout = async () => {
       speed: log.Speed,
       'Laps-Rep': log['Laps-Rep'],
       date: log.WorkoutDate,
-      image: log.ImageGallery ? `/assets/Excerises/${JSON.parse(log.ImageGallery)[0]}` : '/assets/Excerises/default/default.jpg'
+      image: getExerciseImage({
+        ExerciseID: log.ExerciseID,
+        ImageURL: log.ImageURL,
+        ImageGallery: log.ImageGallery,
+        PrimaryImage: log.PrimaryImage,
+        ResolvedImageURL: log.ResolvedImageURL,
+      })
     }));
 
   } catch (err) {
-    console.error("❌ Failed to load workout logs:", err);
+    console.error("âŒ Failed to load workout logs:", err);
   }
 };
 
@@ -340,12 +366,18 @@ const loadWorkoutLogs = async () => {
           speed: log.Speed,
           'Laps-Rep': log['Laps-Rep'],
           date: log.WorkoutDate,
-          image: log.ImageGallery ? `/assets/Excerises/${JSON.parse(log.ImageGallery)[0]}` : '/assets/Excerises/default/default.jpg',
+          image: getExerciseImage({
+            ExerciseID: log.ExerciseID,
+            ImageURL: log.ImageURL,
+            ImageGallery: log.ImageGallery,
+            PrimaryImage: log.PrimaryImage,
+            ResolvedImageURL: log.ResolvedImageURL,
+          }),
           WorkoutLogID: log.WorkoutLogID // for remove/edit
         }))
       : [];
   } catch (err) {
-    console.error("❌ Failed to fetch workout logs:", err);
+    console.error("âŒ Failed to fetch workout logs:", err);
     existingLogs.value = [];
   }
 };
@@ -405,10 +437,42 @@ const loadExercisesLibrary = async () => {
     });
     favoriteExerciseIds.value = nextFavoriteIds;
   } catch (err) {
-    console.error('❌ Failed to load exercises:', err);
+    console.error('âŒ Failed to load exercises:', err);
     allExercises.value = [];
     favoriteExerciseIds.value = new Set();
     exercisesLoadError.value = 'Could not load exercises right now.';
+  }
+};
+
+const loadCurrentSessionRole = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/api/session`, { credentials: 'include' });
+    if (!res.ok) {
+      currentUserRole.value = '';
+      return;
+    }
+
+    const data = await res.json();
+    currentUserRole.value = String(data?.user?.role || data?.user?.roleSlug || '').trim();
+  } catch (err) {
+    console.error('Failed to resolve session role:', err);
+    currentUserRole.value = '';
+  }
+};
+
+const loadMyCustomExercises = async () => {
+  customExercisesLoadError.value = '';
+  try {
+    const res = await fetch(`${API_BASE}/api/exercises/my`, { credentials: 'include' });
+    if (!res.ok) {
+      throw new Error(`Failed to load custom exercises (${res.status})`);
+    }
+    const data = await res.json();
+    myCustomExercises.value = Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error('Failed to load custom exercises:', err);
+    myCustomExercises.value = [];
+    customExercisesLoadError.value = 'Could not load your custom exercises right now.';
   }
 };
 
@@ -423,14 +487,17 @@ const toggleFavoriteExercise = async (exercise) => {
   try {
     const shouldAddFavorite = !isFavoriteExercise(exerciseId);
     const method = shouldAddFavorite ? 'POST' : 'DELETE';
+    const url = `${API_BASE}/api/exercises/${exerciseId}/favorite`;
 
-    const res = await fetch(`${API_BASE}/api/exercises/${exerciseId}/favorite`, {
+    const res = await fetch(url, {
       method,
       credentials: 'include'
     });
 
     if (!res.ok) {
-      throw new Error(`Favorite update failed (${res.status})`);
+      const errorText = await res.text();
+      console.error(`[Favorite] Failed ${res.status}:`, errorText);
+      throw new Error(`Favorite update failed (${res.status}): ${errorText}`);
     }
 
     const next = new Set(favoriteExerciseIds.value);
@@ -446,16 +513,53 @@ const toggleFavoriteExercise = async (exercise) => {
     if (exerciseView.value === 'favorites') {
       await loadExercisesLibrary();
     }
+    
+    // If we're on the Favorite Exercises tab, reload the favorites list
+    if (activeTab.value === 'favorite-exercises') {
+      await loadFavoriteExercises();
+    }
   } catch (err) {
-    console.error('❌ Failed to update favorite exercise:', err);
+    console.error('Favorite update failed:', err);
     alert('Could not update favorite right now.');
+  }
+};
+
+const loadFavoriteExercises = async () => {
+  loadingFavorites.value = true;
+  favoritesLoadError.value = '';
+  try {
+    const url = `${API_BASE}/api/exercises/favorites`;
+    const res = await fetch(url, {
+      credentials: 'include'
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`[Favorite] Failed to load favorites (${res.status}):`, errorText);
+      throw new Error(`Failed to load favorites (${res.status})`);
+    }
+
+    const data = await res.json();
+    console.log('Favorite API response:', data);
+    // Handle different response formats from backend
+    favoriteExercises.value = Array.isArray(data) ? data : (data.favorites || data.exercises || []);
+    console.log('favoriteExercises:', favoriteExercises.value);
+  } catch (err) {
+    console.error('Error pulling favorites:', err);
+    favoriteExercises.value = [];
+    favoritesLoadError.value = 'Error pulling favorites. Please try again.';
+  } finally {
+    loadingFavorites.value = false;
   }
 };
 
 //Async function to pass data from front end to backend
 onMounted(async () => {
+  await loadCurrentSessionRole();
+
   //Get All exercises
   await loadExercisesLibrary();
+  await loadMyCustomExercises();
 
   //Get user ID
   try {
@@ -493,10 +597,25 @@ watch(existingLogs, () => {
 watch(exerciseView, async () => {
   currentPage.value = 1;
   await loadExercisesLibrary();
+  await loadMyCustomExercises();
+});
+
+watch(logSearchExercise, () => {
+  logSuggestionIndex.value = -1;
+});
+
+// Trigger favorites load whenever the favorites tab becomes active
+watch(activeTab, (tab) => {
+  if (tab === 'favorite-exercises') {
+    console.log('Favorite tab active');
+    loadFavoriteExercises();
+  }
 });
 
 // Helper: Switch to log-exercise if there are logs, else to search-exercises
+// Does NOT override if the user deliberately switched to the Favorites tab.
 function autoSwitchTabToLogOrLibrary() {
+  if (activeTab.value === 'favorite-exercises') return;
   if (Array.isArray(existingLogs.value) && existingLogs.value.length > 0) {
     activeTab.value = 'log-exercise';
   } else {
@@ -519,7 +638,7 @@ function autoSwitchTabToLogOrLibrary() {
    const currentPage = ref(1); // start from 1
    
    
-   const getFirstImage = (gallery) => getExerciseImageFromGallery(gallery);
+  const getFirstImage = (gallery, exerciseId = 0) => getExerciseImageFromGallery(gallery, exerciseId);
 
    
    const loadMore = () => {
@@ -556,6 +675,36 @@ function autoSwitchTabToLogOrLibrary() {
      activeTab.value = "log-exercise";
      scrollToLogWorkout();
    };
+
+  const selectExerciseForLog = (ex) => {
+    if (!ex) return;
+    selectedExercise.value = ex.ExerciseTitle;
+    logSearchExercise.value = ex.ExerciseTitle;
+    logSuggestionIndex.value = -1;
+    scrollToLogWorkout();
+  };
+
+  const onLogSearchKeydown = (event) => {
+    const list = logExerciseMatches.value;
+    if (!list.length) return;
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      logSuggestionIndex.value = Math.min(logSuggestionIndex.value + 1, list.length - 1);
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      logSuggestionIndex.value = Math.max(logSuggestionIndex.value - 1, 0);
+      return;
+    }
+
+    if (event.key === 'Enter' && logSuggestionIndex.value >= 0) {
+      event.preventDefault();
+      selectExerciseForLog(list[logSuggestionIndex.value]);
+    }
+  };
    
    const scrollToLogWorkout = () => {
      const logWorkoutEl = document.getElementById('log-workout-form');
@@ -592,7 +741,12 @@ const selectedImage = computed(() => {
    };
    
    const startEditing = (exercise) => {
+       if (Number(exercise?.CanEdit || 0) !== 1 && !isAdminUser.value) {
+         alert('You are not allowed to edit this exercise.');
+         return;
+       }
      Object.assign(editExercise, exercise);
+       editExercise.CreateAsGlobalExercise = Number(exercise?.IsGlobalExercise || 0) === 1;
      showEditForm.value = true;
      scrollToEditForm(); // optional
    };
@@ -606,44 +760,104 @@ const selectedImage = computed(() => {
    
    
    const saveEditedExercise = async () => {
+     // Clear previous messages
+     updateError.value = '';
+     updateSuccess.value = '';
+
+     // Validation
+     if (!editExercise.ExerciseTitle?.trim()) {
+       updateError.value = 'Exercise Name is required';
+       return;
+     }
+     if (!editExercise.WorkoutType?.trim()) {
+       updateError.value = 'Workout Type is required';
+       return;
+     }
+     if (!editExercise.RecordingType?.trim()) {
+       updateError.value = 'Recording Type is required';
+       return;
+     }
+     if (!editExercise.MuscleGroup?.trim()) {
+       updateError.value = 'Muscle Group is required';
+       return;
+     }
+
+     const isUpdate = !!editExercise.ExerciseID;
+     if (isUpdate && !editExercise.ExerciseID) {
+       updateError.value = 'Missing exercise ID. Cannot update exercise.';
+       return;
+     }
+
+     // Validate image count
+     const totalImages = existingImages.value.length + selectedImages.value.length;
+     if (totalImages > 2) {
+       updateError.value = 'You can only have up to 2 images.';
+       return;
+     }
+
+     isSaving.value = true;
+
      try {
        const formData = new FormData();
+       
+       // Append all exercise fields
        for (const [key, value] of Object.entries(editExercise)) {
          formData.append(key, value || '');
        }
+       
        // Existing images to keep
        formData.append('existingImages', JSON.stringify(existingImages.value));
        // Images to delete
        formData.append('imagesToDelete', JSON.stringify(imagesToDelete.value));
        // New uploads
        selectedImages.value.forEach((img) => formData.append('images', img));
-       if (existingImages.value.length + selectedImages.value.length > 2) {
-         alert('You can only have up to 2 images.');
-         return;
-       }
-       const isUpdate = !!editExercise.ExerciseID;
+
        const url = isUpdate
          ? import.meta.env.VITE_API_BASE + `/api/get-exercise/${editExercise.ExerciseID}`
          : import.meta.env.VITE_API_BASE + '/api/save-exercises';
        const method = isUpdate ? 'PUT' : 'POST';
+
        const response = await fetch(url, {
          method,
          body: formData,
          credentials: 'include'
        });
+
        const result = await response.json();
-       if (!response.ok) throw new Error(result.error || (isUpdate ? 'Update failed' : 'Insert failed'));
+
+       if (!response.ok) {
+         console.error(`âŒ API Error (${response.status}):`, result);
+         throw new Error(result.error || result.message || (isUpdate ? 'Update failed' : 'Insert failed'));
+       }
+
+       // Success!
+       updateSuccess.value = isUpdate ? 'Exercise updated successfully!' : 'Exercise added successfully!';
+       
        // Refresh exercise list
-      await loadExercisesLibrary();
-       alert(isUpdate ? '✅ Exercise updated successfully!' : '✅ Exercise added successfully!');
-       showEditForm.value = false;
-       selectedImages.value = [];
-       imagePreviews.value = [];
-       existingImages.value = [];
-       imagesToDelete.value = [];
+       await loadExercisesLibrary();
+      await loadMyCustomExercises();
+       
+       // Clear form after short delay to show success message
+       setTimeout(() => {
+         showEditForm.value = false;
+         selectedImages.value = [];
+         imagePreviews.value = [];
+         existingImages.value = [];
+         imagesToDelete.value = [];
+         updateSuccess.value = '';
+       }, 2000);
+
      } catch (err) {
-       console.error('❌ Error updating/inserting exercise:', err);
-       alert('Failed to update/add exercise.');
+       console.error('âŒ Error updating/inserting exercise:', err);
+       
+       // Show specific error message
+       if (err.message.includes('fetch')) {
+         updateError.value = 'Unable to connect to server. Please check your connection.';
+       } else {
+         updateError.value = err.message || 'Failed to save exercise. Please try again.';
+       }
+     } finally {
+       isSaving.value = false;
      }
    };
    
@@ -752,7 +966,8 @@ const newExercise = reactive({
   Equipment: '',
   MuscleGroup: '',
   Instructions: '',
-  ImageGallery: '[]'
+  ImageGallery: '[]',
+  CreateAsGlobalExercise: false,
 });
 
 const showAddForm = ref(false); // Toggle form visibility
@@ -779,7 +994,8 @@ const AddWorkout = async () => {
     if (!res.ok) throw new Error(result.error || 'Failed to add exercise');
     // Refresh the list
     await loadExercisesLibrary();
-    alert('✅ New exercise added!');
+    await loadMyCustomExercises();
+    alert('âœ… New exercise added!');
     showAddForm.value = false;
     // Reset form and images
     Object.assign(newExercise, {
@@ -789,14 +1005,15 @@ const AddWorkout = async () => {
       Equipment: '',
       MuscleGroup: '',
       Instructions: '',
-      ImageGallery: '[]'
+      ImageGallery: '[]',
+      CreateAsGlobalExercise: false,
     });
     selectedImages.value = [];
     imagePreviews.value = [];
     existingImages.value = [];
     imagesToDelete.value = [];
   } catch (err) {
-    console.error('❌ Add failed:', err);
+    console.error('âŒ Add failed:', err);
     addFormError.value = 'Error adding exercise.';
   }
 };
@@ -917,6 +1134,10 @@ const deleteExercise = async (exercise) => {
     alert('No ExerciseID found.');
     return;
   }
+  if (Number(exercise?.CanDelete || 0) !== 1 && !isAdminUser.value) {
+    alert('You are not allowed to delete this exercise.');
+    return;
+  }
   if (!confirm('Are you sure you want to delete this exercise? This cannot be undone.')) return;
   try {
     const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/delete-exercise/${exercise.ExerciseID}`,
@@ -927,7 +1148,8 @@ const deleteExercise = async (exercise) => {
     if (!res.ok) throw new Error('Failed to delete exercise');
     // Refresh exercise list
     await loadExercisesLibrary();
-    alert('✅ Exercise deleted!');
+    await loadMyCustomExercises();
+    alert('âœ… Exercise deleted!');
     showEditForm.value = false;
   } catch (err) {
     alert('Failed to delete exercise.');
@@ -941,6 +1163,12 @@ const clearFilters = () => {
   selectedMuscleGroup.value = 'All';
   selectedEquipment.value = 'All';
   searchExercise.value = '';
+  logSearchExercise.value = '';
+  logWorkoutTypeFilter.value = 'All';
+  logMuscleGroupFilter.value = 'All';
+  logEquipmentFilter.value = 'All';
+  logOwnershipFilter.value = 'all';
+  logSuggestionIndex.value = -1;
   currentPage.value = 1;
   // reset any derived pagination/display state if you need:
   displayLimit.value = 3;
@@ -950,12 +1178,26 @@ const clearFilters = () => {
 </script>
 
 <template>
-  <div class="app-page-shell">
-  <div class="app-page-canvas app-inner-shell">
+  <div class="app-page-shell exercises-page">
+  <div class="app-page-canvas app-inner-shell exercises-canvas">
 
-  <div class="dashboard-breadcrumb ff-page-header app-header-gradient mb-0">
-      <h2>Exercises Database</h2>
-   </div>
+
+
+
+  <section class="builder-hero ff-page-header app-header-gradient">
+
+
+      <div class="builder-hero__content">
+        <h2>Exercises Database</h2>
+      </div>
+      
+    </section>
+
+
+
+
+
+
 
 
    <!-- Exercise Tab Section -->
@@ -970,7 +1212,7 @@ const clearFilters = () => {
                   role="tab"
                   @click="activeTab = 'search-exercises'"
                 >
-                  <i class="fa-solid fa-magnifying-glass me-2"></i><span>Search Exercises </span>
+                  <i class="fa-solid fa-magnifying-glass me-2"></i><span class="tab-label-full">Search Exercises</span><span class="tab-label-short">Search</span>
                 </button>
                 <button
                   type="button"
@@ -980,7 +1222,17 @@ const clearFilters = () => {
                   role="tab"
                   @click="activeTab = 'log-exercise'"
                 >
-                  <i class="fa-solid fa-dumbbell me-2"></i><span>My Custom Exercises</span>
+                  <i class="fa-solid fa-dumbbell me-2"></i><span class="tab-label-full">My Custom Exercises</span><span class="tab-label-short">Custom</span>
+                </button>
+                <button
+                  type="button"
+                  class="ex-tab"
+                  :class="{ 'ex-tab--active': activeTab === 'favorite-exercises' }"
+                  :aria-selected="activeTab === 'favorite-exercises'"
+                  role="tab"
+                  @click="activeTab = 'favorite-exercises'; loadFavoriteExercises();"
+                >
+                  <i class="fa-solid fa-star me-2"></i><span class="tab-label-full">Favorite Exercises</span><span class="tab-label-short">Favorites</span>
                 </button>
               </nav>
 
@@ -992,12 +1244,17 @@ const clearFilters = () => {
                 <!--Search Excerises CONTAINER -->
             <div class="container container-block">
                 <div class="panel search-filter-card">
+                  <!-- Mobile-only accordion toggle -->
+                  <button class="filter-accordion-toggle" @click="filtersOpen = !filtersOpen" :aria-expanded="filtersOpen">
+                    <span><i class="fa-solid fa-sliders me-2"></i>Filters</span>
+                    <i :class="filtersOpen ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
+                  </button>
                   <!--Start of panel-->
                   <div class="panel-header search-filter-head">
                     <h4><i class="fa-solid fa-magnifying-glass me-2"></i>Search Exercises</h4>
                   </div>
                   <!--end of panel header-->
-                  <div class="panel-body search-filter-body">
+                  <div class="panel-body search-filter-body filter-body-animated" :class="{ 'filters-mobile-hidden': !filtersOpen }">
                       <div v-if="exercisesLoadError" class="alert alert-warning">
                         {{ exercisesLoadError }}
                       </div>
@@ -1047,7 +1304,7 @@ const clearFilters = () => {
 
                       <div class="search-filter-actions">
                         <button class="btn btn-success add-exercise-centered" @click="showAddForm = !showAddForm">
-                          {{ showAddForm ? 'Cancel' : '➕ Add New Exercise' }}
+                          {{ showAddForm ? 'Cancel' : 'âž• Add New Exercise' }}
                         </button>
                         <button class="btn btn-outline-secondary clear-filters-btn" @click="clearFilters" title="Reset filters">Clear Filters</button>
                       </div>
@@ -1066,7 +1323,7 @@ const clearFilters = () => {
 
                     <!--edit Excerise-->
                     <div class="row g-3 mt-3">
-                        <div v-if="showEditForm" id="editExerciseForm" class="panel mt-4">
+                        <div v-if="showEditForm" id="editExerciseForm" class="panel edit-exercise-panel col-12">
                             <div class="panel-header">
                               <h4>Edit Exercise</h4>
                             </div>
@@ -1116,7 +1373,7 @@ const clearFilters = () => {
                                     </template>
                                     <template v-for="(img, index) in existingImages" :key="'exist-edit-' + index">
                                       <div class="mb-2 position-relative">
-                                        <img :src="`/assets/Excerises/${img}`" style="max-width: 200px; border: 1px solid #ccc; border-radius: 12px;" />
+                                        <img :src="getExerciseImage({ ExerciseID: editExercise.ExerciseID, PrimaryImage: img, ImageGallery: [img] })" style="max-width: 200px; border: 1px solid #ccc; border-radius: 12px;" />
                                         <span @click="removeExistingImage(img)" style="position:absolute;top:0;right:0;color:red;cursor:pointer;font-size:3em;">&times;</span>
                                         <div class="small text-center">{{ img.split('/').pop() }}</div>
                                       </div>
@@ -1126,6 +1383,12 @@ const clearFilters = () => {
                               <div class="col-md-12">
                                   <label class="form-label">Instructions</label>
                                   <textarea v-model="editExercise.Instructions" class="form-control instructions" rows="=3" />
+                              </div>
+                              <div class="col-md-12" v-if="isAdminUser">
+                                <div class="form-check mt-2">
+                                  <input id="edit-global-toggle" v-model="editExercise.CreateAsGlobalExercise" class="form-check-input" type="checkbox" />
+                                  <label for="edit-global-toggle" class="form-check-label">Create as Global Exercise</label>
+                                </div>
                               </div>
                               <!-- Cardio Fields 
                                   <div class="col-md-12">
@@ -1153,13 +1416,33 @@ const clearFilters = () => {
                                     <input type="number" v-model.number="editExercise['Laps-Reps']" class="form-control" />
                                   </div>
                                   -->
+
+                              <!-- Error and Success Messages -->
+                              <div v-if="updateError" class="col-12">
+                                <div class="alert alert-danger d-flex align-items-center" role="alert">
+                                  <i class="fa-solid fa-circle-exclamation me-2"></i>
+                                  <div>{{ updateError }}</div>
+                                </div>
+                              </div>
+                              <div v-if="updateSuccess" class="col-12">
+                                <div class="alert alert-success d-flex align-items-center" role="alert">
+                                  <i class="fa-solid fa-circle-check me-2"></i>
+                                  <div>{{ updateSuccess }}</div>
+                                </div>
+                              </div>
+
                               <div class="col-12 mt-3 d-flex align-items-center" style="gap: 8px;">
                                   <div>
-                                    <button class="btn btn-success" @click="saveEditedExercise">Save Changes</button>
-                                    <button class="btn btn-outline-secondary ms-2" @click="showEditForm = false">Cancel</button>
+                                    <button class="btn btn-success" @click="saveEditedExercise" :disabled="isSaving">
+                                      <span v-if="isSaving">
+                                        <i class="fa-solid fa-spinner fa-spin me-1"></i> Saving...
+                                      </span>
+                                      <span v-else>Save Changes</span>
+                                    </button>
+                                    <button class="btn btn-outline-secondary ms-2" @click="showEditForm = false" :disabled="isSaving">Cancel</button>
                                   </div>
                                   <div class="ms-auto">
-                                    <button class="btn btn-danger" @click="deleteExercise(editExercise)" style="background-color: #e53935; color: #fff; min-width: 140px;">Delete Exercise</button>
+                                    <button v-if="Number(editExercise.CanDelete || 0) === 1 || isAdminUser" class="btn btn-danger" @click="deleteExercise(editExercise)" style="background-color: #e53935; color: #fff; min-width: 140px;">Delete Exercise</button>
                                   </div>
                               </div>
 
@@ -1226,7 +1509,7 @@ const clearFilters = () => {
       <span @click="removeNewImage(index)" style="position:absolute;top:0;right:0;color:red;cursor:pointer;font-size:3em;">&times;</span>
     </div>
     <div v-for="(img, index) in existingImages" :key="'exist-' + index" class="mb-2 position-relative">
-      <img :src="`/assets/Excerises/${img}`" style="max-width: 200px; border: 1px solid #ccc; border-radius: 12px;" />
+      <img :src="getExerciseImage({ ExerciseID: newExercise.ExerciseID, PrimaryImage: img, ImageGallery: [img] })" style="max-width: 200px; border: 1px solid #ccc; border-radius: 12px;" />
       <span @click="removeExistingImage(img)" style="position:absolute;top:0;right:0;color:red;cursor:pointer;font-size:3em;">&times;</span>
       <div class="small text-center">{{ img.split('/').pop() }}</div>
     </div>
@@ -1247,6 +1530,13 @@ const clearFilters = () => {
       <textarea v-model="newExercise.Instructions" class="form-control instructions" rows="3" />
     </div>
 
+    <div class="col-md-12" v-if="isAdminUser">
+      <div class="form-check mt-2">
+        <input id="add-global-toggle" v-model="newExercise.CreateAsGlobalExercise" class="form-check-input" type="checkbox" />
+        <label for="add-global-toggle" class="form-check-label">Create as Global Exercise</label>
+      </div>
+    </div>
+
     <div class="col-12 mt-3">
       <button class="btn btn-primary" @click="AddWorkout">Add Exercise</button>
       <button class="btn btn-outline-secondary ms-2" @click="showAddForm = false">Cancel</button>
@@ -1263,17 +1553,15 @@ const clearFilters = () => {
                       <!--LIST VIEW-->
                       <div class="row g-3 mt-2">
                         <div class="results-header-row">
-                          <div>
-                            <h5>Exercise Results</h5>
-                            <p>Showing {{ filteredExercises.length }} exercises</p>
-                          </div>
+                          <span class="results-title">Exercise Results</span>
+                          <span class="results-count">{{ filteredExercises.length }} items</span>
                         </div>
 
                         <div class="exercise-list">
                             <div class="exercise-row" v-for="ex in pagedExercises" :key="ex.ExerciseID">
                               <div class="exercise-img">
                                   <img
-                                    :src="getFirstImage(ex.ImageGallery)"
+                                    :src="getFirstImage(ex.ImageGallery, ex.ExerciseID)"
                                     @click="selectExerciseFromList(ex)"
                                     class="clickable"
                                   />
@@ -1283,36 +1571,32 @@ const clearFilters = () => {
                                   <h5 class="exercise-title">{{ ex.ExerciseTitle }}</h5>
 
                                   <div class="exercise-meta">
-                                    <p><span>Workout Type:</span> {{ ex.WorkoutType }}</p>
-                                    <p><span>Muscle Group:</span> {{ ex.MuscleGroup }}</p>
-                                    <p><span>Equipment:</span> {{ ex.Equipment }}</p>
+                                    <p class="exercise-meta-inline">{{ ex.WorkoutType }}<span class="meta-dot"> • </span>{{ ex.MuscleGroup }}<span class="meta-dot"> • </span>{{ ex.Equipment }}</p>
+                                    <p class="exercise-meta-inline" v-if="Number(ex.IsGlobalExercise || 0) === 1">Global exercise</p>
+                                    <p class="exercise-meta-inline" v-else>Custom exercise</p>
                                   </div>
 
                                   <div class="exercise-actions">
-                                    <button class="btn btn-sm btn-outline-primary" @click="selectExerciseFromList(ex)">
-                                      Select Exercise
+                                    <button
+                                      :class="['btn', 'btn-sm', 'btn-fav', isFavoriteExercise(ex.ExerciseID) && 'btn-fav--active']"
+                                      @click="toggleFavoriteExercise(ex)"
+                                    >
+                                      <i v-if="isFavoriteExercise(ex.ExerciseID)" class="fa-solid fa-heart"></i>
+                                      {{ isFavoriteExercise(ex.ExerciseID) ? 'Unfav' : 'Fav' }}
                                     </button>
-                                    <button class="btn btn-sm btn-outline-warning" @click="toggleFavoriteExercise(ex)">
-                                      {{ isFavoriteExercise(ex.ExerciseID) ? '★ Favorited' : '☆ Favorite' }}
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary" @click="startEditing(ex)">
+                                    <button v-if="Number(ex.CanEdit || 0) === 1 || isAdminUser" class="btn btn-sm btn-outline-secondary" @click="startEditing(ex)">
                                       Edit Exercise
                                     </button>
                                   </div>
                               </div>
                             </div>
 
-                            <div class="text-center mt-3">
-                              <button class="btn btn-outline-secondary me-2" @click="prevPage" :disabled="currentPage === 1">Prev</button>
-                              <button class="btn btn-outline-dark" @click="nextPage"
+                            <div class="pagination-row">
+                              <button class="btn btn-outline-secondary pagination-btn" @click="prevPage" :disabled="currentPage === 1">Prev</button>
+                              <span class="pagination-info">Page {{ currentPage }} / {{ Math.ceil(filteredExercises.length / itemsPerPage) }}</span>
+                              <button class="btn btn-outline-dark pagination-btn" @click="nextPage"
                                   :disabled="currentPage * itemsPerPage >= filteredExercises.length">Next</button>
                             </div>
-                            <p class="text-center small mt-2 mb-1">
-                              Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to
-                              {{
-                              Math.min(currentPage * itemsPerPage, filteredExercises.length)
-                              }} of {{ filteredExercises.length }} exercises
-                            </p>
                         </div>
                       </div>
                       <!--LIST VIEW-->
@@ -1324,20 +1608,117 @@ const clearFilters = () => {
         
                   <!--end of WorkoutList-->
                   <!--End of panel body-->
-                
 
-              
+              </div>
+              <!-- /exercise-results-panel -->
+            </div>
+            <!-- /container-block -->
           </div>
-          <!--End of Exercise Tab Section-->
+          <!-- /search-exercises tab -->
 
+          <!-- Favorite Exercises Section -->
+  <div v-if="activeTab === 'favorite-exercises'">
+    <div class="container container-block">
+      <div class="panel search-filter-card">
+        <div class="panel-header search-filter-head">
+          <h3 class="m-0">Favorite Exercises</h3>
+        </div>
+        <div class="panel-body">
+          <!-- Loading State -->
+          <div v-if="loadingFavorites" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem; margin-bottom: 1rem;">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p style="color: #64748b; font-size: 1rem;">Loading your favorites...</p>
+          </div>
 
+          <!-- Error State -->
+          <div v-else-if="favoritesLoadError" class="text-center py-5">
+            <i class="fa-solid fa-exclamation-triangle" style="font-size: 3rem; color: #dc3545; margin-bottom: 1rem;"></i>
+            <p style="color: #dc3545; font-size: 1rem; font-weight: 600;">Error loading favorite exercises. Please try again.</p>
+            <button class="btn btn-primary mt-2" @click="loadFavoriteExercises()">Try Again</button>
+          </div>
 
+          <!-- Empty State -->
+          <div v-else-if="favoriteExercises.length === 0" class="text-center py-5">
+            <i class="fa-solid fa-heart" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 1rem;"></i>
+            <p style="color: #64748b; font-size: 1rem;">
+              No favorite exercises yet. Favorite exercises from the Search Exercises tab to see them here.
+            </p>
+          </div>
 
-
-
+          <!-- Favorite Exercises List -->
+          <div v-else class="row">
+            <div v-for="ex in favoriteExercises" :key="ex.ExerciseID" class="col-sm-6 col-lg-4 col-xl-3 mb-4">
+              <div class="exercise-card">
+                <div class="exercise-image">
+                  <img
+                    :src="getExerciseImage(ex)"
+                    :alt="ex.ExerciseTitle"
+                    class="img-fluid"
+                    loading="lazy"
+                    @error="$event.target.src = DEFAULT_EXERCISE_IMAGE"
+                  />
+                </div>
+                <div class="exercise-content">
+                  <h5 class="exercise-title">{{ ex.ExerciseTitle }}</h5>
+                  <div class="exercise-meta">
+                    <span class="badge bg-primary me-1">{{ ex.WorkoutType }}</span>
+                    <span class="badge bg-info me-1">{{ ex.MuscleGroup }}</span>
+                    <span class="badge bg-secondary">{{ ex.Equipment }}</span>
+                  </div>
+                </div>
+                <div class="exercise-actions">
+                  <button
+                    class="btn btn-sm btn-fav btn-fav--active"
+                    @click="toggleFavoriteExercise(ex)"
+                  >
+                    <i class="fa-solid fa-heart"></i> Unfav
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Log Exercise Section -->
   <div v-if="activeTab === 'log-exercise'">
+
+  <div class="container container-block">
+    <div class="panel">
+      <div class="panel-header">
+        <h4>My Custom Exercises</h4>
+      </div>
+      <div class="panel-body">
+        <div v-if="customExercisesLoadError" class="alert alert-warning">{{ customExercisesLoadError }}</div>
+        <div v-else-if="myCustomExercises.length === 0" class="text-center py-4">
+          <p class="mb-2">No custom exercises created yet.</p>
+          <p class="text-muted mb-3">Create your first custom exercise to personalize your workouts.</p>
+          <button class="btn btn-success" @click="activeTab = 'search-exercises'; showAddForm = true">+ Create Exercise</button>
+        </div>
+        <div v-else class="exercise-list">
+          <div class="exercise-row" v-for="myEx in myCustomExercises" :key="`mine-${myEx.ExerciseID}`">
+            <div class="exercise-img">
+              <img :src="getFirstImage(myEx.ImageGallery, myEx.ExerciseID)" class="clickable" @click="selectExerciseForLog(myEx)" />
+            </div>
+            <div class="exercise-info">
+              <h5 class="exercise-title">{{ myEx.ExerciseTitle }}</h5>
+              <div class="exercise-meta">
+                <p class="exercise-meta-inline">{{ myEx.WorkoutType }}<span class="meta-dot"> • </span>{{ myEx.MuscleGroup }}<span class="meta-dot"> • </span>{{ myEx.Equipment }}</p>
+              </div>
+              <div class="exercise-actions">
+                <button class="btn btn-sm btn-primary" @click="selectExerciseForLog(myEx)">Use in Log</button>
+                <button v-if="Number(myEx.CanEdit || 0) === 1 || isAdminUser" class="btn btn-sm btn-outline-secondary" @click="startEditing(myEx)">Edit Exercise</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
 
   <!--Log Excerise container -->
@@ -1351,6 +1732,67 @@ const clearFilters = () => {
 
             <div class="panel-header">
               <h4>Log Excerise</h4>
+            </div>
+
+            <div class="panel-body">
+              <div class="search-filter-grid">
+                <div class="search-filter-field full-width">
+                  <label class="form-label">Search Exercise For Log</label>
+                  <input
+                    v-model="logSearchExercise"
+                    class="form-control"
+                    placeholder="Search as you type"
+                    @keydown="onLogSearchKeydown"
+                  />
+                </div>
+                <div class="search-filter-field">
+                  <label class="form-label">Workout Type</label>
+                  <select v-model="logWorkoutTypeFilter" class="form-select">
+                    <option value="All">All</option>
+                    <option value="Strength">Strength</option>
+                    <option value="Cardio">Cardio</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="search-filter-field">
+                  <label class="form-label">Muscle Group</label>
+                  <select v-model="logMuscleGroupFilter" class="form-select">
+                    <option v-for="group in muscleGroups" :key="`log-group-${group}`" :value="group">{{ group }}</option>
+                  </select>
+                </div>
+                <div class="search-filter-field">
+                  <label class="form-label">Equipment</label>
+                  <select v-model="logEquipmentFilter" class="form-select">
+                    <option v-for="equip in equipmentList" :key="`log-equip-${equip}`" :value="equip">{{ equip }}</option>
+                  </select>
+                </div>
+                <div class="search-filter-field">
+                  <label class="form-label">Library</label>
+                  <select v-model="logOwnershipFilter" class="form-select">
+                    <option value="all">All</option>
+                    <option value="global">Global Exercises</option>
+                    <option value="custom">My Custom Exercises</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="exercise-list mt-3" v-if="logExerciseMatches.length">
+                <div
+                  class="exercise-row"
+                  v-for="(match, index) in logExerciseMatches"
+                  :key="`log-match-${match.ExerciseID}`"
+                  :class="{ 'exercise-row--active': index === logSuggestionIndex }"
+                  @click="selectExerciseForLog(match)"
+                >
+                  <div class="exercise-img">
+                    <img :src="getFirstImage(match.ImageGallery, match.ExerciseID)" class="clickable" />
+                  </div>
+                  <div class="exercise-info">
+                    <h5 class="exercise-title">{{ match.ExerciseTitle }}</h5>
+                    <p class="exercise-meta-inline">{{ match.WorkoutType }}<span class="meta-dot"> • </span>{{ match.MuscleGroup }}<span class="meta-dot"> • </span>{{ match.Equipment }}</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
 
@@ -1491,7 +1933,7 @@ Please Select an excerise
   <div style="flex-basis: 20%; max-width: 20%; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; padding-right: 15px;">
     <div class="logged-exercise-title" style="font-weight: bold; font-size: 0.92rem; margin-bottom: 4px; line-height: 1.1;">{{ log.name || log.ExerciseTitle }}</div>
     <img
-      :src="log.image || getFirstImage(log.ImageGallery)"
+      :src="log.image || getFirstImage(log.ImageGallery, log.ExerciseID)"
       class="summary-img me-3 img-fluid"
       style="width: 100%; height: auto; max-width: 100%; object-fit: cover; border-radius: 8px; margin-left: 0; align-self: flex-start; vertical-align: top;"
     />
@@ -1606,7 +2048,7 @@ Please Select an excerise
     <button v-if="rowEditState[idx]" @click="updateLog(log, idx)" class="btn btn-sm mb-2 log-action-btn" title="Save" style="background-color: #e53935; border-color: #e53935; color: #fff;">
       <i class="fas fa-save log-action-icon"></i>
     </button>
-    <button @click="removeLog(log, idx)" class="btn btn-sm btn-danger log-action-btn"><span class="log-action-icon" style="display:inline-block; line-height:1;">🗑️</span></button>
+    <button @click="removeLog(log, idx)" class="btn btn-sm btn-danger log-action-btn"><span class="log-action-icon" style="display:inline-block; line-height:1;">ðŸ—‘ï¸</span></button>
   </div>
 </div>
 <!-- End of Log -->
@@ -1632,118 +2074,263 @@ Please Select an excerise
 
 
   </div><!--end ofLog Exercise Section-->
-</div>
-</div>
 </div><!-- End of tab-content -->
 </div><!-- End of ex-page-body: Exercise Section -->
   </div>
   </div>
 </template>
 <style scoped>
-  .dashboard-breadcrumb {
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   BASE / DESKTOP
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.exercises-page {
+  display: block;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.exercises-canvas {
+  display: grid;
+  gap: 16px;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.dashboard-breadcrumb {
   margin-bottom: 0;
-  }
-  .header-meta {
+  border-radius: 18px;
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.dashboard-breadcrumb h2 {
+  margin: 0;
   color: #ffffff;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+
+.header-meta {
+  color: #cbd5e1;
   font-weight: 600;
   margin-right: 10px;
-  }
-   .panel {
-   border: 1px solid #ddd;
-   border-radius: 5px;
-   padding: 15px;
-   }
-   .exercise-card {
-   min-height: 120px;
-   background-color: #fff;
-   border-radius: 4px;
-   }
-   .image-box {
-   flex-shrink: 0;
-   }
-  .exercise-list {
+}
+
+.panel {
+  border: 1px solid #e5ecf5;
+  border-radius: 16px;
+  padding: 15px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.045);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.panel-header h4 {
+  margin: 0;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.panel-body {
+  color: #334155;
+}
+
+.exercise-card {
+  min-height: 120px;
+  background-color: #fff;
+  border-radius: 12px;
+}
+.exercise-card .exercise-image {
+  width: 75%;
+  margin: 0 auto;
+}
+.exercise-card .exercise-image img {
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  display: block;
+}
+.image-box {
+  flex-shrink: 0;
+}
+.exercise-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  }
-  .exercise-row {
+  gap: 10px;
+}
+.exercise-row {
   display: grid;
-  grid-template-columns: 168px minmax(0, 1fr);
+  grid-template-columns: 132px minmax(0, 1fr);
   gap: 14px;
-  border: 1px solid #d8dde6;
+  padding: 10px 12px;
+  border: 1px solid #dbe4ef;
   background: #ffffff;
-  padding: 10px;
   border-radius: 16px;
-  align-items: start;
-  }
-  .exercise-img img {
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.035);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
   width: 100%;
-  height: 168px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.exercise-row:hover {
+  transform: translateY(-1px);
+  border-color: #93c5fd;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+.exercise-img img {
+  width: 132px;
+  height: 132px;
   object-fit: cover;
-  border-radius: 12px;
-  }
-  .exercise-img {
-  width: 100%;
-  }
-  .exercise-info {
+  border-radius: 14px;
+}
+.exercise-img {
+  width: 132px;
+  flex-shrink: 0;
+}
+.exercise-info {
   min-width: 0;
   display: grid;
   gap: 8px;
-  }
-  .exercise-title {
-  font-weight: 700;
-  font-size: 1.06rem;
-  color: #1f2937;
-  margin: 0;
+}
+.exercise-title {
+  font-weight: 800;
+  font-size: 1rem;
+  color: #0f172a;
+  margin: 0 0 6px 0;
   padding: 0;
   border: 0;
-  }
-  .exercise-meta {
+}
+.exercise-meta {
   display: grid;
-  gap: 4px;
-  }
-  .exercise-meta p {
+  gap: 2px;
+  margin-bottom: 8px;
+}
+.exercise-meta p {
   margin: 0;
-  color: #4b5563;
-  font-size: 0.94rem;
-  line-height: 1.45;
-  }
-  .exercise-meta p span {
+  color: #64748b;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+.exercise-meta p span {
   color: #334155;
-  font-weight: 600;
-  margin-right: 4px;
-  }
-  .exercise-actions {
+  font-weight: 800;
+  margin-right: 0;
+}
+.exercise-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-top: 2px;
-  }
-   .instructions{
-   min-height: 250px;
-   }
-  .container-block{
-   margin-top:0;
-  }
-  .container.container-block {
-   max-width: 100% !important;
-   width: 100% !important;
-   padding-left: 0 !important;
-   padding-right: 0 !important;
-  }
-   .workout-log-img{
-    height: 200px;
-    width:350px;
-   }
-   .sel-ex-input{
-    min-width: 100px;
-    padding-bottom: 10px;    
-   }
-   textarea {
+  margin-top: 0;
+}
+.exercise-actions .btn {
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  border-radius: 7px;
+  margin: 0;
+}
+
+.btn-fav {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.btn-fav:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+.btn-fav--active {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+.btn-fav--active .fa-heart {
+  color: #dc2626;
+}
+.btn-fav--active:hover {
+  background: #fecaca;
+  border-color: #fca5a5;
+  color: #7f1d1d;
+}
+
+/* Edit Exercise Panel */
+.edit-exercise-panel {
+  border: 1px solid #dbe4ef;
+  border-radius: 16px;
+  padding: 22px 24px;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+  margin-top: 20px !important;
+}
+.edit-exercise-panel .panel-header {
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px dashed #cbd5e1;
+}
+.edit-exercise-panel .panel-header h4 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+.edit-exercise-panel .form-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 5px;
+}
+.edit-exercise-panel .form-control,
+.edit-exercise-panel .form-select {
+  min-height: 38px;
+  border: 1px solid #d6dee9;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.9rem;
+}
+.edit-exercise-panel .form-control:focus,
+.edit-exercise-panel .form-select:focus {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+}
+.edit-exercise-panel .instructions {
+  min-height: 150px;
+}
+.edit-exercise-panel .panel-body {
+  padding: 0;
+}
+
+.instructions {
+  min-height: 250px;
+}
+.container-block {
+  margin-top: 0;
+}
+.container.container-block {
+  max-width: 100% !important;
+  width: 100% !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+.workout-log-img {
+  height: 200px;
+  width: 350px;
+}
+.sel-ex-input {
+  min-width: 100px;
+  padding-bottom: 10px;
+}
+textarea {
   resize: vertical;
 }
-.btn{
-  margin:2px
+.btn {
+  margin: 2px;
 }
 
 .summary-img {
@@ -1752,43 +2339,28 @@ Please Select an excerise
   object-fit: cover;
   border-radius: 8px;
 }
-
 .clickable {
   cursor: pointer;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/* â”€â”€ Tab bar â”€â”€ */
 .ex-page-body {
   width: 100%;
-  padding: 0;
+  padding: 14px;
   margin: 0;
+  background: #ffffff;
+  border: 1px solid #e5ecf5;
+  border-radius: 18px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.045);
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .ex-tab-bar {
   display: flex;
   align-items: stretch;
-  background: #1e2736;
-  border-radius: 12px 12px 0 0;
+  background: #1e293b;
+  border-radius: 14px 14px 0 0;
   padding: 0 6px;
   gap: 2px;
   margin-bottom: 0;
@@ -1825,184 +2397,166 @@ Please Select an excerise
   transition: transform 0.22s ease;
   z-index: 2;
 }
-
-.ex-tab:hover {
-  color: rgba(255, 255, 255, 0.88);
-}
-
+.ex-tab:hover { color: rgba(255, 255, 255, 0.92); }
 .ex-tab--active {
   color: #ffffff;
   font-weight: 700;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.06);
 }
+.ex-tab--active::after { transform: scaleX(1); }
+.ex-tab i,
+.ex-tab span { color: inherit; }
 
-.ex-tab--active::after {
-  transform: scaleX(1);
-}
+/* Short/full label logic â€“ desktop: show full only */
+.tab-label-short { display: none; }
+.tab-label-full  { display: inline; }
 
-.ex-tab i {
-  color: inherit;
-}
-
-.ex-tab span {
-  color: inherit;
-}
-
+/* â”€â”€ Filter card â”€â”€ */
 .search-filter-card {
   border-radius: 12px;
-  border: 1px solid #d9dee7;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  border: 1px solid #dbe4ef;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.03);
   padding: 0;
 }
 
-.search-filter-head {
-  padding: 14px 16px 8px;
-  border-bottom: 1px solid #eceff4;
-}
-
+.search-filter-head { display: none; }
 .search-filter-head h4 {
   margin: 0;
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: #2d3748;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
 }
 
 .search-filter-body {
-  padding: 14px 16px 12px;
+  padding: 8px 14px 8px;
+}
+
+/* Mobile accordion toggle â€“ hidden on desktop */
+.filter-accordion-toggle {
+  display: none;
+}
+
+/* Filter body animated collapse (mobile only) */
+.filter-body-animated {
+  overflow: hidden;
+  transition: max-height .25s ease, opacity .2s ease;
+}
+.filter-body-animated.filters-mobile-hidden {
+  display: block !important;
+  max-height: 0 !important;
+  opacity: 0;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  pointer-events: none;
+}
+
+/* Inline meta */
+.exercise-meta-inline {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+.meta-dot { color: #cbd5e1; }
+
+/* Pagination row */
+.pagination-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+.pagination-btn { min-width: 72px; }
+.pagination-info {
+  font-size: 0.86rem;
+  color: #64748b;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .search-filter-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px 10px;
   align-items: end;
 }
-
-.search-filter-field.full-width {
-  grid-column: 1 / -1;
-}
-
+.search-filter-field.full-width { grid-column: 1 / -1; }
 .search-filter-field .form-label {
-  margin-bottom: 6px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #5b6472;
+  margin-bottom: 2px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #64748b;
 }
-
 .search-filter-field .form-control,
 .search-filter-field .form-select {
-  min-height: 40px;
+  min-height: 34px;
+  padding: 5px 10px;
+  font-size: 0.9rem;
+  border: 1px solid #dbe4ef;
+  background: #f8fafc;
+  color: #334155;
+}
+.search-filter-field .form-control:focus,
+.search-filter-field .form-select:focus {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
 }
 
 .search-filter-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
-  margin-top: 12px;
+  margin-top: 8px;
   flex-wrap: wrap;
 }
-
-.search-filter-divider {
-  margin-top: 12px;
-  border-top: 1px solid #e7ebf1;
-}
+.search-filter-divider { display: none; }
 
 .results-header-row {
-  border-top: 1px solid #e7ebf1;
-  padding-top: 12px;
-  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #e7edf5;
+  padding-top: 8px;
+  margin-top: 0;
+  margin-bottom: 8px;
 }
-
-.results-header-row h5 {
-  margin: 0;
+.results-title {
   font-size: 1rem;
   font-weight: 700;
   color: #334155;
 }
-
-.results-header-row p {
-  margin: 2px 0 0;
+.results-count {
   font-size: 0.84rem;
   color: #64748b;
 }
 
 .tab-content {
-  background: #fdfdfd;
-  border: 1px solid #ddd;
+  background: #ffffff;
+  border: 1px solid #dbe4ef;
   border-top: none;
-  border-radius: 0 0 12px 12px;
+  border-radius: 0 0 14px 14px;
   margin-top: 0;
   padding: 0;
   line-height: 1.6;
+  overflow-x: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
-
-.tab-content > div {
-  margin-top: 0;
-}
-
-.tab-content .container.container-block {
-  margin-top: 0 !important;
-}
-
+.tab-content > div { margin-top: 0; }
+.tab-content .container.container-block { margin-top: 0 !important; }
 .tab-content .panel {
   margin-top: 0;
   border-top: 0;
-  border-radius: 0 0 5px 5px;
+  border-radius: 0 0 14px 14px;
 }
+.exercise-results-panel { padding-top: 0; }
 
-.exercise-results-panel {
-  padding-top: 6px;
-}
-
-@media (max-width: 991px) {
-  .search-filter-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .search-filter-actions {
-    width: 100%;
-  }
-
-  .search-filter-actions .btn {
-    flex: 1 1 calc(50% - 6px);
-    min-height: 38px;
-  }
-
-  .exercise-row {
-    grid-template-columns: 1fr;
-    padding: 12px;
-    gap: 12px;
-  }
-
-  .exercise-img {
-    max-width: 100%;
-  }
-
-  .exercise-img img {
-    width: 100%;
-    height: auto;
-    max-height: 220px;
-    border-radius: 12px;
-  }
-
-  .exercise-actions {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  .exercise-actions .btn {
-    width: 100%;
-    min-height: 36px;
-  }
-}
+/* Workout log styles */
 .list-group-item.d-flex.align-items-center > .flex-grow-1 > div.row > .col {
   padding: 2px 6px !important;
   margin: 0 !important;
 }
-
-/* Add more left padding to the info (middle) column in the workout log */
-/* Add more left padding to the info (middle) column in the workout log */
 .list-group-item.d-flex.align-items-start > div[style*="flex-basis: 70%"],
 .list-group-item.d-flex.align-items-start > div[style*="max-width: 70%"] {
   padding-left: 37px !important;
@@ -2013,15 +2567,12 @@ Please Select an excerise
   padding-top: 18px !important;
   padding-bottom: 18px !important;
 }
-.panel-body {
-  margin-bottom: 0;
-}
+.panel-body { margin-bottom: 0; }
 .list-group-item.d-flex.align-items-center {
   padding-top: 6px !important;
   padding-bottom: 6px !important;
   margin-bottom: 2px !important;
 }
-/* 10% bigger icons and buttons for log actions */
 .log-action-btn {
   width: 33px;
   height: 33px;
@@ -2038,4 +2589,337 @@ Please Select an excerise
   vertical-align: middle;
   line-height: 1;
 }
+
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   RESPONSIVE â€“ 991px
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+@media (max-width: 991px) {
+  .search-filter-grid {
+    grid-template-columns: 1fr;
+  }
+  .search-filter-actions {
+    width: 100%;
+  }
+  .search-filter-actions .btn {
+    flex: 1 1 calc(50% - 6px);
+    min-height: 38px;
+  }
+  /* Dual-column card layout */
+  .exercise-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 16px;
+    gap: 16px;
+    min-height: 150px;
+  }
+  .exercise-img {
+    width: 120px;
+    height: 120px;
+    flex-shrink: 0;
+    margin: 0;
+  }
+  .exercise-img img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 12px;
+    display: block;
+  }
+  .exercise-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .exercise-info .exercise-title {
+    margin-bottom: 8px;
+  }
+  .exercise-info .exercise-meta {
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .exercise-info .exercise-actions {
+    margin-top: auto;
+  }
+  .exercise-card {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    min-height: 150px;
+  }
+  .exercise-card .exercise-image {
+    width: 120px;
+    height: 120px;
+    flex-shrink: 0;
+    margin: 0;
+  }
+  .exercise-card .exercise-image img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 12px;
+    display: block;
+  }
+  .exercise-card .exercise-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .exercise-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: auto;
+  }
+  .exercise-actions .btn {
+    width: 100%;
+    min-height: 44px;
+    font-size: 0.82rem;
+  }
+}
+
+/* ─────────────────────────────────────────────────────
+   RESPONSIVE - 768px (Tablet / large phone)
+───────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* - Hero banner - */
+  :deep(.builder-hero),
+  .builder-hero {
+    padding: 16px !important;
+    min-height: auto !important;
+    border-radius: 16px !important;
+    margin-bottom: 12px !important;
+  }
+  :deep(.builder-hero) h2,
+  :deep(.builder-hero__content) h2 {
+    font-size: 1.4rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+  }
+
+  /* - Overflow guard - */
+  .exercises-page,
+  .exercises-canvas,
+  .ex-page-body,
+  .tab-content,
+  .panel,
+  .container,
+  .container-block {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* - Tab bar: scrollable, compact - */
+  .ex-tab-bar {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    border-radius: 10px 10px 0 0;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 2px;
+    gap: 1px;
+  }
+  .ex-tab-bar::-webkit-scrollbar { display: none; }
+  .ex-tab {
+    flex: 0 0 auto;
+    min-width: 100px;
+    max-width: 120px;
+    height: 40px;
+    padding: 0 10px;
+    font-size: 0.85rem;
+  }
+  .tab-label-full  { display: none; }
+  .tab-label-short { display: inline; }
+
+  /* - Accordion toggle visible on mobile - */
+  .filter-accordion-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: #f8fafc;
+    border: none;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 12px 14px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #334155;
+    cursor: pointer;
+    border-radius: 12px 12px 0 0;
+  }
+  .filter-accordion-toggle i { font-size: 0.85rem; color: #64748b; }
+
+  /* - Filter grid: 1-col on mobile - */
+  .search-filter-grid {
+    grid-template-columns: 1fr;
+    gap: 8px 0;
+  }
+
+  /* - Action buttons: stacked, full-width - */
+  .search-filter-actions {
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .search-filter-actions .btn {
+    width: 100% !important;
+    min-height: 48px !important;
+    font-size: 0.95rem;
+  }
+
+  .search-filter-body {
+    padding: 10px 12px 10px;
+  }
+
+  /* - Compact results header - */
+  .results-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    margin-top: 0;
+    margin-bottom: 10px;
+    border-top: 1px solid #e7edf5;
+  }
+  .results-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #334155;
+  }
+  .results-count {
+    font-size: 0.82rem;
+    color: #64748b;
+    font-weight: 600;
+  }
+
+  /* - Exercise list gap - */
+  .exercise-list {
+    gap: 10px;
+  }
+
+  /* - Compact exercise card - */
+  .exercise-row {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 12px;
+    gap: 10px;
+    min-height: auto;
+  }
+  .exercise-img {
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+    margin: 0;
+  }
+  .exercise-img img {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 10px;
+    display: block;
+  }
+  .exercise-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    height: auto;
+  }
+  .exercise-info .exercise-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 0;
+    line-height: 1.15;
+  }
+  .exercise-info .exercise-meta {
+    gap: 2px;
+    margin-bottom: 4px;
+  }
+  .exercise-meta p {
+    font-size: 0.82rem;
+    line-height: 1.15;
+  }
+  .exercise-info .exercise-actions {
+    margin-top: 4px;
+  }
+  .exercise-card {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+    min-height: auto;
+  }
+  .exercise-card .exercise-image {
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+    margin: 0;
+  }
+  .exercise-card .exercise-image img {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 10px;
+    display: block;
+  }
+  .exercise-card .exercise-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* - Compact action buttons (horizontal) - */
+  .exercise-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    margin-top: 0;
+  }
+  .exercise-actions .btn {
+    height: 34px;
+    min-height: 34px;
+    font-size: 0.8rem;
+    padding: 4px 10px;
+    width: auto;
+  }
+}
+
+/* ─────────────────────────────────────────────────────
+   RESPONSIVE - 480px (Small phones)
+───────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .ex-tab {
+    min-width: 80px;
+    max-width: 100px;
+    height: 36px;
+    padding: 0 8px;
+    font-size: 0.78rem;
+  }
+  .ex-tab i { display: none; }
+  .exercise-img { width: 64px; height: 64px; }
+  .exercise-img img { width: 64px; height: 64px; border-radius: 8px; }
+  .exercise-card .exercise-image { width: 64px; height: 64px; }
+  .exercise-card .exercise-image img { width: 64px; height: 64px; border-radius: 8px; }
+  .exercise-row { padding: 10px; gap: 8px; }
+  .exercise-actions .btn { height: 32px; min-height: 32px; font-size: 0.75rem; padding: 3px 8px; }
+}
 </style>
+

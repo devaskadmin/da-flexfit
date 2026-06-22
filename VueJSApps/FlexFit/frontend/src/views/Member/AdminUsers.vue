@@ -218,7 +218,7 @@ async function confirmDeleteUser() {
       withCredentials: true,
     })
 
-    successMsg.value = `User ${member.FirstName || ''} ${member.LastName || ''} deleted successfully.`.trim()
+    successMsg.value = `User ${member.FirstName || ''} ${member.LastName || ''} and all media content deleted successfully.`.trim()
 
     if (isEditMode.value && Number(editingUserId.value) === Number(member.id)) {
       isFormOpen.value = false
@@ -442,7 +442,7 @@ onMounted(async () => {
             v-if="isEditMode"
             class="btn btn-outline-danger me-auto"
             :disabled="deleting"
-            @click="requestDelete({ id: editingUserId, FirstName: form.firstName, LastName: form.lastName })"
+            @click="requestDelete({ id: editingUserId, FirstName: form.firstName, LastName: form.lastName, username: form.username, user_role: form.role, tier_name: null })"
           >
             <i class="fa-solid fa-trash me-2"></i>
             Delete User
@@ -458,17 +458,27 @@ onMounted(async () => {
 
     <div v-if="confirmDeleteOpen" class="users-form-overlay" @click.self="cancelDelete">
       <div class="users-confirm-card panel-bg">
-        <h5 class="mb-2">Delete User</h5>
+        <h5 class="mb-2 text-danger">Delete User and Media Content?</h5>
         <p class="text-muted mb-3">
-          Are you sure you want to delete
-          <strong>{{ deleteTarget?.FirstName }} {{ deleteTarget?.LastName }}</strong>?
-          This action cannot be undone.
+          This will permanently delete the user account and all media content stored for this user,
+          including images, videos, and custom exercise media.
+          <strong>This action cannot be undone.</strong>
         </p>
+
+        <div class="delete-target-details mb-3">
+          <div class="row g-1 text-sm">
+            <div class="col-6"><span class="text-muted">User ID:</span> {{ deleteTarget?.id || '—' }}</div>
+            <div class="col-6"><span class="text-muted">Username:</span> {{ deleteTarget?.username || '—' }}</div>
+            <div class="col-6"><span class="text-muted">Role:</span> {{ deleteTarget?.user_role || '—' }}</div>
+            <div class="col-6"><span class="text-muted">Tier:</span> {{ deleteTarget?.tier_name || '—' }}</div>
+          </div>
+        </div>
+
         <div class="d-flex justify-content-end gap-2">
-          <button class="btn btn-outline-secondary" :disabled="deleting" @click="cancelDelete">No</button>
+          <button class="btn btn-outline-secondary" :disabled="deleting" @click="cancelDelete">Cancel</button>
           <button class="btn btn-danger" :disabled="deleting" @click="confirmDeleteUser">
             <i v-if="deleting" class="fa-solid fa-spinner fa-spin me-2"></i>
-            {{ deleting ? 'Deleting...' : 'Yes, Delete' }}
+            {{ deleting ? 'Deleting...' : 'Delete User and Media' }}
           </button>
         </div>
       </div>
@@ -514,6 +524,21 @@ onMounted(async () => {
   border-radius: 12px;
   border: 1px solid rgba(15, 23, 42, 0.18);
   padding: 18px;
+}
+
+.delete-target-details {
+  background: rgba(15, 23, 42, 0.04);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+}
+
+:global(body.dark-theme) .delete-target-details {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.text-sm {
+  font-size: 0.85rem;
 }
 
 :global(body.dark-theme) .users-toolbar,

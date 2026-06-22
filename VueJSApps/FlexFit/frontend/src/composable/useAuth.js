@@ -2,6 +2,7 @@
 // Module-level refs act as shared singleton state — one fetch, many consumers.
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { API_BASE } from '@/config/env';
 
 /** Raw session user object from /api/session */
 const user = ref(null);
@@ -29,12 +30,15 @@ const isAdministrator = computed(() => role.value === 'administrator');
 const canViewTrainerMenu = computed(() => isTrainer.value);
 const canViewAdministratorMenu = computed(() => isAdministrator.value);
 
+/** Logout in progress flag to prevent duplicate calls */
+const logoutInProgress = ref(false);
+
 export function useAuth() {
   const router = useRouter();
 
   const fetchUser = async () => {
     try {
-      const res = await fetch(import.meta.env.VITE_API_BASE + '/api/session', {
+      const res = await fetch(`${API_BASE}/api/session`, {
         credentials: 'include',
       });
       const data = await res.json();
@@ -52,10 +56,67 @@ export function useAuth() {
     }
   };
 
+  /**
+   * Immediate, reliable logout function with timeout protection
+   * Clears local state first, then attempts backend logout with timeout
+   */
+  const logout = async () => {
+    // Prevent duplicate logout calls
+    if (logoutInProgress.value) return;
+
+    logoutInProgress.value = true;
+
+    try {
+      // Clear frontend state FIRST (immediate)
+      user.value = null;
+
+      // Clear all auth-related storage keys
+      localStorage.removeItem('token');
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+      localStorage.removeItem('role');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('currentUser');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('authToken');
+      sessionStorage.removeItem('user');
+      sessionStorage.removeItem('role');
+      sessionStorage.removeItem('userRole');
+      sessionStorage.removeItem('currentUser');
+
+      // Try backend logout with timeout (non-blocking)
+      // Backend endpoint is POST /api/logout (mounted via app.use('/api', auth.js))
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+      try {
+        await fetch(`${API_BASE}/api/logout`, {
+          method: 'POST',
+          credentials: 'include',
+          signal: controller.signal,
+        });
+      } catch (err) {
+        // Backend logout failed or timed out - that's OK, continue with local logout
+        if (err.name !== 'AbortError') {
+          console.error('[Logout] Backend logout error:', err.message);
+        }
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      // Redirect to login
+      await router.replace({ name: 'login' });
+
+    } finally {
+      setTimeout(() => { logoutInProgress.value = false; }, 500);
+    }
+  };
+
   return {
     // State
     user,
     role,
+    logoutInProgress,
     // Role booleans
     isTrainer,
     isAdministrator,
@@ -65,5 +126,6 @@ export function useAuth() {
     // Actions
     fetchUser,
     requireAuth,
+    logout,
   };
 }

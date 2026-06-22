@@ -1,0 +1,12 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^\\$path = \"C:\\\\Users\\\\latrone\\.walters\\\\Documents\\\\VisualStudio-Workspace\\\\Dev Asterisks Github - Latrone\\\\Android-Apps\\\\hello_world_android_test\"; if \\(-not \\(Test-Path \\$path\\)\\) \\{ New-Item -ItemType Directory -Path \\$path \\| Out-Null \\}; Write-Output \"Path ready: \\$path\"; Get-ChildItem -Force \\$path \\| Select-Object Name,Mode,Length \\| Format-Table -AutoSize$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^\\$env:JAVA_HOME; Get-Command java -ErrorAction SilentlyContinue \\| Select-Object -ExpandProperty Source; Get-ChildItem \"C:\\\\Program Files\\\\Android\\\\Android Studio\" -Recurse -Filter java\\.exe -ErrorAction SilentlyContinue \\| Select-Object -First 3 -ExpandProperty FullName$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

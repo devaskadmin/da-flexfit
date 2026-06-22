@@ -10,6 +10,7 @@ import {preloader} from "@/composable/disableEnablePreloaderSetting";
 import {hoverableMenu, currentNavbarSize, handleNavbarSize, sidebarHoverClick, sidebarSmallClick} from "@/composable/navbarSizeSetting";
 import {layoutPosition, handleNavPositionClick} from "@/composable/navPositionSetting";
 import { API_BASE } from '@/config/env';
+import { useAuth } from '@/composable/useAuth';
 
 import FooterComponent from "@/components/FooterComponent.vue";
 import MainSidebarComponent from "@/components/MainSidebarComponent.vue";
@@ -24,6 +25,7 @@ import layouts from "@/layouts";
 
 
 const route = useRoute();
+const authStore = useAuth()
 
 const layout = shallowRef('div');
 const isPartials = ref(false);
@@ -41,6 +43,19 @@ const isTwoColumnMenu = ref(false);
 const isSidebarActive = ref(false);
 const isBodyOverflowHidden = ref(false);
 const hideThemeSidebar = ref(localStorage.getItem('hideThemeSidebar') === 'true');
+
+const normalizedRole = computed(() => {
+  return String(
+    authStore.user?.value?.role ||
+    authStore.user?.value?.roleSlug ||
+    authStore.user?.role ||
+    authStore.user?.roleSlug ||
+    ''
+  ).trim().toLowerCase()
+})
+
+const isAdmin = computed(() => ['admin', 'administrator'].includes(normalizedRole.value))
+const canShowThemeControls = computed(() => isAdmin.value && !hideThemeSidebar.value)
 
 const isActive = ref(false);
 const profileBtnId = ref('');
@@ -133,6 +148,10 @@ const onDocumentClick = (e) => {
 };
 
 const toggleSidebar = (e) => {
+  if (!isAdmin.value) {
+    closeSidebar()
+    return
+  }
   e.stopPropagation();
   isSidebarActive.value = !isSidebarActive.value;
   isBodyOverflowHidden.value = !isBodyOverflowHidden.value;
@@ -144,6 +163,10 @@ const closeSidebar = () => {
 };
 
 const applyThemeConfig = (themeConfig = {}) => {
+  if (!isAdmin.value) {
+    closeSidebar()
+    return
+  }
   if (!themeConfig || typeof themeConfig !== 'object') return;
 
   if (themeConfig.themeColor) {
@@ -220,6 +243,7 @@ const isProtectedUiRoute = (routeLike = route) => {
 
 const loadUserThemeSettings = async () => {
   if (!isProtectedUiRoute()) return;
+  if (!isAdmin.value) return;
 
   try {
     const response = await fetch(`${API_BASE}/api/user-profile-settings`, {
@@ -237,6 +261,7 @@ const loadUserThemeSettings = async () => {
 };
 
 const onThemeSettingsUpdated = (event) => {
+  if (!isAdmin.value) return
   applyThemeConfig(event?.detail || {});
 };
 
@@ -255,6 +280,8 @@ const activeTheme = (() => {
 })
 
 onMounted(() => {
+  authStore.fetchUser()
+
   const elements = document.querySelectorAll('.scrollable');
   elements.forEach((element) => {
     OverlayScrollbars(element, {});
@@ -319,6 +346,12 @@ watch(currentActiveTheme, () => {
   }
 })
 
+watch(isAdmin, (nextIsAdmin) => {
+  if (!nextIsAdmin) {
+    closeSidebar()
+  }
+})
+
 router.afterEach((to) => {
   isPartials.value = to.meta.isPartials
   layout.value = layouts[to.meta.layout] || 'div'
@@ -355,6 +388,7 @@ provide('app:layout', layout.value)
           :onNavCloseClick="onNavCloseClick"
           :isExpanded="isExpanded"
           :toggleSidebar="toggleSidebar"
+          :canUseThemeSettings="isAdmin"
           :profileToggleSidebar="handleProfileClick"
       />
       <!-- header end -->
@@ -367,12 +401,12 @@ provide('app:layout', layout.value)
       />
       <!-- profile right sidebar end -->
 
-      <div v-if="isPartials && !hideThemeSidebar" class="right-sidebar-btn d-lg-block d-none">
+      <div v-if="isPartials && canShowThemeControls" class="right-sidebar-btn d-lg-block d-none">
         <button class="header-btn theme-settings-btn" @click="toggleSidebar"><i class="fa-light fa-gear"></i></button>
       </div>
 
       <!-- right sidebar start -->
-      <RightSidebarComponent v-if="isPartials && !hideThemeSidebar"
+      <RightSidebarComponent v-if="isPartials && canShowThemeControls"
         :isSidebarActive="isSidebarActive"
         :closeSidebar="closeSidebar"
         :isLightTheme="isLightTheme"

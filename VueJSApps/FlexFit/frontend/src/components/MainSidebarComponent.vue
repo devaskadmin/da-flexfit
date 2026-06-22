@@ -28,27 +28,59 @@ const authStore = useAuth()
 
 const sidebarUser = computed(() => authStore.user?.value || authStore.user || null)
 
+const safeParseStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem('user') || '{}')
+  } catch {
+    return {}
+  }
+}
+
+const normalizeRoleValue = (candidate) => {
+  const value = String(candidate || '').trim().toLowerCase()
+  if (value === 'administrator') return 'admin'
+  return value
+}
+
 // role = RBAC/access control
 // membershipType = membership/billing/profile tier
 const normalizedRole = computed(() =>
-  String(sidebarUser.value?.role || sidebarUser.value?.Role || sidebarUser.value?.memberRole || '').trim().toLowerCase()
+  normalizeRoleValue(
+    authStore.user?.value?.role ||
+    authStore.user?.value?.roleSlug ||
+    authStore.user?.value?.role_slug ||
+    authStore.user?.value?.user_role ||
+    authStore.user?.role ||
+    authStore.user?.roleSlug ||
+    authStore.user?.role_slug ||
+    authStore.user?.user_role ||
+    authStore.currentUser?.role ||
+    authStore.currentUser?.roleSlug ||
+    authStore.currentUser?.role_slug ||
+    authStore.currentUser?.user_role ||
+    localStorage.getItem('role') ||
+    localStorage.getItem('userRole') ||
+    safeParseStoredUser()?.role ||
+    safeParseStoredUser()?.roleSlug ||
+    safeParseStoredUser()?.role_slug ||
+    safeParseStoredUser()?.user_role ||
+    ''
+  )
 )
 
+const isAdmin = computed(() => normalizedRole.value === 'admin')
+const isTrainer = computed(() => normalizedRole.value === 'trainer')
+const isUser = computed(() => normalizedRole.value === 'user')
+
 const canViewTrainerMenu = computed(() =>
-  normalizedRole.value === 'trainer' || normalizedRole.value === 'administrator' || normalizedRole.value === 'admin'
+  isAdmin.value || isTrainer.value
 )
 
 const canViewAdminMenu = computed(() =>
-  normalizedRole.value === 'administrator' || normalizedRole.value === 'admin'
+  isAdmin.value
 )
 
-watchEffect(() => {
-  console.log('[SIDEBAR ROLE DEBUG]', {
-    user: sidebarUser.value,
-    role: sidebarUser.value?.role,
-    normalizedRole: normalizedRole.value
-  })
-})
+
 
 const shouldRenderMenuItem = (menu) => {
   if (!menu?.requiresWorkoutLists && !menu?.requiresUnlock) return true
@@ -127,6 +159,7 @@ onMounted(() => {
   useSidebarCurrentBG();
   checkUserWorkoutStatus(); // Check workout status from global composable
   authStore.fetchUser();
+  console.log('Sidebar role debug:', { normalizedRole: normalizedRole.value, isAdmin: isAdmin.value, isTrainer: isTrainer.value })
 })
 </script>
 
@@ -144,8 +177,18 @@ onMounted(() => {
    @mouseenter="hoverableSidebar"
    @mouseleave="hoverableOutSidebar"
   >
+
+  
     <div v-click-outside="closeMainLeftSidebar" class="main-menu">
-      <div class="scrollable sidebar-menu" :id="horizontalMenuEnabled ? 'accordionExample' : 'testAccordionExample'">
+
+
+
+
+
+
+
+
+      <div class="sidebar-menu" :id="horizontalMenuEnabled ? 'accordionExample' : 'testAccordionExample'" style="overflow-y: scroll;">
           <li
             v-for="(sidebar, index) in sidebarMenus"
             :key="`section-${index}-${sidebar.menu_name}`"
@@ -165,7 +208,14 @@ onMounted(() => {
               </a>
             </template>
 
+
+
             <template v-if="sidebar.menus">
+
+
+
+
+
               <ul class="sidebar-link-group" :class="[horizontalMenuEnabled ? 'dropdown-menu' : 'show']" :aria-labelledby="[horizontalMenuEnabled ? 'parentDropdownMenu'+index  : '']" :id="[horizontalMenuEnabled ? 'AppDropDownId'+index : `collapseExample-${index}`]" data-bs-parent="#testAccordionExample">
                 <template v-for="(menu, mIndex) in sidebar.menus" :key="`${index}-${mIndex}-${menu.name}`">
                 <li v-if="shouldRenderMenuItem(menu)" class="sidebar-dropdown-item">

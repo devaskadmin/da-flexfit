@@ -1,5 +1,6 @@
 <script setup>
-import { API_BASE } from '@/config/env';
+import { computed } from 'vue';
+import { DEFAULT_EXERCISE_IMAGE, getExerciseImage } from '@/utils/exerciseImage';
 
 const props = defineProps({
   exercise: {
@@ -26,27 +27,33 @@ const props = defineProps({
 
 const emit = defineEmits(['update-field', 'remove', 'move-up', 'move-down']);
 
-const FALLBACK_EXERCISE_IMAGE = '/assets/Excerises/default/default.jpg';
-
-const resolveImageSrc = (value) => {
-  const raw = String(value || '').trim();
-  const source = raw || FALLBACK_EXERCISE_IMAGE;
-
-  if (/^https?:\/\//i.test(source) || source.startsWith('data:')) {
-    return source;
-  }
-
-  if (source.startsWith('/')) {
-    return `${API_BASE}${source}`;
-  }
-
-  return source;
+const getExerciseImageSrc = (exercise) => {
+  return getExerciseImage(exercise);
 };
 
 const handleImageError = (event) => {
   if (!event?.target) return;
-  event.target.src = resolveImageSrc(FALLBACK_EXERCISE_IMAGE);
+  console.error('[EXERCISE IMAGE ERROR] Failed to load image:', event.target.src);
+  event.target.src = DEFAULT_EXERCISE_IMAGE;
 };
+
+const normalizedWorkoutType = computed(() =>
+  String(props.exercise.workoutType || props.exercise.WorkoutType || '').trim().toLowerCase()
+);
+const isCardio   = computed(() => normalizedWorkoutType.value === 'cardio');
+const isStrength = computed(() => normalizedWorkoutType.value === 'strength' || normalizedWorkoutType.value === '');
+const isOther    = computed(() => !isCardio.value && !isStrength.value);
+
+const workoutTypeBadgeLabel = computed(() => {
+  if (isCardio.value)   return 'Cardio';
+  if (isOther.value)    return 'Other';
+  return 'Strength';
+});
+const workoutTypeBadgeClass = computed(() => {
+  if (isCardio.value) return 'type-badge--cardio';
+  if (isOther.value)  return 'type-badge--other';
+  return 'type-badge--strength';
+});
 
 const updateField = (field, value, isNumeric = false) => {
   emit('update-field', {
@@ -62,8 +69,8 @@ const updateField = (field, value, isNumeric = false) => {
     <header class="exercise-block__head">
       <div class="exercise-block__identity">
         <img
-          :src="resolveImageSrc(exercise.image)"
-          :alt="exercise.name"
+          :src="getExerciseImageSrc(exercise)"
+          :alt="exercise.name || exercise.ExerciseTitle || 'Exercise image'"
           width="72"
           height="72"
           loading="lazy"
@@ -72,6 +79,7 @@ const updateField = (field, value, isNumeric = false) => {
         />
         <div>
           <span class="exercise-block__badge">Block {{ index + 1 }}</span>
+          <span :class="['type-badge', workoutTypeBadgeClass]">{{ workoutTypeBadgeLabel }}</span>
           <h4>{{ exercise.name }}</h4>
           <p>{{ exercise.muscleGroup || 'N/A' }} • {{ exercise.equipment || 'Bodyweight' }}</p>
         </div>
@@ -85,7 +93,8 @@ const updateField = (field, value, isNumeric = false) => {
     </header>
 
     <div class="exercise-block__fields">
-      <label>
+      <!-- Schedule group (always visible) -->
+      <label class="field-full">
         <span>{{ scheduleMode === 'week' ? 'Week Group' : 'Day Group' }}</span>
         <select
           :value="exercise.scheduleGroup"
@@ -101,57 +110,128 @@ const updateField = (field, value, isNumeric = false) => {
         </select>
       </label>
 
-      <label>
-        <span>Sets</span>
-        <input
-          :value="exercise.sets"
-          type="number"
-          min="0"
-          @input="updateField('sets', $event.target.value, true)"
-        />
-      </label>
+      <!-- STRENGTH fields: Sets | Reps on row 1, Weight full-width on row 2 -->
+      <template v-if="isStrength || isOther">
+        <label class="field-half">
+          <span>Sets</span>
+          <input
+            :value="exercise.sets"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('sets', $event.target.value, true)"
+          />
+        </label>
 
-      <label>
-        <span>Reps</span>
-        <input
-          :value="exercise.reps"
-          type="number"
-          min="0"
-          @input="updateField('reps', $event.target.value, true)"
-        />
-      </label>
+        <label class="field-half">
+          <span>Reps</span>
+          <input
+            :value="exercise.reps"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('reps', $event.target.value, true)"
+          />
+        </label>
 
-      <label>
-        <span>Weight</span>
-        <input
-          :value="exercise.weight"
-          type="number"
-          min="0"
-          @input="updateField('weight', $event.target.value, true)"
-        />
-      </label>
+        <label class="field-full">
+          <span>Weight (lbs)</span>
+          <input
+            :value="exercise.weight"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('weight', $event.target.value, true)"
+          />
+        </label>
 
-      <label>
-        <span>Duration (min)</span>
-        <input
-          :value="exercise.duration"
-          type="number"
-          min="0"
-          @input="updateField('duration', $event.target.value, true)"
-        />
-      </label>
+      </template>
 
-      <label>
-        <span>Rest (sec)</span>
-        <input
-          :value="exercise.restTime"
-          type="number"
-          min="0"
-          @input="updateField('restTime', $event.target.value, true)"
-        />
-      </label>
+      <!-- CARDIO fields: Time | Distance on row 1, Calories full-width on row 2 -->
+      <template v-if="isCardio">
+        <label class="field-half">
+          <span>Targeted Time (Mins)</span>
+          <input
+            :value="exercise.duration"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('duration', $event.target.value, true)"
+          />
+        </label>
 
-      <label class="field-notes">
+        <label class="field-half">
+          <span>Targeted Distance (Miles)</span>
+          <input
+            :value="exercise.distance"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('distance', $event.target.value, true)"
+          />
+        </label>
+
+        <label class="field-full">
+          <span>Targeted Calories</span>
+          <input
+            :value="exercise.calories"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('calories', $event.target.value, true)"
+          />
+        </label>
+      </template>
+
+      <!-- OTHER: Duration | Distance on row 1, Speed | Calories on row 2 -->
+      <template v-if="isOther">
+        <label class="field-half">
+          <span>Duration (min)</span>
+          <input
+            :value="exercise.duration"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('duration', $event.target.value, true)"
+          />
+        </label>
+
+        <label class="field-half">
+          <span>Distance (miles)</span>
+          <input
+            :value="exercise.distance"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('distance', $event.target.value, true)"
+          />
+        </label>
+
+        <label class="field-half">
+          <span>Speed (mph)</span>
+          <input
+            :value="exercise.speed"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('speed', $event.target.value, true)"
+          />
+        </label>
+
+        <label class="field-half">
+          <span>Calories</span>
+          <input
+            :value="exercise.calories"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('calories', $event.target.value, true)"
+          />
+        </label>
+      </template>
+
+      <!-- Notes (always full width) -->
+      <label class="field-notes field-full">
         <span>Notes</span>
         <input
           :value="exercise.notes"
@@ -215,6 +295,28 @@ const updateField = (field, value, isNumeric = false) => {
   color: #1e3a8a;
   font-weight: 700;
   font-size: 0.72rem;
+}
+
+.type-badge {
+  display: inline-flex;
+  margin-bottom: 4px;
+  margin-left: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.72rem;
+}
+.type-badge--strength {
+  background: #fef3c7;
+  color: #92400e;
+}
+.type-badge--cardio {
+  background: #dcfce7;
+  color: #166534;
+}
+.type-badge--other {
+  background: #f1f5f9;
+  color: #475569;
 }
 
 .exercise-block__identity h4 {
@@ -293,7 +395,8 @@ const updateField = (field, value, isNumeric = false) => {
   min-height: 42px;
 }
 
-.field-notes {
+.field-notes,
+.field-full {
   grid-column: span 1;
 }
 
@@ -302,7 +405,8 @@ const updateField = (field, value, isNumeric = false) => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .field-notes {
+  .field-notes,
+  .field-full {
     grid-column: span 2;
   }
 }
@@ -312,24 +416,96 @@ const updateField = (field, value, isNumeric = false) => {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .field-notes {
+  .field-notes,
+  .field-full {
     grid-column: span 3;
   }
 }
 
 @media (max-width: 768px) {
+  /* Compact card */
+  .exercise-block {
+    padding: 10px 12px;
+    border-radius: 10px;
+    margin-bottom: 0;
+  }
+
+  /* Head: stack identity + actions */
   .exercise-block__head {
     flex-direction: column;
     align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
   }
 
+  /* Identity: image left (56px), text right */
+  .exercise-block__identity {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .exercise-block__identity img {
+    width: 56px;
+    height: 56px;
+    flex-shrink: 0;
+    border-radius: 8px;
+  }
+
+  .exercise-block__identity h4 { font-size: 0.85rem; margin: 1px 0 2px; }
+  .exercise-block__identity p { font-size: 0.72rem; margin-top: 0; line-height: 1.3; }
+  .exercise-block__badge, .type-badge { font-size: 0.62rem; padding: 1px 5px; margin-bottom: 2px; margin-left: 0; }
+  .type-badge { margin-left: 3px; }
+
+  /* Actions: full-width single row, 34px height */
   .exercise-block__actions {
     width: 100%;
-    justify-content: flex-start;
+    flex-wrap: nowrap;
+    justify-content: stretch;
+    gap: 6px;
   }
 
   .exercise-block__actions button {
-    flex: 1 1 30%;
+    flex: 1;
+    min-height: 34px;
+    height: 34px;
+    padding: 0 6px;
+    font-size: 0.72rem;
+    border-radius: 7px;
+    white-space: nowrap;
   }
+
+  /* Field grid: 2-col with explicit span control */
+  .exercise-block__fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .field-half { grid-column: span 1; }
+  .field-full, .field-notes { grid-column: 1 / -1; }
+
+  .exercise-block__fields label { gap: 3px; }
+  .exercise-block__fields span { font-size: 0.7rem; font-weight: 600; color: #64748b; }
+
+  .exercise-block__fields input,
+  .exercise-block__fields select {
+    min-height: 36px;
+    height: 36px;
+    padding: 0 10px;
+    font-size: 0.82rem;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 480px) {
+  .exercise-block { padding: 8px 10px; }
+  .exercise-block__identity img { width: 48px; height: 48px; }
+  .exercise-block__identity h4 { font-size: 0.8rem; }
+  .exercise-block__actions button { min-height: 30px; height: 30px; font-size: 0.67rem; padding: 0 4px; }
+  .exercise-block__fields input, .exercise-block__fields select { min-height: 34px; height: 34px; font-size: 0.78rem; }
+  .exercise-block__fields span { font-size: 0.66rem; }
 }
 </style>

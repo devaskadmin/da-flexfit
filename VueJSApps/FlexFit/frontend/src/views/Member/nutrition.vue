@@ -211,15 +211,7 @@ watch(brandSearch,    () => { brandsPage.value = 1; });
 watch(labelSearch,    () => { labelsPage.value = 1; });
 watch(showFilters,    (v) => { if (v) pageTab.value = 'FoodCategories'; });
 
-watch(pageTab, (v) => {
-  console.log('pageTab changed:', v);
-  console.log('Tab order:', {
-    results: 'Food Results',
-    addeditfood: 'Add/Edit Food',
-    mynutrition: 'My Nutrition Log',
-    mynutritionfav: 'My Favorite Foods'
-  });
-});
+
 
 /* =========================================================
    Results filtering + pagination (client-side)
@@ -380,13 +372,11 @@ const viewProduct = async (food) => {
 const backToSearch = () => { currentProduct.value = null; ShowFoodSearch.value = true; 
   pageTab.value = 'results';
   ShowFoodSearch.value = true;
-  console.log(pageTab.value);
 };
 
 const backToResults = () => {
   pageTab.value = 'results';
   ShowFoodSearch.value = true;
-  console.log(pageTab.value);
 };
 
 const productNutrients = computed(() => {
@@ -617,7 +607,6 @@ const editFood = async (food) => { fillAddEditFromFood(food); pageTab.value = 'a
 const goToFavoritesTab = () => {
   pageTab.value = 'mynutritionfav';
   ShowFoodSearch.value = true;
-  console.log(pageTab.value);
 };
 
 

@@ -1,10 +1,16 @@
 .main-sidebar {
+    --ff-sidebar-offset: 70px;
     position: fixed;
-    top: 0;
+    top: var(--ff-sidebar-offset);
     left: 0;
-    bottom: 0;
+    bottom: auto;
+    height: calc(100vh - var(--ff-sidebar-offset));
     width: 270px;
-    padding-top: 70px;
+    padding-top: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
     background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;
@@ -21,12 +27,15 @@
         z-index: -1;
     }
     &.horizontal-menu {
+        --ff-sidebar-offset: 0px;
         top: 70px;
+        height: auto;
         bottom: auto;
         width: 100%;
         padding: 0;
         transition: 0s;
         z-index: 111;
+        overflow: hidden;
         &::after {
             width: 100%;
             height: calc(100% + 1px);
@@ -34,11 +43,14 @@
         }
         .main-menu {
             padding: 0 30px;
+            height: auto;
+            overflow: visible;
         }
         .sidebar-menu {
             padding: 0;
             display: flex;
             gap: 25px;
+            overflow: visible;
         }
         .sidebar-item {
             font-weight: 400;
@@ -284,7 +296,10 @@
     }
 }
 .main-sidebar.collapsed {
-    position: relative;
+    position: fixed;
+    top: var(--ff-sidebar-offset);
+    bottom: auto;
+    height: calc(100vh - var(--ff-sidebar-offset));
     padding-top: 0;
     width: 70px;
     &::after {
@@ -380,25 +395,10 @@
 }
 .main-menu {
     padding: 10px 0 10px 10px;
-    height: 100%;
 }
 .sidebar-menu {
-    height: 100%;
+    overflow: visible;
     padding-right: 10px;
-    .os-scrollbar-vertical {
-        padding: 0;
-        width: 6px;
-        .os-scrollbar-handle {
-            background: transparent !important;
-        }
-    }
-    &:hover {
-        .os-scrollbar-vertical {
-            .os-scrollbar-handle {
-                background: rgba($white, .2) !important;
-            }
-        }
-    }
 }
 .sidebar-sub-title {
     font-size: 12px;

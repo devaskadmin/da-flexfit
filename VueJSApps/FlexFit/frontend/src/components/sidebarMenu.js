@@ -58,7 +58,7 @@ export const sidebarMenus = ref([
         menus: [
             {
                 name: 'View Progress',
-                link_name: 'dashboard_index',
+                link_name: 'progress_stats',
                 icon: 'fa-solid fa-chart-line'
             },
             {
@@ -85,6 +85,11 @@ export const sidebarMenus = ref([
                 name: 'Test Roles',
                 link_name: 'admin_test_roles',
                 icon: 'fa-solid fa-vial-circle-check'
+            },
+            {
+                name: 'Tools',
+                link_name: 'admin_tools',
+                icon: 'fa-solid fa-toolbox'
             },
         ]
     },

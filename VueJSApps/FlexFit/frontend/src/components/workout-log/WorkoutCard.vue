@@ -1,5 +1,5 @@
 <script setup>
-import { API_BASE } from '@/config/env';
+import { DEFAULT_EXERCISE_IMAGE } from '@/utils/exerciseImage';
 
 const props = defineProps({
   plan: {
@@ -10,18 +10,16 @@ const props = defineProps({
 
 const emit = defineEmits(['open-session', 'open-builder']);
 
-const FALLBACK_COVER_IMAGE = '/assets/Excerises/default/default.jpg';
-
 const resolveImageSrc = (value) => {
   const raw = String(value || '').trim();
-  const source = raw || FALLBACK_COVER_IMAGE;
+  const source = raw || DEFAULT_EXERCISE_IMAGE;
 
   if (/^https?:\/\//i.test(source) || source.startsWith('data:')) {
     return source;
   }
 
   if (source.startsWith('/')) {
-    return `${API_BASE}${source}`;
+    return source;
   }
 
   return source;
@@ -29,7 +27,7 @@ const resolveImageSrc = (value) => {
 
 const handleImageError = (event) => {
   if (!event?.target) return;
-  event.target.src = resolveImageSrc(FALLBACK_COVER_IMAGE);
+  event.target.src = DEFAULT_EXERCISE_IMAGE;
 };
 </script>
 

@@ -4,8 +4,14 @@ import axios from "axios";
 import { useRouter } from "vue-router";
 import { API_BASE } from '@/config/env';
 import { isDemoMode } from '@/config/appConfig';
+import { useAuth } from '@/composable/useAuth';
 
 const router = useRouter();
+const { fetchUser } = useAuth();
+const apiClient = axios.create({
+  baseURL: API_BASE,
+  withCredentials: true,
+});
 
 const username = ref("");
 const password = ref("");
@@ -16,6 +22,8 @@ const loginDiagnostics = ref("");
 const diagnosticsCopied = ref(false);
 const showDiagnosticsModal = ref(false);
 const isSubmitting = ref(false);
+const isConnectionLimitError = ref(false);
+const isDbAuthError = ref(false);
 const appVersion = import.meta.env.VITE_APP_VERSION || '0.69.0';
 const isDev = import.meta.env.DEV;
 
@@ -26,30 +34,68 @@ const isSafariBrowser = () => {
   return isSafari && !isOtherBrowser;
 };
 
+const getParentDomain = (hostname = '') => {
+  const parts = String(hostname || '').toLowerCase().split('.').filter(Boolean);
+  if (parts.length < 2) return hostname;
+  return `${parts[parts.length - 2]}.${parts[parts.length - 1]}`;
+};
+
+const detectCrossSiteArchitecture = () => {
+  try {
+    const appHost = new URL(window.location.origin).hostname;
+    const apiHost = new URL(API_BASE).hostname;
+    const appParent = getParentDomain(appHost);
+    const apiParent = getParentDomain(apiHost);
+    return {
+      appHost,
+      apiHost,
+      appParent,
+      apiParent,
+      isCrossSiteParentDomain: appParent !== apiParent,
+    };
+  } catch (_) {
+    return {
+      appHost: 'unknown',
+      apiHost: 'unknown',
+      appParent: 'unknown',
+      apiParent: 'unknown',
+      isCrossSiteParentDomain: false,
+    };
+  }
+};
+
 const buildSafariLoginFailureMessage = ({
   reason = 'Login did not complete.',
   status,
   apiMessage,
   networkMessage,
 } = {}) => {
+  const arch = detectCrossSiteArchitecture();
   const detailLines = [
     `Safari sign-in issue detected. ${reason}`,
     '',
     'Details:',
     `- API Base: ${API_BASE}`,
+    `- App Host: ${arch.appHost}`,
+    `- API Host: ${arch.apiHost}`,
+    `- App Parent Domain: ${arch.appParent}`,
+    `- API Parent Domain: ${arch.apiParent}`,
     `- HTTP Status: ${status ?? 'none'}`,
     `- Server Message: ${apiMessage || 'none'}`,
     `- Network Message: ${networkMessage || 'none'}`,
     '',
-    'Safari troubleshooting steps:',
-    '1) iPhone/iPad: Settings > Safari',
-    '2) Turn OFF "Prevent Cross-Site Tracking"',
-    '3) Confirm cookies are allowed (not blocked)',
-    '4) Tap "Clear History and Website Data"',
-    '5) Close Safari completely, reopen, and sign in again',
-    '',
-    'If this still fails, test the same account in Chrome/Edge on the same device to confirm Safari cookie restrictions.',
   ];
+
+  if (arch.isCrossSiteParentDomain) {
+    detailLines.push(
+      'Cross-site cookie architecture detected.',
+      'Use custom same-site domains for production: workoutatlas.com and api.workoutatlas.com.'
+    );
+  } else {
+    detailLines.push(
+      'Use production custom domains with shared parent domain and COOKIE_DOMAIN=.workoutatlas.com for stable Safari auth persistence.'
+    );
+  }
 
   return detailLines.join('\n');
 };
@@ -62,30 +108,71 @@ const buildLoginDiagnostics = ({
   loginSucceeded = false,
   sessionCookiePersisted = null,
   sessionVerificationPassed = false,
+  cookieDetected = null,
+  cookieSentBack = null,
+  corsPassed = null,
+  sameSiteValue = null,
+  secureFlag = null,
 } = {}) => {
   const userAgent = navigator.userAgent || 'unknown';
   const origin = window.location.origin || 'unknown';
   const now = new Date().toISOString();
+  const arch = detectCrossSiteArchitecture();
 
   return [
-    'FlexFit Login Diagnostics',
+    'WorkoutAtlas Login Diagnostics',
     `- Timestamp: ${now}`,
     `- Browser: ${userAgent}`,
     `- Is Safari: ${isSafariBrowser()}`,
     `- Cookies Enabled: ${navigator.cookieEnabled}`,
     `- App Origin: ${origin}`,
     `- API Base: ${API_BASE}`,
+    `- App Parent Domain: ${arch.appParent}`,
+    `- API Parent Domain: ${arch.apiParent}`,
+    `- Cross-site Parent Domains: ${arch.isCrossSiteParentDomain}`,
     `- HTTP Status: ${status ?? 'none'}`,
     `- loginSucceeded: ${loginSucceeded}`,
     `- sessionCookiePersisted: ${sessionCookiePersisted === null ? 'unknown' : sessionCookiePersisted}`,
     `- sessionVerificationPassed: ${sessionVerificationPassed}`,
+    `- cookieDetected: ${cookieDetected === null ? 'unknown' : cookieDetected}`,
+    `- cookieSentBack: ${cookieSentBack === null ? 'unknown' : cookieSentBack}`,
+    `- corsPassed: ${corsPassed === null ? 'unknown' : corsPassed}`,
+    `- sameSiteValue: ${sameSiteValue ?? 'unknown'}`,
+    `- secureFlag: ${secureFlag === null ? 'unknown' : secureFlag}`,
     `- Reason: ${reason || 'none'}`,
     `- Server Message: ${apiMessage || 'none'}`,
     `- Network Message: ${networkMessage || 'none'}`,
+    ...(arch.isCrossSiteParentDomain
+      ? [
+          '- Architecture Notice: Cross-site cookie architecture detected.',
+          '- Production Fix: Use custom same-site domains workoutatlas.com and api.workoutatlas.com.',
+        ]
+      : []),
   ].join('\n');
 };
 
-const buildCompactLoginMessage = ({ status, fallbackMessage } = {}) => {
+const buildCompactLoginMessage = ({ status, fallbackMessage, code = '' } = {}) => {
+  if (code === 'ER_ACCESS_DENIED_ERROR') {
+    return 'Database connection failed. The WorkoutAtlas server reached the database but authentication was rejected. Please verify environment variables: DB_HOST, DB_USER, DB_PASSWORD, DB_DATABASE.';
+  }
+  if (code === 'ECONNREFUSED') {
+    return 'Database offline. Sign-in is unavailable until the database server is reachable.';
+  }
+  if (code === 'ETIMEDOUT' || code === 'ECONNRESET') {
+    return 'Database unavailable. The connection timed out. Please retry in a moment.';
+  }
+  if (String(fallbackMessage || '').includes('ER_TOO_MANY_USER_CONNECTIONS')) {
+    return 'WorkoutAtlas database connection limit reached. The hosting provider rejected additional database connections. Please wait a minute and retry.';
+  }
+
+  if (
+    String(fallbackMessage || '').toLowerCase().includes('session store') ||
+    String(fallbackMessage || '').includes('ECONNRESET') ||
+    String(fallbackMessage || '').includes('ECONNREFUSED')
+  ) {
+    return 'Sign-in failed: session service temporarily unavailable. Please wait a moment and retry.';
+  }
+
   if (fallbackMessage) {
     const lowerFallback = String(fallbackMessage).toLowerCase();
     if (lowerFallback.includes('login succeeded') || lowerFallback.includes('session cookie')) {
@@ -112,12 +199,29 @@ const buildCompactLoginMessage = ({ status, fallbackMessage } = {}) => {
   return fallbackMessage || `Sign-in failed (${status}).`;
 };
 
+const serverDiagnostics = ref(null);
+const diagnosticsLoading = ref(false);
+
+const fetchServerDiagnostics = async () => {
+  diagnosticsLoading.value = true;
+  try {
+    const res = await apiClient.get('/api/debug/login-diagnostics');
+    serverDiagnostics.value = res.data || null;
+  } catch {
+    serverDiagnostics.value = { enabled: false, message: 'Contact administrator for details.' };
+  } finally {
+    diagnosticsLoading.value = false;
+  }
+};
+
 const openDiagnosticsModal = () => {
   showDiagnosticsModal.value = true;
+  fetchServerDiagnostics();
 };
 
 const closeDiagnosticsModal = () => {
   showDiagnosticsModal.value = false;
+  serverDiagnostics.value = null;
 };
 
 const setLoginError = ({
@@ -130,9 +234,11 @@ const setLoginError = ({
   sessionCookiePersisted = null,
   sessionVerificationPassed = false,
   safariDetailed = false,
+  code = '',
 }) => {
+  isDbAuthError.value = code === 'ER_ACCESS_DENIED_ERROR';
   const isSafari = isSafariBrowser();
-  const compactMessage = buildCompactLoginMessage({ status, fallbackMessage });
+  const compactMessage = buildCompactLoginMessage({ status, fallbackMessage, code });
   const detailedMessage = safariDetailed && isSafari
     ? buildSafariLoginFailureMessage({ reason, status, apiMessage, networkMessage })
     : (fallbackMessage || 'No additional details.');
@@ -170,59 +276,37 @@ const devLog = (...args) => {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Helps mobile/Safari where session cookie can be visible a moment after /login response.
-const waitForSessionReady = async (maxAttempts = 5, waitMs = 250) => {
-  const sessionUrl = `${API_BASE}/api/session`;
-  let lastStatus = null;
-  let lastNote = '';
-  let lastHasSessionCookie = null;
+// Wait briefly then run one explicit session verification check.
+const waitForSessionReady = async () => {
+  const sessionUrl = '/api/session/check';
 
-  console.log('[FlexFit Session Verify] URL:', sessionUrl);
-  console.log('[FlexFit Session Verify] withCredentials:', true);
+  await sleep(500);
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    try {
-      devLog('Session verification request', {
-        url: sessionUrl,
-        withCredentials: true,
-        attempt,
-      });
+  try {
+    const sessionRes = await apiClient.get(sessionUrl, {
+      headers: { 'Cache-Control': 'no-cache' },
+    });
 
-      const sessionRes = await axios.get(sessionUrl, {
-        withCredentials: true,
-        headers: { 'Cache-Control': 'no-cache' },
-      });
+    console.log('Session check response:', sessionRes?.data || null);
 
-      lastStatus = sessionRes?.status ?? null;
-      lastHasSessionCookie = sessionRes?.data?.diagnostics?.hasSessionCookie ?? null;
-      lastNote = sessionRes?.data?.diagnostics?.note || '';
+    return {
+      passed: sessionRes?.data?.authenticated === true,
+      status: sessionRes?.status ?? null,
+      hasSessionCookie: sessionRes?.data?.cookiePresent ?? null,
+      note: sessionRes?.data?.authenticated ? 'Session verification succeeded.' : 'Session verification failed.',
+      diagnostics: sessionRes?.data || {},
+    };
+  } catch (err) {
+    console.log('Session check response error:', err?.response?.data || err?.message || null);
 
-      if (sessionRes?.data?.loggedIn === true) {
-        return {
-          passed: true,
-          status: sessionRes?.status ?? null,
-          hasSessionCookie: sessionRes?.data?.diagnostics?.hasSessionCookie ?? true,
-          note: sessionRes?.data?.diagnostics?.note || 'Session verification succeeded.',
-        };
-      }
-    } catch (err) {
-      lastStatus = err?.response?.status ?? null;
-      lastHasSessionCookie = err?.response?.data?.diagnostics?.hasSessionCookie ?? lastHasSessionCookie;
-      lastNote = err?.response?.data?.diagnostics?.note || err?.message || lastNote;
-
-      // Retry until attempts are exhausted.
-    }
-
-    if (attempt < maxAttempts) {
-      await sleep(waitMs);
-    }
+    return {
+      passed: false,
+      status: err?.response?.status ?? null,
+      hasSessionCookie: err?.response?.data?.cookiePresent ?? null,
+      note: err?.response?.data?.message || err?.message || 'Session verification failed.',
+      diagnostics: err?.response?.data || {},
+    };
   }
-  return {
-    passed: false,
-    status: lastStatus,
-    hasSessionCookie: lastHasSessionCookie,
-    note: lastNote || 'Session verification did not pass after login.',
-  };
 };
 
 const goToDashboard = async () => {
@@ -239,6 +323,8 @@ const login = async () => {
   loginDiagnostics.value = "";
   diagnosticsCopied.value = false;
   showDiagnosticsModal.value = false;
+  isConnectionLimitError.value = false;
+  isDbAuthError.value = false;
 
   const safeUsername = String(username.value || "").trim();
   const safePassword = String(password.value || "");
@@ -246,33 +332,33 @@ const login = async () => {
   try {
     devLog('Submitting login request', { username: safeUsername, rememberMe: !!rememberMe.value });
 
-    const loginUrl = `${API_BASE}/api/login`;
-    console.log('[FlexFit Login] API_BASE:', API_BASE);
-    console.log('[FlexFit Login] URL:', loginUrl);
-    console.log('[FlexFit Login] withCredentials:', true);
-
-    const response = await axios.post(
-      loginUrl,
+    const response = await apiClient.post(
+      '/api/login',
       {
         username: safeUsername,
         password: safePassword,
         rememberMe: !!rememberMe.value,
-      },
-      { withCredentials: true }
+      }
     );
 
     if (response?.data?.requiresPasswordReset === true) {
       devLog('Login requires password reset');
       const sessionState = await waitForSessionReady();
       if (!sessionState?.passed) {
+        const d = sessionState?.diagnostics || {};
         setLoginError({
-          fallbackMessage: 'Login succeeded, but the session cookie was not available for follow-up requests.',
+          fallbackMessage: 'Session persistence issue',
           reason: 'Session persistence issue after successful authentication.',
           status: sessionState?.status,
           apiMessage: sessionState?.note || 'Login successful, but session verification failed.',
           loginSucceeded: true,
           sessionCookiePersisted: sessionState?.hasSessionCookie,
           sessionVerificationPassed: false,
+          cookieDetected: d.cookiePresent ?? null,
+          cookieSentBack: d.cookiePresent ?? null,
+          corsPassed: d.diagnostics?.corsResult ?? null,
+          sameSiteValue: d.diagnostics?.sameSiteValue ?? null,
+          secureFlag: d.diagnostics?.secureFlag ?? null,
           safariDetailed: true,
         });
         return;
@@ -285,18 +371,26 @@ const login = async () => {
       devLog('Login successful response received');
       const sessionState = await waitForSessionReady();
       if (!sessionState?.passed) {
+        const d = sessionState?.diagnostics || {};
         setLoginError({
-          fallbackMessage: 'Login succeeded, but the session cookie was not available for follow-up requests.',
+          fallbackMessage: 'Session persistence issue',
           reason: 'Session persistence issue after successful authentication.',
           status: sessionState?.status,
           apiMessage: sessionState?.note || response?.data?.message,
           loginSucceeded: true,
           sessionCookiePersisted: sessionState?.hasSessionCookie,
           sessionVerificationPassed: false,
+          cookieDetected: d.cookiePresent ?? null,
+          cookieSentBack: d.cookiePresent ?? null,
+          corsPassed: d.diagnostics?.corsResult ?? null,
+          sameSiteValue: d.diagnostics?.sameSiteValue ?? null,
+          secureFlag: d.diagnostics?.secureFlag ?? null,
           safariDetailed: true,
         });
         return;
       }
+      // Hydrate the auth store before navigating so user/role are available immediately
+      await fetchUser();
       await goToDashboard();
       return;
     }
@@ -315,21 +409,48 @@ const login = async () => {
       data: error?.response?.data,
       message: error?.message,
     });
+    // The global error handler on the backend always returns { error, code }.
+    // Older route-level errors return { error } or { message }.
+    // error?.response?.data may be a string if Express returned HTML (shouldn't
+    // happen now that we have the global handler, but guard anyway).
+    const rawData = error?.response?.data;
     const apiMessage =
-      error?.response?.data?.message ||
-      error?.response?.data?.error ||
-      'Sign-in request failed before authentication could complete.';
+      (typeof rawData === 'object' && rawData !== null
+        ? (rawData.message || rawData.error || null)
+        : null) ||
+      'Server error during sign-in. Please try again.';
+    const errorCode = typeof rawData === 'object' ? (rawData.code || '') : '';
+    const isConnLimit =
+      String(apiMessage).includes('ER_TOO_MANY_USER_CONNECTIONS') ||
+      errorCode === 'ER_TOO_MANY_USER_CONNECTIONS';
+    const isSessionStore =
+      String(apiMessage).toLowerCase().includes('session store') ||
+      ['ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT'].includes(errorCode);
+    const isDbAuth = errorCode === 'ER_ACCESS_DENIED_ERROR';
+    if (isConnLimit) {
+      isConnectionLimitError.value = true;
+    }
     setLoginError({
       fallbackMessage: apiMessage,
-      reason: 'Browser could not complete sign-in request.',
+      reason: isDbAuth
+        ? 'Database credentials were rejected by MySQL. Verify Render environment variables.'
+        : isConnLimit
+        ? 'Database connection limit reached on hosting provider.'
+        : isSessionStore
+        ? 'Session store temporarily unavailable.'
+        : 'Browser could not complete sign-in request.',
       status: error?.response?.status,
       apiMessage,
       networkMessage: error?.message,
       loginSucceeded: false,
       sessionCookiePersisted: null,
       sessionVerificationPassed: false,
-      safariDetailed: true,
+      code: errorCode,
+      safariDetailed: !isConnLimit && !isDbAuth,
     });
+    if (isConnLimit || isDbAuth) {
+      openDiagnosticsModal();
+    }
   } finally {
     isSubmitting.value = false;
   }
@@ -394,14 +515,15 @@ const demoLogin = async (role) => {
               <div class="small mt-1">Login diagnostics available.</div>
             </div>
 
-            <button
-              v-if="errorMsg"
-              type="button"
-              class="btn btn-outline-light w-100 auth-button auth-button-outline"
-              @click="openDiagnosticsModal"
-            >
-              View Login Diagnostics
-            </button>
+            <div v-if="errorMsg" class="login-diagnostics-row">
+              <button
+                type="button"
+                class="btn auth-button auth-button-outline"
+                @click="openDiagnosticsModal"
+              >
+                <i class="fa-regular fa-magnifying-glass me-1"></i> View Login Diagnostics
+              </button>
+            </div>
 
             <button class="btn btn-primary w-100 login-btn auth-button" :disabled="isSubmitting">
               {{ isSubmitting ? 'Signing in...' : 'Sign in' }}
@@ -451,7 +573,78 @@ const demoLogin = async (role) => {
             <button type="button" class="btn-close btn-close-white" aria-label="Close" @click="closeDiagnosticsModal"></button>
           </div>
           <div class="login-diagnostics-body">
-            <pre class="login-diagnostics-pre">{{ loginDiagnostics }}</pre>
+            <!-- Connection limit banner -->
+            <div v-if="isConnectionLimitError" class="login-diag-conn-limit">
+              <p class="login-diag-conn-title">Database server connection limit reached.</p>
+              <p class="login-diag-conn-sub">WorkoutAtlas login succeeded but database resources were unavailable.</p>
+              <p class="login-diag-conn-error">Error: <code>ER_TOO_MANY_USER_CONNECTIONS</code></p>
+              <p class="login-diag-conn-suggestions">Suggestions:</p>
+              <ul class="login-diag-conn-list">
+                <li>Wait 1–2 minutes</li>
+                <li>Retry login</li>
+                <li>Contact administrator</li>
+              </ul>
+            </div>
+
+            <!-- DB auth error banner -->
+            <div v-if="isDbAuthError" class="login-diag-conn-limit">
+              <p class="login-diag-conn-title">Database authentication failed.</p>
+              <p class="login-diag-conn-sub">The WorkoutAtlas server reached the database but authentication was rejected.</p>
+              <p class="login-diag-conn-error">Error: <code>ER_ACCESS_DENIED_ERROR</code></p>
+              <p class="login-diag-conn-suggestions">Please verify these environment variables:</p>
+              <ul class="login-diag-conn-list">
+                <li><code>DB_HOST</code></li>
+                <li><code>DB_USER</code></li>
+                <li><code>DB_PASSWORD</code></li>
+                <li><code>DB_DATABASE</code></li>
+              </ul>
+              <p class="login-diag-conn-sub">This is not a browser or cookie issue.</p>
+            </div>
+
+            <!-- Server diagnostics -->
+            <div v-if="diagnosticsLoading" class="login-diag-loading">Loading diagnostics…</div>
+
+            <template v-else-if="serverDiagnostics">
+              <!-- DEBUG disabled: show contact message only -->
+              <div v-if="!serverDiagnostics.enabled" class="login-diag-contact">
+                <i class="fa-regular fa-circle-info login-diag-contact-icon"></i>
+                {{ serverDiagnostics.message || 'Contact administrator for details.' }}
+              </div>
+
+              <!-- DEBUG enabled: structured sections -->
+              <template v-else>
+                <div class="login-diag-section">
+                  <div class="login-diag-section-title">Environment</div>
+                  <div class="login-diag-row"><span>Node Mode</span><code>{{ serverDiagnostics.environment?.nodeEnv }}</code></div>
+                  <div class="login-diag-row"><span>Debug Enabled</span><code>{{ serverDiagnostics.environment?.debug }}</code></div>
+                  <div class="login-diag-row"><span>Frontend Configured</span><code>{{ serverDiagnostics.environment?.frontendConfigured }}</code></div>
+                  <div class="login-diag-row"><span>CORS Configured</span><code>{{ serverDiagnostics.environment?.corsConfigured }}</code></div>
+                  <div class="login-diag-row"><span>Secure Cookies</span><code>{{ serverDiagnostics.environment?.sessionCookieSecure }}</code></div>
+                </div>
+
+                <div class="login-diag-section">
+                  <div class="login-diag-section-title">Database</div>
+                  <div class="login-diag-row"><span>Host Configured</span><code>{{ serverDiagnostics.database?.hostConfigured }}</code></div>
+                  <div class="login-diag-row"><span>DB Configured</span><code>{{ serverDiagnostics.database?.databaseConfigured }}</code></div>
+                  <div class="login-diag-row"><span>User Configured</span><code>{{ serverDiagnostics.database?.userConfigured }}</code></div>
+                  <div class="login-diag-row"><span>Port</span><code>{{ serverDiagnostics.database?.port }}</code></div>
+                </div>
+
+                <div class="login-diag-section">
+                  <div class="login-diag-section-title">Server</div>
+                  <div class="login-diag-row"><span>Timestamp</span><code>{{ serverDiagnostics.server?.timestamp }}</code></div>
+                  <div class="login-diag-row"><span>Uptime</span><code>{{ serverDiagnostics.server?.uptime }}s</code></div>
+                  <div class="login-diag-row"><span>Heap Used</span><code>{{ Math.round((serverDiagnostics.server?.memory?.heapUsed || 0) / 1024 / 1024) }} MB</code></div>
+                  <div class="login-diag-row"><span>Platform</span><code>{{ serverDiagnostics.server?.platform }}</code></div>
+                </div>
+              </template>
+            </template>
+
+            <!-- Client-side diagnostics (always shown for copy) -->
+            <details class="login-diag-client-details">
+              <summary>Client diagnostics</summary>
+              <pre class="login-diagnostics-pre">{{ loginDiagnostics }}</pre>
+            </details>
           </div>
           <div class="login-diagnostics-footer">
             <button type="button" class="btn btn-outline-light btn-sm" @click="copyLoginDiagnostics">
@@ -468,6 +661,7 @@ const demoLogin = async (role) => {
 <style scoped>
 .login-center-wrap {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -668,8 +862,40 @@ const demoLogin = async (role) => {
   margin-top: 8px;
 }
 
+/* ── Login diagnostics button row ── */
+.login-diagnostics-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+/* ── Diagnostics button — amber, defeats Bootstrap ── */
+button.auth-button-outline,
 .auth-button-outline {
-  margin-bottom: 10px;
+  background: #fff8e1 !important;
+  color: #8a5300 !important;
+  border: 2px solid #ffb300 !important;
+  opacity: 1 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 8px 20px;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+button.auth-button-outline:hover,
+.auth-button-outline:hover {
+  background: #fff3c4 !important;
+  transform: translateY(-1px);
+}
+
+button.auth-button-outline:disabled,
+.auth-button-outline:disabled {
+  opacity: 0.75 !important;
 }
 
 .auth-button-secondary {
@@ -798,6 +1024,132 @@ const demoLogin = async (role) => {
   line-height: 1.38;
   color: #d7e4ff;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+/* ── Diagnostics modal: loading / contact-admin ── */
+.login-diag-loading {
+  color: #a9c4ff;
+  font-size: 0.84rem;
+  padding: 10px 0;
+  text-align: center;
+}
+
+.login-diag-contact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #d7e4ff;
+  font-size: 0.86rem;
+  margin-bottom: 10px;
+}
+
+.login-diag-contact-icon {
+  color: #7ba8ff;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* ── Diagnostics modal: structured sections ── */
+.login-diag-section {
+  margin-bottom: 14px;
+}
+
+.login-diag-section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #7ba8ff;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.login-diag-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 0.81rem;
+  color: #c5d6f5;
+}
+
+.login-diag-row span {
+  color: #8aa8d8;
+  flex-shrink: 0;
+}
+
+.login-diag-row code {
+  background: rgba(255,255,255,0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  color: #d7e4ff;
+  word-break: break-all;
+}
+
+/* ── Client diagnostics collapsible ── */
+.login-diag-client-details {
+  margin-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 8px;
+}
+
+.login-diag-client-details summary {
+  font-size: 0.78rem;
+  color: #7ba8ff;
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 6px;
+}
+
+.login-diag-conn-limit {
+  background: rgba(220, 80, 60, 0.12);
+  border: 1px solid rgba(220, 80, 60, 0.4);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.login-diag-conn-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #ff8a7a;
+  margin: 0 0 4px;
+}
+.login-diag-conn-sub {
+  font-size: 0.83rem;
+  color: #d7e4ff;
+  margin: 0 0 6px;
+}
+.login-diag-conn-error {
+  font-size: 0.82rem;
+  color: #d7e4ff;
+  margin: 0 0 8px;
+}
+.login-diag-conn-error code {
+  background: rgba(255,255,255,0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: #ffb3ab;
+}
+.login-diag-conn-suggestions {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #a9c4ff;
+  margin: 0 0 4px;
+}
+.login-diag-conn-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.82rem;
+  color: #d7e4ff;
+  line-height: 1.7;
 }
 
 </style>
