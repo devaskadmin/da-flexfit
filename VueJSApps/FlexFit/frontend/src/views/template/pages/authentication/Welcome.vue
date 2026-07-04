@@ -10,7 +10,7 @@
           <img src="@/assets/images/logo-small.png" alt="logo">
         </div>
         <div class="part-txt text-center">
-          <h2>Welcome to Digiboard</h2>
+          <h2>Welcome to WorkoutAtlas</h2>
           <p>A great name is like a great story. It's one that people want to hear again and again.</p>
           <router-link to="/" class="btn btn-primary px-3">Go To Dashboard</router-link>
         </div>

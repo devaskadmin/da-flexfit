@@ -2415,6 +2415,353 @@ onMounted(async () => {
 /* ── v0.81.6 Global density utility ──────────────────────────────────────── */
 .workout-log-mobile { /* defined here; used in template root */ }
 
+/* ── 0.84.31 Workout Log dark-theme color normalization (scoped) ─────────── */
+:global(body.dark-theme) .wl-page {
+  --wl-surface-1: var(--wa-shell-surface, #121923);
+  --wl-surface-2: var(--wa-shell-surface-elevated, #17212d);
+  --wl-surface-3: var(--wa-shell-surface-soft, #1d2a38);
+  --wl-border: var(--wa-shell-border, rgba(255, 255, 255, 0.09));
+  --wl-border-strong: var(--wa-shell-border-strong, rgba(255, 255, 255, 0.16));
+  --wl-text: var(--wa-shell-text, #f8fafc);
+  --wl-text-secondary: var(--wa-shell-text-secondary, #a4b0c0);
+  --wl-text-muted: var(--wa-shell-text-muted, #738196);
+  --wl-accent: var(--wa-shell-accent, var(--main-color, #3b82f6));
+}
+
+:global(body.dark-theme) .wl-page .builder-hero.ff-page-header.app-header-gradient {
+  background: var(--wl-surface-2) !important;
+  border: 1px solid var(--wl-border);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+:global(body.dark-theme) .wl-page .wl-date-input {
+  background: var(--wl-surface-1);
+  border-color: var(--wl-border-strong);
+  color: var(--wl-text);
+}
+
+:global(body.dark-theme) .wl-page .wl-date-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.86);
+}
+
+:global(body.dark-theme) .wl-page .wl-btn {
+  background: var(--wl-accent);
+  border-radius: 8px;
+}
+
+:global(body.dark-theme) .wl-page .wl-btn:hover {
+  filter: brightness(1.08);
+}
+
+:global(body.dark-theme) .wl-page .wl-btn--secondary {
+  background: var(--wl-surface-2);
+  color: var(--wl-text-secondary);
+  border: 1px solid var(--wl-border);
+}
+
+:global(body.dark-theme) .wl-page .wl-btn--secondary:hover {
+  background: var(--wl-surface-3);
+  color: var(--wl-text);
+}
+
+:global(body.dark-theme) .wl-page .wl-btn--active,
+:global(body.dark-theme) .wl-page .wl-btn-resume,
+:global(body.dark-theme) .wl-page .wl-btn-complete {
+  background: #16a34a;
+}
+
+:global(body.dark-theme) .wl-page .wl-btn--active:hover,
+:global(body.dark-theme) .wl-page .wl-btn-resume:hover,
+:global(body.dark-theme) .wl-page .wl-btn-complete:hover {
+  background: #15803d;
+}
+
+:global(body.dark-theme) .wl-page .wl-stats .wl-stat-card,
+:global(body.dark-theme) .wl-page .wl-empty,
+:global(body.dark-theme) .wl-page .wl-plan,
+:global(body.dark-theme) .wl-page .wl-plan__body,
+:global(body.dark-theme) .wl-page .wl-day-card,
+:global(body.dark-theme) .wl-page .wl-day-order-toolbar,
+:global(body.dark-theme) .wl-page .wl-day-detail-header,
+:global(body.dark-theme) .wl-page .wl-history-datebar,
+:global(body.dark-theme) .wl-page .wl-history-session,
+:global(body.dark-theme) .wl-page .wl-history-session__header,
+:global(body.dark-theme) .wl-page .wl-hist-ex-card,
+:global(body.dark-theme) .wl-page .wl-history-group,
+:global(body.dark-theme) .wl-page .wl-history-group__header,
+:global(body.dark-theme) .wl-page .wl-modal,
+:global(body.dark-theme) .wl-page .wl-bottom-bar {
+  background: var(--wl-surface-1);
+  border-color: var(--wl-border);
+  color: var(--wl-text);
+}
+
+:global(body.dark-theme) .wl-page .wl-plan__header:hover,
+:global(body.dark-theme) .wl-page .wl-day-order-toolbar,
+:global(body.dark-theme) .wl-page .wl-hist-ex-thumb,
+:global(body.dark-theme) .wl-page .wl-hist-sets-head--strength,
+:global(body.dark-theme) .wl-page .wl-hist-sets-head--cardio,
+:global(body.dark-theme) .wl-page .wl-history-datebar,
+:global(body.dark-theme) .wl-page .wl-day-detail-header,
+:global(body.dark-theme) .wl-page .wl-modal__header,
+:global(body.dark-theme) .wl-page .wl-modal__footer,
+:global(body.dark-theme) .wl-page .wl-bottom-bar {
+  background: var(--wl-surface-2);
+}
+
+:global(body.dark-theme) .wl-page .wl-plan-picker-hint {
+  background: var(--wl-surface-2);
+  border-color: var(--wl-border);
+  color: var(--wl-text-secondary);
+}
+
+:global(body.dark-theme) .wl-page .wl-plan--expanded {
+  border-color: color-mix(in srgb, var(--wl-accent) 55%, var(--wl-border) 45%);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--wl-accent) 25%, transparent 75%);
+}
+
+:global(body.dark-theme) .wl-page .wl-plan__name,
+:global(body.dark-theme) .wl-page .wl-day-card__title h4,
+:global(body.dark-theme) .wl-page .wl-ex-name,
+:global(body.dark-theme) .wl-page .wl-history-group__plan,
+:global(body.dark-theme) .wl-page .wl-hist-ex-name,
+:global(body.dark-theme) .wl-page .wl-bottom-bar__label,
+:global(body.dark-theme) .wl-page .wl-modal__body,
+:global(body.dark-theme) .wl-page .wl-stat-card strong {
+  color: var(--wl-text);
+}
+
+:global(body.dark-theme) .wl-page .wl-day-order-toggle,
+:global(body.dark-theme) .wl-page .wl-plan__meta,
+:global(body.dark-theme) .wl-page .wl-day-card__meta,
+:global(body.dark-theme) .wl-page .wl-ex-detail,
+:global(body.dark-theme) .wl-page .wl-progress-label,
+:global(body.dark-theme) .wl-page .wl-history-session__meta,
+:global(body.dark-theme) .wl-page .wl-hist-set-num,
+:global(body.dark-theme) .wl-page .wl-modal__sub,
+:global(body.dark-theme) .wl-page .wl-stat-card span,
+:global(body.dark-theme) .wl-page .wl-empty {
+  color: var(--wl-text-secondary);
+}
+
+:global(body.dark-theme) .wl-page .wl-empty-icon,
+:global(body.dark-theme) .wl-page .wl-plan__chevron,
+:global(body.dark-theme) .wl-page .wl-day-icon,
+:global(body.dark-theme) .wl-page .wl-plan__meta i,
+:global(body.dark-theme) .wl-page .wl-day-card__meta i,
+:global(body.dark-theme) .wl-page .wl-history-datebar i,
+:global(body.dark-theme) .wl-page .wl-history-ex__stats i,
+:global(body.dark-theme) .wl-page .wl-history-session__meta i {
+  color: color-mix(in srgb, var(--wl-accent) 68%, var(--wl-text-secondary) 32%);
+}
+
+:global(body.dark-theme) .wl-page .wl-tabs {
+  border-bottom-color: var(--wl-border);
+}
+
+:global(body.dark-theme) .wl-page .wl-tab {
+  color: var(--wl-text-muted);
+}
+
+:global(body.dark-theme) .wl-page .wl-tab:hover,
+:global(body.dark-theme) .wl-page .wl-tab--active {
+  color: var(--wl-accent);
+}
+
+:global(body.dark-theme) .wl-page .wl-tab--active {
+  border-bottom-color: var(--wl-accent);
+}
+
+:global(body.dark-theme) .wl-page .wl-tab-badge,
+:global(body.dark-theme) .wl-page .wl-plan__tag,
+:global(body.dark-theme) .wl-page .wl-plan__selected-badge,
+:global(body.dark-theme) .wl-page .wl-day-detail-count,
+:global(body.dark-theme) .wl-page .wl-history-group__day,
+:global(body.dark-theme) .wl-page .wl-hist-tag--type {
+  background: color-mix(in srgb, var(--wl-accent) 22%, transparent 78%);
+  border: 1px solid color-mix(in srgb, var(--wl-accent) 45%, transparent 55%);
+  color: color-mix(in srgb, var(--wl-accent) 78%, #ffffff 22%);
+}
+
+:global(body.dark-theme) .wl-page .wl-day-card__exercises,
+:global(body.dark-theme) .wl-page .wl-plan__body,
+:global(body.dark-theme) .wl-page .wl-history-session__header,
+:global(body.dark-theme) .wl-page .wl-modal__header,
+:global(body.dark-theme) .wl-page .wl-modal__footer,
+:global(body.dark-theme) .wl-page .wl-bottom-bar,
+:global(body.dark-theme) .wl-page .wl-hist-sets-table,
+:global(body.dark-theme) .wl-page .wl-hist-set-row,
+:global(body.dark-theme) .wl-page .wl-hist-ex {
+  border-color: var(--wl-border);
+}
+
+:global(body.dark-theme) .wl-page .wl-order-toolbar-btn,
+:global(body.dark-theme) .wl-page .wl-order-btn,
+:global(body.dark-theme) .wl-page .wl-btn-edit,
+:global(body.dark-theme) .wl-page .wl-btn-preview,
+:global(body.dark-theme) .wl-page .wl-btn-end,
+:global(body.dark-theme) .wl-page .wl-hist-edit-btn,
+:global(body.dark-theme) .wl-page .wl-hist-cancel-btn,
+:global(body.dark-theme) .wl-page .wl-hist-set-input,
+:global(body.dark-theme) .wl-page .wl-link {
+  background: var(--wl-surface-2);
+  border-color: var(--wl-border);
+  color: var(--wl-text-secondary);
+  border-radius: 8px;
+}
+
+:global(body.dark-theme) .wl-page .wl-order-toolbar-btn--reset:hover,
+:global(body.dark-theme) .wl-page .wl-order-btn:hover,
+:global(body.dark-theme) .wl-page .wl-btn-edit:hover,
+:global(body.dark-theme) .wl-page .wl-btn-preview:hover,
+:global(body.dark-theme) .wl-page .wl-hist-edit-btn:hover:not(:disabled),
+:global(body.dark-theme) .wl-page .wl-hist-cancel-btn:hover:not(:disabled) {
+  background: var(--wl-surface-3);
+  color: var(--wl-text);
+}
+
+:global(body.dark-theme) .wl-page .wl-link {
+  text-decoration-color: color-mix(in srgb, var(--wl-accent) 60%, transparent 40%);
+}
+
+:global(body.dark-theme) .wl-page .wl-order-toolbar-btn--save,
+:global(body.dark-theme) .wl-page .wl-btn-start,
+:global(body.dark-theme) .wl-page .wl-hist-save-btn {
+  background: #15803d;
+  border-color: #166534;
+  color: #f8fafc;
+}
+
+:global(body.dark-theme) .wl-page .wl-order-toolbar-btn--save:hover,
+:global(body.dark-theme) .wl-page .wl-btn-start:hover,
+:global(body.dark-theme) .wl-page .wl-hist-save-btn:hover:not(:disabled) {
+  background: #166534;
+}
+
+:global(body.dark-theme) .wl-page .wl-custom-order-badge,
+:global(body.dark-theme) .wl-page .wl-in-progress-chip {
+  background: rgba(22, 163, 74, 0.18);
+  border-color: rgba(74, 222, 128, 0.45);
+  color: #bbf7d0;
+}
+
+:global(body.dark-theme) .wl-page .wl-preview-banner {
+  background: rgba(217, 119, 6, 0.14);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fde68a;
+}
+
+:global(body.dark-theme) .wl-page .wl-preview-badge {
+  background: rgba(217, 119, 6, 0.18);
+  border-color: rgba(245, 158, 11, 0.45);
+  color: #fcd34d;
+}
+
+:global(body.dark-theme) .wl-page .wl-history-session--editing,
+:global(body.dark-theme) .wl-page .wl-day-card--active {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+:global(body.dark-theme) .wl-page .wl-day-card--active {
+  border-color: rgba(74, 222, 128, 0.45);
+}
+
+:global(body.dark-theme) .wl-page .wl-hist-ex-thumb,
+:global(body.dark-theme) .wl-page .wl-hist-tag,
+:global(body.dark-theme) .wl-page .wl-hist-set-input,
+:global(body.dark-theme) .wl-page .wl-hist-set-row--done,
+:global(body.dark-theme) .wl-page .wl-hist-sets-head--cardio,
+:global(body.dark-theme) .wl-page .wl-hist-sets-head--strength,
+:global(body.dark-theme) .wl-page .wl-hist-sets-table,
+:global(body.dark-theme) .wl-page .wl-hist-set-row {
+  background: var(--wl-surface-2);
+}
+
+:global(body.dark-theme) .wl-page .wl-hist-set-row--done {
+  background: rgba(22, 163, 74, 0.14);
+}
+
+:global(body.dark-theme) .wl-page .wl-modal {
+  border: 1px solid var(--wl-border);
+}
+
+:global(body.dark-theme) .wl-page .wl-btn-delete,
+:global(body.dark-theme) .wl-page .wl-hist-delete-btn {
+  border-radius: 8px;
+}
+
+:global(body.dark-theme) .wl-page .wl-bottom-bar {
+  backdrop-filter: blur(8px);
+  background: color-mix(in srgb, var(--wl-surface-2) 92%, transparent 8%);
+}
+
+/* Day Details child card theme overrides without touching shared component styles. */
+:global(body.dark-theme) .wl-page :deep(.session-exercise-card),
+:global(body.dark-theme) .wl-page :deep(.cardio-3col-table),
+:global(body.dark-theme) .wl-page :deep(.c3-head),
+:global(body.dark-theme) .wl-page :deep(.c3-row-done),
+:global(body.dark-theme) .wl-page :deep(.set-input),
+:global(body.dark-theme) .wl-page :deep(.sec-thumb-placeholder),
+:global(body.dark-theme) .wl-page :deep(.sec-prefill-note),
+:global(body.dark-theme) .wl-page :deep(.sec-header--active),
+:global(body.dark-theme) .wl-page :deep(.sec-header:hover) {
+  background: var(--wl-surface-1);
+  border-color: var(--wl-border);
+  color: var(--wl-text);
+}
+
+:global(body.dark-theme) .wl-page :deep(.session-exercise-card) {
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.22);
+}
+
+:global(body.dark-theme) .wl-page :deep(.sec-meta p),
+:global(body.dark-theme) .wl-page :deep(.set-num),
+:global(body.dark-theme) .wl-page :deep(.sec-sets-summary),
+:global(body.dark-theme) .wl-page :deep(.c3-col-set),
+:global(body.dark-theme) .wl-page :deep(.c3-col-info) {
+  color: var(--wl-text-secondary);
+}
+
+:global(body.dark-theme) .wl-page :deep(.sec-type-chip),
+:global(body.dark-theme) .wl-page :deep(.sec-select-btn--active) {
+  background: color-mix(in srgb, var(--wl-accent) 22%, transparent 78%);
+  border-color: color-mix(in srgb, var(--wl-accent) 45%, transparent 55%);
+  color: color-mix(in srgb, var(--wl-accent) 78%, #ffffff 22%);
+}
+
+:global(body.dark-theme) .wl-page :deep(.sec-select-btn),
+:global(body.dark-theme) .wl-page :deep(.set-input),
+:global(body.dark-theme) .wl-page :deep(.add-set-btn),
+:global(body.dark-theme) .wl-page :deep(.c3-rm-btn),
+:global(body.dark-theme) .wl-page :deep(.c3-complete-btn),
+:global(body.dark-theme) .wl-page :deep(.c3-finish-btn) {
+  background: var(--wl-surface-2);
+  border-color: var(--wl-border);
+  color: var(--wl-text-secondary);
+  border-radius: 8px;
+}
+
+:global(body.dark-theme) .wl-page :deep(.sec-select-btn),
+:global(body.dark-theme) .wl-page :deep(.add-set-btn) {
+  border-color: color-mix(in srgb, var(--wl-accent) 45%, var(--wl-border) 55%);
+  color: var(--wl-accent);
+}
+
+:global(body.dark-theme) .wl-page :deep(.set-input:focus) {
+  border-color: color-mix(in srgb, var(--wl-accent) 70%, #ffffff 30%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--wl-accent) 25%, transparent 75%);
+}
+
+:global(body.dark-theme) .wl-page :deep(.sec-set-row.set-done),
+:global(body.dark-theme) .wl-page :deep(.c3-set-group.c3-set-done),
+:global(body.dark-theme) .wl-page :deep(.c3-set-group.c3-set-done .c3-row:first-child),
+:global(body.dark-theme) .wl-page :deep(.c3-set-group.c3-set-done .c3-row-done),
+:global(body.dark-theme) .wl-page :deep(.c3-finish-btn--done),
+:global(body.dark-theme) .wl-page :deep(.c3-complete-btn--done) {
+  background: rgba(22, 163, 74, 0.14) !important;
+  color: #bbf7d0;
+}
+
 /* ── v0.81.9 Mobile 768px — Workout Log Compact Layout ───────────────────── */
 @media (max-width: 768px) {
   /* Global density */

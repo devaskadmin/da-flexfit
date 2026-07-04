@@ -2,6 +2,7 @@
 import { ref, reactive, onMounted, onUnmounted, watch, computed } from 'vue'
 import { API_BASE } from '@/config/env';
 import { useAuth } from '@/composable/useAuth';
+import { getDefaultTheme, sanitizeTheme } from '@/composable/manageThemeSetting';
 import AvatarModal from '@/components/AvatarModal.vue';
 
 const activeTab = ref('profile')
@@ -63,7 +64,7 @@ const display = reactive({
   navPosition: 'vertical',
   themeDirection: 'ltr',
   primaryColor: 'blue-color',
-  themeColor: 'light-theme',
+  themeColor: getDefaultTheme(),
   navbarSize: 'default',
   sidebarBackground: '',
   mainBackground: '',
@@ -272,7 +273,7 @@ const loadDisplayFromLocalStorage = () => {
   display.navPosition = localStorage.getItem('layoutPosition') || display.navPosition;
   display.themeDirection = localStorage.getItem('layoutDirection') || display.themeDirection;
   display.primaryColor = localStorage.getItem('selectedStyleSheet') || display.primaryColor;
-  display.themeColor = localStorage.getItem('currentActiveTheme') || display.themeColor;
+  display.themeColor = sanitizeTheme(localStorage.getItem('currentActiveTheme') || display.themeColor);
   display.navbarSize = localStorage.getItem('sidebarHover') ? 'expand' : localStorage.getItem('sidebarSmall') ? 'small' : 'default';
   display.sidebarBackground = localStorage.getItem('navbackgroundImage') || '';
   display.mainBackground = localStorage.getItem('mainBackgroundImage') || '';
@@ -299,7 +300,7 @@ const loadUserSettings = async () => {
       display.navPosition = cfg.navPosition || display.navPosition;
       display.themeDirection = cfg.themeDirection || display.themeDirection;
       display.primaryColor = cfg.primaryColor || display.primaryColor;
-      display.themeColor = cfg.themeColor || display.themeColor;
+      display.themeColor = sanitizeTheme(cfg.themeColor || display.themeColor);
       display.navbarSize = cfg.navbarSize || display.navbarSize;
       display.sidebarBackground = cfg.sidebarBackground ?? display.sidebarBackground;
       display.mainBackground = cfg.mainBackground ?? display.mainBackground;

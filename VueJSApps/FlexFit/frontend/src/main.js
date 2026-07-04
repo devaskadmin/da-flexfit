@@ -11,6 +11,7 @@ import '@/assets/vendor/css/material-icon.css'
 import 'vue-datepicker-next/index.css';
 import '@/assets/css/style.css'
 import '@/assets/css/mobile.css'
+import '@/assets/scss/default-dark.scss'
 // import '@/assets/scss/style.scss'
 
 import VueSweetalert2 from 'vue-sweetalert2';
@@ -33,6 +34,20 @@ import router from './router';
 axios.defaults.withCredentials = true;
 
 const app = createApp(App)
+
+const finalizeLaunchExperience = () => {
+	if (typeof document === 'undefined') return;
+
+	const appRoot = document.getElementById('app');
+
+	if (appRoot) {
+		requestAnimationFrame(() => {
+			appRoot.classList.add('wa-app-ready');
+		});
+	}
+
+	document.body.style.overflow = '';
+};
 
 const removeLegacyDebugArtifacts = () => {
 	if (typeof document === 'undefined') return;
@@ -74,3 +89,5 @@ app.use(VueSweetalert2);
 
 
 app.mount('#app', AOS.init());
+
+finalizeLaunchExperience();

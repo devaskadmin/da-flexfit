@@ -2,7 +2,7 @@
 import {computed, onMounted, onUnmounted, provide, ref, shallowRef, watch} from "vue";
 import {RouterView, useRoute} from 'vue-router';
 import {OverlayScrollbars} from "overlayscrollbars";
-import {currentActiveTheme} from "@/composable/manageThemeSetting.js";
+import {changeCurrentTheme, currentActiveTheme, sanitizeTheme, syncThemePreference} from "@/composable/manageThemeSetting.js";
 import {layoutDirection, setRtl, setLtr} from "@/composable/themeDirectionSetting";
 import {selectedStyleSheet, setStyleSheet} from "@/composable/primaryColorChangeSetting";
 import {useMainContentCurrentBG} from "@/composable/mainContentBackgroundSetting";
@@ -162,6 +162,22 @@ const closeSidebar = () => {
   isBodyOverflowHidden.value = false;
 };
 
+const applyBodyThemeClass = (themeValue) => {
+  const normalizedTheme = sanitizeTheme(themeValue);
+  const element = document.body;
+
+  if (normalizedTheme === 'light-theme') {
+    element.classList.remove('dark-theme');
+    element.classList.add('light-theme');
+  } else if (normalizedTheme === 'dark-theme') {
+    element.classList.add('dark-theme');
+    element.classList.remove('light-theme');
+  } else {
+    element.classList.remove('light-theme');
+    element.classList.remove('dark-theme');
+  }
+};
+
 const applyThemeConfig = (themeConfig = {}) => {
   if (!isAdmin.value) {
     closeSidebar()
@@ -170,8 +186,7 @@ const applyThemeConfig = (themeConfig = {}) => {
   if (!themeConfig || typeof themeConfig !== 'object') return;
 
   if (themeConfig.themeColor) {
-    localStorage.setItem('currentActiveTheme', themeConfig.themeColor);
-    currentActiveTheme.value = themeConfig.themeColor;
+    changeCurrentTheme(themeConfig.themeColor);
   }
 
   if (themeConfig.themeDirection === 'rtl') {
@@ -265,20 +280,6 @@ const onThemeSettingsUpdated = (event) => {
   applyThemeConfig(event?.detail || {});
 };
 
-const activeTheme = (() => {
-  let element = document.body
-  if(currentActiveTheme.value === 'light-theme') {
-    element.classList.remove('dark-theme')
-    element.classList.add('light-theme')
-  } else if (currentActiveTheme.value === 'dark-theme') {
-    element.classList.add('dark-theme')
-    element.classList.remove('light-theme')
-  } else {
-    element.classList.remove('light-theme')
-    element.classList.remove('dark-theme')
-  }
-})
-
 onMounted(() => {
   authStore.fetchUser()
 
@@ -298,8 +299,8 @@ onMounted(() => {
   if (isProtectedUiRoute()) {
     loadUserThemeSettings()
   }
-  // getCurrentTheme()
-  activeTheme()
+  currentActiveTheme.value = syncThemePreference();
+  applyBodyThemeClass(currentActiveTheme.value);
 
   if (layoutDirection.value === 'rtl') {
     setRtl();
@@ -333,17 +334,8 @@ watch(selectedStyleSheet, () => {
 })
 
 watch(currentActiveTheme, () => {
-  let element = document.body
-  if(currentActiveTheme.value === 'light-theme') {
-    element.classList.remove('dark-theme')
-    element.classList.add('light-theme')
-  } else if (currentActiveTheme.value === 'dark-theme') {
-    element.classList.add('dark-theme')
-    element.classList.remove('light-theme')
-  } else {
-    element.classList.remove('light-theme')
-    element.classList.remove('dark-theme')
-  }
+  currentActiveTheme.value = sanitizeTheme(currentActiveTheme.value);
+  applyBodyThemeClass(currentActiveTheme.value);
 })
 
 watch(isAdmin, (nextIsAdmin) => {
@@ -365,12 +357,18 @@ provide('app:layout', layout.value)
 </script>
 
 <template>
-  <div class="body-padding body-p-top"
-   :class="{
-    expanded: isExpandedBody, 'light-theme': currentActiveTheme === 'light-theme',  'dark-theme': currentActiveTheme === 'dark-theme', 'hover-menu': hoverableMenu,
-    'has-horizontal': layoutPosition === 'horizontal',
-    'has-two-column-menu has-fixed-sidebar': layoutPosition === 'twoColumn',
-  }"
+  <div
+    :class="[
+      isPartials ? 'body-padding body-p-top' : 'wa-guest-shell',
+      {
+        expanded: isPartials && isExpandedBody,
+        'light-theme': currentActiveTheme === 'light-theme',
+        'dark-theme': currentActiveTheme === 'dark-theme',
+        'hover-menu': isPartials && hoverableMenu,
+        'has-horizontal': isPartials && layoutPosition === 'horizontal',
+        'has-two-column-menu has-fixed-sidebar': isPartials && layoutPosition === 'twoColumn',
+      }
+    ]"
   >
     <!-- preloader start -->
     <transition name="fade" mode="out-in">
@@ -444,6 +442,164 @@ provide('app:layout', layout.value)
 
 .mx-calendar-header .mx-btn:hover i {
   color: #007bff !important;
+}
+
+body.wa-dashboard-active {
+  --wa-shell-bg: #080b10;
+  --wa-shell-bg-secondary: #0d1118;
+  --wa-shell-header: #0b1017;
+  --wa-shell-sidebar: #0a0f15;
+  --wa-shell-surface: #111821;
+  --wa-shell-surface-elevated: #17212d;
+  --wa-shell-surface-soft: #1c2734;
+  --wa-shell-border: rgba(255, 255, 255, 0.09);
+  --wa-shell-border-strong: rgba(255, 255, 255, 0.15);
+  --wa-shell-divider: rgba(255, 255, 255, 0.09);
+  --wa-shell-text: #f8fafc;
+  --wa-shell-text-secondary: #a5afbd;
+  --wa-shell-text-muted: #748094;
+  --wa-shell-accent: var(--main-color, #3b82f6);
+  --wa-shell-accent-soft: color-mix(in srgb, var(--wa-shell-accent) 12%, transparent 88%);
+  --wa-shell-accent-soft-strong: color-mix(in srgb, var(--wa-shell-accent) 20%, transparent 80%);
+  background: var(--wa-shell-bg) !important;
+}
+
+body.wa-dashboard-active,
+body.wa-dashboard-active #app,
+body.wa-dashboard-active .app,
+body.wa-dashboard-active .body-padding {
+  background: var(--wa-shell-bg) !important;
+  color: var(--wa-shell-text) !important;
+}
+
+body.wa-dashboard-active .main-content {
+  background: var(--wa-shell-bg-secondary) !important;
+}
+
+body.wa-dashboard-active .top-navbar {
+  background: var(--wa-shell-header) !important;
+  border-color: var(--wa-shell-divider) !important;
+}
+
+body.wa-dashboard-active .main-sidebar,
+body.wa-dashboard-active .main-sidebar::after {
+  background: var(--wa-shell-sidebar) !important;
+  border-color: var(--wa-shell-divider) !important;
+}
+
+body.wa-dashboard-active .main-sidebar .sidebar-link-group-title,
+body.wa-dashboard-active .main-sidebar .sidebar-link-group-title.sidebar-section-header,
+body.wa-dashboard-active .main-sidebar .sidebar-link-group-title.app-header-gradient {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-bottom-color: var(--wa-shell-divider) !important;
+}
+
+body.wa-dashboard-active .wa-date-picker-wrap .input-group.dashboard-filter,
+body.wa-dashboard-active .main-content .dashboard-filter {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+body.wa-dashboard-active .wa-date-picker-wrap .mx-input,
+body.wa-dashboard-active .wa-date-picker-wrap .mx-icon-calendar,
+body.wa-dashboard-active .wa-date-picker-wrap .mx-icon-clear {
+  background: var(--wa-shell-surface-elevated) !important;
+  border: 1px solid var(--wa-shell-border) !important;
+  color: var(--wa-shell-text) !important;
+}
+
+body.wa-dashboard-active .wa-date-picker-wrap .mx-input::placeholder {
+  color: var(--wa-shell-text-muted) !important;
+}
+
+body.wa-dashboard-active .mx-datepicker-main,
+body.wa-dashboard-active .mx-datepicker-sidebar,
+body.wa-dashboard-active .mx-datepicker-content {
+  background: var(--wa-shell-surface-elevated) !important;
+  border-color: var(--wa-shell-border) !important;
+  color: var(--wa-shell-text) !important;
+}
+
+body.wa-dashboard-active .mx-calendar-header .mx-btn-icon-left i,
+body.wa-dashboard-active .mx-calendar-header .mx-btn-icon-right i,
+body.wa-dashboard-active .mx-calendar-header .mx-btn-icon-double-left i,
+body.wa-dashboard-active .mx-calendar-header .mx-btn-icon-double-right i {
+  color: var(--wa-shell-text-muted) !important;
+}
+
+body.wa-dashboard-active .mx-calendar-header .mx-btn:hover i {
+  color: var(--wa-shell-accent) !important;
+}
+
+body.wa-dashboard-active .right-sidebar-btn button {
+  background: var(--wa-shell-surface-elevated) !important;
+  color: var(--wa-shell-accent) !important;
+  border: 1px solid var(--wa-shell-border) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.wa-dashboard-active .right-sidebar-btn button:hover {
+  background: color-mix(in srgb, var(--wa-shell-surface-elevated) 82%, var(--wa-shell-accent-soft) 18%) !important;
+}
+
+/* ── WorkoutAtlas layout cleanup ─────────────────────────── */
+
+/* Settings gear: pull 12px inward so it never covers the scrollbar */
+.right-sidebar-btn {
+  right: 12px !important;
+}
+.right-sidebar-btn button {
+  border-radius: 6px !important;
+}
+
+/* Sidebar right border — separates sidebar from content area */
+.main-sidebar {
+  border-right: 1px solid var(--wa-shell-divider, rgba(255, 255, 255, 0.09)) !important;
+}
+
+/* Add breathing room between sidebar and dashboard on desktop */
+@media (min-width: 992px) {
+  .body-padding .main-content {
+    padding-left: 36px !important;
+    padding-right: 28px !important;
+  }
+}
+
+/* ── Dark sidebar: override light-theme global rules ─────── */
+/* style.css sets light-theme sidebar to #fff — cancel that */
+.light-theme .main-sidebar,
+.light-theme .main-sidebar::after,
+.dark-theme .main-sidebar,
+.dark-theme .main-sidebar::after {
+  background-color: var(--wa-shell-sidebar, #0a0f15) !important;
+  background: var(--wa-shell-sidebar, #0a0f15) !important;
+}
+
+/* Collapsed two-column dropdown panel (light-theme sets bg: #fff, #f5f5f5) */
+.light-theme .collapsed .sidebar-dropdown-menu,
+.light-theme .collapsed .sidebar-item .sidebar-link.has-sub.show {
+  background: var(--wa-shell-surface-elevated, #17212d) !important;
+}
+.light-theme .collapsed .sidebar-item .sidebar-link.has-sub.show .nav-icon {
+  color: var(--wa-shell-text-secondary, #a5afbd) !important;
+}
+
+/* Section header gradient variable — overridden to dark surface */
+.main-sidebar .sidebar-link-group-title.sidebar-section-header {
+  --ff-page-header-gradient: transparent !important;
+  --ff-page-header-bg: rgba(255, 255, 255, 0.04) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  background-image: none !important;
+  color: var(--wa-shell-text-muted, #748094) !important;
+}
+
+/* Light-theme link colors — keep dark */
+.light-theme .sidebar-item .sidebar-link .nav-icon,
+.light-theme .sidebar-item .sidebar-dropdown-item .sidebar-link {
+  color: var(--wa-shell-text-secondary, #a5afbd) !important;
+}
+.light-theme .sidebar-link-group-title {
+  color: var(--wa-shell-text-muted, #748094) !important;
 }
 </style>
 

@@ -11,7 +11,7 @@
         <td>
           <div class="mail-header">
             <div class="logo">
-              <a href="https://html.digiboard.codebasket.xyz/" target="_blank"><img src="@/assets/images/logo-black.png" alt="Logo"></a>
+              <a href="/"><img src="@/assets/images/logo-big.png" alt="WorkoutAtlas"></a>
             </div>
           </div>
         </td>
@@ -25,7 +25,7 @@
       </tr>
       <tr>
         <td>
-          <h2 class="mail-title">Welcome To Digiboard</h2>
+          <h2 class="mail-title">Welcome To WorkoutAtlas</h2>
         </td>
       </tr>
       <tr>

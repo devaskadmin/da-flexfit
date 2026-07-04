@@ -27,6 +27,9 @@ const DEFAULT_FRONTEND_ORIGINS = [
   'https://workoutatlas.com',
   'https://www.workoutatlas.com',
   'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
 ];
 const allowedOrigins = new Set(
   [...DEFAULT_FRONTEND_ORIGINS, CLIENT_ORIGIN, FRONTEND_URL, ...CORS_ORIGINS].filter(Boolean)
@@ -220,6 +223,11 @@ app.use('/api/progress', require('./api/progress.js')); // 📊 v0.82 Progress S
 app.use('/api', require('./api/dashboard.js')); // 📊 v0.82.20 Dashboard Live Metrics
 app.use('/api', toolsRoutes); // 🧰 v0.83.5 Tools diagnostics
 app.use('/api', mediaRoutes); // 🖼️ v0.83.7 media resolver
+
+// Lightweight health route for local/API reachability checks.
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
 
 // ✅ Global JSON error handler — MUST be registered after all routes.
 // Catches express-session store failures (which call next(err) before any route

@@ -5,14 +5,9 @@ export const sidebarMenus = ref([
         menu_name: 'sidebar.dashboard',
         menus: [
             {
-                name: 'Home',
+                name: 'Dashboard',
                 link_name: 'dashboard_index',
                 icon: 'fa-solid fa-house'              
-            },
-            {
-                name: 'Workout Builder',
-                link_name: 'workout_builder',
-                icon: 'fa-solid fa-dumbbell'
             },
             {
                 name: 'Workout Log',
@@ -21,7 +16,12 @@ export const sidebarMenus = ref([
                 requiresWorkoutLists: true
             },
             {
-                name: 'Exercises Database',
+                name: 'Workout Builder',
+                link_name: 'workout_builder',
+                icon: 'fa-solid fa-dumbbell'
+            },
+            {
+                name: 'Exercise Database',
                 link_name: 'exercises',
                 icon: 'fa-solid fa-database'
             },
@@ -29,6 +29,11 @@ export const sidebarMenus = ref([
                 name: 'Nutrition',
                 link_name: 'Nutrition',
                 icon: 'fa-solid fa-utensils'
+            },
+            {
+                name: 'Progress',
+                link_name: 'progress_stats',
+                icon: 'fa-solid fa-chart-line'
             },
             {
                 name: 'Settings',
@@ -47,8 +52,13 @@ export const sidebarMenus = ref([
         menus: [
             {
                 name: 'Chat with Trainer',
-                link_name: 'dashboard_index',
+                link_name: 'chat',
                 icon: 'fa-regular fa-message'
+            },
+            {
+                name: 'Scheduling',
+                link_name: 'calendar',
+                icon: 'fa-light fa-calendar'
             },
         ]
     },
@@ -90,6 +100,11 @@ export const sidebarMenus = ref([
                 name: 'Tools',
                 link_name: 'admin_tools',
                 icon: 'fa-solid fa-toolbox'
+            },
+            {
+                name: 'Chat',
+                link_name: 'chat',
+                icon: 'fa-solid fa-comments'
             },
         ]
     },
