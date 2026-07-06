@@ -41,15 +41,11 @@ router.beforeEach(async (to, from, next) => {
   }
 
   try {
-    const [sessionResult, dbStatusResult] = await Promise.allSettled([
-      axios.get(`${API_BASE}/api/session`, { withCredentials: true }),
-      axios.get(`${API_BASE}/api/db-status`, { withCredentials: true }),
-    ]);
+    const sessionResult = await axios.get(`${API_BASE}/api/session`, { withCredentials: true });
 
-    const isLoggedIn = sessionResult.status === 'fulfilled' && sessionResult.value?.data?.loggedIn === true;
-    const requiresPasswordReset = sessionResult.status === 'fulfilled' && sessionResult.value?.data?.requiresPasswordReset === true;
-    const isDatabaseConnected = dbStatusResult.status === 'fulfilled' && dbStatusResult.value?.data?.connected === true;
-    const sessionUser = sessionResult.status === 'fulfilled' ? sessionResult.value?.data?.user : null;
+    const isLoggedIn = sessionResult?.data?.loggedIn === true;
+    const requiresPasswordReset = sessionResult?.data?.requiresPasswordReset === true;
+    const sessionUser = sessionResult?.data?.user || null;
     const storedUser = safeParseStoredUser();
 
     const resolvedRoleSlug = normalizeRoleSlug(
@@ -66,11 +62,8 @@ router.beforeEach(async (to, from, next) => {
     );
 
     // Enforce login-first UX for protected routes.
+    // Never block access to login because health checks can fail while auth is still recoverable.
     if (!isLoggedIn) {
-      // If backend/database cannot be validated and user is not logged in, fail closed.
-      if (!isDatabaseConnected) {
-        return next({ name: 'error_404' });
-      }
       return next({ name: 'login' });
     }
 
@@ -91,7 +84,7 @@ router.beforeEach(async (to, from, next) => {
     next(); // Allow navigation for valid authenticated session
   } catch (error) {
     console.error("Session check error:", error);
-    next({ name: 'error_404' });
+    next({ name: 'login' });
   }
 });
 
