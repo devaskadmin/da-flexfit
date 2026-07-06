@@ -565,10 +565,16 @@ onUnmounted(() => {
 }
 
 .wa-greeting-row {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 24px;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--wa-panel-bg, #1B2444);
+  border: 1px solid var(--wa-border, rgba(145, 160, 200, 0.24));
+  border-radius: 16px;
+  padding: 18px 20px;
 }
 
 .wa-greeting {
@@ -583,25 +589,63 @@ onUnmounted(() => {
 
 .wa-greeting h1 {
   margin: 1px 0 0;
+  color: var(--wa-text-primary, #F7F9FF);
   font-size: 30px;
   line-height: 1.1;
 }
 
 .wa-streak {
   margin: 4px 0 0;
-  color: var(--wa-text-secondary);
+  color: var(--wa-text-secondary, #c7d3ee);
   font-size: 14px;
   font-weight: 600;
 }
 
 .wa-date-picker-wrap {
-  width: min(430px, 100%);
+  justify-self: end;
+  width: clamp(320px, 31vw, 460px);
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
+.wa-date-picker-wrap > * {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.wa-date-picker-wrap :deep(.input-group.dashboard-filter) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  justify-content: flex-end !important;
+}
+
+.wa-date-picker-wrap :deep(.full-datepicker),
+.wa-date-picker-wrap :deep(.mx-datepicker),
+.wa-date-picker-wrap :deep(.mx-input-wrapper),
+.wa-date-picker-wrap :deep(.mx-input),
 .wa-date-picker-wrap :deep(.date-picker-wrapper),
 .wa-date-picker-wrap :deep(.date-range-picker),
 .wa-date-picker-wrap :deep(.DateRangePicker) {
-  width: 100%;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+.wa-date-picker-wrap :deep(.mx-input),
+.wa-date-picker-wrap :deep(.mx-icon-calendar),
+.wa-date-picker-wrap :deep(.mx-icon-clear) {
+  background: var(--wa-control-bg, #252E48) !important;
+  border: 1px solid var(--wa-border, rgba(145, 160, 200, 0.24)) !important;
+  color: var(--wa-text-primary, #F7F9FF) !important;
+}
+
+.wa-date-picker-wrap :deep(.mx-icon-calendar),
+.wa-date-picker-wrap :deep(.mx-icon-clear) {
+  color: var(--wa-text-secondary, #c7d3ee) !important;
 }
 
 .wa-hero-card,
@@ -1075,7 +1119,6 @@ onUnmounted(() => {
   }
 
   .wa-greeting-row {
-    display: grid;
     grid-template-columns: 1fr;
     gap: 10px;
   }
@@ -1085,7 +1128,19 @@ onUnmounted(() => {
   }
 
   .wa-date-picker-wrap {
+    justify-self: stretch;
     width: 100%;
+    max-width: none;
+  }
+
+  .wa-date-picker-wrap :deep(.input-group.dashboard-filter) {
+    width: 100%;
+    justify-content: flex-start !important;
+  }
+
+  .wa-date-picker-wrap :deep(.full-datepicker) {
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
   .wa-hero-card,
