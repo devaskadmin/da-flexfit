@@ -445,22 +445,22 @@ provide('app:layout', layout.value)
 }
 
 body.wa-dashboard-active {
-  --wa-shell-bg: #080b10;
-  --wa-shell-bg-secondary: #0d1118;
-  --wa-shell-header: #0b1017;
-  --wa-shell-sidebar: #0a0f15;
-  --wa-shell-surface: #111821;
-  --wa-shell-surface-elevated: #17212d;
-  --wa-shell-surface-soft: #1c2734;
-  --wa-shell-border: rgba(255, 255, 255, 0.09);
-  --wa-shell-border-strong: rgba(255, 255, 255, 0.15);
-  --wa-shell-divider: rgba(255, 255, 255, 0.09);
-  --wa-shell-text: #f8fafc;
-  --wa-shell-text-secondary: #a5afbd;
-  --wa-shell-text-muted: #748094;
-  --wa-shell-accent: var(--main-color, #3b82f6);
-  --wa-shell-accent-soft: color-mix(in srgb, var(--wa-shell-accent) 12%, transparent 88%);
-  --wa-shell-accent-soft-strong: color-mix(in srgb, var(--wa-shell-accent) 20%, transparent 80%);
+  --wa-shell-bg: var(--wa-page-bg);
+  --wa-shell-bg-secondary: var(--wa-page-bg);
+  --wa-shell-header: var(--wa-topbar-bg);
+  --wa-shell-sidebar: var(--wa-sidebar-bg);
+  --wa-shell-surface: var(--wa-panel-bg);
+  --wa-shell-surface-elevated: var(--wa-card-bg);
+  --wa-shell-surface-soft: var(--wa-control-bg);
+  --wa-shell-border: var(--wa-border);
+  --wa-shell-border-strong: var(--wa-border-strong);
+  --wa-shell-divider: var(--wa-border);
+  --wa-shell-text: var(--wa-text-primary);
+  --wa-shell-text-secondary: var(--wa-text-secondary);
+  --wa-shell-text-muted: var(--wa-text-muted);
+  --wa-shell-accent: var(--wa-action-blue);
+  --wa-shell-accent-soft: color-mix(in srgb, var(--wa-shell-accent) 14%, transparent 86%);
+  --wa-shell-accent-soft-strong: color-mix(in srgb, var(--wa-shell-accent) 22%, transparent 78%);
   background: var(--wa-shell-bg) !important;
 }
 

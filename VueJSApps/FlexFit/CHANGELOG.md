@@ -1,5 +1,67 @@
 # Changelog
 
+## [0.84.42] - 2026-07-04 - Global Muted Navy Theme
+
+- Centralized the shared WorkoutAtlas palette in the loaded global stylesheet and aligned the dark-theme/app-shell aliases to the same muted navy token set.
+- Updated the shared top bar, sidebar, page background, panels, nested cards, controls, buttons, popups, and form surfaces to the requested black/navy/indigo hierarchy.
+- Preserved role-based navigation, routes, and component behavior while replacing the older saturated blue palette with a unified muted navy foundation.
+- Updated application version references from 0.84.41 to 0.84.42 in package metadata and the login fallback string.
+
+## [0.84.41] - 2026-07-04 - Global Navy Theme Foundation
+
+- Established the shared WorkoutAtlas navy theme foundation with the requested shell, page, panel, card, and control color tokens.
+- Updated the shared button foundation for primary, success, danger, warning, and neutral controls to use the new navy palette and hover states.
+- Updated the shared form-control foundation for inputs, selects, textareas, and input-group text to use dark navy surfaces, white text, and navy focus borders.
+- Updated shared shell chrome for the top header and sidebar to the new black and navy hierarchy without changing layout or behavior.
+- Updated application version references from 0.84.39 to 0.84.41 in package metadata and the login fallback string.
+
+## [0.84.39] - 2026-07-04 - View Profile Dark Theme Color Correction
+
+- Verified active View Profile route (`/view-profile`) resolves to `frontend/src/views/template/pages/user/ViewProfile.vue` and updated the active page with scoped dark-theme color corrections.
+- Replaced bright header treatment with a dark navy gradient card, muted subtitle text, slate border, and deeper shadow.
+- Converted Athlete Profile, Goals and Progress, Recent Workouts, and Activity History cards from white surfaces to dark navy cards with subtle slate borders.
+- Updated row containers, dividers, metadata text, and headings for high dark-theme contrast and readable hierarchy.
+- Restyled profile menu button, dropdown menu, avatar/frame surfaces, social icon chips, and camera badge to dark controls with blue accent behavior.
+- Converted goal status badges to dark translucent accent variants (blue, green, orange) and preserved existing status strings and ordering.
+- Updated project version references from 0.84.38 to 0.84.39 in frontend/backend package metadata, lock metadata, fallback app version string, and maintained 0.84.x annotation comments.
+
+## [0.84.38] - 2026-07-04 - Account Settings Color Correction
+
+- Verified active Settings route (`/settings`) points to `frontend/src/views/Member/UserSettings.vue` and applied scoped color corrections to the existing component.
+- Replaced bright/medium-blue Account Settings surfaces with dark navy and near-black panel styling while preserving the existing layout and interactions.
+- Updated settings header, side navigation active/inactive states, main panel, profile header text, and section cards to improve dark-theme consistency and contrast.
+- Corrected form controls, date input indicator, and username input-group colors to dark surfaces with slate borders and readable text/placeholder contrast.
+- Kept Save Changes as the primary blue action and retained orange membership badge styling.
+- Added dark-mode mobile nav/dropdown refinements and mobile form control sizing for better usability at small widths.
+- Updated project version references from 0.84.37 to 0.84.38 in frontend/backend package metadata, lock metadata, fallback app version string, and maintained 0.84.x annotation comments.
+
+## [0.84.37] - 2026-07-04 - Progress Analytics Dark Theme CSS Update
+
+- Verified active Progress route (`/progress`) points to `frontend/src/views/Member/ProgressStats.vue` and updated the active page with scoped dark-theme normalization only.
+- Replaced bright header treatment with a dark navy gradient card, slate border, and improved white/muted heading contrast while preserving date-range behavior.
+- Converted Progress Filters and Secondary Metric (Y2) areas from light gray to dark nested panels with retained blue and purple accents.
+- Updated filter selects, reset control, group toggles, chart-type controls, and focus states to dark surfaces with readable contrast and consistent dark-theme tokens.
+- Converted chart container, summary widgets, lower analytics cards, and empty states to dark navy surfaces with subtle borders and readable labels/values.
+- Added scoped ApexCharts visual overrides for dark grid/label/tooltip readability without changing chart logic or data loading behavior.
+- Added mobile guardrails for control usability, including 44px target sizing and 16px form-control font sizing on small screens.
+- Updated project version references from 0.84.36 to 0.84.37 in frontend/backend package metadata, lock metadata, fallback app version string, and maintained 0.84.x annotation comments.
+
+## [0.84.36] - 2026-07-04 - Nutrition Workspace Dark Theme CSS Update
+
+- Updated active Nutrition route page (`/Nutrition`) to a scoped dark navy visual theme to match corrected Workout Log, Workout Builder, and Exercise Database pages.
+- Replaced bright header treatment with dark navy gradient card styling while preserving existing Nutrition Workspace functionality and data bindings.
+- Converted Nutrition macro summary cards (Calories, Protein, Carbs, Fat) to dark nested cards with improved contrast and retained nutrient accent indicators.
+- Updated Nutrition date selector visuals to dark surfaces, muted icon treatment, improved focus state, and mobile-safe input sizing.
+- Converted compact macro total row, Food Search container, accordion headers, and expanded content containers to consistent dark surfaces and slate borders.
+- Applied dark styling for Nutrition search input, category/brand filters, and form controls with readable placeholder and focus states.
+- Kept Search Foods as primary blue action styling and preserved button behavior.
+- Updated Nutrition child card/list components through scoped variable inheritance and targeted deep selectors so entries/favorites/custom-food content remains dark in expanded views.
+- Improved contrast for headings, labels, metadata, empty/loading messages, and action states without changing Vue logic or API behavior.
+- Preserved existing footer dark treatment and shell token alignment.
+- Updated project version references from `0.84.35` to `0.84.36` in frontend/backend package metadata, lock metadata, and fallback app version string.
+
+---
+
 ## [0.82.42] - 2026-05-27 - SQL Architecture Cleanup & Migration Organization
 
 - Refactored entire `backend/migrations/` folder into a categorized subfolder structure for maintainability and multi-developer safety.

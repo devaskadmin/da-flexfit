@@ -2590,6 +2590,169 @@ textarea {
   line-height: 1;
 }
 
+/* -- 0.84.39 Exercise Database dark-theme normalization (scoped) ---------- */
+.exercises-page {
+  --ex-surface-1: var(--wa-shell-surface, #121923);
+  --ex-surface-2: var(--wa-shell-surface-elevated, #17212d);
+  --ex-surface-3: var(--wa-shell-surface-soft, #1d2a38);
+  --ex-border: var(--wa-shell-border, rgba(120, 145, 175, 0.16));
+  --ex-border-strong: var(--wa-shell-border-strong, rgba(120, 145, 175, 0.24));
+  --ex-text: var(--wa-shell-text, #f8fafc);
+  --ex-text-secondary: var(--wa-shell-text-secondary, #a4b0c0);
+  --ex-text-muted: var(--wa-shell-text-muted, #738196);
+  --ex-accent: var(--wa-shell-accent, var(--main-color, #3b82f6));
+}
+
+.exercises-page .builder-hero.ff-page-header.app-header-gradient {
+  background: linear-gradient(135deg, rgba(15, 25, 39, 0.98), rgba(20, 31, 47, 0.95)) !important;
+  border: 1px solid var(--ex-border);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+}
+
+.exercises-page .ex-page-body,
+.exercises-page .tab-content,
+.exercises-page .panel,
+.exercises-page .search-filter-card,
+.exercises-page .exercise-row,
+.exercises-page .exercise-card,
+.exercises-page .edit-exercise-panel,
+.exercises-page .list-group-item,
+.exercises-page .filter-accordion-toggle {
+  background: var(--ex-surface-1);
+  border-color: var(--ex-border);
+  color: var(--ex-text);
+}
+
+.exercises-page .exercise-row:hover,
+.exercises-page .exercise-row--active,
+.exercises-page .search-filter-field .form-control,
+.exercises-page .search-filter-field .form-select,
+.exercises-page .edit-exercise-panel .form-control,
+.exercises-page .edit-exercise-panel .form-select,
+.exercises-page .filter-accordion-toggle,
+.exercises-page .ex-tab--active,
+.exercises-page .btn-fav {
+  background: var(--ex-surface-2);
+  border-color: var(--ex-border-strong);
+}
+
+.exercises-page .panel-header h4,
+.exercises-page .exercise-title,
+.exercises-page .results-title,
+.exercises-page .pagination-info,
+.exercises-page .logged-exercise-title,
+.exercises-page .workout-log-summary,
+.exercises-page .ex-tab--active {
+  color: var(--ex-text);
+}
+
+.exercises-page .exercise-meta p,
+.exercises-page .exercise-meta-inline,
+.exercises-page .results-count,
+.exercises-page .search-filter-field .form-label,
+.exercises-page .edit-exercise-panel .form-label,
+.exercises-page .header-meta,
+.exercises-page .pagination-info,
+.exercises-page .filter-accordion-toggle i,
+.exercises-page .tab-label-full,
+.exercises-page .tab-label-short,
+.exercises-page .ex-tab {
+  color: var(--ex-text-secondary);
+}
+
+.exercises-page .meta-dot {
+  color: var(--ex-text-muted);
+}
+
+.exercises-page .ex-tab-bar {
+  background: var(--ex-surface-2);
+  border-bottom: 1px solid var(--ex-border);
+}
+
+.exercises-page .ex-tab:hover {
+  color: var(--ex-text);
+  background: var(--ex-surface-3);
+}
+
+.exercises-page .ex-tab::after {
+  background: var(--ex-accent);
+}
+
+.exercises-page .search-filter-field .form-control,
+.exercises-page .search-filter-field .form-select,
+.exercises-page .edit-exercise-panel .form-control,
+.exercises-page .edit-exercise-panel .form-select,
+.exercises-page textarea,
+.exercises-page input[type="number"] {
+  color: var(--ex-text);
+}
+
+.exercises-page .search-filter-field .form-control::placeholder,
+.exercises-page textarea::placeholder {
+  color: var(--ex-text-muted);
+}
+
+.exercises-page .search-filter-field .form-control:focus,
+.exercises-page .search-filter-field .form-select:focus,
+.exercises-page .edit-exercise-panel .form-control:focus,
+.exercises-page .edit-exercise-panel .form-select:focus {
+  border-color: color-mix(in srgb, var(--ex-accent) 60%, var(--ex-border) 40%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ex-accent) 24%, transparent 76%);
+}
+
+.exercises-page .btn-fav {
+  color: var(--ex-text-secondary);
+}
+
+.exercises-page .btn-fav:hover {
+  background: var(--ex-surface-3);
+  color: var(--ex-text);
+}
+
+.exercises-page .btn-fav--active {
+  background: color-mix(in srgb, #dc2626 20%, var(--ex-surface-2) 80%);
+  border-color: color-mix(in srgb, #dc2626 40%, var(--ex-border) 60%);
+  color: #fecaca;
+}
+
+.exercises-page .list-group-item,
+.exercises-page .results-header-row,
+.exercises-page .search-filter-card,
+.exercises-page .tab-content,
+.exercises-page .tab-content .panel,
+.exercises-page .edit-exercise-panel .panel-header {
+  border-color: var(--ex-border);
+}
+
+.exercises-page .summary-img,
+.exercises-page .exercise-img img,
+.exercises-page .exercise-card .exercise-image img {
+  border: 1px solid var(--ex-border-strong);
+}
+
+.exercises-page .btn-outline-secondary,
+.exercises-page .btn-outline-dark,
+.exercises-page .btn-secondary {
+  color: var(--ex-text-secondary);
+  border-color: var(--ex-border-strong);
+  background: var(--ex-surface-2);
+}
+
+.exercises-page .btn-outline-secondary:hover,
+.exercises-page .btn-outline-dark:hover,
+.exercises-page .btn-secondary:hover {
+  color: var(--ex-text);
+  background: var(--ex-surface-3);
+  border-color: var(--ex-border-strong);
+}
+
+.exercises-page .pagination-info,
+.exercises-page .form-check-label,
+.exercises-page .sel-ex-input,
+.exercises-page .panel-body {
+  color: var(--ex-text-secondary);
+}
+
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    RESPONSIVE â€“ 991px
 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */

@@ -2501,6 +2501,346 @@ watch(
   opacity: 0.55;
 }
 
+/* ── 0.84.39 Workout Builder dark-theme normalization (scoped) ─────────── */
+.workout-builder-page {
+  --wb-surface-1: var(--wa-shell-surface, #121923);
+  --wb-surface-2: var(--wa-shell-surface-elevated, #17212d);
+  --wb-surface-3: var(--wa-shell-surface-soft, #1d2a38);
+  --wb-border: var(--wa-shell-border, rgba(120, 145, 175, 0.16));
+  --wb-border-strong: var(--wa-shell-border-strong, rgba(120, 145, 175, 0.24));
+  --wb-text: var(--wa-shell-text, #f8fafc);
+  --wb-text-secondary: var(--wa-shell-text-secondary, #a4b0c0);
+  --wb-text-muted: var(--wa-shell-text-muted, #738196);
+  --wb-accent: var(--wa-shell-accent, var(--main-color, #3b82f6));
+}
+
+.workout-builder-page .builder-hero.ff-page-header.app-header-gradient {
+  background: linear-gradient(135deg, rgba(15, 25, 39, 0.98), rgba(20, 31, 47, 0.95)) !important;
+  border: 1px solid var(--wb-border);
+  border-radius: 18px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+}
+
+.workout-builder-page .builder-hero h2,
+.workout-builder-page .builder-section__head h3,
+.workout-builder-page .planner-heading-group h3,
+.workout-builder-page .day-title-group strong,
+.workout-builder-page .collapsible-header__text strong {
+  color: var(--wb-text);
+}
+
+.workout-builder-page .builder-hero p,
+.workout-builder-page .builder-section__head p,
+.workout-builder-page .planner-heading-group p,
+.workout-builder-page .exercise-count,
+.workout-builder-page .collapsible-header__text small {
+  color: var(--wb-text-secondary);
+}
+
+.workout-builder-page .builder-hero__stats div {
+  background: rgba(15, 23, 35, 0.74);
+  border: 1px solid var(--wb-border);
+}
+
+.workout-builder-page .builder-hero__stats strong {
+  color: var(--wb-text);
+}
+
+.workout-builder-page .builder-hero__stats span {
+  color: var(--wb-text-secondary);
+}
+
+.workout-builder-page .builder-tabs {
+  background: var(--wb-surface-1);
+  border-color: var(--wb-border);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.workout-builder-page .builder-tab {
+  color: var(--wb-text-muted);
+}
+
+.workout-builder-page .builder-tab:hover:not(:disabled) {
+  background: var(--wb-surface-2);
+  color: var(--wb-text);
+}
+
+.workout-builder-page .builder-tab--active {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--wb-accent) 85%, #1e40af 15%), color-mix(in srgb, var(--wb-accent) 70%, #1d4ed8 30%));
+  color: #ffffff;
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.28);
+}
+
+.workout-builder-page .builder-tab:disabled {
+  opacity: 0.5;
+}
+
+.workout-builder-page .builder-section,
+.workout-builder-page .planner-section,
+.workout-builder-page .collapsible-panel,
+.workout-builder-page .builder-footer,
+.workout-builder-page .planner-empty,
+.workout-builder-page .builder-empty,
+.workout-builder-page .schedule-hub-empty,
+.workout-builder-page .workout-day-card,
+.workout-builder-page .workout-day-panel,
+.workout-builder-page .collapsible-header,
+.workout-builder-page .planner-mode-toggle,
+.workout-builder-page .planner-group-editor input,
+.workout-builder-page .planner-helper-text,
+.workout-builder-page .delete-modal {
+  background: var(--wb-surface-1);
+  border-color: var(--wb-border);
+  color: var(--wb-text);
+}
+
+.workout-builder-page .collapsible-header,
+.workout-builder-page .planner-mode-toggle,
+.workout-builder-page .workout-day-card.active,
+.workout-builder-page .workout-day-header:hover,
+.workout-builder-page .planner-helper-text,
+.workout-builder-page .builder-footer {
+  background: var(--wb-surface-2);
+}
+
+.workout-builder-page .planner-empty__icon,
+.workout-builder-page .collapsible-header__icon,
+.workout-builder-page .chevron-btn {
+  background: var(--wb-surface-3);
+  border-color: var(--wb-border);
+  color: var(--wb-text-secondary);
+}
+
+.workout-builder-page .planner-empty h4,
+.workout-builder-page .save-message,
+.workout-builder-page .planner-group-editor input,
+.workout-builder-page .planner-mode-btn,
+.workout-builder-page .planner-group-add,
+.workout-builder-page .planner-group-save,
+.workout-builder-page .planner-helper-text,
+.workout-builder-page .empty-day-state p,
+.workout-builder-page .modal-btn--cancel,
+.workout-builder-page .delete-modal__body p,
+.workout-builder-page .delete-modal__body strong,
+.workout-builder-page .delete-modal__header h3 {
+  color: var(--wb-text);
+}
+
+.workout-builder-page .planner-empty p,
+.workout-builder-page .planner-feedback,
+.workout-builder-page .exercise-count {
+  color: var(--wb-text-secondary);
+}
+
+.workout-builder-page .planner-feedback--error,
+.workout-builder-page .save-message.err {
+  color: #fca5a5;
+}
+
+.workout-builder-page .save-message.ok {
+  color: #86efac;
+}
+
+.workout-builder-page .btn-create-plan,
+.workout-builder-page .btn-save {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  border-color: #1d4ed8;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+}
+
+.workout-builder-page .btn-create-plan:hover,
+.workout-builder-page .btn-save:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+}
+
+.workout-builder-page .btn-ai-suggest {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  border-color: #b91c1c;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(220, 38, 38, 0.22);
+}
+
+.workout-builder-page .btn-ai-suggest:hover {
+  background: linear-gradient(135deg, #b91c1c, #991b1b);
+}
+
+.workout-builder-page .day-action-btn--move,
+.workout-builder-page .day-action-btn--reset,
+.workout-builder-page .day-action-btn--select,
+.workout-builder-page .planner-mode-btn,
+.workout-builder-page .modal-btn--cancel,
+.workout-builder-page .day-kebab-btn,
+.workout-builder-page .day-kebab-menu,
+.workout-builder-page .day-kebab-item,
+.workout-builder-page .chevron-btn {
+  background: var(--wb-surface-2);
+  border-color: var(--wb-border);
+  color: var(--wb-text-secondary);
+}
+
+.workout-builder-page .day-action-btn--move:hover:not(:disabled),
+.workout-builder-page .day-action-btn--reset:hover:not(:disabled),
+.workout-builder-page .day-action-btn--select:hover,
+.workout-builder-page .modal-btn--cancel:hover,
+.workout-builder-page .day-kebab-btn:hover,
+.workout-builder-page .day-kebab-item:hover,
+.workout-builder-page .chevron-btn:hover {
+  background: var(--wb-surface-3);
+  color: var(--wb-text);
+}
+
+.workout-builder-page .planner-mode-btn.active,
+.workout-builder-page .day-action-btn--selected,
+.workout-builder-page .selected-badge {
+  background: color-mix(in srgb, var(--wb-accent) 24%, transparent 76%);
+  border-color: color-mix(in srgb, var(--wb-accent) 50%, transparent 50%);
+  color: color-mix(in srgb, var(--wb-accent) 78%, #ffffff 22%);
+}
+
+.workout-builder-page .day-action-btn--edit {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+
+.workout-builder-page .day-action-btn--edit:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+}
+
+.workout-builder-page .day-action-btn--delete,
+.workout-builder-page .day-kebab-item--delete,
+.workout-builder-page .modal-btn--delete {
+  background: rgba(127, 29, 29, 0.2);
+  border-color: rgba(248, 113, 113, 0.55);
+  color: #fca5a5;
+}
+
+.workout-builder-page .day-action-btn--delete:hover:not(:disabled),
+.workout-builder-page .day-kebab-item--delete:hover,
+.workout-builder-page .modal-btn--delete:hover {
+  background: rgba(127, 29, 29, 0.3);
+  color: #fecaca;
+}
+
+.workout-builder-page .delete-modal__header,
+.workout-builder-page .delete-modal__actions,
+.workout-builder-page .workout-day-panel,
+.workout-builder-page .delete-modal {
+  border-color: var(--wb-border);
+}
+
+.workout-builder-page .empty-day-state {
+  background: var(--wb-surface-2);
+  border-color: var(--wb-border-strong);
+}
+
+.workout-builder-page .workout-day-card.active {
+  border-color: rgba(74, 222, 128, 0.45);
+  box-shadow: 0 8px 18px rgba(34, 197, 94, 0.12);
+}
+
+.workout-builder-page :deep(.schedule-card),
+.workout-builder-page :deep(.planner-card),
+.workout-builder-page :deep(.exercise-block),
+.workout-builder-page :deep(.workout-goal-panel),
+.workout-builder-page :deep(.workout-goal-panel__header),
+.workout-builder-page :deep(.workout-goal-panel__icon),
+.workout-builder-page :deep(.exercise-block__actions button),
+.workout-builder-page :deep(.exercise-block__fields input),
+.workout-builder-page :deep(.exercise-block__fields select),
+.workout-builder-page :deep(.builder-field input),
+.workout-builder-page :deep(.builder-field select),
+.workout-builder-page :deep(.builder-field textarea),
+.workout-builder-page :deep(.schedule-btn--ghost),
+.workout-builder-page :deep(.schedule-btn--danger) {
+  background: var(--wb-surface-2);
+  border-color: var(--wb-border);
+  color: var(--wb-text-secondary);
+}
+
+.workout-builder-page :deep(.schedule-card.selected) {
+  border-color: color-mix(in srgb, var(--wb-accent) 60%, var(--wb-border) 40%);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--wb-accent) 20%, transparent 80%);
+}
+
+.workout-builder-page :deep(.schedule-card__title-row h4),
+.workout-builder-page :deep(.exercise-block__identity h4),
+.workout-builder-page :deep(.builder-field span),
+.workout-builder-page :deep(.workout-goal-panel__title),
+.workout-builder-page :deep(.schedule-card__meta strong),
+.workout-builder-page :deep(.exercise-block__fields span) {
+  color: var(--wb-text);
+}
+
+.workout-builder-page :deep(.schedule-card__meta),
+.workout-builder-page :deep(.exercise-block__identity p),
+.workout-builder-page :deep(.workout-goal-panel__title-icon),
+.workout-builder-page :deep(.workout-goal-panel__icon),
+.workout-builder-page :deep(.exercise-block__badge),
+.workout-builder-page :deep(.type-badge--other) {
+  color: var(--wb-text-secondary);
+}
+
+.workout-builder-page :deep(.exercise-block__identity img) {
+  border-color: var(--wb-border);
+  background: var(--wb-surface-3);
+}
+
+.workout-builder-page :deep(.schedule-btn--ghost) {
+  color: var(--wb-text);
+}
+
+.workout-builder-page :deep(.schedule-btn--ghost:hover) {
+  background: var(--wb-surface-3);
+}
+
+.workout-builder-page :deep(.schedule-btn--primary) {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+
+.workout-builder-page :deep(.schedule-btn--danger) {
+  background: rgba(127, 29, 29, 0.2);
+  border-color: rgba(248, 113, 113, 0.55);
+  color: #fca5a5;
+}
+
+.workout-builder-page :deep(.schedule-btn--danger:hover:not(:disabled)) {
+  background: rgba(127, 29, 29, 0.3);
+}
+
+.workout-builder-page :deep(.exercise-block__actions .btn-remove) {
+  background: rgba(127, 29, 29, 0.2);
+  border-color: rgba(248, 113, 113, 0.55);
+  color: #fca5a5;
+}
+
+.workout-builder-page :deep(.builder-field input:focus),
+.workout-builder-page :deep(.builder-field select:focus),
+.workout-builder-page :deep(.builder-field textarea:focus),
+.workout-builder-page :deep(.exercise-block__fields input:focus),
+.workout-builder-page :deep(.exercise-block__fields select:focus),
+.workout-builder-page .builder-tab:focus-visible,
+.workout-builder-page .btn-create-plan:focus-visible,
+.workout-builder-page .btn-ai-suggest:focus-visible,
+.workout-builder-page .btn-save:focus-visible,
+.workout-builder-page .day-action-btn:focus-visible,
+.workout-builder-page :deep(.schedule-btn:focus-visible) {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--wb-accent) 30%, transparent 70%);
+}
+
+@media (max-width: 768px) {
+  .workout-builder-page :deep(input),
+  .workout-builder-page :deep(select),
+  .workout-builder-page :deep(textarea),
+  .workout-builder-page .planner-group-editor input {
+    font-size: 16px;
+  }
+}
+
 @media (min-width: 640px) {
   .workout-builder-canvas { gap: 16px; }
 

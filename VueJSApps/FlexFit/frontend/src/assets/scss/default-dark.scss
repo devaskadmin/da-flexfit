@@ -1,23 +1,25 @@
-/* WorkoutAtlas 0.84.18
+/* WorkoutAtlas 0.84.41
    Stable, authoritative dark defaults.
    This file is imported last so it can normalize shell colors when dark-theme is active.
 */
 
 body.dark-theme {
-  --wa-shell-bg: #070b11;
-  --wa-shell-bg-secondary: #0c1118;
-  --wa-shell-header: #0b1017;
-  --wa-shell-sidebar: #0a0f15;
-  --wa-shell-surface: #121923;
-  --wa-shell-surface-elevated: #17212d;
-  --wa-shell-surface-soft: #1d2a38;
-  --wa-shell-border: rgba(255, 255, 255, 0.09);
-  --wa-shell-border-strong: rgba(255, 255, 255, 0.16);
-  --wa-shell-divider: rgba(255, 255, 255, 0.09);
-  --wa-shell-text: #f8fafc;
-  --wa-shell-text-secondary: #a4b0c0;
-  --wa-shell-text-muted: #738196;
-  --wa-shell-accent: var(--main-color, #3b82f6);
+  --wa-shell-bg: var(--wa-page-bg);
+  --wa-shell-bg-secondary: var(--wa-page-bg);
+  --wa-shell-header: var(--wa-topbar-bg);
+  --wa-shell-sidebar: var(--wa-sidebar-bg);
+  --wa-shell-surface: var(--wa-panel-bg);
+  --wa-shell-surface-elevated: var(--wa-card-bg);
+  --wa-shell-surface-soft: var(--wa-control-bg);
+  --wa-shell-border: var(--wa-border);
+  --wa-shell-border-strong: var(--wa-border-strong);
+  --wa-shell-divider: var(--wa-border);
+  --wa-shell-text: var(--wa-text-primary);
+  --wa-shell-text-secondary: var(--wa-text-secondary);
+  --wa-shell-text-muted: var(--wa-text-muted);
+  --wa-shell-accent: var(--wa-action-blue);
+  --wa-shell-accent-soft: color-mix(in srgb, var(--wa-shell-accent) 14%, transparent 86%);
+  --wa-shell-accent-soft-strong: color-mix(in srgb, var(--wa-shell-accent) 22%, transparent 78%);
   background: var(--wa-shell-bg) !important;
   color: var(--wa-shell-text) !important;
 }
@@ -35,7 +37,7 @@ body.dark-theme .header {
   color: var(--wa-shell-text) !important;
 }
 
-/* .top-navbar colors are handled by the 0.84.22 block at the bottom of this file */
+/* .top-navbar colors are handled by the 0.84.39 block at the bottom of this file */
 
 body.dark-theme .main-sidebar,
 body.dark-theme .main-sidebar::after {
@@ -73,14 +75,14 @@ body.dark-theme .profile-right-sidebar,
 body.dark-theme .profile-dropdown-menu,
 body.dark-theme .app-section-card,
 body.dark-theme .wa-summary-card {
-  background: var(--wa-shell-surface) !important;
+  background: var(--wa-shell-surface-elevated) !important;
   border: 1px solid var(--wa-shell-border) !important;
   color: var(--wa-shell-text) !important;
 }
 
 body.dark-theme .right-sidebar .sidebar-title,
 body.dark-theme .profile-dropdown-menu .dropdown-user-info {
-  background: var(--wa-shell-surface-elevated) !important;
+  background: var(--wa-shell-surface-soft) !important;
 }
 
 body.dark-theme .form-control,
@@ -88,7 +90,7 @@ body.dark-theme .form-select,
 body.dark-theme :is(main, .main-content, .right-sidebar, .card, .panel, .modal-content) input,
 body.dark-theme :is(main, .main-content, .right-sidebar, .card, .panel, .modal-content) textarea,
 body.dark-theme :is(main, .main-content, .right-sidebar, .card, .panel, .modal-content) select {
-  background: var(--wa-shell-surface-elevated) !important;
+  background: var(--wa-shell-surface-soft) !important;
   border-color: var(--wa-shell-border) !important;
   color: var(--wa-shell-text) !important;
 }
@@ -101,12 +103,12 @@ body.dark-theme textarea::placeholder {
 
 body.dark-theme .main-content .dashboard-breadcrumb,
 body.dark-theme .ff-page-header {
-  background: linear-gradient(135deg, #172438 0%, #20334d 100%) !important;
+  background: var(--wa-panel-bg) !important;
   border: 1px solid var(--wa-shell-border) !important;
 }
 
 body.dark-theme .right-sidebar-btn button {
-  background: var(--wa-shell-surface-elevated) !important;
+  background: var(--wa-shell-surface-soft) !important;
   color: var(--wa-shell-accent) !important;
   border: 1px solid var(--wa-shell-border) !important;
 }
@@ -132,7 +134,7 @@ body.dark-theme .mx-calendar-header .mx-btn-icon-double-right i {
   color: var(--wa-shell-text-muted) !important;
 }
 
-/* ── 0.84.22 – Top bar: neutralize design-system.css + dark-theme green tinting ── */
+/* ── 0.84.39 – Top bar: neutralize design-system.css + dark-theme green tinting ── */
 /* These rules must use !important and high specificity to override:
    - design-system.css: input/select/button { background: rgba(8,14,11,0.9) !important }
    - design-system.css: button { border-radius: 999px !important; min-height: 48px }
@@ -228,7 +230,7 @@ body.dark-theme .mx-calendar-header .mx-btn-icon-double-right i {
   padding: 0 !important;
 }
 
-/* ── 0.84.25 – Remove pill/rounded corners from authenticated navigation links ── */
+/* ── 0.84.39 – Remove pill/rounded corners from authenticated navigation links ── */
 /* Overrides design-system.css: .sidebar-link, .router-link-active, .dropdown-item { border-radius: 999px !important }
    Scope: .main-sidebar and .profile-dropdown-menu only appear in authenticated layout — guest pages unaffected. */
 .main-sidebar .sidebar-link,

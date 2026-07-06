@@ -21,7 +21,7 @@ const showDiagnosticsModal = ref(false);
 const isSubmitting = ref(false);
 const isConnectionLimitError = ref(false);
 const isDbAuthError = ref(false);
-const appVersion = import.meta.env.VITE_APP_VERSION || '0.69.0';
+const appVersion = import.meta.env.VITE_APP_VERSION || '0.84.42';
 const isDev = import.meta.env.DEV;
 
 const isSafariBrowser = () => {
