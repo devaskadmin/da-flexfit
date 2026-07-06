@@ -473,14 +473,40 @@ onMounted(async () => {
 
 <style scoped>
 .nutrition-workspace {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   --ff-border-strong: rgba(148, 163, 184, 0.48);
   --ff-border-soft: rgba(148, 163, 184, 0.34);
   display: grid;
   gap: 12px;
+=======
+  --nw-surface-1: var(--wa-shell-surface, #121923);
+  --nw-surface-2: var(--wa-shell-surface-elevated, #17212d);
+  --nw-surface-3: var(--wa-shell-surface-soft, #1d2a38);
+  --nw-border: var(--wa-shell-border, rgba(120, 145, 175, 0.16));
+  --nw-border-strong: var(--wa-shell-border-strong, rgba(120, 145, 175, 0.24));
+  --nw-text: var(--wa-shell-text, #f8fafc);
+  --nw-text-secondary: var(--wa-shell-text-secondary, #a4b0c0);
+  --nw-text-muted: var(--wa-shell-text-muted, #738196);
+  --nw-accent: var(--wa-shell-accent, var(--main-color, #3b82f6));
+  --ff-border-strong: var(--nw-border-strong);
+  --ff-border-soft: var(--nw-border);
+  --text-color: var(--nw-text);
+  --text-color-secondary: var(--nw-text-secondary);
+  --main-color: var(--nw-surface-1);
+  --border-color: var(--nw-border);
+  display: grid;
+  gap: 12px;
+  color: var(--nw-text);
+  padding-right: 56px;
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
 }
 
 /* ── Hero ── */
 .builder-hero {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
+=======
+  background: linear-gradient(135deg, rgba(15, 25, 39, 0.98), rgba(20, 31, 47, 0.95)) !important;
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   border: 1.5px solid var(--ff-border-strong);
   border-radius: 18px;
   min-height: auto;
@@ -488,11 +514,19 @@ onMounted(async () => {
   flex-direction: column;
   gap: 10px;
   padding: 14px 18px;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
+=======
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
 }
 
 .builder-hero h2 {
   margin: 0;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   color: #fff;
+=======
+  color: var(--nw-text);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   font-size: 1.45rem;
   font-weight: 700;
 }
@@ -505,13 +539,21 @@ onMounted(async () => {
 }
 
 .hero-macro-card {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   background: rgba(255, 255, 255, 0.12);
+=======
+  background: rgba(10, 17, 28, 0.78);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   border-radius: 12px;
   padding: 9px 12px;
   min-height: 70px;
   display: flex;
   align-items: center;
   gap: 10px;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
+=======
+  border: 1px solid var(--nw-border);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   border-left: 4px solid rgba(255, 255, 255, 0.25);
 }
 
@@ -524,7 +566,11 @@ onMounted(async () => {
 }
 
 .hero-macro-calories { border-left-color: #ff8a00; }
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
 .hero-macro-protein  { border-left-color: #3a86ff; }
+=======
+.hero-macro-protein  { border-left-color: #fb7185; }
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
 .hero-macro-carbs    { border-left-color: #43aa8b; }
 .hero-macro-fat      { border-left-color: #ff5d73; }
 
@@ -536,7 +582,11 @@ onMounted(async () => {
 
 .hero-macro-card strong {
   display: block;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   color: #fff;
+=======
+  color: var(--nw-text);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.15;
@@ -544,7 +594,11 @@ onMounted(async () => {
 
 .hero-macro-card span {
   display: block;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   color: rgba(255, 255, 255, 0.75);
+=======
+  color: var(--nw-text-secondary);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   font-size: 0.72rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -561,7 +615,11 @@ onMounted(async () => {
 }
 
 .nutrition-date-label {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   color: rgba(255, 255, 255, 0.8);
+=======
+  color: var(--nw-text-secondary);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -582,15 +640,36 @@ onMounted(async () => {
   padding-left: 14px;
   padding-right: 52px;
   border-radius: 12px;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   background: #ffffff;
   color: #1e293b;
   font-size: 14px;
   font-weight: 600;
   border: 1px solid #d6dce8;
+=======
+  background: var(--nw-surface-2);
+  color: var(--nw-text);
+  font-size: 16px;
+  font-weight: 600;
+  border: 1px solid var(--nw-border-strong);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   box-sizing: border-box;
   cursor: pointer;
 }
 
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
+=======
+.nutrition-date-input:hover {
+  background: var(--nw-surface-3);
+}
+
+.nutrition-date-input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--nw-accent) 62%, var(--nw-border) 38%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nw-accent) 22%, transparent 78%);
+}
+
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
 .nutrition-date-input::-webkit-calendar-picker-indicator {
   position: absolute;
   inset: 0;
@@ -607,7 +686,12 @@ onMounted(async () => {
   top: 50%;
   transform: translateY(-50%);
   font-size: 18px;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   opacity: 1;
+=======
+  opacity: 0.82;
+  color: var(--nw-text-muted);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   z-index: 5;
   pointer-events: none;
   line-height: 1;
@@ -615,11 +699,19 @@ onMounted(async () => {
 
 /* ── Search card ── */
 .search-card {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   background: var(--main-color, #fff);
   border: 1.5px solid var(--ff-border-strong);
   border-radius: 16px;
   padding: 12px 14px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+=======
+  background: var(--nw-surface-1);
+  border: 1.5px solid var(--ff-border-strong);
+  border-radius: 16px;
+  padding: 12px 14px;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
 }
 
 .search-card-head {
@@ -629,15 +721,25 @@ onMounted(async () => {
 .search-card-title {
   font-size: 0.95rem;
   font-weight: 700;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   color: var(--text-color);
+=======
+  color: var(--nw-text);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   margin: 0 0 2px;
 }
 
 .search-card-sub {
   font-size: 0.76rem;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   color: var(--text-color-secondary);
   margin: 0;
   opacity: 0.85;
+=======
+  color: var(--nw-text-secondary);
+  margin: 0;
+  opacity: 0.95;
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
 }
 
 .search-controls {
@@ -649,19 +751,50 @@ onMounted(async () => {
 .search-controls input,
 .search-controls select {
   border: 1.5px solid var(--ff-border-soft);
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   background: var(--main-color);
   color: var(--text-color);
   border-radius: 10px;
   padding: 8px 10px;
   height: 44px;
   font-size: 0.88rem;
+=======
+  background: var(--nw-surface-2);
+  color: var(--nw-text);
+  border-radius: 10px;
+  padding: 8px 10px;
+  height: 44px;
+  font-size: 0.95rem;
+}
+
+.search-controls input::placeholder {
+  color: var(--nw-text-muted);
+}
+
+.search-controls input:focus,
+.search-controls select:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--nw-accent) 62%, var(--nw-border) 38%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nw-accent) 22%, transparent 78%);
+}
+
+.search-controls select option {
+  background: var(--nw-surface-2);
+  color: var(--nw-text);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
 }
 
 .btn-search {
   border: none;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   background: #2563eb;
   color: #fff;
   border-radius: 12px;
+=======
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  border-radius: 999px;
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   padding: 0 18px;
   font-weight: 700;
   font-size: 0.95rem;
@@ -671,9 +804,27 @@ onMounted(async () => {
   align-items: center;
   gap: 6px;
   white-space: nowrap;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
 }
 
 .btn-search:hover { background: #1d4ed8; }
+=======
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.24);
+}
+
+.btn-search:hover { background: linear-gradient(135deg, #1d4ed8, #1e40af); }
+
+.btn-search:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.45), 0 8px 18px rgba(37, 99, 235, 0.24);
+}
+
+.btn-search:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
 
 /* ── Food grid ── */
 .food-grid {
@@ -685,7 +836,12 @@ onMounted(async () => {
 .state-msg {
   border: 1.5px dashed var(--ff-border-soft);
   border-radius: 10px;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   color: var(--text-color-secondary);
+=======
+  color: var(--nw-text-secondary);
+  background: color-mix(in srgb, var(--nw-surface-1) 76%, var(--nw-surface-2) 24%);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   padding: 12px;
   font-size: 0.88rem;
 }
@@ -697,10 +853,18 @@ onMounted(async () => {
 
 /* ── Collapsible sections ── */
 .collapsible-section {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   background: var(--main-color, #fff);
   border: 1.5px solid var(--ff-border-strong);
   border-radius: 16px;
   overflow: hidden;
+=======
+  background: var(--nw-surface-1);
+  border: 1.5px solid var(--ff-border-strong);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.17);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
 }
 
 .section-toggle {
@@ -714,28 +878,49 @@ onMounted(async () => {
   cursor: pointer;
   font-weight: 700;
   font-size: 0.95rem;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   color: var(--text-color);
+=======
+  color: var(--nw-text);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   text-align: left;
   transition: background 0.15s;
 }
 
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
 .section-toggle:hover { background: rgba(37, 99, 235, 0.05); }
 .section-toggle:active { background: rgba(37, 99, 235, 0.10); }
 
 .section-toggle small {
   font-weight: 500;
   color: var(--text-color-secondary);
+=======
+.section-toggle:hover { background: rgba(148, 163, 184, 0.08); }
+.section-toggle:active { background: rgba(148, 163, 184, 0.14); }
+
+.section-toggle small {
+  font-weight: 500;
+  color: var(--nw-text-secondary);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   margin-left: 4px;
 }
 
 .section-toggle i {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   color: #64748b;
+=======
+  color: var(--nw-text-muted);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   font-size: 0.85rem;
   flex-shrink: 0;
 }
 
 .section-body {
   padding: 0 14px 14px;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
+=======
+  background: color-mix(in srgb, var(--nw-surface-1) 68%, var(--nw-surface-2) 32%);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   border-top: 1px solid var(--ff-border-soft);
 }
 
@@ -748,6 +933,10 @@ onMounted(async () => {
 }
 
 .form-card {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
+=======
+  background: var(--nw-surface-2);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   border: 1.5px solid var(--ff-border-soft);
   border-radius: 12px;
   padding: 12px;
@@ -755,7 +944,11 @@ onMounted(async () => {
 
 .form-card h3 {
   margin: 0 0 10px;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   color: var(--text-color);
+=======
+  color: var(--nw-text);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   font-size: 0.95rem;
 }
 
@@ -768,17 +961,36 @@ onMounted(async () => {
 .form-grid label { display: grid; gap: 4px; }
 
 .form-grid span {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   color: var(--text-color-secondary);
+=======
+  color: var(--nw-text-secondary);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   font-size: 0.74rem;
 }
 
 .form-grid input {
   border: 1.5px solid var(--ff-border-soft);
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   background: var(--main-color);
   color: var(--text-color);
   border-radius: 8px;
   padding: 8px 9px;
   height: 38px;
+=======
+  background: var(--nw-surface-1);
+  color: var(--nw-text);
+  border-radius: 8px;
+  padding: 8px 9px;
+  height: 38px;
+  font-size: 0.95rem;
+}
+
+.form-grid input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--nw-accent) 62%, var(--nw-border) 38%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nw-accent) 22%, transparent 78%);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
 }
 
 .form-actions {
@@ -797,14 +1009,26 @@ onMounted(async () => {
 }
 
 .btn-save  { background: #16a34a; color: #fff; }
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
 .btn-clear { background: #374151; color: #fff; }
+=======
+.btn-save:hover { background: #15803d; }
+.btn-clear { background: var(--nw-surface-3); border: 1px solid var(--nw-border-strong); color: var(--nw-text); }
+.btn-clear:hover { background: color-mix(in srgb, var(--nw-surface-3) 78%, #334155 22%); }
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
 
 .custom-list { display: grid; gap: 8px; }
 
 .btn-remove-custom {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   border: 1px dashed #fca5a5;
   background: transparent;
   color: #fca5a5;
+=======
+  border: 1px dashed #fb7185;
+  background: rgba(190, 24, 93, 0.14);
+  color: #fecdd3;
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   border-radius: 8px;
   padding: 7px 10px;
   text-align: left;
@@ -825,24 +1049,42 @@ onMounted(async () => {
 
 .details-modal {
   width: min(460px, 100%);
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
+=======
+  background: var(--nw-surface-1);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   border: 1.5px solid var(--ff-border-strong);
   border-radius: 14px;
   padding: 16px;
 }
 
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
 .details-modal h3 { margin: 0; color: var(--text-color); }
 .details-modal p  { margin: 4px 0 10px; color: var(--text-color-secondary); }
+=======
+.details-modal h3 { margin: 0; color: var(--nw-text); }
+.details-modal p  { margin: 4px 0 10px; color: var(--nw-text-secondary); }
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
 
 .details-macros {
   display: grid;
   gap: 6px;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   color: var(--text-color);
+=======
+  color: var(--nw-text);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
 }
 
 .details-modal button {
   margin-top: 12px;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   border: none;
   background: #374151;
+=======
+  border: 1px solid var(--nw-border-strong);
+  background: var(--nw-surface-3);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   color: #fff;
   border-radius: 8px;
   padding: 8px 14px;
@@ -858,7 +1100,11 @@ onMounted(async () => {
   align-items: center;
   gap: 10px;
   padding: 8px 14px;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   background: var(--main-color);
+=======
+  background: color-mix(in srgb, var(--nw-surface-1) 84%, var(--nw-surface-2) 16%);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   border: 1.5px solid var(--ff-border-strong);
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.12);
@@ -873,11 +1119,19 @@ onMounted(async () => {
   gap: 5px;
   font-size: 0.88rem;
   font-weight: 700;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
   color: var(--text-color);
   padding: 6px 10px;
   min-height: 32px;
   border-radius: 8px;
   background: rgba(255,255,255,0.07);
+=======
+  color: var(--nw-text);
+  padding: 6px 10px;
+  min-height: 32px;
+  border-radius: 8px;
+  background: rgba(15, 23, 35, 0.66);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   border: 1px solid var(--ff-border-soft);
   white-space: nowrap;
   flex-shrink: 0;
@@ -893,12 +1147,73 @@ onMounted(async () => {
   --ff-border-soft: rgba(15, 23, 42, 0.22);
 }
 
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
+=======
+.nutrition-workspace :deep(.food-card),
+.nutrition-workspace :deep(.log-list),
+.nutrition-workspace :deep(.log-list li),
+.nutrition-workspace :deep(.log-list .empty),
+.nutrition-workspace :deep(.food-card.panel-bg),
+.nutrition-workspace :deep(.log-list.panel-bg) {
+  background: var(--nw-surface-1);
+  border-color: var(--nw-border);
+  color: var(--nw-text);
+}
+
+.nutrition-workspace :deep(.food-card__macros span) {
+  background: color-mix(in srgb, var(--nw-accent) 20%, var(--nw-surface-2) 80%);
+  color: #bfdbfe;
+  border: 1px solid color-mix(in srgb, var(--nw-accent) 35%, transparent 65%);
+}
+
+.nutrition-workspace :deep(.food-card__actions button) {
+  background: var(--nw-surface-2);
+  border-color: var(--nw-border);
+  color: var(--nw-text-secondary);
+}
+
+.nutrition-workspace :deep(.food-card__actions button:hover) {
+  background: var(--nw-surface-3);
+  color: var(--nw-text);
+}
+
+.nutrition-workspace :deep(.food-card__actions .btn-add) {
+  background: color-mix(in srgb, #16a34a 26%, var(--nw-surface-2) 74%);
+  border-color: color-mix(in srgb, #16a34a 56%, var(--nw-border) 44%);
+  color: #bbf7d0;
+}
+
+.nutrition-workspace :deep(.food-card__actions button:nth-child(3)) {
+  background: rgba(190, 24, 93, 0.12);
+  border-color: rgba(251, 113, 133, 0.5);
+  color: #fecdd3;
+}
+
+.nutrition-workspace :deep(.log-list button) {
+  background: rgba(127, 29, 29, 0.2);
+  border-color: rgba(248, 113, 113, 0.55);
+  color: #fecaca;
+}
+
+.nutrition-workspace :deep(.left span),
+.nutrition-workspace :deep(.left small),
+.nutrition-workspace :deep(.food-card__brand),
+.nutrition-workspace :deep(.log-list header p),
+.nutrition-workspace :deep(.empty) {
+  color: var(--nw-text-secondary);
+}
+
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
 /* ──────────────────────────────────────────────────
    MOBILE ≤ 768px  (v0.81.15 Nutrition Mobile Cleanup)
 ────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .nutrition-workspace {
     gap: 10px;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
+=======
+    padding-right: 0;
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   }
 
   /* Hero: compact */
@@ -981,12 +1296,20 @@ onMounted(async () => {
   .search-controls input,
   .search-controls select {
     height: 42px;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
     font-size: 0.88rem;
+=======
+    font-size: 16px;
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
   }
 
   .btn-search {
     width: 100%;
     height: 46px;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/NutritionWorkspace.vue
+=======
+    min-height: 46px;
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/NutritionWorkspace.vue
     justify-content: center;
     margin-top: 2px;
   }

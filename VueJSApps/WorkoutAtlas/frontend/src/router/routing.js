@@ -253,11 +253,16 @@ export const pagesRoutes = [
     },
     {
         path: '/notifications',
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/router/routing.js
         component: () => import('@/views/notifications/NotificationCenter.vue'),
+=======
+        component: () => import('@/views/Member/Notifications.vue'),
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/router/routing.js
         name: 'notifications',
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/router/routing.js
         path: '/messages',
         component: () => import('@/views/messages/MessageInbox.vue'),
         name: 'messages_inbox',
@@ -282,6 +287,8 @@ export const pagesRoutes = [
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {
+=======
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/router/routing.js
         path: '/help',
         component: () => import('@/views/Member/Help.vue'),
         name: 'help',

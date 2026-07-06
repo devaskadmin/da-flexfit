@@ -1816,6 +1816,296 @@ onMounted(() => {
 .ps-ex-card--active.ps-ex-card--cardio   { background: #f0fdf4; box-shadow: 0 0 0 2px #16a34a, 0 0 12px rgba(22,163,74,0.2); }
 .ps-ex-card--active.ps-ex-card--other    { background: #fefce8; box-shadow: 0 0 0 2px #ca8a04, 0 0 12px rgba(202,138,4,0.2); }
 
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/ProgressStats.vue
+=======
+/* -- 0.84.39 Progress Analytics dark-theme normalization (scoped) ---------- */
+.ps-container {
+  --ps-surface-1: var(--wa-shell-surface, #121923);
+  --ps-surface-2: var(--wa-shell-surface-elevated, #17212d);
+  --ps-surface-3: var(--wa-shell-surface-soft, #1d2a38);
+  --ps-border: var(--wa-shell-border, rgba(120, 145, 175, 0.16));
+  --ps-border-strong: var(--wa-shell-border-strong, rgba(120, 145, 175, 0.24));
+  --ps-text: var(--wa-shell-text, #f8fafc);
+  --ps-text-secondary: var(--wa-shell-text-secondary, #a4b0c0);
+  --ps-text-muted: var(--wa-shell-text-muted, #738196);
+  --ps-accent: var(--wa-shell-accent, var(--main-color, #3b82f6));
+}
+
+.ps-container .ps-hero.ff-page-header.app-header-gradient {
+  background: linear-gradient(135deg, rgba(15, 25, 39, 0.98), rgba(20, 31, 47, 0.95));
+  border-color: var(--ps-border);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+}
+
+.ps-container .ps-hero__text h2,
+.ps-container .ps-card__header h5,
+.ps-container .ps-mini-widget__value,
+.ps-container .ps-insight-value,
+.ps-container .ps-empty-title,
+.ps-container .ps-chart-sub,
+.ps-container .ps-badge {
+  color: var(--ps-text);
+}
+
+.ps-container .ps-hero__text p,
+.ps-container .ps-card__subhead,
+.ps-container .ps-mini-widget__label,
+.ps-container .ps-mini-widget__sub,
+.ps-container .ps-filter-field label,
+.ps-container .ps-insight-label,
+.ps-container .ps-empty-tips span,
+.ps-container .ps-state,
+.ps-container .ps-state span,
+.ps-container .ps-pro-gate-text span,
+.ps-container .ps-ex-card__type {
+  color: var(--ps-text-secondary);
+}
+
+.ps-container .ps-section-panel,
+.ps-container .ps-card,
+.ps-container .ps-card__header,
+.ps-container .ps-chart-body,
+.ps-container .ps-filter-toggle,
+.ps-container .ps-filter-body,
+.ps-container .ps-active-chips,
+.ps-container .ps-pro-row,
+.ps-container .ps-pro-row__body,
+.ps-container .ps-pro-row__gate,
+.ps-container .ps-pro-row__fields,
+.ps-container .ps-empty-tips span,
+.ps-container .ps-ex-card,
+.ps-container .ps-group-btns,
+.ps-container .ps-group-btn,
+.ps-container .ps-chart-type-btns,
+.ps-container .ps-type-btn,
+.ps-container .ps-reset-btn,
+.ps-container .ps-select {
+  border-color: var(--ps-border);
+}
+
+.ps-container .ps-section-panel,
+.ps-container .ps-card,
+.ps-container .ps-chart-body,
+.ps-container .ps-ex-card,
+.ps-container .ps-group-btns,
+.ps-container .ps-chart-type-btns,
+.ps-container .ps-filter-body,
+.ps-container .ps-active-chips,
+.ps-container .ps-pro-row__body,
+.ps-container .ps-pro-row__fields,
+.ps-container .ps-empty-tips span {
+  background: var(--ps-surface-1);
+}
+
+.ps-container .ps-card__header,
+.ps-container .ps-filter-toggle,
+.ps-container .ps-group-btn,
+.ps-container .ps-type-btn,
+.ps-container .ps-reset-btn,
+.ps-container .ps-select,
+.ps-container .ps-pro-row__toggle,
+.ps-container .ps-pro-row__gate,
+.ps-container .ps-insight-total {
+  background: var(--ps-surface-2);
+}
+
+.ps-container .ps-group-btn:hover,
+.ps-container .ps-type-btn:hover,
+.ps-container .ps-reset-btn:hover,
+.ps-container .ps-filter-toggle:hover,
+.ps-container .ps-ex-card:hover,
+.ps-container .ps-select:hover,
+.ps-container .ps-pro-row__toggle:hover,
+.ps-container .ps-chip--default {
+  background: var(--ps-surface-3);
+}
+
+.ps-container .ps-section-panel--filter {
+  background: color-mix(in srgb, var(--ps-surface-2) 72%, transparent 28%);
+}
+
+.ps-container .ps-filter-toggle,
+.ps-container .ps-filter-toggle span,
+.ps-container .ps-insight-total__label,
+.ps-container .ps-type-btn--active,
+.ps-container .ps-group-btn--active {
+  color: var(--ps-accent);
+}
+
+.ps-container .ps-filter-toggle > i,
+.ps-container .ps-filter-toggle__right > i,
+.ps-container .ps-type-btn,
+.ps-container .ps-group-btn,
+.ps-container .ps-reset-btn,
+.ps-container .ps-badge,
+.ps-container .ps-chip--default {
+  color: var(--ps-text-secondary);
+}
+
+.ps-container .ps-group-btn--active,
+.ps-container .ps-type-btn--active {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border-color: color-mix(in srgb, var(--ps-accent) 48%, var(--ps-border) 52%);
+}
+
+.ps-container .ps-group-btn--active:hover,
+.ps-container .ps-type-btn--active:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  color: #ffffff;
+}
+
+.ps-container .ps-select,
+.ps-container .ps-reset-btn {
+  color: var(--ps-text);
+}
+
+.ps-container .ps-select:focus,
+.ps-container .ps-reset-btn:focus-visible,
+.ps-container .ps-group-btn:focus-visible,
+.ps-container .ps-type-btn:focus-visible,
+.ps-container .ps-filter-toggle:focus-visible,
+.ps-container .ps-ex-card:focus-visible,
+.ps-container .ps-pro-row__toggle:focus-visible,
+.ps-container .header-picker :deep(.mx-input:focus) {
+  border-color: color-mix(in srgb, var(--ps-accent) 60%, var(--ps-border) 40%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ps-accent) 24%, transparent 76%);
+  outline: none;
+}
+
+.ps-container .ps-select option {
+  background: var(--ps-surface-2);
+  color: var(--ps-text);
+}
+
+.ps-container .ps-reset-btn:disabled,
+.ps-container .ps-select:disabled,
+.ps-container .ps-pro-gate-btn:disabled {
+  opacity: 0.55;
+}
+
+.ps-container .ps-pro-badge {
+  background: linear-gradient(135deg, #5b21b6, #7c3aed);
+}
+
+.ps-container .ps-pro-row__toggle,
+.ps-container .ps-pro-row__lock,
+.ps-container .ps-pro-row__toggle-right,
+.ps-container .ps-pro-row__active-hint,
+.ps-container .ps-pro-gate-text strong,
+.ps-container .ps-pro-gate-icon {
+  color: #c4b5fd;
+}
+
+.ps-container .ps-pro-gate-icon {
+  background: color-mix(in srgb, #7c3aed 18%, var(--ps-surface-3) 82%);
+  border-color: color-mix(in srgb, #7c3aed 32%, var(--ps-border) 68%);
+}
+
+.ps-container .ps-pro-gate-btn {
+  background: linear-gradient(135deg, #6d28d9, #7c3aed);
+}
+
+.ps-container .ps-mini-widget__icon {
+  background: color-mix(in srgb, #3b82f6 20%, var(--ps-surface-3) 80%);
+  border: 1px solid color-mix(in srgb, #3b82f6 34%, var(--ps-border) 66%);
+}
+
+.ps-container .ps-mini-widget__icon--fire {
+  background: color-mix(in srgb, #f97316 20%, var(--ps-surface-3) 80%);
+  border: 1px solid color-mix(in srgb, #f97316 34%, var(--ps-border) 66%);
+}
+
+.ps-container .ps-mini-widget__icon--bolt {
+  background: color-mix(in srgb, #16a34a 20%, var(--ps-surface-3) 80%);
+  border: 1px solid color-mix(in srgb, #16a34a 34%, var(--ps-border) 66%);
+}
+
+.ps-container .ps-insight-row,
+.ps-container .ps-insight-divider,
+.ps-container .ps-card__header,
+.ps-container .ps-active-chips,
+.ps-container .ps-filter-body,
+.ps-container .ps-pro-row,
+.ps-container .ps-pro-row__body,
+.ps-container .ps-section-panel .ps-row3 .ps-card,
+.ps-container .ps-section-panel .ps-analytics-row .ps-card,
+.ps-container .ps-ex-card {
+  border-color: var(--ps-border);
+}
+
+.ps-container .ps-insight-total {
+  border: 1px solid color-mix(in srgb, var(--ps-accent) 32%, var(--ps-border) 68%);
+}
+
+.ps-container .ps-insight-total__value {
+  color: color-mix(in srgb, var(--ps-accent) 68%, #ffffff 32%);
+}
+
+.ps-container .ps-empty-tips span {
+  color: var(--ps-text-secondary);
+}
+
+.ps-container .ps-empty-icon,
+.ps-container .ps-state i {
+  opacity: 0.9;
+}
+
+.ps-container .ps-ex-card__name {
+  color: var(--ps-text);
+}
+
+.ps-container .ps-ex-card--active.ps-ex-card--strength {
+  background: color-mix(in srgb, #3b82f6 20%, var(--ps-surface-2) 80%);
+}
+
+.ps-container .ps-ex-card--active.ps-ex-card--cardio {
+  background: color-mix(in srgb, #16a34a 20%, var(--ps-surface-2) 80%);
+}
+
+.ps-container .ps-ex-card--active.ps-ex-card--other {
+  background: color-mix(in srgb, #ca8a04 20%, var(--ps-surface-2) 80%);
+}
+
+.ps-container :deep(.apexcharts-canvas),
+.ps-container :deep(.apexcharts-inner),
+.ps-container :deep(.apexcharts-grid),
+.ps-container :deep(.apexcharts-plot-series) {
+  background: transparent;
+}
+
+.ps-container :deep(.apexcharts-gridline) {
+  stroke: color-mix(in srgb, var(--ps-border) 70%, transparent 30%);
+}
+
+.ps-container :deep(.apexcharts-xaxis-label),
+.ps-container :deep(.apexcharts-yaxis-label),
+.ps-container :deep(.apexcharts-legend-text) {
+  fill: var(--ps-text-secondary);
+  color: var(--ps-text-secondary);
+}
+
+.ps-container :deep(.apexcharts-tooltip),
+.ps-container :deep(.apexcharts-xaxistooltip),
+.ps-container :deep(.apexcharts-yaxistooltip) {
+  background: var(--ps-surface-2);
+  color: var(--ps-text);
+  border: 1px solid var(--ps-border-strong);
+}
+
+.ps-container .header-picker :deep(.mx-input),
+.ps-container .header-picker :deep(.mx-icon-calendar),
+.ps-container .header-picker :deep(.mx-icon-clear) {
+  background: var(--ps-surface-2);
+  border-color: var(--ps-border);
+  color: var(--ps-text);
+}
+
+.ps-container .header-picker :deep(.mx-input::placeholder) {
+  color: var(--ps-text-muted);
+}
+
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/ProgressStats.vue
 /* ─────────────────────────────────────────────────────────────────── */
 /* RESPONSIVE                                                          */
 /* ─────────────────────────────────────────────────────────────────── */
@@ -1851,6 +2141,12 @@ onMounted(() => {
   .ps-card__body { padding: 12px 14px; }
   .ps-row3 { grid-template-columns: 1fr; }
   .ps-filter-grid { grid-template-columns: 1fr 1fr; }
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/ProgressStats.vue
+=======
+  .ps-select { font-size: 16px; min-height: 44px; }
+  .ps-reset-btn { min-height: 44px; }
+  .header-picker :deep(.mx-input) { font-size: 16px !important; min-height: 44px !important; }
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/ProgressStats.vue
   .ps-chart-wrap { height: 260px; }
   .ps-group-btn { padding: 5px 9px; font-size: 0.73rem; }
 }
@@ -1862,6 +2158,10 @@ onMounted(() => {
   .ps-chart-controls { gap: 6px; }
   .ps-filter-grid { grid-template-columns: 1fr; }
   .ps-right-col { flex-direction: column; }
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/ProgressStats.vue
+=======
+  .header-picker { width: 100%; min-width: 0; max-width: 100%; }
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/ProgressStats.vue
   .ps-insight-total__value { font-size: 1.3rem; }
 }
 </style>

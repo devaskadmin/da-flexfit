@@ -2,6 +2,10 @@
 import { ref, reactive, onMounted, onUnmounted, watch, computed } from 'vue'
 import { API_BASE } from '@/config/env';
 import { useAuth } from '@/composable/useAuth';
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
+=======
+import { getDefaultTheme, sanitizeTheme } from '@/composable/manageThemeSetting';
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
 import AvatarModal from '@/components/AvatarModal.vue';
 
 const activeTab = ref('profile')
@@ -55,6 +59,7 @@ const notifications = reactive({
   productUpdates: false,
 })
 
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
 const emailNotifications = reactive({
   enabled: true,
   messages: true,
@@ -64,6 +69,8 @@ const emailNotifications = reactive({
   admin: true,
 })
 
+=======
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
 const display = reactive({
   theme: 'dark',
   language: 'en',
@@ -72,7 +79,11 @@ const display = reactive({
   navPosition: 'vertical',
   themeDirection: 'ltr',
   primaryColor: 'blue-color',
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
   themeColor: 'light-theme',
+=======
+  themeColor: getDefaultTheme(),
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
   navbarSize: 'default',
   sidebarBackground: '',
   mainBackground: '',
@@ -108,6 +119,7 @@ async function save() {
     settingsPayload.settings.themeConfig = collectThemeConfig()
   }
 
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
   settingsPayload.settings.emailNotifications = {
     enabled:    emailNotifications.enabled,
     messages:   emailNotifications.messages,
@@ -117,6 +129,8 @@ async function save() {
     admin:      emailNotifications.admin,
   }
 
+=======
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
   try {
     const response = await fetch(`${API_BASE}/api/user-profile-settings`, {
       method: 'PUT',
@@ -290,7 +304,11 @@ const loadDisplayFromLocalStorage = () => {
   display.navPosition = localStorage.getItem('layoutPosition') || display.navPosition;
   display.themeDirection = localStorage.getItem('layoutDirection') || display.themeDirection;
   display.primaryColor = localStorage.getItem('selectedStyleSheet') || display.primaryColor;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
   display.themeColor = localStorage.getItem('currentActiveTheme') || display.themeColor;
+=======
+  display.themeColor = sanitizeTheme(localStorage.getItem('currentActiveTheme') || display.themeColor);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
   display.navbarSize = localStorage.getItem('sidebarHover') ? 'expand' : localStorage.getItem('sidebarSmall') ? 'small' : 'default';
   display.sidebarBackground = localStorage.getItem('navbackgroundImage') || '';
   display.mainBackground = localStorage.getItem('mainBackgroundImage') || '';
@@ -317,7 +335,11 @@ const loadUserSettings = async () => {
       display.navPosition = cfg.navPosition || display.navPosition;
       display.themeDirection = cfg.themeDirection || display.themeDirection;
       display.primaryColor = cfg.primaryColor || display.primaryColor;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
       display.themeColor = cfg.themeColor || display.themeColor;
+=======
+      display.themeColor = sanitizeTheme(cfg.themeColor || display.themeColor);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
       display.navbarSize = cfg.navbarSize || display.navbarSize;
       display.sidebarBackground = cfg.sidebarBackground ?? display.sidebarBackground;
       display.mainBackground = cfg.mainBackground ?? display.mainBackground;
@@ -330,6 +352,7 @@ const loadUserSettings = async () => {
 
       applyThemeConfigToLocalStorage();
     }
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
 
     // Load email notification preferences
     const ep = settings.emailNotifications || {};
@@ -339,6 +362,8 @@ const loadUserSettings = async () => {
     emailNotifications.nutrition  = ep.nutrition  !== false;
     emailNotifications.membership = ep.membership !== false;
     emailNotifications.admin      = ep.admin      !== false;
+=======
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
   } catch (_) {
     // keep local fallback
   }
@@ -708,9 +733,12 @@ watch(
             <h4 class="s-panel-title">Notifications</h4>
             <p class="s-panel-sub">Control what WorkoutAtlas notifies you about</p>
           </div>
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
 
           <!-- In-app notification toggles -->
           <div class="notif-section-label">In-App Notifications</div>
+=======
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
           <div class="notif-list">
             <div v-for="item in notifOptions" :key="item.key" class="notif-row">
               <div class="notif-icon-box"><i :class="item.icon"></i></div>
@@ -724,6 +752,7 @@ watch(
               </label>
             </div>
           </div>
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
 
           <!-- Email notification preferences -->
           <div class="notif-section-divider"></div>
@@ -806,6 +835,8 @@ watch(
             Account emails (welcome, password changes) are always sent regardless of these settings.
             Save Changes to apply your preferences.
           </p>
+=======
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
         </section>
 
         <!-- DISPLAY TAB -->
@@ -976,10 +1007,34 @@ watch(
 
 <style scoped>
 .settings-page {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
   --ff-border-strong: rgba(148, 163, 184, 0.44);
   --ff-border-soft: rgba(148, 163, 184, 0.32);
   padding: 0;
   color: var(--text-color);
+=======
+  --ff-surface-1: var(--wa-shell-surface, #121923);
+  --ff-surface-2: var(--wa-shell-surface-elevated, #17212d);
+  --ff-surface-3: var(--wa-shell-surface-soft, #1d2a38);
+  --ff-text: var(--wa-shell-text, #f8fafc);
+  --ff-text-secondary: var(--wa-shell-text-secondary, #a4b0c0);
+  --ff-text-muted: var(--wa-shell-text-muted, #738196);
+  --ff-accent: var(--wa-shell-accent, var(--main-color, #3b82f6));
+  --ff-border-strong: rgba(148, 163, 184, 0.44);
+  --ff-border-soft: rgba(148, 163, 184, 0.32);
+  padding: 0;
+  color: var(--ff-text);
+}
+
+.settings-page .panel-bg {
+  background: var(--ff-surface-1) !important;
+}
+
+.settings-page .settings-header.ff-page-header.app-header-gradient {
+  background: linear-gradient(135deg, rgba(15, 25, 39, 0.98), rgba(20, 31, 47, 0.95)) !important;
+  border-color: rgba(120, 145, 175, 0.24);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
 }
 
 .settings-header {
@@ -990,7 +1045,11 @@ watch(
   min-height: auto;
 }
 .settings-title { font-size: 1.45rem; font-weight: 700; margin: 0; color: #ffffff !important; }
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
 .settings-subtitle { font-size: .83rem; opacity: .92; margin: 3px 0 0; color: #cbd5e1 !important; font-weight: 500; }
+=======
+.settings-subtitle { font-size: .83rem; opacity: .92; margin: 3px 0 0; color: var(--ff-text-secondary) !important; font-weight: 500; }
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
 
 .ff-btn-save {
   display: inline-flex; align-items: center; gap: 8px;
@@ -1010,16 +1069,25 @@ watch(
   width: 186px; flex-shrink: 0;
   border-radius: 12px; padding: 10px 8px;
   border: 1.5px solid var(--ff-border-strong);
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
+=======
+  background: var(--ff-surface-1);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
 }
 .s-nav-item {
   display: flex; align-items: center; gap: 11px;
   padding: 10px 13px; border-radius: 8px; border: none;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
   background: transparent; color: var(--text-color);
+=======
+  background: transparent; color: var(--ff-text-secondary);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
   font-size: .85rem; font-weight: 500; cursor: pointer;
   text-align: left; width: 100%;
   transition: background .15s, color .15s, border-color .15s;
 }
 .s-nav-item .s-nav-label,
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
 .s-nav-item i { color: var(--text-color) !important; }
 .s-nav-icon {
   width: 30px; height: 30px; border-radius: 7px;
@@ -1043,12 +1111,48 @@ watch(
 
 .settings-content { flex: 1; min-width: 0; }
 .s-panel { border-radius: 14px; padding: 26px 28px; border: 1.5px solid var(--ff-border-strong); }
+=======
+.s-nav-item i { color: var(--ff-text-secondary) !important; }
+.s-nav-icon {
+  width: 30px; height: 30px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--ff-surface-2); font-size: .8rem;
+  color: var(--ff-text-muted);
+  flex-shrink: 0; transition: background .15s;
+}
+.s-nav-item:hover .s-nav-icon,
+.s-nav-item.active .s-nav-icon { background: color-mix(in srgb, var(--ff-accent) 16%, var(--ff-surface-2) 84%); color: #60a5fa; }
+.s-nav-item:hover  {
+  color: var(--ff-text);
+  background: var(--ff-surface-2);
+}
+.s-nav-item.active {
+  color: var(--ff-text);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--ff-accent) 14%, var(--ff-surface-2) 86%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ff-accent) 32%, transparent 68%);
+}
+
+.settings-content { flex: 1; min-width: 0; }
+.s-panel {
+  border-radius: 14px;
+  padding: 26px 28px;
+  border: 1.5px solid var(--ff-border-strong);
+  background: var(--ff-surface-1);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
 .s-panel-head {
   margin-bottom: 22px; padding-bottom: 16px;
   border-bottom: 1.5px solid var(--ff-border-soft);
 }
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
 .s-panel-title { font-size: 1rem; font-weight: 700; margin: 0 0 3px; color: var(--text-color); }
 .s-panel-sub   { font-size: .8rem; opacity: .96; margin: 0; color: var(--text-color-secondary); font-weight: 500; }
+=======
+.s-panel-title { font-size: 1rem; font-weight: 700; margin: 0 0 3px; color: var(--ff-text); }
+.s-panel-sub   { font-size: .8rem; opacity: .96; margin: 0; color: var(--ff-text-secondary); font-weight: 500; }
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
 
 .avatar-row { display: flex; align-items: center; gap: 18px; }
 .avatar-circle {
@@ -1082,6 +1186,7 @@ watch(
 .change-avatar-btn {
   margin-top: 8px;
   padding: 6px 12px;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
   background: #f1f5f9;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
@@ -1094,6 +1199,22 @@ watch(
 }
 .avatar-name   { font-size: 1rem; font-weight: 700; }
 .avatar-handle { font-size: .8rem; opacity: .96; margin-top: 2px; color: var(--text-color-secondary); font-weight: 500; }
+=======
+  background: var(--ff-surface-2);
+  border: 1px solid var(--ff-border-soft);
+  color: var(--ff-text-secondary);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.change-avatar-btn:hover {
+  background: var(--ff-surface-3);
+  color: var(--ff-text);
+}
+.avatar-name   { font-size: 1rem; font-weight: 700; color: var(--ff-text); }
+.avatar-handle { font-size: .8rem; opacity: .96; margin-top: 2px; color: var(--ff-text-secondary); font-weight: 500; }
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
 .member-badge {
   display: inline-flex; align-items: center; gap: 5px;
   margin-top: 7px; padding: 3px 11px; border-radius: 20px;
@@ -1104,7 +1225,11 @@ watch(
 .ff-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 22px; }
 .ff-field  { display: flex; flex-direction: column; gap: 6px; }
 .ff-field.full-width { grid-column: 1 / -1; }
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
 .ff-label  { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; opacity: .75; color: var(--text-color); margin-bottom: 4px; }
+=======
+.ff-label  { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; opacity: .75; color: var(--ff-text-secondary); margin-bottom: 4px; }
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
 
 /* ── Centered profile header ── */
 .profile-header {
@@ -1142,7 +1267,11 @@ watch(
 
 /* ── Settings sections (grouped cards) ── */
 .settings-section {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
   background: rgba(255, 255, 255, 0.04);
+=======
+  background: var(--ff-surface-2);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
   border: 1px solid var(--ff-border-soft);
   border-radius: 12px;
   padding: 14px;
@@ -1213,7 +1342,11 @@ watch(
   align-items: center;
   gap: 10px;
   font-size: .86rem;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
   color: var(--text-color);
+=======
+  color: var(--ff-text);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
 }
 
 .ff-check-row input[type="checkbox"] {
@@ -1222,6 +1355,7 @@ watch(
 }
 
 .form-control, .form-select {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
   background-color: rgba(255,255,255,.06) !important;
   border: 1.5px solid var(--ff-border-soft) !important;
   color: inherit !important;
@@ -1237,6 +1371,23 @@ watch(
   background-color: rgba(255,255,255,.05) !important;
   border: 1.5px solid var(--ff-border-soft) !important;
   color: inherit !important;
+=======
+  background-color: var(--ff-surface-3) !important;
+  border: 1.5px solid var(--ff-border-soft) !important;
+  color: var(--ff-text) !important;
+  font-weight: 500;
+}
+.form-control:focus, .form-select:focus {
+  background-color: color-mix(in srgb, var(--ff-surface-3) 86%, #ffffff 14%) !important;
+  border-color: var(--ff-accent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ff-accent) 24%, transparent 76%) !important;
+  color: var(--ff-text) !important;
+}
+.input-group-text {
+  background-color: var(--ff-surface-2) !important;
+  border: 1.5px solid var(--ff-border-soft) !important;
+  color: var(--ff-text-muted) !important;
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
 }
 
 .goal-grid { display: flex; flex-wrap: wrap; gap: 9px; }
@@ -1270,6 +1421,7 @@ watch(
 .theme-tile.active { border-color: #2081e2; background: rgba(32,129,226,.18); color: #2081e2; font-weight: 600; }
 
 .notif-list { display: flex; flex-direction: column; gap: 3px; }
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
 .notif-list-email { margin-top: 6px; }
 .notif-section-label {
   font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
@@ -1288,6 +1440,8 @@ watch(
   display: flex; align-items: flex-start; gap: 7px; line-height: 1.55;
 }
 .notif-footnote i { margin-top: 2px; color: #2081e2; flex-shrink: 0; }
+=======
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
 .notif-row {
   display: flex; align-items: center; gap: 14px;
   padding: 13px 14px; border-radius: 10px;
@@ -1302,8 +1456,13 @@ watch(
   font-size: .9rem; flex-shrink: 0;
 }
 .notif-text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
 .notif-text strong { font-size: .88rem; font-weight: 700; color: var(--text-color); }
 .notif-text span   { font-size: .76rem; opacity: .96; color: var(--text-color-secondary); }
+=======
+.notif-text strong { font-size: .88rem; font-weight: 700; color: var(--ff-text); }
+.notif-text span   { font-size: .76rem; opacity: .96; color: var(--ff-text-secondary); }
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
 
 .ff-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer; display: inline-block; }
 .ff-switch input { opacity: 0; width: 0; height: 0; }
@@ -1470,36 +1629,62 @@ watch(
 }
 
 .ff-settings-nav .s-nav-item {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
   color: #475569 !important;
+=======
+  color: var(--ff-text-secondary) !important;
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
   background: transparent !important;
   opacity: 1 !important;
 }
 
 .ff-settings-nav .s-nav-item .s-nav-label,
 .ff-settings-nav .s-nav-item i {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
   color: #475569 !important;
+=======
+  color: var(--ff-text-secondary) !important;
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
   opacity: 1 !important;
 }
 
 .ff-settings-nav .s-nav-item.active {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
   background: #eff6ff !important;
   color: #1d4ed8 !important;
   box-shadow: inset 0 0 0 1.5px #3b82f6;
+=======
+  background: color-mix(in srgb, var(--ff-accent) 14%, var(--ff-surface-2) 86%) !important;
+  color: var(--ff-text) !important;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ff-accent) 46%, transparent 54%);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
 }
 
 .ff-settings-nav .s-nav-item.active .s-nav-label,
 .ff-settings-nav .s-nav-item.active i {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
   color: #1d4ed8 !important;
+=======
+  color: #60a5fa !important;
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
   font-weight: 700;
   opacity: 1 !important;
 }
 
 .ff-settings-nav .s-nav-icon {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
   background: #eef2ff !important;
 }
 
 .ff-settings-nav .s-nav-item.active .s-nav-icon {
   background: #dbeafe !important;
+=======
+  background: var(--ff-surface-2) !important;
+}
+
+.ff-settings-nav .s-nav-item.active .s-nav-icon {
+  background: color-mix(in srgb, var(--ff-accent) 16%, var(--ff-surface-2) 84%) !important;
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
 }
 
 :global(body.light-theme) .settings-section {
@@ -1531,10 +1716,50 @@ watch(
 
 .form-control::placeholder,
 textarea::placeholder {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
   color: var(--text-color-secondary) !important;
   opacity: 1;
 }
 
+=======
+  color: var(--ff-text-muted) !important;
+  opacity: 1;
+}
+
+.settings-page input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.78);
+}
+
+:global(body:not(.light-theme)) .settings-page .mobile-nav-trigger {
+  background: var(--ff-surface-2);
+  border-color: var(--ff-border-soft);
+  box-shadow: 0 8px 20px rgba(0,0,0,.2);
+}
+
+:global(body:not(.light-theme)) .settings-page .mobile-nav-trigger.open {
+  background: color-mix(in srgb, var(--ff-accent) 16%, var(--ff-surface-2) 84%);
+  border-color: color-mix(in srgb, var(--ff-accent) 44%, transparent 56%);
+}
+
+:global(body:not(.light-theme)) .settings-page .mobile-nav-menu {
+  background: var(--ff-surface-1);
+}
+
+:global(body:not(.light-theme)) .settings-page .mobile-nav-item {
+  color: var(--ff-text-secondary);
+  border-bottom-color: var(--ff-border-soft);
+}
+
+:global(body:not(.light-theme)) .settings-page .mobile-nav-item:hover {
+  background: var(--ff-surface-2);
+}
+
+:global(body:not(.light-theme)) .settings-page .mobile-nav-item.active {
+  background: color-mix(in srgb, var(--ff-accent) 16%, var(--ff-surface-2) 84%);
+  color: #93c5fd;
+}
+
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
 :global(body.light-theme) .form-control::placeholder,
 :global(body.light-theme) textarea::placeholder {
   color: #64748b !important;
@@ -1742,10 +1967,20 @@ textarea::placeholder {
   .form-control,
   .form-select {
     height: 40px;
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/UserSettings.vue
     font-size: 0.88rem;
     border-radius: 10px;
     padding: 8px 10px;
   }
+=======
+    font-size: 16px;
+    border-radius: 10px;
+    padding: 8px 10px;
+  }
+  input[type="date"].form-control {
+    font-size: 16px !important;
+  }
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/UserSettings.vue
   textarea.form-control {
     height: auto;
     min-height: 80px;

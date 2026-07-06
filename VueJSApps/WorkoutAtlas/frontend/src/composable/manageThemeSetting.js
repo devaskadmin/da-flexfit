@@ -1,19 +1,29 @@
 import {ref} from 'vue';
-const defaultTheme =  import.meta.env.VITE_DEFAULT_THEME;
+const THEME_STORAGE_KEY = 'currentActiveTheme';
+const DEFAULT_THEME = 'dark-theme';
+const ALLOWED_THEMES = new Set(['dark-theme', 'light-theme', 'blue-theme']);
 
-export const currentActiveTheme = ref(localStorage.getItem('currentActiveTheme') || defaultTheme);
+export const getDefaultTheme = () => DEFAULT_THEME;
+
+export const sanitizeTheme = (theme) => {
+    return ALLOWED_THEMES.has(theme) ? theme : DEFAULT_THEME;
+};
+
+export const syncThemePreference = () => {
+    const normalizedTheme = sanitizeTheme(localStorage.getItem(THEME_STORAGE_KEY));
+    localStorage.setItem(THEME_STORAGE_KEY, normalizedTheme);
+    return normalizedTheme;
+};
+
+export const currentActiveTheme = ref(syncThemePreference());
 
 export const changeCurrentTheme = (theme) => {
-    localStorage.setItem('currentActiveTheme', theme);
-    currentActiveTheme.value = localStorage.getItem('currentActiveTheme');
+    const normalizedTheme = sanitizeTheme(theme);
+    localStorage.setItem(THEME_STORAGE_KEY, normalizedTheme);
+    currentActiveTheme.value = normalizedTheme;
 }
 
 export const toggleTheme = () => {
-    if (currentActiveTheme.value === 'light-theme') {
-        localStorage.setItem('currentActiveTheme', 'blue-theme');
-    } else {
-        localStorage.setItem('currentActiveTheme', 'light-theme');
-    }
-
-    currentActiveTheme.value = localStorage.getItem('currentActiveTheme');
+    const nextTheme = currentActiveTheme.value === 'light-theme' ? 'dark-theme' : 'light-theme';
+    changeCurrentTheme(nextTheme);
 }

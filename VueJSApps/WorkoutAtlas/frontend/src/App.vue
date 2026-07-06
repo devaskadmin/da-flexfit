@@ -2,7 +2,7 @@
 import {computed, onMounted, onUnmounted, provide, ref, shallowRef, watch} from "vue";
 import {RouterView, useRoute} from 'vue-router';
 import {OverlayScrollbars} from "overlayscrollbars";
-import {currentActiveTheme} from "@/composable/manageThemeSetting.js";
+import {changeCurrentTheme, currentActiveTheme, sanitizeTheme, syncThemePreference} from "@/composable/manageThemeSetting.js";
 import {layoutDirection, setRtl, setLtr} from "@/composable/themeDirectionSetting";
 import {selectedStyleSheet, setStyleSheet} from "@/composable/primaryColorChangeSetting";
 import {useMainContentCurrentBG} from "@/composable/mainContentBackgroundSetting";
@@ -162,6 +162,7 @@ const closeSidebar = () => {
   isBodyOverflowHidden.value = false;
 };
 
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/App.vue
 const applyThemeConfig = (themeConfig = {}) => {
   if (!isAdmin.value) {
     closeSidebar()
@@ -273,11 +274,125 @@ const activeTheme = (() => {
   } else if (currentActiveTheme.value === 'dark-theme') {
     element.classList.add('dark-theme')
     element.classList.remove('light-theme')
+=======
+const applyBodyThemeClass = (themeValue) => {
+  const normalizedTheme = sanitizeTheme(themeValue);
+  const element = document.body;
+
+  if (normalizedTheme === 'light-theme') {
+    element.classList.remove('dark-theme');
+    element.classList.add('light-theme');
+  } else if (normalizedTheme === 'dark-theme') {
+    element.classList.add('dark-theme');
+    element.classList.remove('light-theme');
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/App.vue
   } else {
-    element.classList.remove('light-theme')
-    element.classList.remove('dark-theme')
+    element.classList.remove('light-theme');
+    element.classList.remove('dark-theme');
   }
-})
+};
+
+const applyThemeConfig = (themeConfig = {}) => {
+  if (!isAdmin.value) {
+    closeSidebar()
+    return
+  }
+  if (!themeConfig || typeof themeConfig !== 'object') return;
+
+  if (themeConfig.themeColor) {
+    changeCurrentTheme(themeConfig.themeColor);
+  }
+
+  if (themeConfig.themeDirection === 'rtl') {
+    setRtl();
+  } else if (themeConfig.themeDirection === 'ltr') {
+    setLtr();
+  }
+
+  if (themeConfig.primaryColor) {
+    setStyleSheet(themeConfig.primaryColor);
+  }
+
+  if (themeConfig.navPosition) {
+    handleNavPositionClick(themeConfig.navPosition);
+  }
+
+  if (themeConfig.navbarSize === 'small') {
+    sidebarSmallClick({ preventDefault: () => {}, stopPropagation: () => {} });
+  } else if (themeConfig.navbarSize === 'expand') {
+    sidebarHoverClick();
+  } else {
+    handleNavbarSize();
+  }
+
+  if (typeof themeConfig.sidebarBackground === 'string') {
+    if (themeConfig.sidebarBackground) {
+      localStorage.setItem('navbackgroundImage', themeConfig.sidebarBackground);
+    } else {
+      localStorage.removeItem('navbackgroundImage');
+    }
+  }
+
+  if (typeof themeConfig.mainBackground === 'string') {
+    if (themeConfig.mainBackground) {
+      localStorage.setItem('mainBackgroundImage', themeConfig.mainBackground);
+    } else {
+      localStorage.removeItem('mainBackgroundImage');
+    }
+    useMainContentCurrentBG();
+  }
+
+  if (typeof themeConfig.preloaderEnabled === 'boolean') {
+    localStorage.setItem('preloaderEnabled', String(themeConfig.preloaderEnabled));
+
+    // Do not leave the global loader permanently visible.
+    // If enabled, briefly show it then auto-hide.
+    if (themeConfig.preloaderEnabled) {
+      preloader.value = true;
+      window.setTimeout(() => {
+        preloader.value = false;
+      }, 650);
+    } else {
+      preloader.value = false;
+    }
+  }
+
+  if (typeof themeConfig.hideThemeSidebar === 'boolean') {
+    hideThemeSidebar.value = themeConfig.hideThemeSidebar;
+    localStorage.setItem('hideThemeSidebar', String(themeConfig.hideThemeSidebar));
+    if (themeConfig.hideThemeSidebar) {
+      closeSidebar();
+    }
+  }
+};
+
+const isProtectedUiRoute = (routeLike = route) => {
+  return Boolean(routeLike?.meta?.isPartials);
+};
+
+const loadUserThemeSettings = async () => {
+  if (!isProtectedUiRoute()) return;
+  if (!isAdmin.value) return;
+
+  try {
+    const response = await fetch(`${API_BASE}/api/user-profile-settings`, {
+      credentials: 'include',
+    });
+    if (!response.ok) return;
+
+    const data = await response.json();
+    const settings = data?.settings || {};
+    const themeConfig = settings.themeConfig || {};
+    applyThemeConfig(themeConfig);
+  } catch (e) {
+    // Non-blocking: app still works with localStorage defaults.
+  }
+};
+
+const onThemeSettingsUpdated = (event) => {
+  if (!isAdmin.value) return
+  applyThemeConfig(event?.detail || {});
+};
 
 onMounted(() => {
   authStore.fetchUser()
@@ -298,8 +413,13 @@ onMounted(() => {
   if (isProtectedUiRoute()) {
     loadUserThemeSettings()
   }
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/App.vue
   // getCurrentTheme()
   activeTheme()
+=======
+  currentActiveTheme.value = syncThemePreference();
+  applyBodyThemeClass(currentActiveTheme.value);
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/App.vue
 
   if (layoutDirection.value === 'rtl') {
     setRtl();
@@ -333,16 +453,13 @@ watch(selectedStyleSheet, () => {
 })
 
 watch(currentActiveTheme, () => {
-  let element = document.body
-  if(currentActiveTheme.value === 'light-theme') {
-    element.classList.remove('dark-theme')
-    element.classList.add('light-theme')
-  } else if (currentActiveTheme.value === 'dark-theme') {
-    element.classList.add('dark-theme')
-    element.classList.remove('light-theme')
-  } else {
-    element.classList.remove('light-theme')
-    element.classList.remove('dark-theme')
+  currentActiveTheme.value = sanitizeTheme(currentActiveTheme.value);
+  applyBodyThemeClass(currentActiveTheme.value);
+})
+
+watch(isAdmin, (nextIsAdmin) => {
+  if (!nextIsAdmin) {
+    closeSidebar()
   }
 })
 
@@ -365,12 +482,18 @@ provide('app:layout', layout.value)
 </script>
 
 <template>
-  <div class="body-padding body-p-top"
-   :class="{
-    expanded: isExpandedBody, 'light-theme': currentActiveTheme === 'light-theme',  'dark-theme': currentActiveTheme === 'dark-theme', 'hover-menu': hoverableMenu,
-    'has-horizontal': layoutPosition === 'horizontal',
-    'has-two-column-menu has-fixed-sidebar': layoutPosition === 'twoColumn',
-  }"
+  <div
+    :class="[
+      isPartials ? 'body-padding body-p-top' : 'wa-guest-shell',
+      {
+        expanded: isPartials && isExpandedBody,
+        'light-theme': currentActiveTheme === 'light-theme',
+        'dark-theme': currentActiveTheme === 'dark-theme',
+        'hover-menu': isPartials && hoverableMenu,
+        'has-horizontal': isPartials && layoutPosition === 'horizontal',
+        'has-two-column-menu has-fixed-sidebar': isPartials && layoutPosition === 'twoColumn',
+      }
+    ]"
   >
     <!-- preloader start -->
     <transition name="fade" mode="out-in">
@@ -445,5 +568,166 @@ provide('app:layout', layout.value)
 .mx-calendar-header .mx-btn:hover i {
   color: #007bff !important;
 }
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/App.vue
+=======
+
+body.wa-dashboard-active {
+  --wa-shell-bg: var(--wa-page-bg);
+  --wa-shell-bg-secondary: var(--wa-page-bg);
+  --wa-shell-header: var(--wa-topbar-bg);
+  --wa-shell-sidebar: var(--wa-sidebar-bg);
+  --wa-shell-surface: var(--wa-panel-bg);
+  --wa-shell-surface-elevated: var(--wa-card-bg);
+  --wa-shell-surface-soft: var(--wa-control-bg);
+  --wa-shell-border: var(--wa-border);
+  --wa-shell-border-strong: var(--wa-border-strong);
+  --wa-shell-divider: var(--wa-border);
+  --wa-shell-text: var(--wa-text-primary);
+  --wa-shell-text-secondary: var(--wa-text-secondary);
+  --wa-shell-text-muted: var(--wa-text-muted);
+  --wa-shell-accent: var(--wa-action-blue);
+  --wa-shell-accent-soft: color-mix(in srgb, var(--wa-shell-accent) 14%, transparent 86%);
+  --wa-shell-accent-soft-strong: color-mix(in srgb, var(--wa-shell-accent) 22%, transparent 78%);
+  background: var(--wa-shell-bg) !important;
+}
+
+body.wa-dashboard-active,
+body.wa-dashboard-active #app,
+body.wa-dashboard-active .app,
+body.wa-dashboard-active .body-padding {
+  background: var(--wa-shell-bg) !important;
+  color: var(--wa-shell-text) !important;
+}
+
+body.wa-dashboard-active .main-content {
+  background: var(--wa-shell-bg-secondary) !important;
+}
+
+body.wa-dashboard-active .top-navbar {
+  background: var(--wa-shell-header) !important;
+  border-color: var(--wa-shell-divider) !important;
+}
+
+body.wa-dashboard-active .main-sidebar,
+body.wa-dashboard-active .main-sidebar::after {
+  background: var(--wa-shell-sidebar) !important;
+  border-color: var(--wa-shell-divider) !important;
+}
+
+body.wa-dashboard-active .main-sidebar .sidebar-link-group-title,
+body.wa-dashboard-active .main-sidebar .sidebar-link-group-title.sidebar-section-header,
+body.wa-dashboard-active .main-sidebar .sidebar-link-group-title.app-header-gradient {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-bottom-color: var(--wa-shell-divider) !important;
+}
+
+body.wa-dashboard-active .wa-date-picker-wrap .input-group.dashboard-filter,
+body.wa-dashboard-active .main-content .dashboard-filter {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+body.wa-dashboard-active .wa-date-picker-wrap .mx-input,
+body.wa-dashboard-active .wa-date-picker-wrap .mx-icon-calendar,
+body.wa-dashboard-active .wa-date-picker-wrap .mx-icon-clear {
+  background: var(--wa-shell-surface-elevated) !important;
+  border: 1px solid var(--wa-shell-border) !important;
+  color: var(--wa-shell-text) !important;
+}
+
+body.wa-dashboard-active .wa-date-picker-wrap .mx-input::placeholder {
+  color: var(--wa-shell-text-muted) !important;
+}
+
+body.wa-dashboard-active .mx-datepicker-main,
+body.wa-dashboard-active .mx-datepicker-sidebar,
+body.wa-dashboard-active .mx-datepicker-content {
+  background: var(--wa-shell-surface-elevated) !important;
+  border-color: var(--wa-shell-border) !important;
+  color: var(--wa-shell-text) !important;
+}
+
+body.wa-dashboard-active .mx-calendar-header .mx-btn-icon-left i,
+body.wa-dashboard-active .mx-calendar-header .mx-btn-icon-right i,
+body.wa-dashboard-active .mx-calendar-header .mx-btn-icon-double-left i,
+body.wa-dashboard-active .mx-calendar-header .mx-btn-icon-double-right i {
+  color: var(--wa-shell-text-muted) !important;
+}
+
+body.wa-dashboard-active .mx-calendar-header .mx-btn:hover i {
+  color: var(--wa-shell-accent) !important;
+}
+
+body.wa-dashboard-active .right-sidebar-btn button {
+  background: var(--wa-shell-surface-elevated) !important;
+  color: var(--wa-shell-accent) !important;
+  border: 1px solid var(--wa-shell-border) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.wa-dashboard-active .right-sidebar-btn button:hover {
+  background: color-mix(in srgb, var(--wa-shell-surface-elevated) 82%, var(--wa-shell-accent-soft) 18%) !important;
+}
+
+/* ── WorkoutAtlas layout cleanup ─────────────────────────── */
+
+/* Settings gear: pull 12px inward so it never covers the scrollbar */
+.right-sidebar-btn {
+  right: 12px !important;
+}
+.right-sidebar-btn button {
+  border-radius: 6px !important;
+}
+
+/* Sidebar right border — separates sidebar from content area */
+.main-sidebar {
+  border-right: 1px solid var(--wa-shell-divider, rgba(255, 255, 255, 0.09)) !important;
+}
+
+/* Add breathing room between sidebar and dashboard on desktop */
+@media (min-width: 992px) {
+  .body-padding .main-content {
+    padding-left: 36px !important;
+    padding-right: 28px !important;
+  }
+}
+
+/* ── Dark sidebar: override light-theme global rules ─────── */
+/* style.css sets light-theme sidebar to #fff — cancel that */
+.light-theme .main-sidebar,
+.light-theme .main-sidebar::after,
+.dark-theme .main-sidebar,
+.dark-theme .main-sidebar::after {
+  background-color: var(--wa-shell-sidebar, #0a0f15) !important;
+  background: var(--wa-shell-sidebar, #0a0f15) !important;
+}
+
+/* Collapsed two-column dropdown panel (light-theme sets bg: #fff, #f5f5f5) */
+.light-theme .collapsed .sidebar-dropdown-menu,
+.light-theme .collapsed .sidebar-item .sidebar-link.has-sub.show {
+  background: var(--wa-shell-surface-elevated, #17212d) !important;
+}
+.light-theme .collapsed .sidebar-item .sidebar-link.has-sub.show .nav-icon {
+  color: var(--wa-shell-text-secondary, #a5afbd) !important;
+}
+
+/* Section header gradient variable — overridden to dark surface */
+.main-sidebar .sidebar-link-group-title.sidebar-section-header {
+  --ff-page-header-gradient: transparent !important;
+  --ff-page-header-bg: rgba(255, 255, 255, 0.04) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  background-image: none !important;
+  color: var(--wa-shell-text-muted, #748094) !important;
+}
+
+/* Light-theme link colors — keep dark */
+.light-theme .sidebar-item .sidebar-link .nav-icon,
+.light-theme .sidebar-item .sidebar-dropdown-item .sidebar-link {
+  color: var(--wa-shell-text-secondary, #a5afbd) !important;
+}
+.light-theme .sidebar-link-group-title {
+  color: var(--wa-shell-text-muted, #748094) !important;
+}
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/App.vue
 </style>
 

@@ -71,10 +71,16 @@ const normalizedRole = computed(() =>
 const isAdmin = computed(() => normalizedRole.value === 'admin')
 const isTrainer = computed(() => normalizedRole.value === 'trainer')
 const isUser = computed(() => normalizedRole.value === 'user')
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/components/MainSidebarComponent.vue
 const isMember = computed(() => normalizedRole.value === 'member')
 
 const canViewTrainerMenu = computed(() =>
   isAdmin.value || isTrainer.value || isUser.value || isMember.value || !normalizedRole.value
+=======
+
+const canViewTrainerMenu = computed(() =>
+  isAdmin.value || isTrainer.value
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/components/MainSidebarComponent.vue
 )
 
 const canViewAdminMenu = computed(() =>
@@ -189,7 +195,11 @@ onMounted(() => {
 
 
 
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/components/MainSidebarComponent.vue
       <div class="sidebar-menu" :id="horizontalMenuEnabled ? 'accordionExample' : 'testAccordionExample'" style="overflow-y: scroll;">
+=======
+      <div class="sidebar-menu wa-sidebar-scroll" :id="horizontalMenuEnabled ? 'accordionExample' : 'testAccordionExample'">
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/components/MainSidebarComponent.vue
           <li
             v-for="(sidebar, index) in sidebarMenus"
             :key="`section-${index}-${sidebar.menu_name}`"
@@ -448,26 +458,194 @@ onMounted(() => {
             </template>
             </template>
           </li>
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/components/MainSidebarComponent.vue
           <li class="help-center sidebar-highlight-card app-header-gradient">
             <h3>Help Center</h3>
             <p>We're an award-winning, forward thinking</p>
             <a href="#" class="btn btn-sm btn-light">Go to Help Center</a>
           </li>
+=======
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/components/MainSidebarComponent.vue
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/components/MainSidebarComponent.vue
 .sidebar-link.admin-light-gray,
 .sidebar-link.admin-light-gray .sidebar-txt,
 .sidebar-link.admin-light-gray .nav-icon i {
   color: #797979 !important;
+=======
+.wa-sidebar-scroll {
+  overflow-y: auto;
+  max-height: calc(100vh - 88px);
+}
+
+.sidebar-link.admin-light-gray,
+.sidebar-link.admin-light-gray .sidebar-txt,
+.sidebar-link.admin-light-gray .nav-icon i {
+  color: #9aabbc !important;
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/components/MainSidebarComponent.vue
 }
 
 .sidebar-link.admin-light-gray:hover,
 .sidebar-link.admin-light-gray:hover .sidebar-txt,
 .sidebar-link.admin-light-gray:hover .nav-icon i {
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/components/MainSidebarComponent.vue
   color: #797979 !important;
+=======
+  color: #c0d0e0 !important;
+}
+
+/* ── WorkoutAtlas dark sidebar — always-on overrides ─────── */
+
+/* Root panel */
+.main-sidebar {
+  --wa-sidebar-surface: var(--wa-shell-sidebar, #0a0f15);
+  --wa-sidebar-surface-elevated: var(--wa-shell-surface, #111821);
+  --wa-sidebar-border: var(--wa-shell-border, rgba(255, 255, 255, 0.09));
+  --wa-sidebar-divider: var(--wa-shell-divider, rgba(255, 255, 255, 0.09));
+  --wa-sidebar-text: var(--wa-shell-text, #f8fafc);
+  --wa-sidebar-text-secondary: var(--wa-shell-text-secondary, #a5afbd);
+  --wa-sidebar-text-muted: var(--wa-shell-text-muted, #748094);
+  --wa-sidebar-accent: var(--wa-shell-accent, var(--main-color, #3b82f6));
+  --wa-sidebar-accent-soft: var(--wa-shell-accent-soft, color-mix(in srgb, var(--wa-sidebar-accent) 12%, transparent 88%));
+  --wa-sidebar-accent-soft-strong: var(--wa-shell-accent-soft-strong, color-mix(in srgb, var(--wa-sidebar-accent) 20%, transparent 80%));
+  background-color: var(--wa-sidebar-surface) !important;
+}
+.main-sidebar::after {
+  background: color-mix(in srgb, var(--wa-sidebar-surface) 97%, transparent 3%) !important;
+}
+
+/* All generic containers */
+.sidebar-menu,
+.main-menu,
+.sidebar-link-group,
+.sidebar-dropdown-menu {
+  background: transparent !important;
+}
+.sidebar-link-group {
+  padding-top: 4px !important;
+  padding-bottom: 6px !important;
+}
+
+/* Section wrappers — no heavy card borders */
+.sidebar-item {
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+/* Section header titles — compact, distinct from nav links */
+.sidebar-link-group-title,
+.sidebar-link-group-title.sidebar-section-header,
+.sidebar-link-group-title.app-header-gradient {
+  background: color-mix(in srgb, var(--wa-sidebar-divider) 46%, transparent 54%) !important;
+  background-image: none !important;
+  color: var(--wa-sidebar-text-muted) !important;
+  border-top: 1px solid var(--wa-sidebar-divider) !important;
+  border-bottom: 1px solid var(--wa-sidebar-divider) !important;
+  min-height: 32px !important;
+  padding: 0 14px !important;
+  margin-top: 6px !important;
+}
+
+/* Override the CSS-variable-driven gradient used by .sidebar-section-header */
+.sidebar-link-group-title.sidebar-section-header {
+  --ff-page-header-gradient: transparent !important;
+  --ff-page-header-bg: color-mix(in srgb, var(--wa-sidebar-divider) 46%, transparent 54%) !important;
+}
+
+/* Section header chevron */
+.sidebar-link-group-title::after {
+  color: var(--wa-sidebar-text-muted) !important;
+  opacity: 1 !important;
+}
+
+/* Section header text + icon */
+.sidebar-link-group-title .sidebar-txt {
+  color: var(--wa-sidebar-text-muted) !important;
+  font-size: 11px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.07em !important;
+  font-weight: 700 !important;
+}
+.sidebar-link-group-title .nav-icon i {
+  color: var(--wa-sidebar-text-muted) !important;
+}
+
+/* Inactive nav links */
+.sidebar-link {
+  background: transparent !important;
+  color: var(--wa-sidebar-text-secondary) !important;
+  border-left: 3px solid transparent;
+  min-height: 40px;
+  padding: 0 12px 0 11px;
+}
+.sidebar-link .sidebar-txt {
+  color: var(--wa-sidebar-text-secondary) !important;
+}
+.sidebar-link .nav-icon i {
+  color: color-mix(in srgb, var(--wa-sidebar-text-secondary) 88%, #ffffff 12%) !important;
+}
+
+/* Active nav link */
+.sidebar-link.active {
+  background: var(--wa-sidebar-accent-soft) !important;
+  color: color-mix(in srgb, var(--wa-sidebar-accent) 58%, #ffffff 42%) !important;
+  border-left: 3px solid var(--wa-sidebar-accent) !important;
+}
+.sidebar-link.active .sidebar-txt {
+  color: color-mix(in srgb, var(--wa-sidebar-accent) 58%, #ffffff 42%) !important;
+  font-weight: 600 !important;
+}
+.sidebar-link.active .nav-icon i {
+  color: color-mix(in srgb, var(--wa-sidebar-accent) 58%, #ffffff 42%) !important;
+}
+.sidebar-link.active::after {
+  background: color-mix(in srgb, var(--wa-sidebar-accent) 66%, #ffffff 34%) !important;
+}
+
+/* Hover */
+.sidebar-link:hover {
+  background: color-mix(in srgb, var(--wa-sidebar-divider) 60%, transparent 40%) !important;
+  color: var(--wa-sidebar-text) !important;
+  border-left-color: color-mix(in srgb, var(--wa-sidebar-text-muted) 65%, transparent 35%);
+}
+.sidebar-link:hover .sidebar-txt {
+  color: var(--wa-sidebar-text) !important;
+}
+.sidebar-link:hover .nav-icon i {
+  color: color-mix(in srgb, var(--wa-sidebar-text) 82%, var(--wa-sidebar-text-muted) 18%) !important;
+}
+
+/* Open/expanded submenu parent */
+.sidebar-item.open .sidebar-link.has-sub {
+  background: var(--wa-sidebar-accent-soft-strong) !important;
+  color: color-mix(in srgb, var(--wa-sidebar-accent) 56%, #ffffff 44%) !important;
+  border-left: 3px solid color-mix(in srgb, var(--wa-sidebar-accent) 55%, transparent 45%) !important;
+}
+.sidebar-item.open .sidebar-link.has-sub .nav-icon i {
+  color: color-mix(in srgb, var(--wa-sidebar-accent) 56%, #ffffff 44%) !important;
+}
+
+/* Two-column dropdown panel */
+.sidebar-dropdown-menu {
+  background: var(--wa-sidebar-surface-elevated) !important;
+  border-color: var(--wa-sidebar-divider) !important;
+}
+
+/* Scrollbar — narrow, dark-themed */
+.wa-sidebar-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.wa-sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.wa-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--wa-sidebar-divider) 80%, transparent 20%);
+  border-radius: 2px;
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/components/MainSidebarComponent.vue
 }
 </style>

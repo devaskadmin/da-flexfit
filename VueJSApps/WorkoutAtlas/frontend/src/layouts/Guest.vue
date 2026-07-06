@@ -17,12 +17,35 @@ onBeforeMount(() => {
 </script>
 
 <template>
-  <div class="main-content" :class="[errorRoutes.includes(routeName) ? 'p-0' : 'login-panel', routeName === 'login_3' ? 'login-panel-3' : '']">
+  <div
+    class="main-content"
+    :class="[
+      errorRoutes.includes(routeName)
+        ? 'p-0'
+        : (routeName === 'login' ? 'wa-login-route' : 'login-panel'),
+      routeName === 'login_3' ? 'login-panel-3' : ''
+    ]"
+  >
     <slot></slot>
   </div>
 </template>
 
 <style scoped>
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/layouts/Guest.vue
+=======
+.main-content.wa-login-route {
+  position: static;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 0;
+  background: transparent;
+}
+
+.main-content.wa-login-route::after {
+  display: none;
+}
+
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/layouts/Guest.vue
  .light-theme .main-content.login-panel {
     background: url('@/assets/images/login-background2.jpg') center center no-repeat;
     background-size: cover;

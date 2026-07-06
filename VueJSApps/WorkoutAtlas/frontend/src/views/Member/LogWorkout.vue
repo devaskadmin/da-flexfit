@@ -2415,6 +2415,356 @@ onMounted(async () => {
 /* ── v0.81.6 Global density utility ──────────────────────────────────────── */
 .workout-log-mobile { /* defined here; used in template root */ }
 
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/LogWorkout.vue
+=======
+/* ── 0.84.39 Workout Log dark-theme color normalization (scoped) ─────────── */
+.wl-page {
+  --wl-surface-1: var(--wa-shell-surface, #121923);
+  --wl-surface-2: var(--wa-shell-surface-elevated, #17212d);
+  --wl-surface-3: var(--wa-shell-surface-soft, #1d2a38);
+  --wl-border: var(--wa-shell-border, rgba(255, 255, 255, 0.09));
+  --wl-border-strong: var(--wa-shell-border-strong, rgba(255, 255, 255, 0.16));
+  --wl-text: var(--wa-shell-text, #f8fafc);
+  --wl-text-secondary: var(--wa-shell-text-secondary, #a4b0c0);
+  --wl-text-muted: var(--wa-shell-text-muted, #738196);
+  --wl-accent: var(--wa-shell-accent, var(--main-color, #3b82f6));
+}
+
+.wl-page .builder-hero.ff-page-header.app-header-gradient {
+  background: var(--wl-surface-2) !important;
+  border: 1px solid var(--wl-border);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+.wl-page .wl-date-input {
+  background: var(--wl-surface-1);
+  border-color: var(--wl-border-strong);
+  color: var(--wl-text);
+}
+
+.wl-page .wl-date-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.86);
+}
+
+.wl-page .wl-btn {
+  background: var(--wl-accent);
+  border-radius: 8px;
+}
+
+.wl-page .wl-btn:hover {
+  filter: brightness(1.08);
+}
+
+.wl-page .wl-btn--secondary {
+  background: var(--wl-surface-2);
+  color: var(--wl-text-secondary);
+  border: 1px solid var(--wl-border);
+}
+
+.wl-page .wl-btn--secondary:hover {
+  background: var(--wl-surface-3);
+  color: var(--wl-text);
+}
+
+.wl-page .wl-btn--active,
+.wl-page .wl-btn-resume,
+.wl-page .wl-btn-complete {
+  background: #16a34a;
+}
+
+.wl-page .wl-btn--active:hover,
+.wl-page .wl-btn-resume:hover,
+.wl-page .wl-btn-complete:hover {
+  background: #15803d;
+}
+
+.wl-page .wl-stats .wl-stat-card,
+.wl-page .wl-empty,
+.wl-page .wl-plan,
+.wl-page .wl-plan__body,
+.wl-page .wl-day-card,
+.wl-page .wl-day-order-toolbar,
+.wl-page .wl-day-detail-header,
+.wl-page .wl-history-datebar,
+.wl-page .wl-history-session,
+.wl-page .wl-history-session__header,
+.wl-page .wl-hist-ex-card,
+.wl-page .wl-history-group,
+.wl-page .wl-history-group__header,
+.wl-page .wl-modal,
+.wl-page .wl-bottom-bar {
+  background: var(--wl-surface-1);
+  border-color: var(--wl-border);
+  color: var(--wl-text);
+}
+
+.wl-page .wl-plan__header:hover,
+.wl-page .wl-day-order-toolbar,
+.wl-page .wl-hist-ex-thumb,
+.wl-page .wl-hist-sets-head--strength,
+.wl-page .wl-hist-sets-head--cardio,
+.wl-page .wl-history-datebar,
+.wl-page .wl-day-detail-header,
+.wl-page .wl-modal__header,
+.wl-page .wl-modal__footer,
+.wl-page .wl-bottom-bar {
+  background: var(--wl-surface-2);
+}
+
+.wl-page .wl-plan-picker-hint {
+  background: var(--wl-surface-2);
+  border-color: var(--wl-border);
+  color: var(--wl-text-secondary);
+}
+
+.wl-page .wl-plan--expanded {
+  border-color: color-mix(in srgb, var(--wl-accent) 55%, var(--wl-border) 45%);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--wl-accent) 25%, transparent 75%);
+}
+
+.wl-page .wl-plan__name,
+.wl-page .wl-day-card__title h4,
+.wl-page .wl-ex-name,
+.wl-page .wl-history-group__plan,
+.wl-page .wl-hist-ex-name,
+.wl-page .wl-bottom-bar__label,
+.wl-page .wl-modal__body,
+.wl-page .wl-stat-card strong {
+  color: var(--wl-text);
+}
+
+.wl-page .wl-day-order-toggle,
+.wl-page .wl-plan__meta,
+.wl-page .wl-day-card__meta,
+.wl-page .wl-ex-detail,
+.wl-page .wl-progress-label,
+.wl-page .wl-history-session__meta,
+.wl-page .wl-hist-set-num,
+.wl-page .wl-modal__sub,
+.wl-page .wl-stat-card span,
+.wl-page .wl-empty {
+  color: var(--wl-text-secondary);
+}
+
+.wl-page .wl-empty-icon,
+.wl-page .wl-plan__chevron,
+.wl-page .wl-day-icon,
+.wl-page .wl-plan__meta i,
+.wl-page .wl-day-card__meta i,
+.wl-page .wl-history-datebar i,
+.wl-page .wl-history-ex__stats i,
+.wl-page .wl-history-session__meta i {
+  color: color-mix(in srgb, var(--wl-accent) 68%, var(--wl-text-secondary) 32%);
+}
+
+.wl-page .wl-tabs {
+  border-bottom-color: var(--wl-border);
+}
+
+.wl-page .wl-tab {
+  color: var(--wl-text-muted);
+}
+
+.wl-page .wl-tab:hover,
+.wl-page .wl-tab--active {
+  color: var(--wl-accent);
+}
+
+.wl-page .wl-tab--active {
+  border-bottom-color: var(--wl-accent);
+}
+
+.wl-page .wl-tab-badge,
+.wl-page .wl-plan__tag,
+.wl-page .wl-plan__selected-badge,
+.wl-page .wl-day-detail-count,
+.wl-page .wl-history-group__day,
+.wl-page .wl-hist-tag--type {
+  background: color-mix(in srgb, var(--wl-accent) 22%, transparent 78%);
+  border: 1px solid color-mix(in srgb, var(--wl-accent) 45%, transparent 55%);
+  color: color-mix(in srgb, var(--wl-accent) 78%, #ffffff 22%);
+}
+
+.wl-page .wl-day-card__exercises,
+.wl-page .wl-plan__body,
+.wl-page .wl-history-session__header,
+.wl-page .wl-modal__header,
+.wl-page .wl-modal__footer,
+.wl-page .wl-bottom-bar,
+.wl-page .wl-hist-sets-table,
+.wl-page .wl-hist-set-row,
+.wl-page .wl-hist-ex {
+  border-color: var(--wl-border);
+}
+
+.wl-page .wl-order-toolbar-btn,
+.wl-page .wl-order-btn,
+.wl-page .wl-btn-edit,
+.wl-page .wl-btn-preview,
+.wl-page .wl-btn-end,
+.wl-page .wl-hist-edit-btn,
+.wl-page .wl-hist-cancel-btn,
+.wl-page .wl-hist-set-input,
+.wl-page .wl-link {
+  background: var(--wl-surface-2);
+  border-color: var(--wl-border);
+  color: var(--wl-text-secondary);
+  border-radius: 8px;
+}
+
+.wl-page .wl-order-toolbar-btn--reset:hover,
+.wl-page .wl-order-btn:hover,
+.wl-page .wl-btn-edit:hover,
+.wl-page .wl-btn-preview:hover,
+.wl-page .wl-hist-edit-btn:hover:not(:disabled),
+.wl-page .wl-hist-cancel-btn:hover:not(:disabled) {
+  background: var(--wl-surface-3);
+  color: var(--wl-text);
+}
+
+.wl-page .wl-link {
+  text-decoration-color: color-mix(in srgb, var(--wl-accent) 60%, transparent 40%);
+}
+
+.wl-page .wl-order-toolbar-btn--save,
+.wl-page .wl-btn-start,
+.wl-page .wl-hist-save-btn {
+  background: #15803d;
+  border-color: #166534;
+  color: #f8fafc;
+}
+
+.wl-page .wl-order-toolbar-btn--save:hover,
+.wl-page .wl-btn-start:hover,
+.wl-page .wl-hist-save-btn:hover:not(:disabled) {
+  background: #166534;
+}
+
+.wl-page .wl-custom-order-badge,
+.wl-page .wl-in-progress-chip {
+  background: rgba(22, 163, 74, 0.18);
+  border-color: rgba(74, 222, 128, 0.45);
+  color: #bbf7d0;
+}
+
+.wl-page .wl-preview-banner {
+  background: rgba(217, 119, 6, 0.14);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fde68a;
+}
+
+.wl-page .wl-preview-badge {
+  background: rgba(217, 119, 6, 0.18);
+  border-color: rgba(245, 158, 11, 0.45);
+  color: #fcd34d;
+}
+
+.wl-page .wl-history-session--editing,
+.wl-page .wl-day-card--active {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+.wl-page .wl-day-card--active {
+  border-color: rgba(74, 222, 128, 0.45);
+}
+
+.wl-page .wl-hist-ex-thumb,
+.wl-page .wl-hist-tag,
+.wl-page .wl-hist-set-input,
+.wl-page .wl-hist-set-row--done,
+.wl-page .wl-hist-sets-head--cardio,
+.wl-page .wl-hist-sets-head--strength,
+.wl-page .wl-hist-sets-table,
+.wl-page .wl-hist-set-row {
+  background: var(--wl-surface-2);
+}
+
+.wl-page .wl-hist-set-row--done {
+  background: rgba(22, 163, 74, 0.14);
+}
+
+.wl-page .wl-modal {
+  border: 1px solid var(--wl-border);
+}
+
+.wl-page .wl-btn-delete,
+.wl-page .wl-hist-delete-btn {
+  border-radius: 8px;
+}
+
+.wl-page .wl-bottom-bar {
+  backdrop-filter: blur(8px);
+  background: color-mix(in srgb, var(--wl-surface-2) 92%, transparent 8%);
+}
+
+/* Day Details child card theme overrides without touching shared component styles. */
+.wl-page :deep(.session-exercise-card),
+.wl-page :deep(.cardio-3col-table),
+.wl-page :deep(.c3-head),
+.wl-page :deep(.c3-row-done),
+.wl-page :deep(.set-input),
+.wl-page :deep(.sec-thumb-placeholder),
+.wl-page :deep(.sec-prefill-note),
+.wl-page :deep(.sec-header--active),
+.wl-page :deep(.sec-header:hover) {
+  background: var(--wl-surface-1);
+  border-color: var(--wl-border);
+  color: var(--wl-text);
+}
+
+.wl-page :deep(.session-exercise-card) {
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.22);
+}
+
+.wl-page :deep(.sec-meta p),
+.wl-page :deep(.set-num),
+.wl-page :deep(.sec-sets-summary),
+.wl-page :deep(.c3-col-set),
+.wl-page :deep(.c3-col-info) {
+  color: var(--wl-text-secondary);
+}
+
+.wl-page :deep(.sec-type-chip),
+.wl-page :deep(.sec-select-btn--active) {
+  background: color-mix(in srgb, var(--wl-accent) 22%, transparent 78%);
+  border-color: color-mix(in srgb, var(--wl-accent) 45%, transparent 55%);
+  color: color-mix(in srgb, var(--wl-accent) 78%, #ffffff 22%);
+}
+
+.wl-page :deep(.sec-select-btn),
+.wl-page :deep(.set-input),
+.wl-page :deep(.add-set-btn),
+.wl-page :deep(.c3-rm-btn),
+.wl-page :deep(.c3-complete-btn),
+.wl-page :deep(.c3-finish-btn) {
+  background: var(--wl-surface-2);
+  border-color: var(--wl-border);
+  color: var(--wl-text-secondary);
+  border-radius: 8px;
+}
+
+.wl-page :deep(.sec-select-btn),
+.wl-page :deep(.add-set-btn) {
+  border-color: color-mix(in srgb, var(--wl-accent) 45%, var(--wl-border) 55%);
+  color: var(--wl-accent);
+}
+
+.wl-page :deep(.set-input:focus) {
+  border-color: color-mix(in srgb, var(--wl-accent) 70%, #ffffff 30%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--wl-accent) 25%, transparent 75%);
+}
+
+.wl-page :deep(.sec-set-row.set-done),
+.wl-page :deep(.c3-set-group.c3-set-done),
+.wl-page :deep(.c3-set-group.c3-set-done .c3-row:first-child),
+.wl-page :deep(.c3-set-group.c3-set-done .c3-row-done),
+.wl-page :deep(.c3-finish-btn--done),
+.wl-page :deep(.c3-complete-btn--done) {
+  background: rgba(22, 163, 74, 0.14) !important;
+  color: #bbf7d0;
+}
+
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/LogWorkout.vue
 /* ── v0.81.9 Mobile 768px — Workout Log Compact Layout ───────────────────── */
 @media (max-width: 768px) {
   /* Global density */
@@ -2656,3 +3006,9 @@ onMounted(async () => {
   .wl-toolbar .wl-btn  { font-size: 0.74rem; height: 32px; }
 }
 </style>
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/LogWorkout.vue
+=======
+
+
+
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/LogWorkout.vue

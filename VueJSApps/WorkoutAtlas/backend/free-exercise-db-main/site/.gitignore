@@ -7,7 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
+
 .DS_Store
 dist
 dist-ssr
@@ -26,3 +26,68 @@ coverage
 *.njsproj
 *.sln
 *.sw?
+<<<<<<< HEAD:VueJSApps/WorkoutAtlas/backend/free-exercise-db-main/site/.gitignore
+=======
+
+yarn.lock
+package-lock.json
+.vscode/extensions.json
+sync_config.jsonc
+
+# Local DB migration scratch file
+/DATABASE schema update file.txt
+/Database Log file.txt
+
+# Environment files — exclude from git to protect secrets
+# Set all values in Render dashboard (backend) and Render build env (frontend)
+backend/.env
+frontend/.env
+
+# Database backups and sensitive documents
+Documents/
+
+# Archive / build output files — never commit these
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.z
+
+# Large binary / executable files
+*.exe
+*.dll
+*.so
+*.dylib
+*.dmg
+*.iso
+*.img
+*.apk
+*.ipa
+
+# Database dumps
+*.sql.gz
+*.dump
+*.bak
+
+# Large media files
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.wmv
+*.psd
+*.ai
+
+# Build outputs
+dist/
+build/
+.vite/
+
+# node_modules (should already be excluded by nested .gitignores, belt-and-suspenders)
+node_modules/
+>>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/.gitignore

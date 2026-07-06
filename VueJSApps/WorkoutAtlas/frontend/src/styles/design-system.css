@@ -1,0 +1,288 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root {
+  color-scheme: dark;
+  --wa-bg: #07100d;
+  --wa-bg-elevated: rgba(9, 18, 15, 0.88);
+  --wa-surface: rgba(14, 24, 20, 0.84);
+  --wa-surface-strong: rgba(17, 30, 24, 0.96);
+  --wa-card-border: rgba(159, 255, 106, 0.14);
+  --wa-border: rgba(173, 186, 177, 0.14);
+  --wa-text: #ecf8ef;
+  --wa-text-muted: rgba(236, 248, 239, 0.72);
+  --wa-text-soft: rgba(236, 248, 239, 0.56);
+  --wa-accent: #a4ff4f;
+  --wa-accent-2: #6ce56a;
+  --wa-accent-contrast: #041008;
+  --wa-shadow: 0 18px 50px rgba(0, 0, 0, 0.42);
+  --wa-shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.24);
+  --wa-radius-xl: 28px;
+  --wa-radius-lg: 22px;
+  --wa-radius-md: 16px;
+  --wa-radius-sm: 12px;
+  --wa-gap: 16px;
+  --wa-border-strong: rgba(164, 255, 79, 0.22);
+  --wa-focus: 0 0 0 4px rgba(164, 255, 79, 0.18);
+  --wa-font: 'Manrope', 'Segoe UI', 'Helvetica Neue', sans-serif;
+}
+
+html, body, #app {
+  min-height: 100%;
+  background:
+    radial-gradient(circle at top left, rgba(164, 255, 79, 0.14), transparent 24%),
+    radial-gradient(circle at top right, rgba(108, 229, 106, 0.10), transparent 28%),
+    linear-gradient(180deg, #0b1310 0%, #060b09 100%);
+  color: var(--wa-text);
+  font-family: var(--wa-font);
+}
+
+body {
+  margin: 0;
+  font-family: var(--wa-font);
+  background: var(--wa-bg);
+  color: var(--wa-text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+}
+
+button, input, select, textarea {
+  font: inherit;
+}
+
+.app-shell,
+.app-page-shell,
+.dashboard-container,
+.app-page-canvas,
+.app-inner-shell,
+.page-container,
+.page-content,
+.main-content,
+.content-body {
+  background: transparent !important;
+  color: var(--wa-text);
+}
+
+.glass-card,
+.panel,
+.card,
+.bg-white,
+.widget,
+.table-card,
+.modal-content,
+.dropdown-menu,
+.popover,
+.toast,
+.sidebar,
+.right-sidebar,
+.navbar,
+.header,
+.page-header,
+.section-card,
+.metric-card,
+.chart-card,
+.workout-tile,
+.stat-tile,
+.dashboard-panel,
+.dashboard-focus-card,
+.dashboard-sidebar,
+.dashboard-mobile-nav {
+  background: linear-gradient(180deg, rgba(16, 25, 21, 0.94), rgba(10, 16, 13, 0.9)) !important;
+  border: 1px solid var(--wa-border) !important;
+  border-radius: var(--wa-radius-xl) !important;
+  box-shadow: var(--wa-shadow-soft) !important;
+  color: var(--wa-text) !important;
+}
+
+.panel-header,
+.card-header,
+.page-header,
+.widget-header,
+.navbar,
+.header,
+.section-header {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+.btn,
+button,
+.primary-button,
+.secondary-button,
+.nav-link,
+.dropdown-item,
+.tab,
+.nav-item,
+.page-action,
+.chip,
+.quick-action-card,
+.sidebar-link,
+.router-link-active {
+  border-radius: 999px !important;
+}
+
+.btn,
+button,
+.primary-button,
+.secondary-button,
+.nav-link,
+.dropdown-item,
+.tab,
+.page-action,
+.chip,
+.quick-action-card,
+.sidebar-link {
+  min-height: 48px;
+  padding: 12px 16px;
+}
+
+.btn-primary,
+.primary-button,
+button.primary,
+.btn-success,
+.btn-accent,
+.btn-cta {
+  background: linear-gradient(135deg, var(--wa-accent), #d5ff77) !important;
+  color: var(--wa-accent-contrast) !important;
+  border: 0 !important;
+  box-shadow: 0 10px 24px rgba(164, 255, 79, 0.24) !important;
+}
+
+.btn-outline,
+.secondary-button,
+button.secondary,
+.btn-secondary,
+.tab,
+.nav-link,
+.dropdown-item {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: var(--wa-text) !important;
+}
+
+.btn:focus,
+button:focus,
+input:focus,
+select:focus,
+textarea:focus,
+.nav-link:focus,
+.tab:focus {
+  outline: none !important;
+  box-shadow: var(--wa-focus) !important;
+}
+
+input,
+select,
+textarea,
+.form-control,
+.form-select {
+  background: rgba(8, 14, 11, 0.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  border-radius: var(--wa-radius-md) !important;
+  color: var(--wa-text) !important;
+  min-height: 48px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--wa-text-soft) !important;
+}
+
+table,
+.table {
+  color: var(--wa-text) !important;
+}
+
+thead th,
+tbody td {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.nav-tabs .nav-link.active,
+.tab--active,
+.dashboard-tab--active {
+  background: rgba(164, 255, 79, 0.14) !important;
+  border-color: rgba(164, 255, 79, 0.28) !important;
+  color: var(--wa-accent) !important;
+}
+
+.sidebar,
+.dashboard-sidebar,
+.dashboard-mobile-nav,
+.nav-menu,
+.offcanvas,
+.drawer {
+  background: rgba(7, 12, 10, 0.96) !important;
+  backdrop-filter: blur(20px);
+}
+
+.nav-link,
+.sidebar-link,
+.dropdown-item,
+.mobile-nav-item {
+  color: var(--wa-text-muted) !important;
+}
+
+.nav-link.active,
+.sidebar-link.active,
+.dropdown-item.active,
+.mobile-nav-item.active,
+.router-link-active {
+  background: rgba(164, 255, 79, 0.12) !important;
+  color: var(--wa-accent) !important;
+}
+
+.page-header,
+.section-header,
+.metric-card,
+.stat-tile,
+.chart-card,
+.workout-tile,
+.table-card,
+.section-card {
+  backdrop-filter: blur(18px);
+}
+
+.shadow,
+.shadow-sm {
+  box-shadow: var(--wa-shadow-soft) !important;
+}
+
+img,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .btn,
+  button,
+  .primary-button,
+  .secondary-button,
+  .nav-link,
+  .dropdown-item,
+  .tab,
+  .sidebar-link {
+    min-height: 52px;
+    padding: 14px 18px;
+  }
+
+  .glass-card,
+  .panel,
+  .card,
+  .dashboard-panel,
+  .section-card,
+  .metric-card,
+  .chart-card,
+  .workout-tile,
+  .stat-tile {
+    border-radius: 20px !important;
+  }
+}
