@@ -21,7 +21,7 @@ const showDiagnosticsModal = ref(false);
 const isSubmitting = ref(false);
 const isConnectionLimitError = ref(false);
 const isDbAuthError = ref(false);
-const appVersion = import.meta.env.VITE_APP_VERSION || '0.84.43';
+const appVersion = import.meta.env.VITE_APP_VERSION || '0.69.0';
 const isDev = import.meta.env.DEV;
 
 const isSafariBrowser = () => {
@@ -714,7 +714,7 @@ const demoLogin = async (role) => {
 .wa-login {
   --wa-bg: #0b0f17;
   --wa-surface: #121a26;
-  --wa-card: rgba(27, 36, 68, 0.80);
+  --wa-card: rgba(10, 13, 17, 0.80);
   --wa-primary: #2563eb;
   --wa-success: #22c55e;
   --wa-danger: #ef4444;
@@ -771,7 +771,7 @@ const demoLogin = async (role) => {
   padding: clamp(10px, 2.2vw, 14px);
   border-radius: 4px;
   border: 1px solid #6b7280;
-  background: var(--wa-card);
+  background: rgba(10, 13, 17, 0.80);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
