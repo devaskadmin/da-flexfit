@@ -218,14 +218,6 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
   calories: Number.isFinite(Number(item.calories)) ? Number(item.calories) : null,
 })))
 
-const navLinks = [
-  { label: 'Home', route: '/dashboard', icon: 'fa-solid fa-house' },
-  { label: 'Log', route: '/workout-log', icon: 'fa-solid fa-dumbbell' },
-  { label: 'Build', route: '/workout-builder', icon: 'fa-solid fa-clipboard-list' },
-  { label: 'Progress', route: '/progress', icon: 'fa-solid fa-chart-line' },
-  { label: 'Nutrition', route: '/Nutrition', icon: 'fa-solid fa-apple-whole' },
-]
-
 const allMenuLinks = [
   { label: 'Dashboard', shortLabel: 'Home', route: '/dashboard', icon: 'fa-solid fa-house', section: 'General', roles: ['member', 'trainer', 'admin'] },
   { label: 'Workout Log', shortLabel: 'Log', route: '/workout-log', icon: 'fa-solid fa-dumbbell', section: 'General', roles: ['member', 'trainer', 'admin'] },
@@ -520,17 +512,6 @@ onUnmounted(() => {
       </section>
     </main>
 
-    <nav class="wa-bottom-nav" aria-label="Bottom navigation" role="navigation">
-      <router-link
-        v-for="item in navLinks"
-        :key="item.route"
-        :to="item.route"
-        class="wa-bottom-link"
-      >
-        <i :class="item.icon"></i>
-        <span>{{ item.label }}</span>
-      </router-link>
-    </nav>
   </div>
 </template>
 
@@ -1014,45 +995,6 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
-.wa-bottom-nav {
-  position: fixed;
-  left: 10px;
-  right: 10px;
-  bottom: max(10px, env(safe-area-inset-bottom));
-  z-index: 60;
-  height: 70px;
-  border-radius: 16px;
-  border: 1px solid var(--wa-border);
-  background: color-mix(in srgb, var(--wa-surface) 92%, transparent 8%);
-  backdrop-filter: blur(10px);
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  padding: 4px;
-}
-
-.wa-bottom-link {
-  text-decoration: none;
-  color: var(--wa-text-secondary);
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.wa-bottom-link i {
-  font-size: 14px;
-}
-
-.wa-bottom-link.router-link-active {
-  color: var(--wa-accent);
-  background: var(--wa-accent-soft);
-}
-
 .wa-desktop-rail {
   display: none;
 }
@@ -1087,10 +1029,6 @@ onUnmounted(() => {
 @media (min-width: 768px) {
   .wa-dashboard {
     padding: 20px 24px 38px;
-  }
-
-  .wa-bottom-nav {
-    display: none;
   }
 }
 
