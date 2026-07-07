@@ -852,7 +852,7 @@ const demoLogin = async (role) => {
   align-items: center;
   min-height: 52px;
   border-radius: 12px;
-  border: 1px solid rgba(145, 160, 200, 0.28);
+  border: 1px solid rgba(145, 160, 200, 0.32);
   background: #252E48;
   overflow: hidden;
   transition: border-color 180ms ease, box-shadow 180ms ease;
@@ -870,21 +870,36 @@ const demoLogin = async (role) => {
   place-items: center;
   color: #8F9BB5;
   background: transparent;
-  border-right: 1px solid rgba(145, 160, 200, 0.28);
+  border-right: 1px solid rgba(145, 160, 200, 0.18);
   font-size: 1rem;
 }
 
 .wa-input input {
+  appearance: none;
+  -webkit-appearance: none;
   width: 100%;
   min-width: 0;
   height: 100%;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
   color: #F7F9FF;
   font-size: 0.98rem;
   padding: 0 12px;
-  outline: none;
+  outline: none !important;
+  -webkit-appearance: none;
+  background-clip: padding-box;
+}
+
+.wa-input input:focus,
+.wa-input input:focus-visible,
+.wa-input input:active {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .wa-input input::placeholder {
@@ -894,9 +909,10 @@ const demoLogin = async (role) => {
 
 .wa-input__toggle {
   appearance: none;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
+  -webkit-appearance: none;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
   color: #8F9BB5;
   height: 100%;
   width: 42px;
@@ -904,17 +920,29 @@ const demoLogin = async (role) => {
   display: grid;
   place-items: center;
   cursor: pointer;
-  border-left: 1px solid rgba(145, 160, 200, 0.28);
-  transition: color 150ms ease, background 150ms ease;
+  border-left: 1px solid rgba(145, 160, 200, 0.18) !important;
+  box-shadow: none !important;
+  outline: none !important;
+  transition: color 150ms ease;
 }
 
 .wa-input__toggle:hover {
   color: #F7F9FF;
-  background: rgba(255, 255, 255, 0.06);
+}
+
+.wa-input__toggle:focus,
+.wa-input__toggle:focus-visible,
+.wa-input__toggle:active {
+  border: 0 !important;
+  border-left: 1px solid rgba(145, 160, 200, 0.18) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .wa-input__toggle:focus-visible {
-  outline: 2px solid #2F6BFF;
+  outline: 2px solid rgba(96, 165, 250, 0.95);
   outline-offset: -2px;
 }
 

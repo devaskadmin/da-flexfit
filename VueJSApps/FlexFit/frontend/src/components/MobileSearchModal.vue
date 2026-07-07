@@ -324,4 +324,175 @@ onUnmounted(() => {
   transform: translateY(-10px);
   opacity: 0;
 }
+
+@media (max-width: 768px) {
+  .mobile-search-overlay {
+    align-items: flex-start;
+    padding-top: 18px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .mobile-search-modal {
+    max-width: none;
+    border-radius: 20px;
+    padding: 16px;
+    gap: 14px;
+    background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    box-shadow: 0 18px 50px rgba(2, 6, 23, 0.48);
+    max-height: calc(100dvh - 36px);
+    overflow: auto;
+  }
+
+  .modal-title {
+    font-size: 1rem;
+    color: #f8fafc;
+  }
+
+  .modal-close-btn {
+    color: #cbd5e1;
+  }
+
+  .modal-close-btn:hover {
+    background: rgba(148, 163, 184, 0.12);
+    color: #f8fafc;
+  }
+
+  .modal-search-input-wrap {
+    background: #0b1220;
+    border-color: rgba(148, 163, 184, 0.18);
+    border-radius: 14px;
+    padding: 12px 14px;
+  }
+
+  .modal-search-input-wrap:focus-within {
+    background: #111827;
+    border-color: #0d99ff;
+  }
+
+  .search-icon {
+    color: #94a3b8;
+  }
+
+  .modal-search-input {
+    color: #f8fafc;
+    font-size: 0.98rem;
+  }
+
+  .modal-search-input::placeholder {
+    color: #64748b;
+  }
+
+  .modal-recents {
+    gap: 10px;
+  }
+
+  .recents-label {
+    color: #94a3b8;
+    letter-spacing: 0.12em;
+  }
+
+  .recents-list {
+    gap: 6px;
+  }
+
+  .recents-item {
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.62);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    color: #e2e8f0;
+  }
+
+  .recents-item:hover {
+    background: rgba(30, 41, 59, 0.92);
+  }
+
+  .recent-icon {
+    color: #7dd3fc;
+  }
+}
+
+@media (max-width: 480px) {
+  .mobile-search-overlay {
+    padding-top: 12px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .mobile-search-modal {
+    border-radius: 18px;
+    padding: 14px;
+    gap: 12px;
+    max-height: calc(100dvh - 24px);
+  }
+
+  .modal-header {
+    gap: 12px;
+  }
+
+  .modal-title {
+    font-size: 0.96rem;
+  }
+
+  .modal-search-input-wrap {
+    padding: 11px 12px;
+  }
+
+  .modal-search-input,
+  .recents-item {
+    font-size: 0.92rem;
+  }
+
+  .recents-item {
+    padding: 11px 12px;
+  }
+}
+
+@media (max-width: 768px) and (prefers-color-scheme: light) {
+  .mobile-search-modal {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.08);
+  }
+
+  .modal-title {
+    color: #1e293b;
+  }
+
+  .modal-close-btn {
+    color: #64748b;
+  }
+
+  .modal-close-btn:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+  }
+
+  .modal-search-input-wrap {
+    background: #f8fafc;
+  }
+
+  .modal-search-input-wrap:focus-within {
+    background: #ffffff;
+  }
+
+  .modal-search-input {
+    color: #0f172a;
+  }
+
+  .modal-search-input::placeholder {
+    color: #94a3b8;
+  }
+
+  .recents-item {
+    background: #f8fafc;
+    color: #334155;
+    border-color: rgba(148, 163, 184, 0.12);
+  }
+
+  .recents-item:hover {
+    background: #eef2f7;
+  }
+}
 </style>
