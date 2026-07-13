@@ -36,17 +36,17 @@ onBeforeMount(() => {
   min-height: 100vh;
   min-height: 100dvh;
   padding: 0;
-  background: transparent;
+  background: var(--wa-app-bg);
 }
 
 .main-content.wa-login-route::after {
   display: none;
 }
 
- .light-theme .main-content.login-panel {
-    background: url('@/assets/images/login-background2.jpg') center center no-repeat;
-    background-size: cover;
-  }
+.main-content.login-panel,
+.main-content.login-panel-3 {
+  background: var(--wa-app-bg);
+}
   
 
 </style>

@@ -24,12 +24,16 @@
 body,
 body.dark-theme,
 #app {
-  background:
-    radial-gradient(circle at 15% 10%, rgba(183, 255, 75, 0.12), transparent 38%),
-    radial-gradient(circle at 85% 25%, rgba(85, 255, 170, 0.08), transparent 32%),
-    linear-gradient(180deg, var(--ff-bg-0) 0%, var(--ff-bg-1) 45%, #0e1412 100%);
+  background: var(--wa-app-bg);
   color: var(--ff-text);
   font-family: var(--ff-font);
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+  background: var(--wa-app-bg);
 }
 
 .main-content,
