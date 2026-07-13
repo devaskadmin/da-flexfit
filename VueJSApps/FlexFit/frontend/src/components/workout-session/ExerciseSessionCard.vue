@@ -133,7 +133,7 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
           <div class="c3-row">
             <span class="c3-col-set"></span>
             <span class="c3-col-info">Reps</span>
-            <div class="c3-col-value">
+            <div class="c3-col-value c3-col-value-inline-actions">
               <input
                 type="number"
                 :class="['set-input', prefillClass(set, 'reps')]"
@@ -142,33 +142,28 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
                 placeholder="0"
                 @input="emit('update-set', exercise.id, idx, 'reps', $event.target.value)"
               />
-            </div>
-          </div>
-          <!-- Action row -->
-          <div class="c3-row c3-row-done">
-            <span class="c3-col-set"></span>
-            <div class="c3-col-info c3-info-action">
-              <button
-                v-if="exercise.sessionSets.length > 1"
-                type="button"
-                class="c3-rm-btn"
-                title="Remove this set"
-                @click="emit('remove-set', exercise.id, idx)"
-              >
-                <i class="fa-solid fa-minus"></i> Remove Set
-              </button>
-            </div>
-            <div class="c3-col-value c3-done-cell">
-              <button
-                type="button"
-                class="c3-complete-btn"
-                :class="{ 'c3-complete-btn--done': set.done }"
-                @click="emit('update-set', exercise.id, idx, 'done', !set.done)"
-              >
-                <i v-if="set.done" class="fa-solid fa-circle-check"></i>
-                <i v-else class="fa-regular fa-circle"></i>
-                {{ set.done ? 'Set Done' : 'Complete Set' }}
-              </button>
+              <div class="c3-inline-actions" role="group" aria-label="Set actions">
+                <button
+                  v-if="exercise.sessionSets.length > 1"
+                  type="button"
+                  class="c3-icon-btn c3-icon-btn--remove"
+                  title="Remove this set"
+                  aria-label="Remove this set"
+                  @click="emit('remove-set', exercise.id, idx)"
+                >
+                  <i class="fa-solid fa-minus"></i>
+                </button>
+                <button
+                  type="button"
+                  class="c3-icon-btn c3-icon-btn--complete"
+                  :class="{ 'c3-icon-btn--done': set.done }"
+                  :title="set.done ? 'Set completed' : 'Mark set complete'"
+                  :aria-label="set.done ? 'Set completed' : 'Mark set complete'"
+                  @click="emit('update-set', exercise.id, idx, 'done', !set.done)"
+                >
+                  <i class="fa-solid fa-check"></i>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -720,6 +715,63 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
   padding: 3px 0;
 }
 
+.c3-col-value-inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.c3-col-value-inline-actions .set-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.c3-inline-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.c3-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.c3-icon-btn--remove {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+.c3-icon-btn--remove:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+}
+
+.c3-icon-btn--complete {
+  background: #16a34a;
+  border-color: #15803d;
+  color: #ffffff;
+}
+
+.c3-icon-btn--complete:hover {
+  background: #15803d;
+}
+
+.c3-icon-btn--done {
+  background: #166534;
+  border-color: #14532d;
+  opacity: 0.92;
+}
+
 /* Value inputs — constrained to their column */
 .c3-col-value .set-input {
   width: 100%;
@@ -953,6 +1005,22 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
   }
   .c3-col-value { padding: 0; }
 
+  .c3-col-value-inline-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .c3-inline-actions {
+    gap: 5px;
+  }
+
+  .c3-icon-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+  }
+
   /* §5 Field height 36px */
   .set-input {
     min-height: 36px;
@@ -1001,6 +1069,7 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
   .sec-thumb, .sec-thumb-placeholder { width: 36px; height: 36px; }
   .sec-meta h5 { font-size: 0.8rem; }
   .set-input { min-height: 34px; height: 34px; font-size: 0.78rem; }
+  .c3-icon-btn { width: 28px; height: 28px; border-radius: 6px; }
   .c3-rm-btn      { font-size: 0.64rem; padding: 0 6px; height: 28px; }
   .c3-complete-btn { font-size: 0.66rem; padding: 0 8px; height: 28px; }
 

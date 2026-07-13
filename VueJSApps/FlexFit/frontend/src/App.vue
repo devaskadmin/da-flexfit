@@ -492,7 +492,7 @@ body.wa-dashboard-active .main-sidebar::after {
 body.wa-dashboard-active .main-sidebar .sidebar-link-group-title,
 body.wa-dashboard-active .main-sidebar .sidebar-link-group-title.sidebar-section-header,
 body.wa-dashboard-active .main-sidebar .sidebar-link-group-title.app-header-gradient {
-  background: rgba(255, 255, 255, 0.04) !important;
+  background: linear-gradient(90deg, #133275 0%, #0b2058 40%, #091129 100%) !important;
   border-bottom-color: var(--wa-shell-divider) !important;
 }
 

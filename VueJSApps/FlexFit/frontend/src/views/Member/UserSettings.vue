@@ -883,7 +883,7 @@ watch(
 }
 
 .settings-page .settings-header.ff-page-header.app-header-gradient {
-  background: linear-gradient(135deg, rgba(15, 25, 39, 0.98), rgba(20, 31, 47, 0.95)) !important;
+  background: linear-gradient(135deg, #0f2561 0%, #112463 42%, #1b2444 100%) !important;
   border-color: rgba(120, 145, 175, 0.24);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
 }

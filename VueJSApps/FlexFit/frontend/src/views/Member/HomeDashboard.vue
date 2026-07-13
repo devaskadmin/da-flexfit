@@ -550,12 +550,26 @@ onUnmounted(() => {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 24px;
+  position: relative;
+  isolation: isolate;
   width: 100%;
   box-sizing: border-box;
-  background: var(--wa-panel-bg, #1B2444);
+  background:
+    linear-gradient(135deg, #0f2561 0%, #112463 42%, #1b2444 100%),
+    var(--wa-panel-bg, #1B2444);
   border: 1px solid var(--wa-border, rgba(145, 160, 200, 0.24));
   border-radius: 16px;
   padding: 18px 20px;
+  overflow: hidden;
+}
+
+.wa-greeting-row::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0.01) 34%, transparent 100%);
+  pointer-events: none;
+  z-index: -1;
 }
 
 .wa-greeting {
@@ -564,7 +578,7 @@ onUnmounted(() => {
 
 .wa-greeting-line {
   margin: 0;
-  color: var(--wa-text-muted);
+  color: white;
   font-size: 12px;
 }
 

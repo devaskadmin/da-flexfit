@@ -2429,7 +2429,7 @@ onMounted(async () => {
 }
 
 .wl-page .builder-hero.ff-page-header.app-header-gradient {
-  background: var(--wl-surface-2) !important;
+  background: linear-gradient(135deg, #0f2561 0%, #112463 42%, #1b2444 100%) !important;
   border: 1px solid var(--wl-border);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
 }

@@ -2604,7 +2604,7 @@ textarea {
 }
 
 .exercises-page .builder-hero.ff-page-header.app-header-gradient {
-  background: linear-gradient(135deg, rgba(15, 25, 39, 0.98), rgba(20, 31, 47, 0.95)) !important;
+  background: linear-gradient(135deg, #0f2561 0%, #112463 42%, #1b2444 100%) !important;
   border: 1px solid var(--ex-border);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
 }
