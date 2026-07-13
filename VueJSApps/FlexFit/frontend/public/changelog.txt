@@ -101,7 +101,7 @@ Date: 2026-04-10
 
 - [Fix] Login / Demo sign-in 404 errors resolved:
 	- Demo login was calling /api/tmp-login (does not exist). Changed to /api/login.
-	- Created frontend/.env.production with VITE_API_BASE=https://dev-asterisks-github.onrender.com
+	- Created frontend/.env.production with VITE_API_BASE=https://api.workoutatlas.com
 	  so the correct backend URL is baked into every production build.
 	  Previously VITE_API_BASE was empty at build time, making all API calls hit the frontend server.
 	- Added console.log output before all API calls showing API_BASE and full URL for devtools diagnosis.

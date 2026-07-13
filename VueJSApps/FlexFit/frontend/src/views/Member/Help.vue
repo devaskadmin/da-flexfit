@@ -23,7 +23,7 @@ const goBack = () => {
         <div class="help-items">
           <div class="help-item">
             <h3>Dashboard Overview</h3>
-            <p>Learn how to navigate the FlexFit dashboard and access key features.</p>
+            <p>Learn how to navigate the WorkoutAtlas dashboard and access key features.</p>
           </div>
           <div class="help-item">
             <h3>Creating a Workout</h3>

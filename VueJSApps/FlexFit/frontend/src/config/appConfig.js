@@ -1,5 +1,5 @@
 /**
- * FlexFit App Configuration
+ * WorkoutAtlas App Configuration
  * Central place to read environment-level settings exposed via Vite.
  */
 

@@ -3,6 +3,7 @@ const props = defineProps(['isSidebarActive', 'closeSidebar'])
 import { onMounted, ref } from "vue"
 import {vClickOutside} from "@/composable/outsideClicker";
 import { API_BASE } from '@/config/env';
+import { getDefaultTheme, sanitizeTheme } from '@/composable/manageThemeSetting';
 
 import NavPositionComponent from "@/components/template/layoutSetting/NavPositionComponent.vue";
 import ThemeDirectionComponent from "@/components/template/layoutSetting/ThemeDirectionComponent.vue";
@@ -41,7 +42,7 @@ const collectThemeConfig = () => ({
   navPosition: localStorage.getItem('layoutPosition') || 'vertical',
   themeDirection: localStorage.getItem('layoutDirection') || 'ltr',
   primaryColor: localStorage.getItem('selectedStyleSheet') || import.meta.env.VITE_DEFAULT_COLOR || 'blue-color',
-  themeColor: localStorage.getItem('currentActiveTheme') || import.meta.env.VITE_DEFAULT_THEME || 'light-theme',
+  themeColor: sanitizeTheme(localStorage.getItem('currentActiveTheme') || getDefaultTheme()),
   navbarSize: localStorage.getItem('sidebarHover') ? 'expand' : localStorage.getItem('sidebarSmall') ? 'small' : 'default',
   sidebarBackground: localStorage.getItem('navbackgroundImage') || '',
   mainBackground: localStorage.getItem('mainBackgroundImage') || '',

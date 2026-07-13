@@ -166,6 +166,19 @@ const selectedSubscriptionTier = computed(() => {
   return subscriptionPlanOptions.value.find((plan) => plan.key === form.subscriptionPlanKey) || null;
 });
 
+const selectedSubscriptionLabel = computed(() => {
+  if (selectedSubscriptionTier.value?.name) {
+    return selectedSubscriptionTier.value.name;
+  }
+
+  if (form.subscriptionTierId) {
+    const tier = tiersForLookup.value.find((row) => Number(row.id) === Number(form.subscriptionTierId));
+    if (tier?.name) return tier.name;
+  }
+
+  return 'Not selected';
+});
+
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const strongPasswordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 
@@ -471,7 +484,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="login-body auth-card">
+  <div class="login-body auth-card" :class="{ 'step2-compact': currentStep === 2, 'step3-form': currentStep === 3 }">
     <div class="top d-flex justify-content-between align-items-center auth-header">
       <div class="logo auth-logo-wrap">
         <img src="@/assets/images/flex-fitlogo-transparent.png" alt="Logo">
@@ -513,7 +526,7 @@ onMounted(() => {
       <form @submit.prevent="register" class="auth-form">
         <transition name="step-slide" mode="out-in">
           <section v-if="currentStep === 1" key="step-1" class="wizard-panel">
-            <p class="wizard-subtitle">Choose the type of FlexFit account you want to create.</p>
+            <p class="wizard-subtitle">Choose the type of WorkoutAtlas account you want to create.</p>
 
             <div class="account-type-grid">
               <button
@@ -537,16 +550,18 @@ onMounted(() => {
               </button>
             </div>
 
-            <div class="wizard-actions wizard-actions-single">
+            <div class="wizard-actions wizard-actions-step1">
+              <router-link to="/login" class="btn btn-outline-secondary auth-button auth-button-back step1-back-link">
+                Back
+              </router-link>
               <button type="button" class="btn btn-primary auth-button" :disabled="!stepOneValid" @click="goToNextStep">
                 Next
               </button>
             </div>
           </section>
 
-          <section v-else-if="currentStep === 2" key="step-2" class="wizard-panel">
+          <section v-else-if="currentStep === 2" key="step-2" class="wizard-panel wizard-panel-step2">
             <h4 class="subscription-step-title">Choose Your Subscription</h4>
-            <p class="wizard-subtitle">Subscription Plans</p>
 
             <div class="selected-account-pill">
               <span class="selected-account-label">Account Type</span>
@@ -580,6 +595,7 @@ onMounted(() => {
                   <button
                     type="button"
                     class="btn btn-primary auth-button subscription-select-btn"
+                    :class="{ 'is-selected': form.subscriptionPlanKey === activeSubscriptionPlan.key }"
                     :disabled="!activeSubscriptionPlan.available"
                     @click="selectSubscriptionTier(activeSubscriptionPlan.key)"
                   >
@@ -624,7 +640,7 @@ onMounted(() => {
 
             <div v-if="tiersLoading" class="auth-subtitle text-center mt-2">Loading subscription tiers...</div>
 
-            <div class="wizard-actions">
+            <div class="wizard-actions wizard-actions-step2">
               <button type="button" class="btn btn-outline-secondary auth-button auth-button-back" @click="goToStep(1)">
                 Back
               </button>
@@ -634,55 +650,67 @@ onMounted(() => {
             </div>
           </section>
 
-          <section v-else key="step-3" class="wizard-panel">
+          <section v-else key="step-3" class="wizard-panel wizard-panel-step3">
             <p class="wizard-subtitle">Enter your account details and confirm your agreement to continue.</p>
 
-            <div class="d-grid gap-2 mb-2">
+            <div class="d-grid gap-2 mb-2 step3-summary-grid">
               <div class="selected-account-pill mb-0">
                 <span class="selected-account-label">Account Type</span>
                 <span class="selected-account-value">{{ form.membershipType }}</span>
               </div>
               <div class="selected-account-pill mb-0">
                 <span class="selected-account-label">Subscription Type</span>
-                <span class="selected-account-value">{{ selectedSubscriptionTier?.name || 'Not selected' }}</span>
+                <span class="selected-account-value">{{ selectedSubscriptionLabel }}</span>
               </div>
             </div>
 
-            <div class="input-group mb-2 input-group-rounded auth-form-group">
-              <span class="input-group-text auth-input-icon"><i class="fa-regular fa-user"></i></span>
-              <input v-model="form.firstName" type="text" class="form-control form-control-rounded auth-input" placeholder="First Name" @blur="touched.firstName = true" required>
-            </div>
-            <div v-if="firstNameError" class="auth-field-error">{{ firstNameError }}</div>
+            <div class="step3-fields-grid">
+              <div class="step3-field-block">
+                <div class="input-group mb-2 input-group-rounded auth-form-group">
+                  <span class="input-group-text auth-input-icon"><i class="fa-regular fa-user"></i></span>
+                  <input v-model="form.firstName" type="text" class="form-control form-control-rounded auth-input" placeholder="First Name" @blur="touched.firstName = true" required>
+                </div>
+                <div v-if="firstNameError" class="auth-field-error">{{ firstNameError }}</div>
+              </div>
 
-            <div class="input-group mb-2 input-group-rounded auth-form-group">
-              <span class="input-group-text auth-input-icon"><i class="fa-regular fa-user"></i></span>
-              <input v-model="form.lastName" type="text" class="form-control form-control-rounded auth-input" placeholder="Last Name" @blur="touched.lastName = true" required>
-            </div>
-            <div v-if="lastNameError" class="auth-field-error">{{ lastNameError }}</div>
+              <div class="step3-field-block">
+                <div class="input-group mb-2 input-group-rounded auth-form-group">
+                  <span class="input-group-text auth-input-icon"><i class="fa-regular fa-user"></i></span>
+                  <input v-model="form.lastName" type="text" class="form-control form-control-rounded auth-input" placeholder="Last Name" @blur="touched.lastName = true" required>
+                </div>
+                <div v-if="lastNameError" class="auth-field-error">{{ lastNameError }}</div>
+              </div>
 
-            <div class="input-group mb-2 input-group-rounded auth-form-group">
-              <span class="input-group-text auth-input-icon"><i class="fa-regular fa-envelope"></i></span>
-              <input v-model="form.username" type="email" class="form-control form-control-rounded auth-input" placeholder="Email" @blur="touched.username = true" required>
-            </div>
-            <div v-if="emailError" class="auth-field-error">{{ emailError }}</div>
+              <div class="step3-field-block step3-field-block-full">
+                <div class="input-group mb-2 input-group-rounded auth-form-group">
+                  <span class="input-group-text auth-input-icon"><i class="fa-regular fa-envelope"></i></span>
+                  <input v-model="form.username" type="email" class="form-control form-control-rounded auth-input" placeholder="Email" @blur="touched.username = true" required>
+                </div>
+                <div v-if="emailError" class="auth-field-error">{{ emailError }}</div>
+              </div>
 
-            <div class="input-group mb-2 input-group-rounded auth-form-group">
-              <span class="input-group-text auth-input-icon"><i class="fa-regular fa-lock"></i></span>
-              <input v-model="form.password" :type="isPasswordShow ? 'text' : 'password'" class="form-control form-control-rounded auth-input" placeholder="Password" @blur="touched.password = true" required>
-              <button type="button" class="auth-password-toggle" :aria-label="isPasswordShow ? 'Hide password' : 'Show password'" @click="isPasswordShow = !isPasswordShow">
-                <i class="fa-duotone" :class="[isPasswordShow ? 'fa-eye-slash':'fa-eye']"></i>
-              </button>
-            </div>
-            <div v-if="passwordError" class="auth-field-error">{{ passwordError }}</div>
+              <div class="step3-field-block">
+                <div class="input-group mb-2 input-group-rounded auth-form-group">
+                  <span class="input-group-text auth-input-icon"><i class="fa-regular fa-lock"></i></span>
+                  <input v-model="form.password" :type="isPasswordShow ? 'text' : 'password'" class="form-control form-control-rounded auth-input" placeholder="Password" @blur="touched.password = true" required>
+                  <button type="button" class="auth-password-toggle" :aria-label="isPasswordShow ? 'Hide password' : 'Show password'" @click="isPasswordShow = !isPasswordShow">
+                    <i class="fa-duotone" :class="[isPasswordShow ? 'fa-eye-slash':'fa-eye']"></i>
+                  </button>
+                </div>
+                <div v-if="passwordError" class="auth-field-error">{{ passwordError }}</div>
+              </div>
 
-            <div class="input-group mb-2 input-group-rounded auth-form-group">
-              <span class="input-group-text auth-input-icon"><i class="fa-regular fa-lock"></i></span>
-              <input v-model="form.confirmPassword" :type="isConfirmPasswordShow ? 'text' : 'password'" class="form-control form-control-rounded auth-input" placeholder="Confirm Password" @blur="touched.confirmPassword = true" required>
-              <button type="button" class="auth-password-toggle" :aria-label="isConfirmPasswordShow ? 'Hide confirm password' : 'Show confirm password'" @click="isConfirmPasswordShow = !isConfirmPasswordShow">
-                <i class="fa-duotone" :class="[isConfirmPasswordShow ? 'fa-eye-slash':'fa-eye']"></i>
-              </button>
+              <div class="step3-field-block">
+                <div class="input-group mb-2 input-group-rounded auth-form-group">
+                  <span class="input-group-text auth-input-icon"><i class="fa-regular fa-lock"></i></span>
+                  <input v-model="form.confirmPassword" :type="isConfirmPasswordShow ? 'text' : 'password'" class="form-control form-control-rounded auth-input" placeholder="Confirm Password" @blur="touched.confirmPassword = true" required>
+                  <button type="button" class="auth-password-toggle" :aria-label="isConfirmPasswordShow ? 'Hide confirm password' : 'Show confirm password'" @click="isConfirmPasswordShow = !isConfirmPasswordShow">
+                    <i class="fa-duotone" :class="[isConfirmPasswordShow ? 'fa-eye-slash':'fa-eye']"></i>
+                  </button>
+                </div>
+                <div v-if="confirmPasswordError" class="auth-field-error">{{ confirmPasswordError }}</div>
+              </div>
             </div>
-            <div v-if="confirmPasswordError" class="auth-field-error">{{ confirmPasswordError }}</div>
 
             <div class="mt-2 auth-subtitle auth-password-strength" v-if="showStrengthMeter">
               <p class="mb-1">Password strength: <strong :class="passwordStrengthClass">{{ passwordStrength }}</strong></p>
@@ -718,7 +746,7 @@ onMounted(() => {
             <div v-if="errorMsg" class="alert alert-danger mt-3 mb-2">{{ errorMsg }}</div>
             <div v-if="successMsg" class="alert alert-success mt-3 mb-2">{{ successMsg }}</div>
 
-            <div class="wizard-actions">
+            <div class="wizard-actions wizard-actions-step3">
               <button type="button" class="btn btn-outline-secondary auth-button auth-button-back" :disabled="loading" @click="goToStep(2)">
                 Back
               </button>
@@ -746,15 +774,15 @@ onMounted(() => {
         </div>
 
         <div class="terms-modal-body" @scroll="onTermsScroll">
-          <p><strong>Welcome to FlexFit.</strong> Please review the following terms before creating your account.</p>
-          <p>By using FlexFit, you agree to provide accurate account information, keep your credentials secure, and use the platform in accordance with applicable laws and acceptable-use expectations.</p>
+          <p><strong>Welcome to WorkoutAtlas.</strong> Please review the following terms before creating your account.</p>
+          <p>By using WorkoutAtlas, you agree to provide accurate account information, keep your credentials secure, and use the platform in accordance with applicable laws and acceptable-use expectations.</p>
           <p>Your account type determines available features and access. Demo-only administrative access is intended strictly for testing and internal review scenarios.</p>
-          <p>Fitness content, schedules, and recommendations available through FlexFit are intended for informational purposes and do not replace professional medical advice.</p>
+          <p>Fitness content, schedules, and recommendations available through WorkoutAtlas are intended for informational purposes and do not replace professional medical advice.</p>
           <p>You are responsible for reviewing your workouts, training plans, and personal profile details before relying on any in-app recommendations.</p>
           <p>We may store account information necessary to operate the service, support authentication, and improve product reliability and onboarding flows.</p>
           <p>Passwords must meet security requirements to help protect your account. You should never share your credentials with other users.</p>
           <p>Abuse of demo access, attempts to bypass security controls, or misuse of role-based features may result in removal of access.</p>
-          <p>By continuing, you confirm that you understand FlexFit is evolving and that some features may change as the product improves.</p>
+          <p>By continuing, you confirm that you understand WorkoutAtlas is evolving and that some features may change as the product improves.</p>
           <p>Continue scrolling to the end of these terms to enable the agreement button.</p>
           <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras fermentum orci at nibh dignissim, vitae vulputate nunc porta. Integer accumsan, velit ut cursus vehicula, magna libero pulvinar nunc, non commodo augue velit et massa.</p>
           <p>Vivamus luctus, est sed blandit imperdiet, risus eros pellentesque nibh, in congue est lacus sed augue. Nullam sed arcu quis neque porttitor vestibulum. In hac habitasse platea dictumst.</p>
@@ -789,6 +817,505 @@ onMounted(() => {
   overflow: hidden;
 }
 
+.login-body.step2-compact {
+  padding: 18px 20px !important;
+}
+
+.login-body.step2-compact .auth-header {
+  margin-bottom: 2px;
+}
+
+.login-body.step2-compact .auth-title {
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+.login-body.step2-compact .wizard-progress {
+  margin-bottom: 10px;
+  padding-top: 0;
+}
+
+.login-body.step2-compact .wizard-panel-step2 {
+  min-height: auto;
+}
+
+.login-body.step2-compact .wizard-panel-step2 .subscription-step-title {
+  margin: 0 0 2px;
+}
+
+.login-body.step2-compact .wizard-panel-step2 .wizard-subtitle {
+  margin-bottom: 8px;
+}
+
+.login-body.step2-compact .wizard-panel-step2 .selected-account-pill {
+  margin-bottom: 10px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.login-body.step2-compact .wizard-panel-step2 .subscription-carousel-wrap {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.login-body.step2-compact .wizard-panel-step2 .subscription-card {
+  padding: 12px 10px;
+}
+
+.login-body.step2-compact .wizard-panel-step2 .subscription-feature-list {
+  margin: 8px 0;
+}
+
+.login-body.step2-compact .wizard-panel-step2 .subscription-indicator-wrap {
+  margin-top: 4px;
+  gap: 4px;
+}
+
+.login-body.step2-compact .wizard-panel-step2 .wizard-actions-step2 {
+  margin-top: 8px;
+}
+
+.login-body.step2-compact .other-option.auth-footer {
+  margin-top: 6px !important;
+}
+
+.login-body.step3-form {
+  padding: 18px 20px 16px !important;
+  max-height: none;
+  overflow-y: visible;
+  overflow-x: visible;
+}
+
+.login-body.step3-form .auth-header {
+  margin-bottom: 0;
+}
+
+.login-body.step3-form .top.auth-header .logo.auth-logo-wrap {
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.login-body.step3-form .top.auth-header .logo.auth-logo-wrap img {
+  margin: 0 auto 5px !important;
+}
+
+.login-body.step3-form .auth-content {
+  padding-top: 5px;
+}
+
+.login-body.step3-form .auth-title {
+  margin-top: 0;
+}
+
+.login-body.step3-form .wizard-panel-step3 {
+  min-height: auto;
+}
+
+.login-body.step3-form .wizard-panel-step3 .wizard-subtitle {
+  margin-bottom: 10px;
+}
+
+.login-body.step3-form .wizard-panel-step3 .step3-summary-grid {
+  gap: 8px !important;
+  margin-bottom: 8px !important;
+}
+
+.login-body.step3-form .wizard-panel-step3 .selected-account-pill {
+  margin-bottom: 0;
+}
+
+.login-body.step3-form .wizard-panel-step3 .step3-fields-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+.login-body.step3-form .wizard-panel-step3 .step3-field-block {
+  min-width: 0;
+}
+
+.login-body.step3-form .wizard-panel-step3 .step3-field-block .auth-field-error {
+  margin-top: -2px;
+}
+
+.login-body.step3-form .wizard-panel-step3 .auth-form-group {
+  background: #252E48 !important;
+  border: 1px solid rgba(145, 160, 200, 0.32) !important;
+  border-radius: 12px !important;
+  min-height: 52px;
+  margin-bottom: 6px !important;
+}
+
+.login-body.step3-form .wizard-panel-step3 .auth-form-group:focus-within {
+  border-color: #2F6BFF !important;
+  box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.22);
+}
+
+.login-body.step3-form .wizard-panel-step3 .auth-input-icon,
+.login-body.step3-form .wizard-panel-step3 .auth-input,
+.login-body.step3-form .wizard-panel-step3 .auth-password-toggle {
+  background: #252E48 !important;
+  color: #F7F9FF !important;
+}
+
+.login-body.step3-form .wizard-panel-step3 .auth-input-icon {
+  border-right: 1px solid rgba(145, 160, 200, 0.32) !important;
+}
+
+.login-body.step3-form .wizard-panel-step3 .auth-input {
+  min-height: 52px;
+  border: 0 !important;
+  box-shadow: none !important;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  color: #F7F9FF !important;
+}
+
+.login-body.step3-form .wizard-panel-step3 .auth-input::placeholder {
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  color: #A8B4CA !important;
+  opacity: 1;
+}
+
+.login-body.step3-form .wizard-panel-step3 .auth-password-toggle {
+  border-left: 1px solid rgba(145, 160, 200, 0.32) !important;
+  border-radius: 0 !important;
+  min-height: 52px;
+  padding: 0 12px;
+}
+
+.login-body.step3-form .wizard-panel-step3 .auth-password-toggle:hover {
+  color: #DCE5FF !important;
+}
+
+.login-body.step3-form .wizard-panel-step3 .auth-password-strength {
+  margin-top: 2px;
+  margin-bottom: 10px;
+}
+
+.login-body.step3-form .wizard-panel-step3 .terms-box {
+  background: #F5F8FC;
+  border: 1px solid #C9D9EA;
+  color: #1B2444;
+  margin-top: 8px;
+  padding: 10px 12px;
+}
+
+.login-body.step3-form .wizard-panel-step3 .terms-check-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.login-body.step3-form .wizard-panel-step3 .terms-check-row .form-check-input {
+  margin-top: 0;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+  border-radius: 4px;
+  border: 1.5px solid #6F819C;
+  background: #FFFFFF;
+  accent-color: #2F6BFF;
+}
+
+.login-body.step3-form .wizard-panel-step3 .terms-label,
+.login-body.step3-form .wizard-panel-step3 .terms-hint {
+  font-family: inherit;
+  color: #1B2444 !important;
+}
+
+.login-body.step3-form .wizard-panel-step3 .terms-label {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 0.95rem;
+  line-height: 1.25;
+}
+
+.login-body.step3-form .wizard-panel-step3 .terms-link {
+  color: #1B2444;
+}
+
+.login-body.step3-form .wizard-panel-step3 .terms-link:hover {
+  color: #0E1C42;
+}
+
+.login-body.step3-form .wizard-panel-step3 .wizard-actions-step3 {
+  margin-top: 10px;
+}
+
+.login-body.step3-form .wizard-panel-step3 .wizard-actions-step3 .auth-button-back {
+  background: #FFFFFF;
+  color: #1B2444;
+  border: 2px solid #C9D9EA;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.login-body.step3-form .wizard-panel-step3 .wizard-actions-step3 .auth-button-back:hover:not(:disabled) {
+  background: #F5F8FF;
+  border-color: #AFCBE7;
+  color: #1B2444;
+}
+
+.login-body.step3-form .wizard-panel-step3 .wizard-actions-step3 .btn.btn-primary {
+  background: #2F6BFF !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.login-body.step3-form .wizard-panel-step3 .wizard-actions-step3 .btn.btn-primary:hover:not(:disabled) {
+  background: #2459D8 !important;
+}
+
+.login-body.step3-form .wizard-panel-step3 .wizard-actions-step3 .btn.btn-primary:disabled {
+  background: #8F9BB5 !important;
+  color: #E8EDF5 !important;
+  border: none !important;
+  opacity: 1;
+}
+
+.login-body.step3-form .auth-footer {
+  margin-top: 8px;
+}
+
+@media (max-width: 767.98px) {
+  .login-body.step3-form {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin-top: 0;
+    margin-bottom: 0;
+    padding: 10px 10px calc(22px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .login-body.step3-form .auth-content {
+    padding-top: 2px;
+  }
+
+  .login-body.step3-form .auth-title {
+    margin-bottom: 6px;
+  }
+
+  .login-body.step3-form .wizard-progress {
+    margin-bottom: 6px;
+  }
+
+  .login-body.step3-form .wizard-step {
+    gap: 6px;
+  }
+
+  .login-body.step3-form .wizard-step-number {
+    width: 24px;
+    height: 24px;
+    font-size: 0.76rem;
+  }
+
+  .login-body.step3-form .wizard-step-text {
+    font-size: 0.68rem;
+    line-height: 1.05;
+  }
+
+  .login-body.step3-form .wizard-progress-track {
+    top: 13px;
+    left: 34px;
+    right: 34px;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .wizard-subtitle {
+    margin-bottom: 4px;
+    font-size: 0.78rem;
+    line-height: 1.2;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .step3-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .selected-account-pill {
+    padding: 7px 8px;
+  }
+
+  .login-body.step3-form .top.auth-header .logo.auth-logo-wrap img {
+    width: 164px !important;
+    max-width: 64% !important;
+    margin: 0 auto 4px !important;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .auth-form-group {
+    min-height: 48px;
+    margin-bottom: 2px !important;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .auth-input,
+  .login-body.step3-form .wizard-panel-step3 .auth-password-toggle {
+    min-height: 48px;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .auth-field-error {
+    margin-bottom: 3px;
+    font-size: 0.72rem;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .auth-password-strength {
+    margin-top: 0;
+    margin-bottom: 5px;
+    font-size: 0.76rem;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .terms-box {
+    margin-top: 4px;
+    padding: 6px 8px;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .terms-check-row {
+    gap: 7px;
+    margin-bottom: 3px;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .terms-check-row .form-check-input {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    min-height: 20px;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .terms-label {
+    font-size: 0.84rem;
+    line-height: 1.15;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .terms-hint {
+    font-size: 0.74rem;
+    line-height: 1.15;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .wizard-actions-step3 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 6px;
+    margin-bottom: max(14px, calc(14px + env(safe-area-inset-bottom, 0px)));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .wizard-actions-step3 .auth-button-back,
+  .login-body.step3-form .wizard-panel-step3 .wizard-actions-step3 .btn.btn-primary {
+    min-height: 48px;
+    width: 100%;
+  }
+
+  .login-body.step3-form .auth-footer {
+    margin-top: 4px !important;
+    margin-bottom: max(6px, env(safe-area-inset-bottom, 0px));
+    padding-top: 0;
+  }
+
+  .login-body.step3-form .auth-footer .auth-text,
+  .login-body.step3-form .auth-footer .auth-link {
+    font-size: 14px;
+    line-height: 1.15;
+  }
+}
+
+@media (min-width: 768px) {
+  .login-body.step3-form {
+    max-width: 620px;
+    padding: 16px 18px 14px !important;
+  }
+
+  .login-body.step3-form .auth-title {
+    margin-bottom: 8px;
+  }
+
+  .login-body.step3-form .wizard-progress {
+    margin-bottom: 10px;
+    padding-top: 0;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .wizard-subtitle {
+    margin-bottom: 8px;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .step3-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .step3-fields-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 12px;
+    row-gap: 6px;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .step3-field-block-full,
+  .login-body.step3-form .wizard-panel-step3 .auth-password-strength,
+  .login-body.step3-form .wizard-panel-step3 .terms-box,
+  .login-body.step3-form .wizard-panel-step3 .alert,
+  .login-body.step3-form .wizard-panel-step3 .wizard-actions-step3 {
+    grid-column: 1 / -1;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .auth-form-group {
+    margin-bottom: 2px !important;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .auth-field-error {
+    margin-bottom: 2px;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .auth-password-strength {
+    margin-top: 0;
+    margin-bottom: 8px;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .terms-box {
+    margin-top: 6px;
+    padding: 9px 12px;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .wizard-actions-step3 {
+    margin-top: 8px;
+    margin-bottom: 0;
+  }
+
+  .login-body.step3-form .auth-footer {
+    margin-top: 6px;
+  }
+}
+
+.login-body.step3-form .auth-footer .auth-text {
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  color: #5F6B7C !important;
+}
+
+.login-body.step3-form .auth-footer .auth-link {
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2F6BFF;
+  text-decoration: none;
+}
+
+.login-body.step3-form .auth-footer .auth-link:hover,
+.login-body.step3-form .auth-footer .auth-link:focus-visible {
+  text-decoration: underline;
+}
+
 .panel-title {
   color: white;
 }
@@ -802,17 +1329,52 @@ onMounted(() => {
 }
 
 .auth-header {
+  position: relative;
+  justify-content: center !important;
   margin-bottom: 4px;
 }
 
-.auth-logo-wrap img {
-  max-height: 38px;
-  width: auto;
+.auth-header > a {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.auth-logo-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.login-body .top.auth-header {
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+}
+
+.login-body .top.auth-header .logo.auth-logo-wrap {
+  width: 100% !important;
+  max-width: none !important;
+  display: block;
+  margin: 0 auto;
+}
+
+.login-body .top.auth-header .logo.auth-logo-wrap img {
+  width: 300px !important;
+  max-width: 70% !important;
+  height: auto !important;
+  display: block;
+  margin: 0 auto 20px;
+  object-fit: contain;
+  transform: none !important;
 }
 
 .auth-title {
-  margin-top: 2px;
-  margin-bottom: 10px;
+  color: #1B2444 !important;
+  font-weight: 700;
+  margin-top: 6px;
+  margin-bottom: 14px;
 }
 
 .wizard-progress {
@@ -941,9 +1503,10 @@ onMounted(() => {
 
 .account-type-card {
   width: 100%;
-  border: 1.5px solid rgba(13, 153, 255, 0.24);
+  border: 2px solid #C9D9EA;
   border-radius: 12px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(245,249,255,0.92));
+  background: #FFFFFF;
+  color: #1B2444;
   display: grid;
   grid-template-columns: 40px 1fr 26px;
   gap: 10px;
@@ -955,14 +1518,15 @@ onMounted(() => {
 
 .account-type-card:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 18px rgba(13, 153, 255, 0.08);
-  border-color: rgba(13, 153, 255, 0.42);
+  box-shadow: 0 8px 18px rgba(47, 107, 255, 0.1);
+  border-color: #2F6BFF;
+  background: #F5F8FF;
 }
 
 .account-type-card.selected {
-  border-color: #0D99FF;
-  box-shadow: 0 0 0 4px rgba(13, 153, 255, 0.16);
-  background: linear-gradient(180deg, rgba(13,153,255,0.08), rgba(255,255,255,0.96));
+  border: 2px solid #2F6BFF;
+  box-shadow: 0 0 0 4px rgba(47, 107, 255, 0.16);
+  background: #EEF4FF;
 }
 
 .account-type-card-icon {
@@ -980,23 +1544,37 @@ onMounted(() => {
 .account-type-card-title {
   font-size: 0.96rem;
   font-weight: 700;
-  color: rgba(0, 0, 0, 0.84);
+  color: #1B2444;
 }
 
 .account-type-card-text {
   font-size: 0.78rem;
-  color: rgba(0, 0, 0, 0.62);
+  color: #1B2444;
   line-height: 1.35;
   margin-top: 2px;
+  opacity: 0.82;
 }
 
 .account-type-card-check {
-  color: rgba(13, 153, 255, 0.22);
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(47, 107, 255, 0.12);
+  color: rgba(47, 107, 255, 0.35);
   font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .account-type-card.selected .account-type-card-check {
-  color: #0D99FF;
+  background: #2F6BFF;
+  color: #FFFFFF;
+}
+
+.account-type-card:focus-visible {
+  outline: 3px solid rgba(47, 107, 255, 0.42);
+  outline-offset: 2px;
 }
 
 .subscription-carousel-wrap {
@@ -1007,25 +1585,36 @@ onMounted(() => {
   margin-top: 4px;
 }
 
-.subscription-arrow {
+.wizard-panel-step2 .subscription-arrow {
   width: 34px;
   height: 34px;
   border-radius: 999px;
-  border: 1px solid rgba(13, 153, 255, 0.35);
-  background: rgba(13, 153, 255, 0.08);
-  color: #0D99FF;
+  border: 2px solid #C9D9EA;
+  background: #FFFFFF;
+  color: #2F6BFF;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  width: 44px !important;
+  height: 44px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: #252E48 !important;
+  border: 1px solid rgba(145, 160, 200, 0.35) !important;
+  color: #FFFFFF !important;
 }
 
-.subscription-arrow:hover:not(:disabled) {
-  background: rgba(13, 153, 255, 0.16);
+.wizard-panel-step2 .subscription-arrow:hover:not(:disabled) {
+  background: #2F6BFF !important;
+  border-color: #2F6BFF !important;
 }
 
-.subscription-arrow:disabled {
-  opacity: 0.45;
+.wizard-panel-step2 .subscription-arrow:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .subscription-card {
@@ -1092,6 +1681,27 @@ onMounted(() => {
   font-size: 0.84rem;
 }
 
+.wizard-panel-step2 .subscription-select-btn {
+  background: #2F6BFF !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.wizard-panel-step2 .subscription-select-btn:hover:not(:disabled) {
+  background: #2459D8 !important;
+}
+
+.wizard-panel-step2 .subscription-select-btn.is-selected {
+  background: #1E9D42 !important;
+  box-shadow: none !important;
+}
+
+.wizard-panel-step2 .subscription-select-btn.is-selected:hover:not(:disabled) {
+  background: #188237 !important;
+}
+
 .subscription-indicator-wrap {
   display: flex;
   flex-direction: column;
@@ -1105,24 +1715,26 @@ onMounted(() => {
   color: rgba(0, 0, 0, 0.55);
 }
 
-.subscription-dots {
+.wizard-panel-step2 .subscription-dots {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
 }
 
-.subscription-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
+.wizard-panel-step2 .subscription-dot {
+  width: 12px !important;
+  height: 12px !important;
+  min-width: 12px !important;
+  min-height: 12px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
   border: 0;
-  background: rgba(13, 153, 255, 0.3);
-  transition: transform 0.2s ease, background 0.2s ease;
+  background: #BFDDF5 !important;
+  transition: background 0.2s ease;
 }
 
-.subscription-dot.active {
-  background: #0D99FF;
-  transform: scale(1.22);
+.wizard-panel-step2 .subscription-dot.active {
+  background: #2F6BFF !important;
 }
 
 .selected-account-pill {
@@ -1282,6 +1894,11 @@ onMounted(() => {
   grid-template-columns: 1fr;
 }
 
+.wizard-actions-step1 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .auth-button {
   min-height: 40px;
   padding-top: 8px;
@@ -1290,8 +1907,110 @@ onMounted(() => {
   border-radius: 8px;
 }
 
+.wizard-actions .btn.btn-primary,
+.wizard-actions-single .btn.btn-primary {
+  background: #2F6BFF !important;
+  color: #FFFFFF !important;
+  border: none !important;
+}
+
+.wizard-actions .btn.btn-primary:hover:not(:disabled),
+.wizard-actions-single .btn.btn-primary:hover:not(:disabled) {
+  background: #2459D8 !important;
+  border: none !important;
+}
+
+.wizard-actions .btn.btn-primary:disabled,
+.wizard-actions-single .btn.btn-primary:disabled {
+  background: #596782 !important;
+  color: #C7D0E3 !important;
+  border: none !important;
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+
+.wizard-actions .btn.btn-primary:focus-visible,
+.wizard-actions-single .btn.btn-primary:focus-visible {
+  outline: 3px solid rgba(47, 107, 255, 0.42);
+  outline-offset: 2px;
+}
+
+.wizard-actions .btn.btn-primary,
+.wizard-actions-single .btn.btn-primary {
+  background: #2F6BFF;
+  border-color: #2F6BFF;
+  color: #FFFFFF;
+}
+
+.wizard-actions .btn.btn-primary:hover:not(:disabled),
+.wizard-actions-single .btn.btn-primary:hover:not(:disabled) {
+  background: #2459D8;
+  border-color: #2459D8;
+}
+
+.wizard-actions .btn.btn-primary:disabled,
+.wizard-actions-single .btn.btn-primary:disabled {
+  background: #8F9BB5;
+  border-color: #8F9BB5;
+  color: #E8EDF5;
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .auth-button-back {
   border-color: rgba(58, 79, 118, 0.24);
+}
+
+.wizard-actions-step2 .auth-button-back {
+  background: #FFFFFF;
+  border: 2px solid #C9D9EA;
+  color: #1B2444;
+  box-shadow: none !important;
+}
+
+.wizard-actions-step1 .auth-button-back {
+  background: #FFFFFF;
+  border: 2px solid #C9D9EA;
+  color: #1B2444;
+  box-shadow: none !important;
+}
+
+.wizard-actions-step1 .auth-button-back:hover:not(:disabled) {
+  background: #F5F8FF;
+  border-color: #2F6BFF;
+  color: #1B2444;
+}
+
+.step1-back-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.wizard-actions-step2 .auth-button-back:hover:not(:disabled) {
+  background: #F5F8FF;
+  border-color: #2F6BFF;
+  color: #1B2444;
+}
+
+.wizard-actions-step2 .btn.btn-primary {
+  background: #2F6BFF !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.wizard-actions-step2 .btn.btn-primary:hover:not(:disabled) {
+  background: #2459D8 !important;
+}
+
+.wizard-actions-step2 .btn.btn-primary:disabled {
+  background: #8F9BB5 !important;
+  color: #E8EDF5 !important;
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .auth-text {
@@ -1385,8 +2104,135 @@ onMounted(() => {
 }
 
 @media (max-width: 576px) {
+  .wizard-actions-step1 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
   .login-body {
     padding: 18px !important;
+  }
+
+  .login-body .top.auth-header .logo.auth-logo-wrap {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .login-body .top.auth-header .logo.auth-logo-wrap img {
+    width: 240px !important;
+    max-width: 85% !important;
+    height: auto !important;
+    display: block;
+    margin: 0 auto 20px;
+    object-fit: contain;
+    transform: none !important;
+  }
+
+  .login-body.step2-compact {
+    padding: 14px 14px 12px !important;
+  }
+
+  .login-body.step2-compact .wizard-panel-step2 .subscription-carousel-wrap {
+    margin-bottom: 6px;
+  }
+
+  .login-body.step2-compact .wizard-panel-step2 .wizard-actions-step2 {
+    margin-top: 6px;
+  }
+
+  .login-body.step3-form {
+    padding: 10px 10px calc(22px + env(safe-area-inset-bottom, 0px)) !important;
+    max-height: none;
+    overflow-y: visible;
+    overflow-x: visible;
+  }
+
+  .login-body.step3-form .auth-header {
+    margin-bottom: 0;
+  }
+
+  .login-body.step3-form .top.auth-header .logo.auth-logo-wrap {
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  .login-body.step3-form .auth-content {
+    padding-top: 2px;
+  }
+
+  .login-body.step3-form .auth-title {
+    margin-top: 0;
+    margin-bottom: 6px;
+  }
+
+  .login-body.step3-form .wizard-progress {
+    margin-bottom: 6px;
+    padding-top: 0;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .wizard-subtitle {
+    margin-bottom: 4px;
+    font-size: 0.78rem;
+    line-height: 1.2;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .step3-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .auth-form-group {
+    min-height: 48px;
+    margin-bottom: 2px !important;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .auth-input,
+  .login-body.step3-form .wizard-panel-step3 .auth-password-toggle {
+    min-height: 48px;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .auth-field-error {
+    margin-bottom: 3px;
+    font-size: 0.72rem;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .auth-password-strength {
+    margin-bottom: 5px;
+    font-size: 0.76rem;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .terms-box {
+    margin-top: 4px;
+    padding: 6px 8px;
+  }
+
+  .login-body.step3-form .wizard-panel-step3 .wizard-actions-step3 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 6px;
+    margin-bottom: max(14px, calc(14px + env(safe-area-inset-bottom, 0px)));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .login-body.step3-form .auth-footer {
+    margin-top: 4px !important;
+    margin-bottom: max(6px, env(safe-area-inset-bottom, 0px));
+    padding-top: 0;
+  }
+
+  .login-body.step3-form .top.auth-header .logo.auth-logo-wrap img {
+    width: 164px !important;
+    max-width: 64% !important;
+    height: auto !important;
+    margin: 0 auto 4px !important;
+  }
+
+  .login-body.step3-form .logo.auth-logo-wrap {
+    width: 100% !important;
+    max-width: none !important;
+    justify-content: center !important;
   }
 
   .wizard-panel {
@@ -1402,7 +2248,7 @@ onMounted(() => {
     right: 28px;
   }
 
-  .wizard-actions {
+  .wizard-actions:not(.wizard-actions-step1) {
     grid-template-columns: 1fr;
   }
 

@@ -11,6 +11,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  userId: {
+    type: [Number, String],
+    default: null,
+  },
 });
 
 const emit = defineEmits(['close', 'add']);
@@ -18,6 +22,9 @@ const emit = defineEmits(['close', 'add']);
 const search = ref('');
 const muscle = ref('All');
 const equipment = ref('All');
+const viewFilter = ref('all'); // 'all' | 'mine' | 'favorites'
+const PAGE_SIZE = 5;
+const visibleCount = ref(PAGE_SIZE);
 
 watch(
   () => props.isOpen,
@@ -26,9 +33,16 @@ watch(
       search.value = '';
       muscle.value = 'All';
       equipment.value = 'All';
+      viewFilter.value = 'all';
+      visibleCount.value = PAGE_SIZE;
     }
   }
 );
+
+// Reset pagination when any filter changes
+watch([search, muscle, equipment, viewFilter], () => {
+  visibleCount.value = PAGE_SIZE;
+});
 
 const muscleOptions = computed(() => {
   const values = new Set(props.exercises.map((exercise) => exercise.MuscleGroup).filter(Boolean));
@@ -42,8 +56,16 @@ const equipmentOptions = computed(() => {
 
 const filteredExercises = computed(() => {
   const searchValue = search.value.trim().toLowerCase();
+  const currentUserId = Number(props.userId || 0);
 
   return props.exercises.filter((exercise) => {
+    // View filter
+    if (viewFilter.value === 'mine') {
+      if (!currentUserId || Number(exercise.IsOwnedByCurrentUser || 0) !== 1) return false;
+    } else if (viewFilter.value === 'favorites') {
+      if (Number(exercise.IsFavorite || 0) !== 1) return false;
+    }
+
     const title = (exercise.ExerciseTitle || '').toLowerCase();
     const exerciseMuscle = exercise.MuscleGroup || '';
     const exerciseEquipment = exercise.Equipment || '';
@@ -55,6 +77,18 @@ const filteredExercises = computed(() => {
     return matchesSearch && matchesMuscle && matchesEquipment;
   });
 });
+
+const emptyMessage = computed(() => {
+  if (viewFilter.value === 'mine') return 'No custom exercises found.';
+  if (viewFilter.value === 'favorites') return 'No favorite exercises found.';
+  return 'No exercises match your filters.';
+});
+
+const visibleExercises = computed(() => filteredExercises.value.slice(0, visibleCount.value));
+
+const loadMore = () => {
+  visibleCount.value += PAGE_SIZE;
+};
 
 const getPrimaryImage = (exercise) => getExerciseImage(exercise);
 
@@ -87,6 +121,25 @@ const quickAdd = (exercise) => {
         <button type="button" class="btn-close" @click="emit('close')">✕</button>
       </div>
 
+      <!-- View segmented control -->
+      <div class="picker-view-tabs">
+        <button
+          type="button"
+          :class="['view-tab', viewFilter === 'all' && 'view-tab--active']"
+          @click="viewFilter = 'all'"
+        >All Exercises</button>
+        <button
+          type="button"
+          :class="['view-tab', viewFilter === 'mine' && 'view-tab--active']"
+          @click="viewFilter = 'mine'"
+        >My Exercises</button>
+        <button
+          type="button"
+          :class="['view-tab', viewFilter === 'favorites' && 'view-tab--active']"
+          @click="viewFilter = 'favorites'"
+        >Favorites</button>
+      </div>
+
       <div class="picker-filters">
         <input
           v-model="search"
@@ -107,15 +160,20 @@ const quickAdd = (exercise) => {
         </select>
       </div>
 
+      <div class="picker-count" v-if="filteredExercises.length > 0">
+        Showing {{ Math.min(visibleCount, filteredExercises.length) }} of {{ filteredExercises.length }} exercises
+      </div>
+
       <div class="picker-results">
         <article
-          v-for="exercise in filteredExercises"
+          v-for="exercise in visibleExercises"
           :key="exercise.ExerciseID"
           class="picker-card"
         >
           <img
             :src="getPrimaryImage(exercise)"
             :alt="exercise.ExerciseTitle"
+            loading="lazy"
             @error="onImageError"
           />
           <div class="picker-card__meta">
@@ -130,7 +188,11 @@ const quickAdd = (exercise) => {
         </article>
 
         <div v-if="filteredExercises.length === 0" class="picker-empty">
-          No exercises match your filters.
+          {{ emptyMessage }}
+        </div>
+
+        <div v-if="visibleCount < filteredExercises.length" class="picker-load-more">
+          <button type="button" class="btn-load-more" @click="loadMore">Load More</button>
         </div>
       </div>
     </div>
@@ -149,14 +211,14 @@ const quickAdd = (exercise) => {
 }
 
 .picker-modal {
-  width: min(1000px, 100%);
-  max-height: 90vh;
+  width: min(720px, 100%);
+  max-height: 80vh;
   overflow: hidden;
   background: #ffffff;
   border-radius: 18px;
   border: 1px solid #dbe4ef;
   display: grid;
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto auto auto auto 1fr;
 }
 
 .picker-head {
@@ -202,11 +264,72 @@ const quickAdd = (exercise) => {
   padding: 10px 12px;
 }
 
+.picker-view-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.view-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 9px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.view-tab:hover {
+  color: #0f172a;
+}
+
+.view-tab--active {
+  color: #059669;
+  border-bottom-color: #059669;
+  background: #fff;
+}
+
+.picker-count {
+  padding: 6px 18px;
+  font-size: 0.8rem;
+  color: #64748b;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
 .picker-results {
   overflow: auto;
   padding: 14px 18px;
   display: grid;
   gap: 10px;
+}
+
+.picker-load-more {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0;
+}
+
+.btn-load-more {
+  border: 1px solid #059669;
+  background: #fff;
+  color: #059669;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 8px 24px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-load-more:hover {
+  background: #059669;
+  color: #fff;
 }
 
 .picker-card {

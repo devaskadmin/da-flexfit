@@ -224,6 +224,10 @@ export const pagesRoutes = [
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {
+        path: '/workout-log',
+        redirect: { name: 'workouts' },
+    },
+    {
         path: '/workout-builder',
         component: () => import('@/views/Member/WorkoutBuilder.vue'),
         name: 'workout_builder',
@@ -233,6 +237,12 @@ export const pagesRoutes = [
         path: '/workouts/:planId',
         component: () => import('@/views/Member/WorkoutDetail.vue'),
         name: 'workout_detail',
+        meta: { layout: 'AppLayout', isPartials: true },
+    },
+    {
+        path: '/progress',
+        component: () => import('@/views/Member/ProgressStats.vue'),
+        name: 'progress_stats',
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {
@@ -263,6 +273,12 @@ export const pagesRoutes = [
         path: '/admin/roles',
         component: () => import('@/views/Member/AdminRoles.vue'),
         name: 'admin_roles',
+        meta: { layout: 'AppLayout', isPartials: true },
+    },
+    {
+        path: '/tools',
+        component: () => import('@/views/ToolsView.vue'),
+        name: 'admin_tools',
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {

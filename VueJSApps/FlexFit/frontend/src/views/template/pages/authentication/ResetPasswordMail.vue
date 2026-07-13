@@ -11,8 +11,8 @@
         <td>
           <div class="mail-header">
             <div class="logo">
-              <a href="https://html.digiboard.codebasket.xyz/" target="_blank">
-                <img src="@/assets/images/logo-black.png" alt="Logo">
+              <a href="/">
+                <img src="@/assets/images/logo-big.png" alt="WorkoutAtlas">
               </a>
             </div>
           </div>

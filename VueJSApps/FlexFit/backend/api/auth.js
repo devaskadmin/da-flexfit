@@ -11,7 +11,11 @@ const pool = require('../db.js');
 
 const DEFAULT_SESSION_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
 const REMEMBER_ME_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
-const isDebugEnabled = ['true', '1', 'yes'].includes(String(process.env.DEBUG || '').toLowerCase());
+const isDebugEnabled = ['true', '1', 'yes'].includes(String(process.env.DEBUG || process.env.VITE_DEBUG || '').toLowerCase());
+const isProduction = process.env.NODE_ENV === 'production';
+const SESSION_COOKIE_SECURE = isProduction;
+const SESSION_COOKIE_SAMESITE = isProduction ? 'none' : 'lax';
+const CLIENT_ORIGIN = String(process.env.CLIENT_ORIGIN || '').trim();
 
 const normalizeRoleValue = (rawValue = '') => {
   const value = String(rawValue || '').trim().toLowerCase();
@@ -120,12 +124,13 @@ const sendResetPasswordEmail = async ({ to, temporaryPassword }) => {
   }
 
   const from = process.env.SMTP_FROM || process.env.SMTP_USER;
-  const resetUrl = process.env.RESET_PASSWORD_URL || `${process.env.FRONTEND_URL || ''}/update-password`;
+  const frontendUrl = process.env.FRONTEND_URL || process.env.FRONTEND_ORIGIN || 'https://workoutatlas.com';
+  const resetUrl = process.env.RESET_PASSWORD_URL || `${frontendUrl}/update-password`;
 
   await transporter.sendMail({
     from,
     to,
-    subject: 'FlexFit Password Reset',
+    subject: 'WorkoutAtlas Password Reset',
     text: `Your temporary password is: ${temporaryPassword}\n\nUse it to sign in, then update your password immediately.\n\nReset link: ${resetUrl}`,
     html: `
       <p>Your temporary password is:</p>
@@ -143,7 +148,7 @@ router.get('/db-status', async (req, res) => {
     return res.json({ connected: true });
   } catch (err) {
     console.error('❌ DB status check failed:', err?.message || err);
-    const isDebugEnabled = ['true', '1', 'yes'].includes(String(process.env.DEBUG || '').toLowerCase());
+    const isDebugEnabled = ['true', '1', 'yes'].includes(String(process.env.DEBUG || process.env.VITE_DEBUG || '').toLowerCase());
 
     return res.status(500).json({
       connected: false,
@@ -170,10 +175,50 @@ router.get('/debug/ping', (req, res) => {
   return res.json({
     ok: true,
     message: 'Backend reachable',
-    service: 'FlexFit Backend',
+    service: 'WorkoutAtlas Backend',
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV || 'unknown',
     origin: req.headers.origin || null,
+  });
+});
+
+// GET /api/debug/login-diagnostics
+// Returns safe server diagnostics when DEBUG=true; contact-admin fallback otherwise.
+// NEVER exposes passwords, secrets, tokens, or connection strings.
+const debugEnabled = String(process.env.DEBUG || '').toLowerCase() === 'true';
+
+router.get('/debug/login-diagnostics', (req, res) => {
+  if (!debugEnabled) {
+    return res.json({
+      enabled: false,
+      message: 'Contact administrator for details.',
+    });
+  }
+
+  return res.json({
+    enabled: true,
+    environment: {
+      nodeEnv: process.env.NODE_ENV || 'unknown',
+      debug: process.env.DEBUG || 'false',
+      clientOrigin: CLIENT_ORIGIN || null,
+      apiBaseUrl: process.env.API_BASE_URL || null,
+      cookieDomain: process.env.COOKIE_DOMAIN || null,
+      corsConfigured: !!CLIENT_ORIGIN,
+      sessionCookieSecure: SESSION_COOKIE_SECURE,
+      sessionCookieSameSite: SESSION_COOKIE_SAMESITE,
+    },
+    database: {
+      hostConfigured: !!process.env.DB_HOST,
+      databaseConfigured: !!process.env.DB_DATABASE,
+      userConfigured: !!process.env.DB_USER,
+      port: process.env.DB_PORT || '3306 (default)',
+    },
+    server: {
+      timestamp: new Date().toISOString(),
+      uptime: Math.round(process.uptime()),
+      memory: process.memoryUsage(),
+      platform: process.platform,
+    },
   });
 });
 
@@ -248,26 +293,50 @@ router.post('/login', async (req, res) => {
       }
 
       const roleContext = await resolveSessionRole(user.id);
+      
+      // Apply default avatar if none exists
+      const avatarPath = user.avatarPath || '/images/avatar/default.png';
+      const avatarName = user.avatarName || 'default.png';
+      
       req.session.user = {
         id: user.id,
         username: user.username,
         mustResetPassword: isPendingReset,
         role: roleContext.role,
         roleSlug: roleContext.roleSlug,
+        avatarPath: avatarPath,
+        avatarName: avatarName,
       };
+      req.session.userID = user.id;
+      req.session.username = user.username;
       req.session.mustResetPassword = isPendingReset;
       req.session.cookie.maxAge = rememberMe ? REMEMBER_ME_MAX_AGE_MS : DEFAULT_SESSION_MAX_AGE_MS;
-      console.log("✅ Session created:", req.session.user);
+      console.log('✅ Session user assigned:', req.session.user);
 
-      req.session.save((saveErr) => {
+      // Do not return login success before save completes.
+      return req.session.save((saveErr) => {
         if (saveErr) {
-          console.error('❌ Session save error:', saveErr);
+          console.error('[SESSION SAVE FAILED]', {
+            code: saveErr?.code || 'unknown',
+            message: saveErr?.message || String(saveErr),
+            sessionId: req.sessionID || null,
+          });
           return res.status(500).json({ error: 'Login succeeded, but session could not be persisted.' });
         }
+
+        const setCookieHeader = res.getHeader('Set-Cookie');
+        console.log('SET COOKIE HEADER:', setCookieHeader);
+        console.log({
+          sessionID: req.sessionID,
+          userID: req.session.userID,
+          username: req.session.username,
+          cookie: req.session.cookie,
+        });
 
         if (isDebugEnabled) {
           console.log('🧪 [auth/login] session persisted:', {
             sessionId: req.sessionID || null,
+            setCookieHeaderPresent: Boolean(setCookieHeader),
             cookie: {
               secure: Boolean(req.session?.cookie?.secure),
               sameSite: req.session?.cookie?.sameSite || null,
@@ -278,18 +347,50 @@ router.post('/login', async (req, res) => {
         }
 
         return res.json({
-          message: isPendingReset ? "Temporary password accepted. Password reset required." : "Login successful",
+          message: isPendingReset ? 'Temporary password accepted. Password reset required.' : 'Login successful',
           user: req.session.user,
           requiresPasswordReset: isPendingReset,
           diagnostics: {
+            success: true,
+            sessionID: req.sessionID,
+            setCookieHeaderPresent: Boolean(setCookieHeader),
             loginSucceeded: true,
             sessionVerificationPassed: true,
+            cookieDetected: Boolean(req.headers.cookie),
+            cookieSentBack: true,
+            corsPassed: Boolean(req.headers.origin),
+            cookieConfig: {
+              secure: req.session.cookie.secure,
+              sameSite: req.session.cookie.sameSite,
+              httpOnly: req.session.cookie.httpOnly,
+              path: req.session.cookie.path,
+              expires: req.session.cookie.expires,
+            },
           },
         });
       });
       
     } catch (err) {
         console.error("❌ Login error:", err);
+        const errCode = err?.code || '';
+        if (errCode === 'ER_ACCESS_DENIED_ERROR') {
+          return res.status(503).json({
+            error: 'Database authentication failed. The server reached the database but credentials were rejected.',
+            code: 'ER_ACCESS_DENIED_ERROR',
+          });
+        }
+        if (errCode === 'ECONNREFUSED') {
+          return res.status(503).json({
+            error: 'Database offline. Could not connect to the database server.',
+            code: 'ECONNREFUSED',
+          });
+        }
+        if (['ETIMEDOUT', 'ECONNRESET'].includes(errCode)) {
+          return res.status(503).json({
+            error: 'Database unavailable. Connection timed out.',
+            code: errCode,
+          });
+        }
         res.status(500).json({ error: "Login failed" });
         }
 });
@@ -299,6 +400,13 @@ router.post('/login', async (req, res) => {
 router.post('/logout', (req, res) => {
     req.session.destroy(err => {
       if (err) return res.status(500).send("Logout failed");
+      // Explicitly clear the session cookie for Safari cross-site handling.
+      res.clearCookie('flexfit.sid', {
+        path: '/',
+        httpOnly: true,
+        secure: SESSION_COOKIE_SECURE,
+        sameSite: SESSION_COOKIE_SAMESITE,
+      });
       res.json({ message: "Logged out successfully" });
     });
   });
@@ -306,15 +414,24 @@ router.post('/logout', (req, res) => {
 //Get Session
 router.get('/session', async (req, res) => {
     const rawCookie = String(req.headers?.cookie || '');
-    const hasSessionCookie = /connect\.sid=/.test(rawCookie);
+    const hasSessionCookie = /flexfit\.sid=/.test(rawCookie);
+    const cookieSentBack = Boolean(req.headers.cookie);
     const hasUserSession = Boolean(req.session?.user);
+
+    // Compute cookie config for diagnostics
+    const secureFlag = SESSION_COOKIE_SECURE;
+    const sameSiteValue = SESSION_COOKIE_SAMESITE;
+    const corsPassed = Boolean(req.headers.origin);
 
     if (isDebugEnabled) {
       console.log('🧪 [auth/session] diagnostics:', {
         origin: req.headers.origin || null,
         hasSessionCookie,
+        cookieSentBack,
         hasUserSession,
         sessionId: req.sessionID || null,
+        secureFlag,
+        sameSiteValue,
       });
     }
 
@@ -323,6 +440,17 @@ router.get('/session', async (req, res) => {
         const roleContext = await resolveSessionRole(req.session.user.id);
         req.session.user.role = roleContext.role;
         req.session.user.roleSlug = roleContext.roleSlug;
+        
+        // Fetch user avatar data if not in session
+        if (!req.session.user.avatarPath || !req.session.user.avatarName) {
+          const [userRows] = await pool.query(
+            'SELECT avatarPath, avatarName FROM users WHERE id = ? LIMIT 1',
+            [req.session.user.id]
+          );
+          const user = userRows?.[0];
+          req.session.user.avatarPath = user?.avatarPath || '/images/avatar/default.png';
+          req.session.user.avatarName = user?.avatarName || 'default.png';
+        }
       } catch (roleErr) {
         console.error('⚠️ Failed to resolve session role:', roleErr?.message || roleErr);
       }
@@ -332,6 +460,11 @@ router.get('/session', async (req, res) => {
         user: req.session.user,
         requiresPasswordReset: Boolean(req.session.mustResetPassword),
         diagnostics: {
+          cookieDetected: hasSessionCookie,
+          cookieSentBack,
+          corsPassed,
+          sameSiteValue,
+          secureFlag,
           hasSessionCookie,
           loginSucceeded: true,
           sessionCookiePersisted: hasSessionCookie,
@@ -342,6 +475,11 @@ router.get('/session', async (req, res) => {
     res.json({
       loggedIn: false,
       diagnostics: {
+        cookieDetected: hasSessionCookie,
+        cookieSentBack,
+        corsPassed,
+        sameSiteValue,
+        secureFlag,
         hasSessionCookie,
         loginSucceeded: false,
         sessionCookiePersisted: hasSessionCookie,
@@ -352,6 +490,65 @@ router.get('/session', async (req, res) => {
       },
     });
   });
+
+// GET /api/session/check
+// Dedicated auth/session verification endpoint used right after login.
+router.get('/session/check', (req, res) => {
+  const rawCookie = String(req.headers?.cookie || '');
+  const hasSessionCookie = /flexfit\.sid=/.test(rawCookie);
+  const origin = req.headers.origin || null;
+  const corsAllowed = !origin || (CLIENT_ORIGIN ? origin === CLIENT_ORIGIN : true);
+  const sessionExists = Boolean(req.session);
+  const userID = req.session?.userID || null;
+  const username = req.session?.username || null;
+  const authenticated = Boolean(req.session?.user?.id || req.session?.userID);
+
+  const safeSessionUser = req.session?.user
+    ? { id: req.session.user.id, username: req.session.user.username, role: req.session.user.role }
+    : null;
+
+  console.log('[session/check]', {
+    authenticated,
+    sessionID: req.sessionID || null,
+    cookieHeaderPresent: Boolean(req.headers.cookie),
+    hasSessionCookie,
+    userID,
+  });
+
+  if (isDebugEnabled) {
+    console.log('FlexFit Session Diagnostics', {
+      cookiePresent: hasSessionCookie,
+      sessionId: req.sessionID || null,
+      sameSiteValue: SESSION_COOKIE_SAMESITE,
+      secureFlag: SESSION_COOKIE_SECURE,
+      origin,
+      corsResult: corsAllowed,
+      renderProxyStatus: req.app?.get('trust proxy'),
+    });
+  }
+
+  return res.json({
+    authenticated,
+    sessionID: req.sessionID || null,
+    sessionIDExists: Boolean(req.sessionID),
+    userID,
+    username,
+    cookiePresent: hasSessionCookie,
+    cookieHeaderPresent: Boolean(req.headers.cookie),
+    cookieHeaderPreview: req.headers.cookie ? 'present' : 'missing',
+    sessionExists,
+    sessionUser: safeSessionUser,
+    diagnostics: {
+      cookiePresent: hasSessionCookie,
+      sessionId: req.sessionID || null,
+      sameSiteValue: SESSION_COOKIE_SAMESITE,
+      secureFlag: SESSION_COOKIE_SECURE,
+      origin,
+      corsResult: corsAllowed,
+      renderProxyStatus: req.app?.get('trust proxy'),
+    },
+  });
+});
 
 // Forgot password - generate and email temporary password
 router.post('/forgot-password', async (req, res) => {
@@ -469,7 +666,7 @@ router.post('/bootstrap/promote-self-admin', async (req, res) => {
   }
 
   const debugNoAuth = String(process.env.DEBUG_NO_AUTH || '').toLowerCase();
-  const debugFlag = String(process.env.DEBUG || '').toLowerCase();
+  const debugFlag = String(process.env.DEBUG || process.env.VITE_DEBUG || '').toLowerCase();
   const isDebugEnabled = ['true', '1', 'yes'].includes(debugNoAuth) || ['true', '1', 'yes'].includes(debugFlag);
 
   if (!isDebugEnabled) {
@@ -547,6 +744,29 @@ router.post('/bootstrap/promote-self-admin', async (req, res) => {
     res.status(401).json({ error: 'User not logged in' });
   });
 
+// GET /api/auth/session-test — lightweight session probe for diagnostics modal.
+// Returns session state without touching the DB.
+router.get('/auth/session-test', (req, res) => {
+  return res.json({
+    sessionID: req.sessionID || null,
+    hasSession: !!req.session,
+    hasUser: !!req.session?.user,
+    user: req.session?.user
+      ? {
+          id: req.session.user.id,
+          username: req.session.user.username,
+          role: req.session.user.role,
+        }
+      : null,
+    cookie: {
+      secure: Boolean(req.session?.cookie?.secure),
+      sameSite: req.session?.cookie?.sameSite || null,
+      httpOnly: Boolean(req.session?.cookie?.httpOnly),
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
+
 router.get('/register-tiers', async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -616,11 +836,11 @@ router.post('/register', async (req, res) => {
     try {
       await conn.beginTransaction();
 
-      // 1. Create the core user row (with membershipType column)
+      // 1. Create the core user row (with membershipType column and default avatar)
       // membershipType is for billing/profile tier only. Role is assigned separately for RBAC.
       const [userResult] = await conn.query(
-        "INSERT INTO users (FirstName, LastName, username, Password, membershipType) VALUES (?, ?, ?, ?, ?)",
-        [safeFirst, safeLast, safeUser, hashedPassword, safeType]
+        "INSERT INTO users (FirstName, LastName, username, Password, membershipType, avatarName, avatarPath) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [safeFirst, safeLast, safeUser, hashedPassword, safeType, 'default.png', '/images/avatar/default.png']
       );
       const newUserId = userResult.insertId;
 

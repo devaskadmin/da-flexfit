@@ -19,6 +19,7 @@ const bcrypt     = require('bcryptjs');
 const requireAdmin = require('../middleware/requireAdmin');
 const pool       = require('../db');
 const { sanitizeText } = require('../utils/sanitize');
+const { ensureUserMediaFolders, deleteUserMediaFolders } = require('../services/userMediaService');
 
 // Apply admin guard to every route in this file
 router.use(requireAdmin);
@@ -180,7 +181,17 @@ router.post('/members', async (req, res) => {
     );
 
     await conn.commit();
-    res.status(201).json({ message: 'Member created.', userId: uid });
+
+    // Create user media folder structure (best-effort — user record is already committed).
+    let mediaResult = { foldersCreated: false };
+    try {
+      await ensureUserMediaFolders(uid);
+      mediaResult = { foldersCreated: true };
+    } catch (mediaErr) {
+      console.error(`❌ [USER-MEDIA] Failed to create folders for UserID=${uid}:`, mediaErr?.message || mediaErr);
+    }
+
+    res.status(201).json({ message: 'Member created.', userId: uid, media: mediaResult });
   } catch (err) {
     await conn.rollback();
     console.error('❌ admin/members POST:', err);
@@ -374,13 +385,33 @@ router.delete('/members/:id', async (req, res) => {
     return res.status(400).json({ error: 'You cannot delete your own account via admin.' });
   }
 
+  // Verify user exists before touching anything
+  const [[targetUser]] = await pool.query('SELECT id FROM users WHERE id = ? LIMIT 1', [uid]);
+  if (!targetUser) {
+    return res.status(404).json({ error: 'Member not found.' });
+  }
+
+  // Delete media folder first. If this fails, do not delete the DB row.
+  let mediaResult = { deleted: false };
+  try {
+    mediaResult = await deleteUserMediaFolders(uid);
+  } catch (mediaErr) {
+    console.error(`❌ [USER-MEDIA] Failed to delete folders for UserID=${uid}:`, mediaErr?.message || mediaErr);
+    return res.status(500).json({ error: 'Failed to delete user media content. User record was not deleted.' });
+  }
+
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
     // FK CASCADE handles child rows; just delete the user
     await conn.query('DELETE FROM users WHERE id = ?', [uid]);
     await conn.commit();
-    res.json({ message: 'Member deleted.' });
+    res.json({
+      success: true,
+      message: 'User and media content deleted successfully.',
+      deletedUserId: parseInt(uid),
+      mediaDeleted: mediaResult.deleted,
+    });
   } catch (err) {
     await conn.rollback();
     console.error('❌ admin/members DELETE:', err);

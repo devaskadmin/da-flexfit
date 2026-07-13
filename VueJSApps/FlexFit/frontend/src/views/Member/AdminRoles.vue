@@ -200,7 +200,7 @@ onMounted(loadRoles)
       </div>
     </div>
 
-    <div class="panel-bg role-table-wrap">
+    <div class="panel-bg role-table-wrap mobile-table">
       <div v-if="loading" class="p-3 text-muted">Loading roles...</div>
       <div v-else class="table-responsive">
         <table class="table align-middle mb-0">
@@ -215,15 +215,15 @@ onMounted(loadRoles)
           </thead>
           <tbody>
             <tr v-for="role in roles" :key="role.id">
-              <td class="fw-semibold">{{ role.name }}</td>
-              <td>{{ role.slug }}</td>
-              <td>{{ role.description || '—' }}</td>
-              <td>
+              <td data-label="Name" class="fw-semibold">{{ role.name }}</td>
+              <td data-label="Slug">{{ role.slug }}</td>
+              <td data-label="Description">{{ role.description || '—' }}</td>
+              <td data-label="Status">
                 <span class="badge" :class="Number(role.is_active) === 1 ? 'bg-success-subtle text-success-emphasis' : 'bg-secondary-subtle text-secondary-emphasis'">
                   {{ Number(role.is_active) === 1 ? 'Active' : 'Inactive' }}
                 </span>
               </td>
-              <td class="text-end">
+              <td data-label="Actions" class="text-end">
                 <div class="d-flex gap-2 justify-content-end align-items-center">
                   <!-- Non-protected: Edit + Delete -->
                   <template v-if="!isProtected(role)">
@@ -314,5 +314,50 @@ onMounted(loadRoles)
 }
 :global(body.dark-theme) .roles-confirm-card {
   border-color: rgba(255,255,255,0.16);
+}
+
+/* ── Mobile: table → card view (handled by global .mobile-table) –
+   Extra AdminRoles-specific overrides below 768px. ─────────── */
+@media (max-width: 768px) {
+  /* Role form: single-column fields */
+  .role-form-wrap .row {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .role-form-wrap .col-md-4,
+  .role-form-wrap .col-md-3,
+  .role-form-wrap .col-md-2 {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  /* Role form save buttons: full-width row */
+  .role-form-wrap .mt-3.d-flex {
+    justify-content: stretch;
+  }
+  .role-form-wrap .mt-3.d-flex .btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* Table wrapper: no horizontal scroll — handled by card layout */
+  .role-table-wrap .table-responsive {
+    overflow-x: unset;
+  }
+
+  /* Status badge: larger tap target */
+  .badge {
+    padding: 5px 10px;
+    font-size: 0.78rem;
+  }
+
+  /* Action buttons inside card row: always visible, side-by-side */
+  td[data-label="Actions"] .d-flex {
+    justify-content: flex-start !important;
+  }
+  td[data-label="Actions"] .btn {
+    flex: 1 1 auto;
+  }
 }
 </style>

@@ -11,24 +11,23 @@ const props = defineProps({
   <section class="macro-summary panel panel-bg">
     <div class="macro-summary__head">
       <h3>Daily Summary</h3>
-      <p>Visible at all times, but secondary to your workflow.</p>
     </div>
 
     <div class="macro-summary__grid">
-      <article>
-        <span>Calories</span>
+      <article class="macro-calories">
+        <span><span class="macro-emoji">🔥</span> Calories</span>
         <strong>{{ total.calories || 0 }}</strong>
       </article>
-      <article>
-        <span>Protein</span>
+      <article class="macro-protein">
+        <span><span class="macro-emoji">🥩</span> Protein</span>
         <strong>{{ total.protein || 0 }}g</strong>
       </article>
-      <article>
-        <span>Carbs</span>
+      <article class="macro-carbs">
+        <span><span class="macro-emoji">🌾</span> Carbs</span>
         <strong>{{ total.carbs || 0 }}g</strong>
       </article>
-      <article>
-        <span>Fat</span>
+      <article class="macro-fat">
+        <span><span class="macro-emoji">🥑</span> Fat</span>
         <strong>{{ total.fat || 0 }}g</strong>
       </article>
     </div>
@@ -77,5 +76,48 @@ const props = defineProps({
 .macro-summary__grid strong {
   color: var(--text-color);
   font-size: 1.02rem;
+}
+
+/* ─────────────────────────────────────────────────────
+   RESPONSIVE - 768px  (v0.81.10 compact summary)
+───────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .macro-summary {
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .macro-summary__head {
+    margin-bottom: 6px;
+  }
+
+  .macro-summary__head h3 {
+    font-size: 0.9rem;
+  }
+
+  .macro-summary__head p {
+    display: none; /* hide subtitle on mobile to save space */
+  }
+
+  .macro-summary__grid {
+    margin-top: 8px;
+    gap: 8px;
+  }
+
+  .macro-summary__grid article {
+    min-height: 72px;
+    padding: 10px;
+    border-radius: 12px;
+    margin-bottom: 0;
+  }
+
+  .macro-summary__grid strong {
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+
+  .macro-summary__grid span {
+    font-size: 0.8rem;
+  }
 }
 </style>

@@ -128,6 +128,15 @@ const activityHistory = [
 <style scoped>
 .view-profile-page {
   --ff-app-inner-max-width: 960px;
+  --vp-surface-1: var(--wa-shell-surface, #121923);
+  --vp-surface-2: var(--wa-shell-surface-elevated, #17212d);
+  --vp-surface-3: var(--wa-shell-surface-soft, #1d2a38);
+  --vp-border: var(--wa-shell-border, rgba(120, 145, 175, 0.16));
+  --vp-border-strong: var(--wa-shell-border-strong, rgba(120, 145, 175, 0.24));
+  --vp-text: var(--wa-shell-text, #f8fafc);
+  --vp-text-secondary: var(--wa-shell-text-secondary, #a4b0c0);
+  --vp-text-muted: var(--wa-shell-text-muted, #738196);
+  --vp-accent: var(--wa-shell-accent, var(--main-color, #3b82f6));
   width: min(100%, var(--ff-app-inner-max-width, 900px));
   margin: 0 auto;
   padding-inline: var(--ff-app-inner-padding-x, clamp(12px, 2vw, 20px));
@@ -136,7 +145,9 @@ const activityHistory = [
 }
 
 .view-profile-header {
-  border: 1.5px solid var(--ff-border-strong, rgba(148, 163, 184, 0.48));
+  border: 1.5px solid var(--vp-border-strong);
+  background: linear-gradient(135deg, rgba(15, 25, 39, 0.98), rgba(20, 31, 47, 0.95)) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
 }
 
 .view-profile-header h2 {
@@ -148,7 +159,7 @@ const activityHistory = [
 
 .view-profile-header p {
   margin: 4px 0 0;
-  color: #cbd5e1;
+  color: var(--vp-text-secondary);
   font-size: 0.85rem;
   font-weight: 500;
 }
@@ -167,9 +178,9 @@ const activityHistory = [
 .vp-card {
   border-radius: 18px;
   padding: 16px;
-  border: 1.5px solid var(--ff-border-strong, rgba(148, 163, 184, 0.48));
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.045);
-  background: #ffffff;
+  border: 1.5px solid var(--vp-border-strong);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  background: var(--vp-surface-1);
 }
 
 .vp-card-head {
@@ -179,15 +190,46 @@ const activityHistory = [
   gap: 10px;
   margin-bottom: 14px;
   padding-bottom: 12px;
-  border-bottom: 1.5px solid var(--ff-border-soft, rgba(148, 163, 184, 0.34));
+  border-bottom: 1.5px solid var(--vp-border);
 }
 
 .vp-card-title {
   margin: 0;
-  color: var(--text-color);
+  color: var(--vp-text);
   font-size: 1rem;
   font-weight: 600;
   letter-spacing: -0.008em;
+}
+
+.vp-card-head .btn.btn-icon {
+  min-width: 40px;
+  min-height: 40px;
+  background: var(--vp-surface-2);
+  border-color: var(--vp-border-strong);
+  color: var(--vp-text-secondary);
+}
+
+.vp-card-head .btn.btn-icon:hover,
+.vp-card-head .btn.btn-icon:focus-visible {
+  background: var(--vp-surface-3);
+  border-color: color-mix(in srgb, var(--vp-accent) 44%, var(--vp-border) 56%);
+  color: #93c5fd;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--vp-accent) 24%, transparent 76%);
+}
+
+.vp-card-head .dropdown-menu {
+  background: var(--vp-surface-2);
+  border: 1px solid var(--vp-border-strong);
+}
+
+.vp-card-head .dropdown-item {
+  color: var(--vp-text-secondary);
+}
+
+.vp-card-head .dropdown-item:hover,
+.vp-card-head .dropdown-item:focus {
+  background: var(--vp-surface-3);
+  color: var(--vp-text);
 }
 
 .vp-profile-top {
@@ -206,7 +248,8 @@ const activityHistory = [
   width: 116px;
   height: 116px;
   border-radius: 50%;
-  border: 1.5px solid var(--ff-border-soft, rgba(148, 163, 184, 0.34));
+  border: 1.5px solid var(--vp-border-strong);
+  background: var(--vp-surface-2);
 }
 
 .vp-avatar img {
@@ -223,9 +266,9 @@ const activityHistory = [
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 1px solid rgba(37, 99, 235, 0.35);
-  background: #dbeafe;
-  color: #1d4ed8;
+  border: 1px solid color-mix(in srgb, var(--vp-accent) 44%, var(--vp-border) 56%);
+  background: color-mix(in srgb, var(--vp-accent) 22%, var(--vp-surface-2) 78%);
+  color: #bfdbfe;
   display: grid;
   place-items: center;
 }
@@ -239,11 +282,11 @@ const activityHistory = [
   margin: 0;
   font-size: 1.08rem;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--vp-text);
 }
 
 .vp-admin-role {
-  color: var(--text-color-secondary);
+  color: var(--vp-text-secondary);
   font-size: 0.86rem;
   font-weight: 500;
 }
@@ -256,6 +299,19 @@ const activityHistory = [
 .vp-admin-social a {
   color: #2563eb;
   font-size: 1rem;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--vp-accent) 12%, var(--vp-surface-2) 88%);
+  border: 1px solid color-mix(in srgb, var(--vp-accent) 34%, var(--vp-border) 66%);
+}
+
+.vp-admin-social a:hover,
+.vp-admin-social a:focus-visible {
+  color: #93c5fd;
+  background: color-mix(in srgb, var(--vp-accent) 22%, var(--vp-surface-2) 78%);
 }
 
 .vp-profile-bottom {
@@ -265,7 +321,7 @@ const activityHistory = [
 
 .vp-subtitle {
   margin: 0;
-  color: var(--text-color);
+  color: #93c5fd;
   font-size: 0.88rem;
   font-weight: 600;
 }
@@ -279,7 +335,7 @@ const activityHistory = [
 }
 
 .vp-snapshot-list li {
-  color: var(--text-color);
+  color: var(--vp-text);
   font-size: 0.88rem;
   font-weight: 500;
   line-height: 1.45;
@@ -287,16 +343,20 @@ const activityHistory = [
 
 .vp-snapshot-list li span {
   margin-right: 6px;
-  color: var(--text-color-secondary);
+  color: var(--vp-text-secondary);
   font-weight: 500;
 }
 
 .vp-note {
   margin: 0;
-  color: var(--text-color);
+  color: var(--vp-text-secondary);
   font-size: 0.88rem;
   line-height: 1.45;
   font-weight: 500;
+  background: var(--vp-surface-2);
+  border: 1px solid var(--vp-border);
+  border-radius: 10px;
+  padding: 10px;
 }
 
 .goal-list,
@@ -312,26 +372,41 @@ const activityHistory = [
 }
 
 .goal-row {
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--vp-border);
   border-radius: 10px;
   padding: 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
+  background: var(--vp-surface-2);
 }
 
-.goal-row strong { color: var(--text-color); font-size: 0.92rem; font-weight: 600; }
-.goal-row p { margin: 4px 0 0; color: var(--text-color-secondary); font-size: 0.8rem; font-weight: 500; }
+.goal-row strong { color: var(--vp-text); font-size: 0.92rem; font-weight: 600; }
+.goal-row p { margin: 4px 0 0; color: var(--vp-text-secondary); font-size: 0.8rem; font-weight: 500; }
 
 .goal-status {
   align-self: center;
-  color: #a5b4fc;
-  border: 1px solid rgba(99, 102, 241, 0.5);
+  color: #93c5fd;
+  border: 1px solid color-mix(in srgb, #3b82f6 58%, var(--vp-border) 42%);
+  background: color-mix(in srgb, #3b82f6 18%, var(--vp-surface-2) 82%);
   border-radius: 999px;
   padding: 3px 8px;
   font-size: 0.74rem;
   font-weight: 500;
+  white-space: nowrap;
+}
+
+.goal-list .goal-row:nth-child(2) .goal-status {
+  color: #86efac;
+  border-color: color-mix(in srgb, #16a34a 58%, var(--vp-border) 42%);
+  background: color-mix(in srgb, #16a34a 18%, var(--vp-surface-2) 82%);
+}
+
+.goal-list .goal-row:nth-child(3) .goal-status {
+  color: #fdba74;
+  border-color: color-mix(in srgb, #f97316 58%, var(--vp-border) 42%);
+  background: color-mix(in srgb, #f97316 18%, var(--vp-surface-2) 82%);
 }
 
 .recent-workout-list {
@@ -340,43 +415,54 @@ const activityHistory = [
 }
 
 .recent-workout-item {
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--vp-border);
   border-radius: 10px;
   padding: 9px 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: var(--vp-surface-2);
 }
 
-.recent-workout-item strong { color: var(--text-color); font-size: 0.92rem; font-weight: 600; }
-.recent-workout-item p { margin: 3px 0 0; color: var(--text-color-secondary); font-size: 0.8rem; font-weight: 500; }
+.recent-workout-item strong { color: var(--vp-text); font-size: 0.92rem; font-weight: 600; }
+.recent-workout-item p { margin: 3px 0 0; color: var(--vp-text-secondary); font-size: 0.8rem; font-weight: 500; }
 .recent-workout-item span { color: #4ade80; font-weight: 600; font-size: 0.78rem; }
 
 .activity-item {
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--vp-border);
   border-radius: 10px;
   padding: 10px;
   display: grid;
   gap: 4px;
+  background: var(--vp-surface-2);
 }
 
 .activity-item strong {
-  color: var(--text-color);
+  color: var(--vp-text);
   font-size: 0.88rem;
   font-weight: 600;
 }
 
 .activity-item p {
   margin: 0;
-  color: var(--text-color-secondary);
+  color: var(--vp-text-secondary);
   font-size: 0.8rem;
   font-weight: 500;
 }
 
 .activity-item span {
-  color: #94a3b8;
+  color: var(--vp-text-muted);
   font-size: 0.76rem;
   font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .vp-card-head .btn.btn-icon,
+  .vp-image-change,
+  .vp-admin-social a {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 @media (min-width: 992px) {
