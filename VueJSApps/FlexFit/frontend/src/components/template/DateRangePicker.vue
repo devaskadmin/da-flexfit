@@ -126,7 +126,8 @@ const shortcuts = [
 }
 
 .full-datepicker {
-  min-width: 350px;
+  width: min(100%, 600px);
+  min-width: 0;
   max-width: 600px;
   font-size: 14px;
 }
@@ -253,6 +254,19 @@ const shortcuts = [
   display: flex;
   width: auto !important;
   min-width: 400px;
+}
+
+@media (max-width: 768px) {
+  :deep(.mx-datepicker-popup) {
+    min-width: 0 !important;
+    width: min(100vw - 24px, 100%) !important;
+    max-width: 100vw !important;
+  }
+
+  :deep(.mx-datepicker-sidebar),
+  :deep(.mx-datepicker-content) {
+    min-width: 0 !important;
+  }
 }
 
 /* Sidebar and calendar width */

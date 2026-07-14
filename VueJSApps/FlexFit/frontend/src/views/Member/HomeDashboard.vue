@@ -1070,6 +1070,22 @@ onUnmounted(() => {
     padding: 12px 12px calc(86px + env(safe-area-inset-bottom));
   }
 
+  .wa-dashboard-main,
+  .wa-greeting-row,
+  .wa-hero-card,
+  .wa-summary-block,
+  .wa-weekly-card,
+  .wa-training-progress-panel,
+  .wa-activity-section,
+  .wa-nutrition-activity-section,
+  .wa-nutrition-chart-section,
+  .wa-role-tools-section,
+  .wa-role-tool-row,
+  .wa-activity-row,
+  .wa-nutrition-activity-row {
+    min-width: 0;
+  }
+
   .wa-greeting-row {
     grid-template-columns: 1fr;
     gap: 10px;
@@ -1083,6 +1099,12 @@ onUnmounted(() => {
     justify-self: stretch;
     width: 100%;
     max-width: none;
+  }
+
+  .wa-date-picker-wrap :deep(.mx-datepicker-popup),
+  .wa-date-picker-wrap :deep(.mx-datepicker-sidebar),
+  .wa-date-picker-wrap :deep(.mx-datepicker-content) {
+    min-width: 0 !important;
   }
 
   .wa-date-picker-wrap :deep(.input-group.dashboard-filter) {
@@ -1104,6 +1126,14 @@ onUnmounted(() => {
   .wa-nutrition-chart-section,
   .wa-role-tools-section {
     padding: 12px;
+  }
+
+  .wa-quick-action-content {
+    flex-wrap: wrap;
+  }
+
+  .wa-quick-action-right {
+    margin-left: auto;
   }
 }
 

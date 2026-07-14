@@ -1424,9 +1424,7 @@ watch(
 </template>
 
 <style scoped>
-.workout-builder-page {
-  display: block;
-}
+.workout-builder-page { display: block; }
 
 .workout-builder-canvas {
   display: grid;
@@ -1726,6 +1724,7 @@ watch(
   display: grid;
   gap: 12px;
   margin-bottom: 16px;
+  min-width: 0;
 }
 
 .planner-mode-toggle {
@@ -1737,6 +1736,8 @@ watch(
   background: #f8fafc;
   padding: 4px;
   gap: 6px;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .planner-mode-btn {
@@ -1759,6 +1760,7 @@ watch(
   display: grid;
   grid-template-columns: 1fr;
   gap: 10px;
+  min-width: 0;
 }
 
 .planner-feedback {
@@ -1777,6 +1779,10 @@ watch(
   min-height: 46px;
   padding: 11px 12px;
   background: #f8fafc;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .planner-group-add {
@@ -1834,6 +1840,8 @@ watch(
   background: #ffffff;
   overflow: hidden;
   transition: all 0.2s ease;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .workout-day-card.active {
@@ -1854,6 +1862,8 @@ watch(
   cursor: pointer;
   text-align: left;
   transition: background 0.2s ease;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .workout-day-header:hover {
@@ -1900,6 +1910,7 @@ watch(
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  min-width: 0;
 }
 
 .day-action-btn {
@@ -2087,6 +2098,8 @@ watch(
   background: #ffffff;
   border-top: 1px solid #dbe4f0;
   padding: 16px;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .workout-day-card.active .workout-day-panel {
@@ -2118,6 +2131,7 @@ watch(
   display: flex;
   justify-content: center;
   margin-top: 4px;
+  min-width: 0;
 }
 
 .btn-add-exercise-day {
@@ -2291,19 +2305,13 @@ watch(
 
 /* Responsive adjustments */
 @media (max-width: 639px) {
-  .day-title-group {
-    flex-basis: 100%;
-  }
-
-  .day-actions {
-    width: 100%;
-    justify-content: flex-end;
-  }
-
-  .workout-day-header {
-    flex-wrap: wrap;
-  }
-}
+  .workout-builder-page :deep(input),
+  .workout-builder-page :deep(select),
+  .workout-builder-page :deep(textarea),
+      .workout-builder-page .planner-group-editor input {
+        font-size: 16px;
+      }
+    }
 
 .builder-section__head h3 {
   margin: 0;
@@ -2470,6 +2478,8 @@ watch(
   border: 1px solid #e8edf4;
   border-radius: 14px;
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .save-message {
@@ -2507,7 +2517,7 @@ watch(
   --wb-surface-2: var(--wa-shell-surface-elevated, #17212d);
   --wb-surface-3: var(--wa-shell-surface-soft, #1d2a38);
   --wb-border: var(--wa-shell-border, rgba(120, 145, 175, 0.16));
-  --wb-border-strong: var(--wa-shell-border-strong, rgba(120, 145, 175, 0.24));
+/* Tab Bar */
   --wb-text: var(--wa-shell-text, #f8fafc);
   --wb-text-secondary: var(--wa-shell-text-secondary, #a4b0c0);
   --wb-text-muted: var(--wa-shell-text-muted, #738196);
@@ -2928,27 +2938,31 @@ watch(
     font-size: 0.83rem;
   }
 
-  /* Tab bar: horizontal scroll so 3 tabs never overflow */
+  /* Tab bar: 3 tabs fit without scrolling */
   .builder-tabs {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    scrollbar-width: none;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    overflow: visible;
   }
-  .builder-tabs::-webkit-scrollbar { display: none; }
   .builder-tab {
-    flex-shrink: 0;
     min-width: 0;
     font-size: 0.82rem;
     padding: 0 8px;
+    white-space: normal;
+    line-height: 1.15;
   }
 
-  /* Hero stats: allow horizontal scroll when screen is very narrow */
+  /* Hero stats: stay within the viewport */
   .builder-hero__stats {
-    overflow-x: auto;
-    scrollbar-width: none;
     grid-template-columns: repeat(3, minmax(80px, 1fr));
   }
-  .builder-hero__stats::-webkit-scrollbar { display: none; }
+  .builder-hero__stats div,
+  .builder-hero__stats span,
+  .builder-hero__stats strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
 
   /* Footer: stack label above save button */
   .builder-footer {
@@ -2978,6 +2992,11 @@ watch(
 }
 
 @media (max-width: 768px) {
+  .workout-builder-page {
+    padding-bottom: calc(128px + env(safe-area-inset-bottom));
+    overflow-x: clip;
+  }
+
   /* ── Canvas ── */
   .workout-builder-canvas {
     gap: 8px;
@@ -3048,6 +3067,10 @@ watch(
   .collapsible-panel {
     padding: 10px;
     border-radius: 12px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   /* ── Day card header ── */
@@ -3110,10 +3133,22 @@ watch(
     margin-bottom: 10px;
   }
 
+  .planner-mode-toggle,
+  .planner-group-editor {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .planner-group-editor {
+    grid-template-columns: 1fr;
+  }
+
   .planner-mode-btn {
     min-height: 34px;
     font-size: 0.82rem;
     padding: 4px 8px;
+    min-width: 0;
   }
 
   .planner-group-editor input {
@@ -3129,6 +3164,9 @@ watch(
     font-size: 0.82rem;
     padding: 0 12px;
     border-radius: 10px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
 
   /* ── Schedule list ── */
@@ -3150,6 +3188,9 @@ watch(
     padding: 16px 12px;
     min-height: 120px;
     gap: 6px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
 
   .planner-empty__icon {
@@ -3220,6 +3261,8 @@ watch(
 
   .workout-day-card {
     border-radius: 10px;
+    width: 100%;
+    max-width: 100%;
   }
 
   /* ── Empty day state ── */
@@ -3269,6 +3312,18 @@ watch(
     min-height: 26px;
     padding: 0 6px;
     font-size: 0.68rem;
+  }
+
+  .day-action-btn,
+  .btn-add-exercise-day,
+  .planner-group-add,
+  .planner-group-save,
+  .btn-create-plan,
+  .btn-ai-suggest,
+  .btn-save {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   .builder-section,

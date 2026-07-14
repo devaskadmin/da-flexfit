@@ -100,7 +100,7 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
     <div v-show="isExpanded" class="sec-body">
 
     <!-- ── STRENGTH Sets Table ─────────────────────────────────────────── -->
-    <div v-if="workoutType === 'strength'" class="cardio-table-wrap">
+    <div v-if="workoutType === 'strength'" class="cardio-table-wrap strength-table strength-table--desktop">
       <div class="cardio-3col-table">
         <div class="c3-head">
           <span class="c3-col-set">Set</span>
@@ -170,6 +170,62 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
       </div>
     </div>
 
+    <div v-if="workoutType === 'strength'" class="strength-table strength-table--mobile">
+      <div
+        v-for="(set, idx) in exercise.sessionSets"
+        :key="`mobile-strength-${idx}`"
+        class="strength-mobile-row"
+        :class="{ 'strength-mobile-row--done': set.done }"
+      >
+        <label class="strength-mobile-field">
+          <span>Weight (kg)</span>
+          <input
+            type="number"
+            :class="['set-input', prefillClass(set, 'weight')]"
+            :value="set.weight"
+            min="0"
+            step="0.5"
+            placeholder="0"
+            @input="emit('update-set', exercise.id, idx, 'weight', $event.target.value)"
+          />
+        </label>
+
+        <label class="strength-mobile-field">
+          <span>Reps</span>
+          <input
+            type="number"
+            :class="['set-input', prefillClass(set, 'reps')]"
+            :value="set.reps"
+            min="0"
+            placeholder="0"
+            @input="emit('update-set', exercise.id, idx, 'reps', $event.target.value)"
+          />
+        </label>
+
+        <button
+          v-if="exercise.sessionSets.length > 1"
+          type="button"
+          class="c3-icon-btn c3-icon-btn--remove"
+          title="Remove this set"
+          aria-label="Remove this set"
+          @click="emit('remove-set', exercise.id, idx)"
+        >
+          <i class="fa-solid fa-minus"></i>
+        </button>
+
+        <button
+          type="button"
+          class="c3-icon-btn c3-icon-btn--complete"
+          :class="{ 'c3-icon-btn--done': set.done }"
+          :title="set.done ? 'Set completed' : 'Mark set complete'"
+          :aria-label="set.done ? 'Set completed' : 'Mark set complete'"
+          @click="emit('update-set', exercise.id, idx, 'done', !set.done)"
+        >
+          <i class="fa-solid fa-check"></i>
+        </button>
+      </div>
+    </div>
+
     <!-- ── OTHER Sets Table ──────────────────────────────────────────── -->
     <div v-if="workoutType === 'other'" class="cardio-table-wrap">
       <div class="cardio-3col-table">
@@ -224,7 +280,8 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
                 title="Remove this set"
                 @click="emit('remove-set', exercise.id, idx)"
               >
-                <i class="fa-solid fa-minus"></i> Remove Set
+                <i class="fa-solid fa-minus"></i>
+                <span class="c3-btn-label">Remove Set</span>
               </button>
             </div>
             <div class="c3-col-value c3-done-cell">
@@ -236,7 +293,7 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
               >
                 <i v-if="set.done" class="fa-solid fa-circle-check"></i>
                 <i v-else class="fa-regular fa-circle"></i>
-                {{ set.done ? 'Set Done' : 'Complete Set' }}
+                <span class="c3-btn-label">{{ set.done ? 'Set Done' : 'Complete Set' }}</span>
               </button>
             </div>
           </div>
@@ -622,6 +679,10 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
   width: 100%;
 }
 
+.strength-table--mobile {
+  display: none;
+}
+
 /* ─── Cardio 3-Column Table ───────────────── */
 .cardio-3col-table {
   display: flex;
@@ -799,6 +860,10 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
   justify-content: center;
 }
 
+.c3-btn-label {
+  display: inline;
+}
+
 /* ─── Remove Set Button ──────────────── */
 .c3-rm-btn {
   display: inline-flex;
@@ -953,6 +1018,59 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
     border-radius: 12px;
   }
 
+  .strength-table--desktop {
+    display: none;
+  }
+
+  .strength-table--mobile {
+    display: grid;
+    gap: 8px;
+  }
+
+  .strength-mobile-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px 44px;
+    gap: 6px;
+    align-items: end;
+    padding: 7px;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 10px;
+    background: transparent;
+    box-sizing: border-box;
+  }
+
+  .strength-mobile-row--done {
+    border-color: rgba(34, 197, 94, 0.28);
+  }
+
+  .strength-mobile-field {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .strength-mobile-field span {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #64748b;
+  }
+
+  .strength-mobile-field .set-input {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-height: 40px;
+    height: 40px;
+    text-align: left;
+  }
+
+  .strength-mobile-row .c3-icon-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 9px;
+  }
+
   /* §4 Exercise header — 40px image, compact badge, 32px collapse button */
   .sec-thumb,
   .sec-thumb-placeholder {
@@ -1039,21 +1157,30 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
     justify-content: space-between;
     gap: 6px;
     padding: 7px 8px;
-    border-top: 1px solid var(--border-color, #e5e7eb) !important;
-    background: #f9fafb !important;
+    border-top: 0 !important;
+    background: transparent !important;
   }
 
   .c3-rm-btn {
-    font-size: 0.68rem;
-    padding: 0 8px;
-    height: 30px;
-    white-space: nowrap;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    white-space: normal;
+    border-radius: 9px;
+    border: 1px solid #fca5a5;
+    background: #fff5f5;
+    color: #dc2626;
   }
   .c3-complete-btn {
-    font-size: 0.7rem;
-    padding: 0 10px;
-    height: 30px;
-    white-space: nowrap;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    white-space: normal;
+    border-radius: 9px;
+  }
+
+  .c3-btn-label {
+    display: none;
   }
 
   /* Footer: compress */
@@ -1070,10 +1197,31 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
   .sec-meta h5 { font-size: 0.8rem; }
   .set-input { min-height: 34px; height: 34px; font-size: 0.78rem; }
   .c3-icon-btn { width: 28px; height: 28px; border-radius: 6px; }
-  .c3-rm-btn      { font-size: 0.64rem; padding: 0 6px; height: 28px; }
-  .c3-complete-btn { font-size: 0.66rem; padding: 0 8px; height: 28px; }
+  .c3-rm-btn,
+  .c3-complete-btn,
+  .strength-mobile-row .c3-icon-btn { width: 38px; height: 38px; }
 
   /* Cardio table info labels smaller */
   .c3-col-info { font-size: 0.65rem; }
+}
+
+@media (max-width: 390px) {
+  .strength-mobile-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px 36px;
+    gap: 4px;
+  }
+
+  .strength-mobile-row .c3-icon-btn,
+  .c3-rm-btn,
+  .c3-complete-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .strength-mobile-field .set-input {
+    min-height: 38px;
+    height: 38px;
+    font-size: 0.78rem;
+  }
 }
 </style>
