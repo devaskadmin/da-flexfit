@@ -250,6 +250,10 @@ const updateField = (field, value, isNumeric = false) => {
   border-radius: 16px;
   background: #fff;
   padding: 14px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .exercise-block + .exercise-block {
@@ -269,12 +273,14 @@ const updateField = (field, value, isNumeric = false) => {
   align-items: flex-start;
   gap: 12px;
   margin-bottom: 12px;
+  min-width: 0;
 }
 
 .exercise-block__identity {
   display: flex;
   align-items: flex-start;
   gap: 10px;
+  min-width: 0;
 }
 
 .exercise-block__identity img {
@@ -323,12 +329,14 @@ const updateField = (field, value, isNumeric = false) => {
   margin: 0;
   color: #0f172a;
   font-size: 1rem;
+  overflow-wrap: anywhere;
 }
 
 .exercise-block__identity p {
   margin: 4px 0 0;
   font-size: 0.82rem;
   color: #64748b;
+  overflow-wrap: anywhere;
 }
 
 .exercise-block__actions {
@@ -337,6 +345,7 @@ const updateField = (field, value, isNumeric = false) => {
   gap: 6px;
   flex-wrap: wrap;
   justify-content: flex-end;
+  min-width: 0;
 }
 
 .exercise-block__actions button {
@@ -366,11 +375,13 @@ const updateField = (field, value, isNumeric = false) => {
   display: grid;
   grid-template-columns: 1fr;
   gap: 10px;
+  min-width: 0;
 }
 
 .exercise-block__fields label {
   display: grid;
   gap: 5px;
+  min-width: 0;
 }
 
 .exercise-block__fields span {
@@ -386,6 +397,10 @@ const updateField = (field, value, isNumeric = false) => {
   padding: 10px 11px;
   min-height: 42px;
 }
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 
 .exercise-block__fields select {
   border: 1px solid #d6dee9;
@@ -461,29 +476,32 @@ const updateField = (field, value, isNumeric = false) => {
   /* Actions: full-width single row, 34px height */
   .exercise-block__actions {
     width: 100%;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     justify-content: stretch;
     gap: 6px;
   }
 
   .exercise-block__actions button {
-    flex: 1;
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
     min-height: 34px;
     height: 34px;
     padding: 0 6px;
     font-size: 0.72rem;
     border-radius: 7px;
-    white-space: nowrap;
+    white-space: normal;
+    box-sizing: border-box;
   }
 
-  /* Field grid: 2-col with explicit span control */
+  /* Field grid: stack on mobile to avoid clipping */
   .exercise-block__fields {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 6px;
   }
 
-  .field-half { grid-column: span 1; }
+  .field-half { grid-column: 1 / -1; }
   .field-full, .field-notes { grid-column: 1 / -1; }
 
   .exercise-block__fields label { gap: 3px; }
@@ -504,8 +522,18 @@ const updateField = (field, value, isNumeric = false) => {
   .exercise-block { padding: 8px 10px; }
   .exercise-block__identity img { width: 48px; height: 48px; }
   .exercise-block__identity h4 { font-size: 0.8rem; }
-  .exercise-block__actions button { min-height: 30px; height: 30px; font-size: 0.67rem; padding: 0 4px; }
+  .exercise-block__actions button { min-height: 30px; height: auto; font-size: 0.67rem; padding: 6px 4px; }
   .exercise-block__fields input, .exercise-block__fields select { min-height: 34px; height: 34px; font-size: 0.78rem; }
   .exercise-block__fields span { font-size: 0.66rem; }
+}
+
+@media (max-width: 430px) {
+  .exercise-block__actions button,
+  .exercise-block__fields input,
+  .exercise-block__fields select {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
 }
 </style>

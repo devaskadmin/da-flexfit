@@ -110,7 +110,7 @@ const getSaveState = (exerciseId, setNum) => {
     <div v-show="isExpanded" class="sec-body">
 
     <!-- ── STRENGTH Sets Table ─────────────────────────────────────────── -->
-    <div v-if="workoutType === 'strength'" class="cardio-table-wrap">
+    <div v-if="workoutType === 'strength'" class="cardio-table-wrap strength-table strength-table--desktop">
       <div class="cardio-3col-table">
         <div class="c3-head">
           <span class="c3-col-set">Set</span>
@@ -143,7 +143,7 @@ const getSaveState = (exerciseId, setNum) => {
           <div class="c3-row">
             <span class="c3-col-set"></span>
             <span class="c3-col-info">Reps</span>
-            <div class="c3-col-value">
+            <div class="c3-col-value c3-col-value-inline-actions">
               <input
                 type="number"
                 :class="['set-input', prefillClass(set, 'reps')]"
@@ -191,6 +191,62 @@ const getSaveState = (exerciseId, setNum) => {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div v-if="workoutType === 'strength'" class="strength-table strength-table--mobile">
+      <div
+        v-for="(set, idx) in exercise.sessionSets"
+        :key="`mobile-strength-${idx}`"
+        class="strength-mobile-row"
+        :class="{ 'strength-mobile-row--done': set.done }"
+      >
+        <label class="strength-mobile-field">
+          <span>Weight (kg)</span>
+          <input
+            type="number"
+            :class="['set-input', prefillClass(set, 'weight')]"
+            :value="set.weight"
+            min="0"
+            step="0.5"
+            placeholder="0"
+            @input="emit('update-set', exercise.id, idx, 'weight', $event.target.value)"
+          />
+        </label>
+
+        <label class="strength-mobile-field">
+          <span>Reps</span>
+          <input
+            type="number"
+            :class="['set-input', prefillClass(set, 'reps')]"
+            :value="set.reps"
+            min="0"
+            placeholder="0"
+            @input="emit('update-set', exercise.id, idx, 'reps', $event.target.value)"
+          />
+        </label>
+
+        <button
+          v-if="exercise.sessionSets.length > 1"
+          type="button"
+          class="c3-icon-btn c3-icon-btn--remove"
+          title="Remove this set"
+          aria-label="Remove this set"
+          @click="emit('remove-set', exercise.id, idx)"
+        >
+          <i class="fa-solid fa-minus"></i>
+        </button>
+
+        <button
+          type="button"
+          class="c3-icon-btn c3-icon-btn--complete"
+          :class="{ 'c3-icon-btn--done': set.done }"
+          :title="set.done ? 'Set completed' : 'Mark set complete'"
+          :aria-label="set.done ? 'Set completed' : 'Mark set complete'"
+          @click="emit('update-set', exercise.id, idx, 'done', !set.done)"
+        >
+          <i class="fa-solid fa-check"></i>
+        </button>
       </div>
     </div>
 
@@ -248,7 +304,8 @@ const getSaveState = (exerciseId, setNum) => {
                 title="Remove this set"
                 @click="emit('remove-set', exercise.id, idx)"
               >
-                <i class="fa-solid fa-minus"></i> Remove Set
+                <i class="fa-solid fa-minus"></i>
+                <span class="c3-btn-label">Remove Set</span>
               </button>
             </div>
             <div class="c3-col-value c3-done-cell">
@@ -269,7 +326,7 @@ const getSaveState = (exerciseId, setNum) => {
               >
                 <i v-if="set.done" class="fa-solid fa-circle-check"></i>
                 <i v-else class="fa-regular fa-circle"></i>
-                {{ set.done ? 'Set Done' : 'Complete Set' }}
+                <span class="c3-btn-label">{{ set.done ? 'Set Done' : 'Complete Set' }}</span>
               </button>
             </div>
           </div>
@@ -680,6 +737,10 @@ const getSaveState = (exerciseId, setNum) => {
   width: 100%;
 }
 
+.strength-table--mobile {
+  display: none;
+}
+
 /* ─── Cardio 3-Column Table ───────────────── */
 .cardio-3col-table {
   display: flex;
@@ -773,6 +834,63 @@ const getSaveState = (exerciseId, setNum) => {
   padding: 3px 0;
 }
 
+.c3-col-value-inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.c3-col-value-inline-actions .set-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.c3-inline-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.c3-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.c3-icon-btn--remove {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+.c3-icon-btn--remove:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+}
+
+.c3-icon-btn--complete {
+  background: #16a34a;
+  border-color: #15803d;
+  color: #ffffff;
+}
+
+.c3-icon-btn--complete:hover {
+  background: #15803d;
+}
+
+.c3-icon-btn--done {
+  background: #166534;
+  border-color: #14532d;
+  opacity: 0.92;
+}
+
 /* Value inputs — constrained to their column */
 .c3-col-value .set-input {
   width: 100%;
@@ -798,6 +916,10 @@ const getSaveState = (exerciseId, setNum) => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.c3-btn-label {
+  display: inline;
 }
 
 /* ─── Remove Set Button ──────────────── */
@@ -954,6 +1076,59 @@ const getSaveState = (exerciseId, setNum) => {
     border-radius: 12px;
   }
 
+  .strength-table--desktop {
+    display: none;
+  }
+
+  .strength-table--mobile {
+    display: grid;
+    gap: 8px;
+  }
+
+  .strength-mobile-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px 44px;
+    gap: 6px;
+    align-items: end;
+    padding: 7px;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 10px;
+    background: transparent;
+    box-sizing: border-box;
+  }
+
+  .strength-mobile-row--done {
+    border-color: rgba(34, 197, 94, 0.28);
+  }
+
+  .strength-mobile-field {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .strength-mobile-field span {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #64748b;
+  }
+
+  .strength-mobile-field .set-input {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-height: 40px;
+    height: 40px;
+    text-align: left;
+  }
+
+  .strength-mobile-row .c3-icon-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 9px;
+  }
+
   /* §4 Exercise header — 40px image, compact badge, 32px collapse button */
   .sec-thumb,
   .sec-thumb-placeholder {
@@ -1006,6 +1181,22 @@ const getSaveState = (exerciseId, setNum) => {
   }
   .c3-col-value { padding: 0; }
 
+  .c3-col-value-inline-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .c3-inline-actions {
+    gap: 5px;
+  }
+
+  .c3-icon-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+  }
+
   /* §5 Field height 36px */
   .set-input {
     min-height: 36px;
@@ -1024,21 +1215,30 @@ const getSaveState = (exerciseId, setNum) => {
     justify-content: space-between;
     gap: 6px;
     padding: 7px 8px;
-    border-top: 1px solid var(--border-color, #e5e7eb) !important;
-    background: #f9fafb !important;
+    border-top: 0 !important;
+    background: transparent !important;
   }
 
   .c3-rm-btn {
-    font-size: 0.68rem;
-    padding: 0 8px;
-    height: 30px;
-    white-space: nowrap;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    white-space: normal;
+    border-radius: 9px;
+    border: 1px solid #fca5a5;
+    background: #fff5f5;
+    color: #dc2626;
   }
   .c3-complete-btn {
-    font-size: 0.7rem;
-    padding: 0 10px;
-    height: 30px;
-    white-space: nowrap;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    white-space: normal;
+    border-radius: 9px;
+  }
+
+  .c3-btn-label {
+    display: none;
   }
 
   /* Footer: compress */
@@ -1054,10 +1254,32 @@ const getSaveState = (exerciseId, setNum) => {
   .sec-thumb, .sec-thumb-placeholder { width: 36px; height: 36px; }
   .sec-meta h5 { font-size: 0.8rem; }
   .set-input { min-height: 34px; height: 34px; font-size: 0.78rem; }
-  .c3-rm-btn      { font-size: 0.64rem; padding: 0 6px; height: 28px; }
-  .c3-complete-btn { font-size: 0.66rem; padding: 0 8px; height: 28px; }
+  .c3-icon-btn { width: 28px; height: 28px; border-radius: 6px; }
+  .c3-rm-btn,
+  .c3-complete-btn,
+  .strength-mobile-row .c3-icon-btn { width: 38px; height: 38px; }
 
   /* Cardio table info labels smaller */
   .c3-col-info { font-size: 0.65rem; }
+}
+
+@media (max-width: 390px) {
+  .strength-mobile-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px 36px;
+    gap: 4px;
+  }
+
+  .strength-mobile-row .c3-icon-btn,
+  .c3-rm-btn,
+  .c3-complete-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .strength-mobile-field .set-input {
+    min-height: 38px;
+    height: 38px;
+    font-size: 0.78rem;
+  }
 }
 </style>

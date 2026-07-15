@@ -845,20 +845,22 @@ const demoLogin = async (role) => {
 }
 
 .wa-input {
+  width: 100%;
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: 40px 1fr auto;
   align-items: center;
   min-height: 52px;
-  border-radius: 0;
-  border: 1px solid #6b7280;
-  background: #000000;
+  border-radius: 12px;
+  border: 1px solid rgba(145, 160, 200, 0.32);
+  background: #252E48;
   overflow: hidden;
   transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 
 .wa-input:focus-within {
-  border-color: rgba(96, 165, 250, 0.95);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28);
+  border-color: #2F6BFF;
+  box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.22);
 }
 
 .wa-input__icon {
@@ -866,45 +868,82 @@ const demoLogin = async (role) => {
   height: 100%;
   display: grid;
   place-items: center;
-  color: #3b82f6;
-  border-radius: 0;
-  border-left: 1px solid #6b7280;
+  color: #8F9BB5;
+  background: transparent;
+  border-right: 1px solid rgba(145, 160, 200, 0.18);
   font-size: 1rem;
 }
 
 .wa-input input {
+  appearance: none;
+  -webkit-appearance: none;
   width: 100%;
+  min-width: 0;
   height: 100%;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--wa-text);
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #F7F9FF;
   font-size: 0.98rem;
-  padding: 0 10px 0 9px;
-  outline: none;
+  padding: 0 12px;
+  outline: none !important;
+  -webkit-appearance: none;
+  background-clip: padding-box;
+}
+
+.wa-input input:focus,
+.wa-input input:focus-visible,
+.wa-input input:active {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .wa-input input::placeholder {
-  color: rgba(156, 163, 175, 0.8);
+  color: #8F9BB5;
+  opacity: 1;
 }
 
 .wa-input__toggle {
   appearance: none;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--wa-text-subtle);
+  -webkit-appearance: none;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #8F9BB5;
   height: 100%;
   width: 42px;
+  min-width: 42px;
   display: grid;
   place-items: center;
   cursor: pointer;
-  transition: color 150ms ease, background 150ms ease;
+  border-left: 1px solid rgba(145, 160, 200, 0.18) !important;
+  box-shadow: none !important;
+  outline: none !important;
+  transition: color 150ms ease;
 }
 
 .wa-input__toggle:hover {
-  color: #cbd5e1;
-  background: rgba(37, 99, 235, 0.12);
+  color: #F7F9FF;
+}
+
+.wa-input__toggle:focus,
+.wa-input__toggle:focus-visible,
+.wa-input__toggle:active {
+  border: 0 !important;
+  border-left: 1px solid rgba(145, 160, 200, 0.18) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.wa-input__toggle:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, 0.95);
+  outline-offset: -2px;
 }
 
 .wa-row {
@@ -1277,7 +1316,7 @@ const demoLogin = async (role) => {
   .wa-input,
   .login-input {
     min-height: 46px;
-    border-radius: 0;
+    border-radius: 12px;
     grid-template-columns: 38px 1fr auto;
   }
 

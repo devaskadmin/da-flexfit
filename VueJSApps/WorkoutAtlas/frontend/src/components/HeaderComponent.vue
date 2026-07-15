@@ -1,10 +1,7 @@
 ﻿<script setup>
 const props = defineProps(['onNavCloseClick', 'isExpanded', 'toggleSidebar', 'profileToggleSidebar', 'canUseThemeSettings'])
 import {onMounted, ref, onUnmounted, watchEffect, computed} from 'vue'
-import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import Tr from "@/i18n/translation"
-import {toggleTheme, currentActiveTheme} from "@/composable/manageThemeSetting.js"
 import {layoutPosition} from "@/composable/navPositionSetting";
 import { API_BASE } from '@/config/env'
 import { useAuth } from '@/composable/useAuth'
@@ -14,7 +11,6 @@ import MobileSearchModal from '@/components/MobileSearchModal.vue'
 const router = useRouter()
 const authStore = useAuth()
 
-const isFullScreen = ref(false);
 const mobileSearchOpen = ref(false)
 import waHeaderLogo from '@/assets/logo/tablet-desktop-logo.png'
 const navbarLogo = waHeaderLogo
@@ -27,43 +23,6 @@ const normalizedRole = computed(() => {
 const isAdmin = computed(() => {
   return normalizedRole.value === 'administrator' || normalizedRole.value === 'admin'
 })
-
-const toggleFullscreen = () => {
-  let elem = document.documentElement;
-
-  if (!document.fullscreenElement && !document.mozFullScreenElement &&
-      !document.webkitFullscreenElement && !document.msFullscreenElement) {
-    if (elem.requestFullscreen) {
-      elem.requestFullscreen();
-    } else if (elem.msRequestFullscreen) {
-      elem.msRequestFullscreen();
-    } else if (elem.mozRequestFullScreen) {
-      elem.mozRequestFullScreen();
-    } else if (elem.webkitRequestFullscreen) {
-      elem.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
-    }
-  } else {
-    if (document.exitFullscreen) {
-      document.exitFullscreen();
-    } else if (document.msExitFullscreen) {
-      document.msExitFullscreen();
-    } else if (document.mozCancelFullScreen) {
-      document.mozCancelFullScreen();
-    } else if (document.webkitExitFullscreen) {
-      document.webkitExitFullscreen();
-    }
-  }
-
-  isFullScreen.value = !isFullScreen.value;
-};
-
-const { t, locale } = useI18n()
-const supportedLocales = Tr.supportedLocales
-
-const switchLanguage = async (event) => {
-  const newLocale = event.target.value
-  await Tr.switchLanguage(newLocale)
-}
 
 const isMobileExpanded = ref(false)
 const isMobile = ref(false)
@@ -82,10 +41,6 @@ const checkScreenSize = (() => {
 
 const toggleHeader = (() => {
   isMobileExpanded.value = !isMobileExpanded.value;
-})
-
-const isLightTheme = computed(() => {
-  return currentActiveTheme.value === 'light-theme';
 })
 
 const unreadCount = ref(0)
@@ -146,21 +101,11 @@ watchEffect(() => {
 })
 
 onMounted(() => {
-  Tr.switchLanguage(Tr.guessDefaultLocale());
-  const btnFullscreen = document.getElementById('btnFullscreen');
-  if (btnFullscreen) {
-    btnFullscreen.addEventListener('click', toggleFullscreen);
-  }
-
   window.addEventListener('resize', handleResize)
   loadUnreadCount()
   loadCurrentUser()
   unreadPollTimer = setInterval(loadUnreadCount, 60000)
 })
-
-const themeIconClass = computed(() => {
-  return isLightTheme.value ? 'fa-light fa-cloud-moon' : 'fa-light fa-sun-bright';
-});
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
@@ -201,20 +146,6 @@ onUnmounted(() => {
         <button class="navbar-btn mobile-search-btn" @click="mobileSearchOpen = true" title="Search" aria-label="Open search">
           <i class="fa-light fa-magnifying-glass"></i>
         </button>
-
-        <!-- Language selector -->
-        <div class="lang-select">
-          <select @change="switchLanguage" title="Change language" aria-label="Change language">
-            <option
-              v-for="sLocale in supportedLocales"
-              :key="`locale-${sLocale}`"
-              :value="sLocale"
-              :selected="locale === sLocale"
-            >
-              {{ t(`locale.${sLocale}`) }}
-            </option>
-          </select>
-        </div>
 
         <!-- Messages -->
         <div class="navbar-btn-box">
@@ -273,15 +204,6 @@ onUnmounted(() => {
           </button>
         </div>
 
-        <!-- Fullscreen -->
-        <button class="navbar-btn" id="btnFullscreen" @click="toggleFullscreen" title="Toggle fullscreen" aria-label="Toggle fullscreen">
-          <i :class="isFullScreen ? 'fa-light fa-compress' : 'fa-light fa-expand'"></i>
-        </button>
-
-        <!-- Theme toggle -->
-        <button class="navbar-btn" @click="toggleTheme" title="Toggle theme" aria-label="Toggle theme">
-          <i :class="themeIconClass"></i>
-        </button>
       </div>
 
       <!-- User profile: visible for all authenticated users -->
@@ -657,17 +579,19 @@ onUnmounted(() => {
     flex-wrap: nowrap;
     height: auto;
     min-height: 64px;
-    padding: 10px 14px;
+    padding: 10px 10px;
     align-items: center;
-    overflow: visible;
+    overflow: clip;
+    box-sizing: border-box;
   }
 
   .navbar-left {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     height: auto;
     flex-shrink: 0;
+    min-width: 0;
   }
 
   .navbar-logo {
@@ -677,27 +601,29 @@ onUnmounted(() => {
 
   .navbar-logo img,
   .navbar-logo-img {
-    height: 28px;
+    height: 26px;
   }
 
   .navbar-spacer {
     flex: 1;
-    min-width: 8px;
+    min-width: 4px;
   }
 
   .navbar-right {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     flex-shrink: 0;
     flex-wrap: nowrap;
+    min-width: 0;
   }
 
   .admin-tools {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     flex-wrap: nowrap;
+    min-width: 0;
   }
 
   /* Show mobile search icon, hide full desktop search bar */
@@ -717,11 +643,12 @@ onUnmounted(() => {
 
   /* Icon buttons: uniform touch target */
   .navbar-btn {
-    width: 36px;
-    height: 36px;
-    font-size: 1rem;
+    width: 40px;
+    height: 40px;
+    font-size: 0.95rem;
     padding: 0;
     justify-content: center;
+    box-sizing: border-box;
   }
 
   /* Notification / message badge */
@@ -736,26 +663,40 @@ onUnmounted(() => {
 
   /* Avatar container spacing */
   .user-profile {
-    margin-left: 4px;
+    margin-left: 2px;
+    min-width: 0;
   }
 }
 
 /* â‰¤480px: further compress */
 @media (max-width: 480px) {
   .top-navbar {
-    padding: 8px 10px;
+    padding: 8px 8px;
     min-height: 56px;
   }
 
   .navbar-logo img,
   .navbar-logo-img {
-    height: 24px;
+    height: 22px;
   }
 
   .navbar-btn {
-    width: 32px;
-    height: 32px;
+    width: 38px;
+    height: 38px;
     font-size: 0.9rem;
+  }
+
+  .navbar-left {
+    gap: 6px;
+  }
+
+  .navbar-right,
+  .admin-tools {
+    gap: 4px;
+  }
+
+  .user-profile {
+    margin-left: 1px;
   }
 }
 

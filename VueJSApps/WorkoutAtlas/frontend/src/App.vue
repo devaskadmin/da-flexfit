@@ -17,6 +17,7 @@ import MainSidebarComponent from "@/components/MainSidebarComponent.vue";
 import HeaderComponent from "@/components/HeaderComponent.vue";
 import RightSidebarComponent from "@/components/RightSidebarComponent.vue";
 import ProfileRightSidebarComponent from "@/components/ProfileRightSidebarComponent.vue";
+import AppBottomNav from "@/components/navigation/AppBottomNav.vue";
 
 import router from '@/router/index'
 import layouts from "@/layouts";
@@ -431,6 +432,7 @@ provide('app:layout', layout.value)
     <component :is="layout">
       <RouterView/>
     </component>
+    <AppBottomNav v-if="isPartials" />
     <FooterComponent v-if="isPartials"/>
 
   </div>
@@ -496,7 +498,7 @@ body.wa-dashboard-active .main-sidebar::after {
 body.wa-dashboard-active .main-sidebar .sidebar-link-group-title,
 body.wa-dashboard-active .main-sidebar .sidebar-link-group-title.sidebar-section-header,
 body.wa-dashboard-active .main-sidebar .sidebar-link-group-title.app-header-gradient {
-  background: rgba(255, 255, 255, 0.04) !important;
+  background: linear-gradient(90deg, #133275 0%, #0b2058 40%, #091129 100%) !important;
   border-bottom-color: var(--wa-shell-divider) !important;
 }
 
@@ -561,6 +563,52 @@ body.wa-dashboard-active .right-sidebar-btn button:hover {
 /* Sidebar right border â€” separates sidebar from content area */
 .main-sidebar {
   border-right: 1px solid var(--wa-shell-divider, rgba(255, 255, 255, 0.09)) !important;
+}
+
+@media (max-width: 991px) {
+  html,
+  body,
+  #app {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .body-padding {
+    padding-left: 0 !important;
+    max-width: 100%;
+  }
+
+  .body-padding .main-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    overflow-y: visible;
+    padding-inline: 12px !important;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  }
+
+  .body-padding .main-content > *,
+  .body-padding .main-content .page-wrapper,
+  .body-padding .main-content .content-wrapper,
+  .body-padding .main-content .app-page-shell,
+  .body-padding .main-content .app-page-canvas,
+  .body-padding .main-content .app-inner-shell {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .body-padding .main-content .table-responsive,
+  .body-padding .main-content .table-wrapper,
+  .body-padding .main-content .tabs,
+  .body-padding .main-content .tab-content {
+    max-width: 100%;
+    min-width: 0;
+  }
 }
 
 /* Add breathing room between sidebar and dashboard on desktop */

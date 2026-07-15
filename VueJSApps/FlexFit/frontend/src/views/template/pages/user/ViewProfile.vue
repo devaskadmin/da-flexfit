@@ -146,7 +146,7 @@ const activityHistory = [
 
 .view-profile-header {
   border: 1.5px solid var(--vp-border-strong);
-  background: linear-gradient(135deg, rgba(15, 25, 39, 0.98), rgba(20, 31, 47, 0.95)) !important;
+  background: linear-gradient(135deg, #0f2561 0%, #112463 42%, #1b2444 100%) !important;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
 }
 

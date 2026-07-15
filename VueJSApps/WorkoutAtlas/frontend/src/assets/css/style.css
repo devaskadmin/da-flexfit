@@ -1816,7 +1816,8 @@ input[type=checkbox] {
   --bs-border-radius: 3px;
   --wa-topbar-bg: #05070C;
   --wa-sidebar-bg: #151C35;
-  --wa-page-bg: #161D38;
+  --wa-page-bg: #0a0f15;
+  --wa-app-bg: var(--wa-page-bg);
   --wa-panel-bg: #1B2444;
   --wa-card-bg: #2D3652;
   --wa-card-active: #40518E;
@@ -1870,7 +1871,7 @@ input[type=checkbox] {
   --wa-accent-contrast: #F7F9FF;
   --wa-shadow: 0 18px 50px rgba(0, 0, 0, 0.42);
   --wa-shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.24);
-  --ff-page-header-gradient: var(--wa-panel-bg);
+  --ff-page-header-gradient: linear-gradient(135deg, #0f2561 0%, #112463 42%, #1b2444 100%);
   --ff-page-header-bg: var(--ff-page-header-gradient);
   --ff-page-header-radius: 14px;
   --ff-page-header-padding: 15px 20px;
@@ -5933,7 +5934,7 @@ pre .punctuation {
 .ff-page-header,
 .dark-theme .ff-page-header,
 .light-theme .ff-page-header {
-  background: linear-gradient(135deg, #1e3c72, #2a5298);
+  background: var(--ff-page-header-gradient, linear-gradient(135deg, #0f2561 0%, #112463 42%, #1b2444 100%));
   border-radius: var(--ff-page-header-radius, 14px);
   padding: var(--ff-page-header-padding, 20px 24px);
   color: #ffffff;

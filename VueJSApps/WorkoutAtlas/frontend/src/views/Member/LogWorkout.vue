@@ -2622,7 +2622,7 @@ onMounted(async () => {
 }
 
 .wl-page .builder-hero.ff-page-header.app-header-gradient {
-  background: var(--wl-surface-2) !important;
+  background: linear-gradient(135deg, #0f2561 0%, #112463 42%, #1b2444 100%) !important;
   border: 1px solid var(--wl-border);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
 }
@@ -2967,6 +2967,11 @@ onMounted(async () => {
 }
 /* ── v0.81.9 Mobile 768px — Workout Log Compact Layout ───────────────────── */
 @media (max-width: 768px) {
+  .wl-page {
+    padding-bottom: calc(144px + env(safe-area-inset-bottom));
+    overflow-x: clip;
+  }
+
   /* Global density */
   .workout-log-mobile .app-page-canvas { gap: 8px; }
   .wl-exercise-list { gap: 8px; }
@@ -3034,24 +3039,59 @@ onMounted(async () => {
   .wl-stat-card span   { font-size: 0.72rem; }
   .wl-stat-card strong { font-size: 1.05rem; }
 
-  /* Tabs: horizontal scroll, no wrap */
+  /* Tabs: compact 3-column grid, no horizontal scroll */
   .wl-tabs {
-    overflow-x: auto;
-    white-space: nowrap;
-    flex-wrap: nowrap;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    white-space: normal;
+    flex-wrap: initial;
     max-width: 100%;
-    scrollbar-width: none;
     gap: 2px;
+    border-bottom: 0;
+    padding: 2px;
     margin-bottom: 12px;
   }
-  .wl-tabs::-webkit-scrollbar { display: none; }
   .wl-tab {
-    flex-shrink: 0;
-    padding: 8px 12px;
+    min-width: 0;
+    padding: 8px 6px;
     font-size: 0.8rem;
     gap: 5px;
+    margin-bottom: 0;
+    justify-content: center;
+    text-align: center;
+    background: #273142;
+    color: #d1d5db;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    white-space: normal;
+    line-height: 1.1;
   }
-  .wl-tab-badge { font-size: 0.67rem; padding: 1px 7px; }
+  .wl-tab:hover {
+    background: #334155;
+    color: #f3f4f6;
+  }
+  .wl-tab--active {
+    background: #374151;
+    color: #f8fafc !important;
+    border-color: #3b82f6;
+    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.35);
+  }
+  .wl-tab--disabled {
+    opacity: 0.55;
+    background: #1f2937;
+    color: #94a3b8;
+  }
+  .wl-tab-badge {
+    font-size: 0.64rem;
+    padding: 1px 6px;
+    max-width: 110px;
+    background: rgba(59, 130, 246, 0.18);
+    border: 1px solid rgba(59, 130, 246, 0.45);
+    color: #bfdbfe;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   /* Plan accordion */
   .wl-plan__header  { padding: 12px 14px; }
@@ -3128,9 +3168,9 @@ onMounted(async () => {
   .wl-toolbar .wl-btn { height: 46px; justify-content: center; padding: 8px; font-size: 14px; min-width: 0; }
 
   /* Tabs */
-  .wl-tabs { flex-wrap: nowrap; scrollbar-width: none; padding-bottom: 2px; }
-  .wl-tabs::-webkit-scrollbar { display: none; }
-  .wl-tab { flex-shrink: 0; padding: 10px 12px; font-size: 0.82rem; }
+  .wl-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; padding-bottom: 0; }
+  .wl-tab { min-width: 0; padding: 9px 6px; font-size: 0.78rem; white-space: normal; line-height: 1.1; }
+  .wl-tab-badge { max-width: 92px; }
 
   /* Stats */
   .wl-stat-card { padding: 10px; gap: 4px; }
@@ -3171,7 +3211,8 @@ onMounted(async () => {
   .wl-toolbar .wl-btn { height: 42px; font-size: 13px; }
 
   /* Tabs smaller */
-  .wl-tab { padding: 7px 10px; font-size: 0.76rem; }
+  .wl-tab { padding: 7px 6px; font-size: 0.74rem; }
+  .wl-tab-badge { max-width: 74px; font-size: 0.6rem; }
 
   /* Plan header: always stacked */
   .wl-plan__header { gap: 10px; padding: 10px 12px; }
@@ -3202,7 +3243,8 @@ onMounted(async () => {
   .wl-stat-card { padding: 6px; }
   .wl-stat-card span   { font-size: 0.62rem; }
   .wl-stat-card strong { font-size: 0.86rem; }
-  .wl-tab { padding: 6px 8px; font-size: 0.72rem; }
+  .wl-tab { padding: 6px 4px; font-size: 0.7rem; }
+  .wl-tab-badge { display: none; }
   .wl-toolbar .wl-btn  { font-size: 0.74rem; height: 32px; }
 }
 </style>

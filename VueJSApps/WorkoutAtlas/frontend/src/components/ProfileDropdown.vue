@@ -246,15 +246,15 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .profile-dropdown-btn {
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
   }
 }
 
 @media (max-width: 480px) {
   .profile-dropdown-btn {
-    width: 28px;
-    height: 28px;
+    width: 38px;
+    height: 38px;
   }
 }
 

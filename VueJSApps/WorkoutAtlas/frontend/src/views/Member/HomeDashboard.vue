@@ -218,14 +218,6 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
   calories: Number.isFinite(Number(item.calories)) ? Number(item.calories) : null,
 })))
 
-const navLinks = [
-  { label: 'Home', route: '/dashboard', icon: 'fa-solid fa-house' },
-  { label: 'Log', route: '/workout-log', icon: 'fa-solid fa-dumbbell' },
-  { label: 'Build', route: '/workout-builder', icon: 'fa-solid fa-clipboard-list' },
-  { label: 'Progress', route: '/progress', icon: 'fa-solid fa-chart-line' },
-  { label: 'Nutrition', route: '/Nutrition', icon: 'fa-solid fa-apple-whole' },
-]
-
 const allMenuLinks = [
   { label: 'Dashboard', shortLabel: 'Home', route: '/dashboard', icon: 'fa-solid fa-house', section: 'General', roles: ['member', 'trainer', 'admin'] },
   { label: 'Workout Log', shortLabel: 'Log', route: '/workout-log', icon: 'fa-solid fa-dumbbell', section: 'General', roles: ['member', 'trainer', 'admin'] },
@@ -520,17 +512,6 @@ onUnmounted(() => {
       </section>
     </main>
 
-    <nav class="wa-bottom-nav" aria-label="Bottom navigation" role="navigation">
-      <router-link
-        v-for="item in navLinks"
-        :key="item.route"
-        :to="item.route"
-        class="wa-bottom-link"
-      >
-        <i :class="item.icon"></i>
-        <span>{{ item.label }}</span>
-      </router-link>
-    </nav>
   </div>
 </template>
 
@@ -565,10 +546,30 @@ onUnmounted(() => {
 }
 
 .wa-greeting-row {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 24px;
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  box-sizing: border-box;
+  background:
+    linear-gradient(135deg, #0f2561 0%, #112463 42%, #1b2444 100%),
+    var(--wa-panel-bg, #1B2444);
+  border: 1px solid var(--wa-border, rgba(145, 160, 200, 0.24));
+  border-radius: 16px;
+  padding: 18px 20px;
+  overflow: hidden;
+}
+
+.wa-greeting-row::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0.01) 34%, transparent 100%);
+  pointer-events: none;
+  z-index: -1;
 }
 
 .wa-greeting {
@@ -577,31 +578,69 @@ onUnmounted(() => {
 
 .wa-greeting-line {
   margin: 0;
-  color: var(--wa-text-muted);
+  color: white;
   font-size: 12px;
 }
 
 .wa-greeting h1 {
   margin: 1px 0 0;
+  color: var(--wa-text-primary, #F7F9FF);
   font-size: 30px;
   line-height: 1.1;
 }
 
 .wa-streak {
   margin: 4px 0 0;
-  color: var(--wa-text-secondary);
+  color: var(--wa-text-secondary, #c7d3ee);
   font-size: 14px;
   font-weight: 600;
 }
 
 .wa-date-picker-wrap {
-  width: min(430px, 100%);
+  justify-self: end;
+  width: clamp(320px, 31vw, 460px);
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
+.wa-date-picker-wrap > * {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.wa-date-picker-wrap :deep(.input-group.dashboard-filter) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  justify-content: flex-end !important;
+}
+
+.wa-date-picker-wrap :deep(.full-datepicker),
+.wa-date-picker-wrap :deep(.mx-datepicker),
+.wa-date-picker-wrap :deep(.mx-input-wrapper),
+.wa-date-picker-wrap :deep(.mx-input),
 .wa-date-picker-wrap :deep(.date-picker-wrapper),
 .wa-date-picker-wrap :deep(.date-range-picker),
 .wa-date-picker-wrap :deep(.DateRangePicker) {
-  width: 100%;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+.wa-date-picker-wrap :deep(.mx-input),
+.wa-date-picker-wrap :deep(.mx-icon-calendar),
+.wa-date-picker-wrap :deep(.mx-icon-clear) {
+  background: var(--wa-control-bg, #252E48) !important;
+  border: 1px solid var(--wa-border, rgba(145, 160, 200, 0.24)) !important;
+  color: var(--wa-text-primary, #F7F9FF) !important;
+}
+
+.wa-date-picker-wrap :deep(.mx-icon-calendar),
+.wa-date-picker-wrap :deep(.mx-icon-clear) {
+  color: var(--wa-text-secondary, #c7d3ee) !important;
 }
 
 .wa-hero-card,
@@ -970,45 +1009,6 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
-.wa-bottom-nav {
-  position: fixed;
-  left: 10px;
-  right: 10px;
-  bottom: max(10px, env(safe-area-inset-bottom));
-  z-index: 60;
-  height: 70px;
-  border-radius: 16px;
-  border: 1px solid var(--wa-border);
-  background: color-mix(in srgb, var(--wa-surface) 92%, transparent 8%);
-  backdrop-filter: blur(10px);
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  padding: 4px;
-}
-
-.wa-bottom-link {
-  text-decoration: none;
-  color: var(--wa-text-secondary);
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.wa-bottom-link i {
-  font-size: 14px;
-}
-
-.wa-bottom-link.router-link-active {
-  color: var(--wa-accent);
-  background: var(--wa-accent-soft);
-}
-
 .wa-desktop-rail {
   display: none;
 }
@@ -1044,10 +1044,6 @@ onUnmounted(() => {
   .wa-dashboard {
     padding: 20px 24px 38px;
   }
-
-  .wa-bottom-nav {
-    display: none;
-  }
 }
 
 @media (min-width: 1024px) {
@@ -1074,8 +1070,23 @@ onUnmounted(() => {
     padding: 12px 12px calc(86px + env(safe-area-inset-bottom));
   }
 
+  .wa-dashboard-main,
+  .wa-greeting-row,
+  .wa-hero-card,
+  .wa-summary-block,
+  .wa-weekly-card,
+  .wa-training-progress-panel,
+  .wa-activity-section,
+  .wa-nutrition-activity-section,
+  .wa-nutrition-chart-section,
+  .wa-role-tools-section,
+  .wa-role-tool-row,
+  .wa-activity-row,
+  .wa-nutrition-activity-row {
+    min-width: 0;
+  }
+
   .wa-greeting-row {
-    display: grid;
     grid-template-columns: 1fr;
     gap: 10px;
   }
@@ -1085,7 +1096,25 @@ onUnmounted(() => {
   }
 
   .wa-date-picker-wrap {
+    justify-self: stretch;
     width: 100%;
+    max-width: none;
+  }
+
+  .wa-date-picker-wrap :deep(.mx-datepicker-popup),
+  .wa-date-picker-wrap :deep(.mx-datepicker-sidebar),
+  .wa-date-picker-wrap :deep(.mx-datepicker-content) {
+    min-width: 0 !important;
+  }
+
+  .wa-date-picker-wrap :deep(.input-group.dashboard-filter) {
+    width: 100%;
+    justify-content: flex-start !important;
+  }
+
+  .wa-date-picker-wrap :deep(.full-datepicker) {
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
   .wa-hero-card,
@@ -1097,6 +1126,14 @@ onUnmounted(() => {
   .wa-nutrition-chart-section,
   .wa-role-tools-section {
     padding: 12px;
+  }
+
+  .wa-quick-action-content {
+    flex-wrap: wrap;
+  }
+
+  .wa-quick-action-right {
+    margin-left: auto;
   }
 }
 
