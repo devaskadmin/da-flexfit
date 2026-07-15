@@ -19,6 +19,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 const SESSION_COOKIE_SECURE = isProduction;
 const SESSION_COOKIE_SAMESITE = isProduction ? 'none' : 'lax';
 const CLIENT_ORIGIN = String(process.env.CLIENT_ORIGIN || '').trim();
+const DEV_LOCALHOST_ORIGIN_RE = /^https?:\/\/localhost:\d+$/i;
 
 const normalizeRoleValue = (rawValue = '') => {
   const value = String(rawValue || '').trim().toLowerCase();
@@ -503,7 +504,9 @@ router.get('/session/check', (req, res) => {
   const rawCookie = String(req.headers?.cookie || '');
   const hasSessionCookie = /flexfit\.sid=/.test(rawCookie);
   const origin = req.headers.origin || null;
-  const corsAllowed = !origin || (CLIENT_ORIGIN ? origin === CLIENT_ORIGIN : true);
+  const corsAllowed = !origin
+    || (CLIENT_ORIGIN ? origin === CLIENT_ORIGIN : true)
+    || (!isProduction && DEV_LOCALHOST_ORIGIN_RE.test(origin));
   const sessionExists = Boolean(req.session);
   const userID = req.session?.userID || null;
   const username = req.session?.username || null;

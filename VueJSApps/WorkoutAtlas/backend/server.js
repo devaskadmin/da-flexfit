@@ -31,6 +31,13 @@ const DEFAULT_FRONTEND_ORIGINS = [
 const allowedOrigins = new Set(
   [...DEFAULT_FRONTEND_ORIGINS, CLIENT_ORIGIN, FRONTEND_URL, ...CORS_ORIGINS].filter(Boolean)
 );
+const DEV_LOCALHOST_ORIGIN_RE = /^https?:\/\/localhost:\d+$/i;
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  if (allowedOrigins.has(origin)) return true;
+  if (!isProduction && DEV_LOCALHOST_ORIGIN_RE.test(origin)) return true;
+  return false;
+};
 
 console.log(`🚀 CLIENT_ORIGIN=${CLIENT_ORIGIN || '(not set)'}`);
 console.log(`🌐 Allowed CORS origins: ${[...allowedOrigins].join(', ') || '(none configured)'}`);
@@ -45,9 +52,7 @@ app.set('trust proxy', 1);
 app.use(cors({
   origin: function(origin, callback) {
     // Allow requests with no origin (like mobile apps, curl, server-to-server)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.has(origin)) {
+    if (isAllowedOrigin(origin)) {
       return callback(null, true);
     }
 
@@ -154,7 +159,7 @@ app.use((req, res, next) => {
   if (isDebugEnabled) {
     const rawCookie = String(req.headers?.cookie || '');
     const origin = req.headers.origin || null;
-    const corsAllowed = !origin || allowedOrigins.has(origin);
+    const corsAllowed = isAllowedOrigin(origin);
     console.log('🧠 Session inbound:', {
       method: req.method,
       path: req.path,
