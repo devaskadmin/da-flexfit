@@ -55,6 +55,7 @@ const saving           = ref(false);
 const saveMessage      = ref('');
 const saveError        = ref('');
 const conflictMessage  = ref('');
+const setSaveStateByKey = ref({});
 
 /* ─── Accordion: active exercise ───────────────────────────────────── */
 const activeExerciseId = ref(null);
@@ -488,7 +489,7 @@ const buildInitialSets = (exercise) => {
   return Array.from({ length: count }, (_, i) => ({
     setNum: i + 1, weight: Number(exercise.weight || 0),
     reps: Number(exercise.reps || 0), duration: Number(exercise.duration || 0),
-    caloriesBurned: 0, distanceMiles: 0, speedMph: 0, done: false,
+    caloriesBurned: 0, distanceMiles: 0, speedMph: 0, notes: '', done: false,
     prefilledFields: {},
     prefilledFromLastWorkout: false,
   }));
@@ -622,6 +623,7 @@ const addSet = (exerciseId) => {
     caloriesBurned: last.caloriesBurned,
     distanceMiles: last.distanceMiles,
     speedMph: last.speedMph,
+    notes: last.notes || '',
     done: false,
     prefilledFields: {},
     prefilledFromLastWorkout: false,
@@ -636,16 +638,198 @@ const removeSet = (exerciseId, setIndex) => {
   ex.sessionSets.forEach((s, i) => { s.setNum = i + 1; });
 };
 
-const updateSet = (exerciseId, setIndex, field, value) => {
+const getSetSaveKey = (exerciseId, setNumber) => `${String(exerciseId || '').trim()}:${Number(setNumber || 0)}`;
+
+const setSetSaveState = (exerciseId, setNumber, state) => {
+  const key = getSetSaveKey(exerciseId, setNumber);
+  setSaveStateByKey.value = {
+    ...setSaveStateByKey.value,
+    [key]: {
+      status: 'idle',
+      message: '',
+      ...state,
+    },
+  };
+};
+
+const getSetSaveState = (exerciseId, setNumber) => {
+  const key = getSetSaveKey(exerciseId, setNumber);
+  return setSaveStateByKey.value[key] || { status: 'idle', message: '' };
+};
+
+const parseSetFieldValue = (field, value) => {
+  if (field === 'done') return Boolean(value);
+  if (field === 'notes') return String(value ?? '');
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : 0;
+};
+
+const applySessionProgress = (savedRows = []) => {
+  const rows = Array.isArray(savedRows) ? savedRows : [];
+  const rowsBySourceExerciseId = new Map();
+  const rowsByExerciseAndGroup = new Map();
+
+  for (const row of rows) {
+    const sourceExerciseId = Number(row?.sourceScheduleExerciseId || 0);
+    const exerciseId = Number(row?.exerciseId || 0);
+    const scheduleGroup = String(row?.scheduleGroup || '').trim().toLowerCase();
+    const rowSetNumber = Number(row?.setNumber || 0);
+    if (!rowSetNumber) continue;
+
+    if (sourceExerciseId) {
+      if (!rowsBySourceExerciseId.has(sourceExerciseId)) {
+        rowsBySourceExerciseId.set(sourceExerciseId, []);
+      }
+      rowsBySourceExerciseId.get(sourceExerciseId).push(row);
+      continue;
+    }
+
+    const compositeKey = `${exerciseId}:${scheduleGroup}`;
+    if (!rowsByExerciseAndGroup.has(compositeKey)) {
+      rowsByExerciseAndGroup.set(compositeKey, []);
+    }
+    rowsByExerciseAndGroup.get(compositeKey).push(row);
+  }
+
+  sessionExercises.value = sessionExercises.value.map((exercise) => {
+    const embeddedSourceExerciseId = Number(String(exercise?.id || '').replace(/^wse-/i, '')) || 0;
+    const exerciseId = Number(exercise?.exerciseId || 0);
+    const scheduleGroup = String(exercise?.scheduleGroup || '').trim().toLowerCase();
+
+    const matchedRows = embeddedSourceExerciseId
+      ? (rowsBySourceExerciseId.get(embeddedSourceExerciseId) || [])
+      : (rowsByExerciseAndGroup.get(`${exerciseId}:${scheduleGroup}`) || []);
+
+    if (!matchedRows.length) {
+      return exercise;
+    }
+
+    const rowBySetNumber = new Map();
+    for (const row of matchedRows) {
+      const rowSetNumber = Number(row?.setNumber || 0);
+      if (rowSetNumber > 0) {
+        rowBySetNumber.set(rowSetNumber, row);
+      }
+    }
+
+    const nextSets = (exercise.sessionSets || []).map((set) => {
+      const match = rowBySetNumber.get(Number(set?.setNum || 0));
+      if (!match) {
+        return set;
+      }
+
+      return {
+        ...set,
+        weight: Number(match.weight || 0),
+        reps: Number(match.reps || 0),
+        duration: Number(match.duration || 0),
+        caloriesBurned: Number(match.caloriesBurned || 0),
+        distanceMiles: Number(match.distanceMiles || 0),
+        speedMph: Number(match.speedMph || 0),
+        notes: String(match.notes || ''),
+        done: Boolean(Number(match.completed || 0)),
+        completedAt: match.completedAt || null,
+      };
+    });
+
+    return {
+      ...exercise,
+      sessionSets: nextSets,
+    };
+  });
+};
+
+const loadSessionProgress = async (sessionId) => {
+  const normalizedSessionId = Number(sessionId || 0);
+  if (!normalizedSessionId) return;
+
+  try {
+    const response = await fetch(
+      `${API_BASE}/api/workout-sessions/${encodeURIComponent(normalizedSessionId)}/progress`,
+      { credentials: 'include' }
+    );
+    if (!response.ok) return;
+
+    const payload = await response.json();
+    applySessionProgress(payload?.sets || []);
+  } catch (_) {
+    // Non-fatal: users can continue workout without restored set-level progress.
+  }
+};
+
+const persistSetAutosave = async (exercise, setEntry) => {
+  if (!activeSession.value?.id) {
+    return;
+  }
+
+  const exerciseId = Number(exercise?.exerciseId || 0);
+  const setNumber = Number(setEntry?.setNum || 0);
+  if (!exerciseId || !setNumber) {
+    return;
+  }
+
+  setSetSaveState(exercise.id, setNumber, { status: 'saving', message: 'Saving…' });
+
+  try {
+    const response = await fetch(
+      `${API_BASE}/api/workout-sessions/${encodeURIComponent(activeSession.value.id)}/set`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          workoutPlanId: expandedPlanId.value,
+          workoutDate: activeSession.value?.workoutDate || selectedWorkoutDate.value || today(),
+          workoutType: exercise?.workoutType || 'Strength',
+          scheduleGroup: exercise?.scheduleGroup || selectedDay.value || '',
+          exerciseId,
+          exerciseName: exercise?.name || '',
+          exerciseInstanceId: exercise?.id || null,
+          setNumber,
+          weight: setEntry?.weight,
+          reps: setEntry?.reps,
+          duration: setEntry?.duration,
+          caloriesBurned: setEntry?.caloriesBurned,
+          distanceMiles: setEntry?.distanceMiles,
+          speedMph: setEntry?.speedMph,
+          notes: setEntry?.notes || '',
+          completed: Boolean(setEntry?.done),
+          completedAt: setEntry?.done ? (setEntry?.completedAt || new Date().toISOString()) : null,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      throw new Error(errBody?.error || 'Failed to autosave set.');
+    }
+
+    setSetSaveState(exercise.id, setNumber, { status: 'saved', message: 'Saved' });
+  } catch (err) {
+    setSetSaveState(exercise.id, setNumber, { status: 'error', message: err?.message || 'Save failed' });
+    saveError.value = err?.message || 'Failed to autosave set.';
+  }
+};
+
+const updateSet = async (exerciseId, setIndex, field, value) => {
   if (isPreviewMode.value) return;
   const ex = sessionExercises.value.find((e) => e.id === exerciseId);
   if (!ex) return;
+  const targetSet = ex.sessionSets[setIndex];
+  if (!targetSet) return;
   if (field !== 'done' && ex.sessionSets[setIndex]?.prefilledFields) {
     ex.sessionSets[setIndex].prefilledFields[field] = false;
     ex.sessionSets[setIndex].prefilledFromLastWorkout = Object.values(ex.sessionSets[setIndex].prefilledFields)
       .some(Boolean);
   }
-  ex.sessionSets[setIndex][field] = field === 'done' ? Boolean(value) : (Number(value) || 0);
+  ex.sessionSets[setIndex][field] = parseSetFieldValue(field, value);
+
+  if (field === 'done') {
+    ex.sessionSets[setIndex].completedAt = ex.sessionSets[setIndex].done
+      ? new Date().toISOString()
+      : null;
+    await persistSetAutosave(ex, ex.sessionSets[setIndex]);
+  }
 };
 
 /* ─── Load plan list ─────────────────────────────────────────────────────── */
@@ -751,6 +935,7 @@ const checkActiveSession = async () => {
       // Rebuild sessionExercises from expanded plan
       if (expandedPlanData.value) {
         sessionExercises.value = await buildSessionExercisesWithHistoryPrefill(expandedPlanData.value.exercises || []);
+        await loadSessionProgress(data.session.id);
       }
     } else {
       activeSession.value    = null;
@@ -1380,6 +1565,7 @@ onMounted(async () => {
               :exercise="exercise"
               :is-cardio="isCardio(exercise)"
               :is-expanded="activeExerciseId === exercise.id"
+              :get-set-save-state="getSetSaveState"
               @select="selectExercise"
               @add-set="addSet"
               @remove-set="removeSet"
@@ -1683,7 +1869,10 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.wl-page { padding-bottom: 100px; }
+.wl-page {
+  --mobile-action-bar-height: 84px;
+  padding-bottom: 100px;
+}
 
 /* ── Hero ──────────────────────────────────────────────────────────────── */
 .builder-hero__content {
@@ -2092,7 +2281,11 @@ onMounted(async () => {
 
 /* ── Sticky bottom bar ──────────────────────────────────────────────────── */
 .wl-bottom-bar {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
   background: rgba(255,255,255,0.96);
   border-top: 1px solid var(--border-color, #e5e7eb);
   backdrop-filter: blur(8px); padding: 12px 16px;
@@ -2415,8 +2608,6 @@ onMounted(async () => {
 /* ── v0.81.6 Global density utility ──────────────────────────────────────── */
 .workout-log-mobile { /* defined here; used in template root */ }
 
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/LogWorkout.vue
-=======
 /* ── 0.84.39 Workout Log dark-theme color normalization (scoped) ─────────── */
 .wl-page {
   --wl-surface-1: var(--wa-shell-surface, #121923);
@@ -2764,7 +2955,16 @@ onMounted(async () => {
   color: #bbf7d0;
 }
 
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/LogWorkout.vue
+@media (max-width: 1024px) {
+  .wl-page {
+    padding-bottom: var(--mobile-bottom-clearance);
+  }
+
+  .wl-bottom-bar {
+    bottom: var(--mobile-bottom-nav-offset);
+    padding-bottom: calc(12px + var(--mobile-safe-area-bottom));
+  }
+}
 /* ── v0.81.9 Mobile 768px — Workout Log Compact Layout ───────────────────── */
 @media (max-width: 768px) {
   /* Global density */
@@ -3006,9 +3206,3 @@ onMounted(async () => {
   .wl-toolbar .wl-btn  { font-size: 0.74rem; height: 32px; }
 }
 </style>
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/LogWorkout.vue
-=======
-
-
-
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/LogWorkout.vue

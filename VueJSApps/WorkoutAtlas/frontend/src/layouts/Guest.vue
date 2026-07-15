@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import {onBeforeMount, onMounted, ref, watchEffect} from "vue";
 import {useRoute} from "vue-router";
 const route = useRoute();
@@ -31,8 +31,6 @@ onBeforeMount(() => {
 </template>
 
 <style scoped>
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/layouts/Guest.vue
-=======
 .main-content.wa-login-route {
   position: static;
   min-height: 100vh;
@@ -45,7 +43,6 @@ onBeforeMount(() => {
   display: none;
 }
 
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/layouts/Guest.vue
  .light-theme .main-content.login-panel {
     background: url('@/assets/images/login-background2.jpg') center center no-repeat;
     background-size: cover;

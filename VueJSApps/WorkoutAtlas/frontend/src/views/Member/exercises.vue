@@ -2590,8 +2590,6 @@ textarea {
   line-height: 1;
 }
 
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/exercises.vue
-=======
 /* -- 0.84.39 Exercise Database dark-theme normalization (scoped) ---------- */
 .exercises-page {
   --ex-surface-1: var(--wa-shell-surface, #121923);
@@ -2755,7 +2753,6 @@ textarea {
   color: var(--ex-text-secondary);
 }
 
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/exercises.vue
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    RESPONSIVE â€“ 991px
 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */

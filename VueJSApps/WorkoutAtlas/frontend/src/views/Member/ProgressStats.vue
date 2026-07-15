@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import axios from 'axios';
 import { API_BASE } from '@/config/env';
@@ -6,7 +6,7 @@ import vueApexcharts from 'vue3-apexcharts';
 import FitnessMetricCard from '@/components/fitness/FitnessMetricCard.vue';
 import DateRangePicker from '@/components/template/DateRangePicker.vue';
 
-// ─── Date helpers ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Date helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function toDateStr(d) { return d.toISOString().slice(0, 10); }
 function last30Days() {
   const end = new Date(), start = new Date();
@@ -14,7 +14,7 @@ function last30Days() {
   return { start: toDateStr(start), end: toDateStr(end) };
 }
 
-// ─── State ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const range = last30Days();
 
 const summary        = ref({ workoutsThisWeek: 0, currentStreak: 0, caloriesBurned: 0 });
@@ -29,12 +29,12 @@ const metricPrimary   = ref('duration');  // valid across all workout types
 const metricSecondary = ref('');   // '' = None (Y2); default off
 const showRange       = ref('30'); // quick range in days; 'custom' = manual date picker
 
-// TODO: isProUser — wire to user subscription/role when billing is implemented.
+// TODO: isProUser â€” wire to user subscription/role when billing is implemented.
 //       Free tier:  Y1 only.
 //       Pro unlock: dual metric (Y2), trend overlays, period comparison, recovery score.
 const isProUser = ref(false);
 
-// Pro row (Y2 section) — collapsed by default
+// Pro row (Y2 section) â€” collapsed by default
 const proRowOpen = ref(false);
 
 const exercises = ref([]);
@@ -50,10 +50,10 @@ const chartType = ref('bar');
 // Active exercise chip selection
 const activeExChip = ref('');
 
-// Filter panel — expanded by default in 0.82.4
+// Filter panel â€” expanded by default in 0.82.4
 const filtersOpen = ref(true);
 
-// ─── Y1 metric options — RAW workout log data only ──────────────────────────
+// â”€â”€â”€ Y1 metric options â€” RAW workout log data only â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Only values stored directly in workout_log rows. No formulas, no aggregates.
 const metricOptions = computed(() => {
   switch (workoutType.value) {
@@ -84,13 +84,13 @@ const metricOptions = computed(() => {
   }
 });
 
-// ─── Y2 Pro metric options — advanced/calculated metrics ─────────────────────
+// â”€â”€â”€ Y2 Pro metric options â€” advanced/calculated metrics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // TODO: Pro metrics will expand with PR tracking, recovery score, trend engine.
 const proMetricOptions = computed(() => {
   switch (workoutType.value) {
     case 'strength':
       return [
-        { value: 'totalVolume',      label: 'Total Volume (sets × reps × weight)' },
+        { value: 'totalVolume',      label: 'Total Volume (sets Ã— reps Ã— weight)' },
         { value: 'maxWeight',        label: 'Max Weight' },
         { value: 'weight',           label: 'Avg Weight' },
         { value: 'avgReps',          label: 'Avg Reps Per Set' },
@@ -140,7 +140,7 @@ watch(workoutType, async () => {
   scheduleChartReload();
 });
 
-// ─── Computed helpers ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Computed helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const primaryMetricLabel = computed(() => {
   const opt = metricOptions.value.find((m) => m.value === metricPrimary.value);
   return opt ? opt.label : metricPrimary.value;
@@ -169,12 +169,12 @@ const chartSubtitle = computed(() => {
     ? (exercises.value.find((e) => e.exerciseId == exerciseId.value)?.exerciseTitle || 'Selected Exercise')
     : 'All Exercises';
   const gLabel = groupBy.value === 'day' ? 'Daily' : groupBy.value === 'month' ? 'Monthly' : 'Yearly';
-  return `${exLabel} · ${gLabel} View`;
+  return `${exLabel} Â· ${gLabel} View`;
 });
 
 // (mini-stats and limited-data removed in 0.82.3 chart-first redesign)
 
-// ─── Right-panel insights derived from chart data ─────────────────────────────
+// â”€â”€â”€ Right-panel insights derived from chart data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const chartInsights = computed(() => {
   const data = chartData.value;
   if (!data.length) return null;
@@ -183,21 +183,21 @@ const chartInsights = computed(() => {
   const peak    = Math.max(...values);
   const avg     = total / values.length;
   const peakIdx = values.indexOf(peak);
-  const bestDay = data[peakIdx]?.label || '—';
+  const bestDay = data[peakIdx]?.label || 'â€”';
 
   // Trend: compare first half vs second half
   const mid    = Math.floor(values.length / 2);
   const firstH = values.slice(0, mid).reduce((a, b) => a + b, 0) / (mid || 1);
   const secH   = values.slice(mid).reduce((a, b) => a + b, 0) / ((values.length - mid) || 1);
   const diff   = secH - firstH;
-  const trend  = diff > firstH * 0.05 ? '📈 Increasing' : diff < -firstH * 0.05 ? '📉 Decreasing' : '→ Stable';
+  const trend  = diff > firstH * 0.05 ? 'ðŸ“ˆ Increasing' : diff < -firstH * 0.05 ? 'ðŸ“‰ Decreasing' : 'â†’ Stable';
 
   // Most active exercise (from exercises list, first chip that was last selected, or fallback)
   const mostActive = exerciseId.value
     ? (exercises.value.find((e) => String(e.exerciseId) === String(exerciseId.value))?.exerciseTitle || null)
     : null;
 
-  // Personal best: peak is >= 2× avg
+  // Personal best: peak is >= 2Ã— avg
   const isPB = values.length >= 2 && peak >= avg * 2;
 
   return {
@@ -215,7 +215,7 @@ const chartInsights = computed(() => {
 // Dynamic chart height: compact when sparse data
 const chartHeight = computed(() => chartData.value.length > 0 && chartData.value.length <= 3 ? 240 : 300);
 
-// Exercise chip click → auto-select filter + reload
+// Exercise chip click â†’ auto-select filter + reload
 function selectExerciseChip(ex) {
   if (activeExChip.value === ex.exerciseId) {
     activeExChip.value = '';
@@ -237,7 +237,7 @@ function exIcon(wt) {
   return 'fa-solid fa-circle-dot';
 }
 
-// ─── Debounced live filter ────────────────────────────────────────────────────
+// â”€â”€â”€ Debounced live filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let _debounceTimer = null;
 function scheduleChartReload() {
   clearTimeout(_debounceTimer);
@@ -247,7 +247,7 @@ function scheduleChartReload() {
 // Auto-reload whenever any filter value changes
 watch([startDate, endDate, groupBy, workoutType, exerciseId, metricPrimary, metricSecondary], scheduleChartReload);
 
-// Show Range quick filter → auto-update date window ('custom' = user is using date picker, skip)
+// Show Range quick filter â†’ auto-update date window ('custom' = user is using date picker, skip)
 watch(showRange, (val) => {
   if (val === 'custom') return;
   const days  = Number(val);
@@ -256,33 +256,33 @@ watch(showRange, (val) => {
   start.setDate(start.getDate() - (days - 1));
   endDate.value   = toDateStr(end);
   startDate.value = toDateStr(start);
-  // startDate/endDate are in the watch array above — chart reloads automatically
+  // startDate/endDate are in the watch array above â€” chart reloads automatically
 });
 
-// ─── Active filter chips ──────────────────────────────────────────────────────
+// â”€â”€â”€ Active filter chips â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const activeFilters = computed(() => {
   const chips = [];
   const d = last30Days();
   if (startDate.value === d.start && endDate.value === d.end) {
-    chips.push({ key: 'dateRange', label: 'Last 30 Days', icon: '📅', removable: false });
+    chips.push({ key: 'dateRange', label: 'Last 30 Days', icon: 'ðŸ“…', removable: false });
   } else {
-    chips.push({ key: 'dateRange', label: `${startDate.value} → ${endDate.value}`, icon: '📅', removable: true });
+    chips.push({ key: 'dateRange', label: `${startDate.value} â†’ ${endDate.value}`, icon: 'ðŸ“…', removable: true });
   }
   if (workoutType.value !== 'all') {
-    const icons  = { strength: '💪', cardio: '🏃', other: '⚡' };
+    const icons  = { strength: 'ðŸ’ª', cardio: 'ðŸƒ', other: 'âš¡' };
     const labels = { strength: 'Strength', cardio: 'Cardio', other: 'Other' };
     chips.push({ key: 'workoutType', label: labels[workoutType.value], icon: icons[workoutType.value], removable: true });
   }
   if (exerciseId.value) {
     const ex = exercises.value.find((e) => String(e.exerciseId) === String(exerciseId.value));
-    chips.push({ key: 'exercise', label: ex?.exerciseTitle || 'Exercise', icon: '🏋', removable: true });
+    chips.push({ key: 'exercise', label: ex?.exerciseTitle || 'Exercise', icon: 'ðŸ‹', removable: true });
   }
   const defaultMetric = metricOptions.value[0]?.value;
   if (metricPrimary.value !== defaultMetric) {
-    chips.push({ key: 'metric', label: primaryMetricLabel.value, icon: '⚖', removable: true });
+    chips.push({ key: 'metric', label: primaryMetricLabel.value, icon: 'âš–', removable: true });
   }
   if (metricSecondary.value) {
-    chips.push({ key: 'metricSecondary', label: `Y2: ${secondaryMetricLabel.value}`, icon: '📊', removable: true });
+    chips.push({ key: 'metricSecondary', label: `Y2: ${secondaryMetricLabel.value}`, icon: 'ðŸ“Š', removable: true });
   }
   return chips;
 });
@@ -296,7 +296,7 @@ function removeFilter(key) {
   else if (key === 'metricSecondary') { metricSecondary.value = ''; }
 }
 
-// ─── Summary widgets ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Summary widgets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadSummary() {
   summaryLoading.value = true;
   try {
@@ -309,7 +309,7 @@ async function loadSummary() {
   }
 }
 
-// ─── Exercise dropdown ────────────────────────────────────────────────────────
+// â”€â”€â”€ Exercise dropdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadExercises({ autoSelect = false } = {}) {
   exLoading.value = true;
   exercises.value  = []; // clear stale list immediately so dropdown reflects the new type
@@ -338,7 +338,7 @@ async function loadExercises({ autoSelect = false } = {}) {
   }
 }
 
-// ─── Chart data ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Chart data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadChart() {
   chartLoading.value = true;
   chartError.value   = '';
@@ -360,12 +360,12 @@ async function loadChart() {
       params,
       withCredentials: true,
     });
-    // Empty array = no data for this period — not an error
+    // Empty array = no data for this period â€” not an error
     chartData.value = Array.isArray(data) ? data : [];
   } catch (err) {
     console.error('Progress chart error', err);
     // Only show error message on actual network/server failure;
-    // do NOT reset summary widgets — they load independently
+    // do NOT reset summary widgets â€” they load independently
     chartError.value = err?.response?.status === 401
       ? 'Session expired. Please log in again.'
       : 'Unable to load chart data. Please try again.';
@@ -391,7 +391,7 @@ function resetFilters() {
   loadChart();
 }
 
-// ─── ApexCharts config ────────────────────────────────────────────────────────
+// â”€â”€â”€ ApexCharts config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // isDual: true when Pro user has a secondary metric selected and backend returned value2
 const isDual = computed(() =>
   isProUser.value &&
@@ -404,7 +404,7 @@ const chartSeries = computed(() => {
     name: primaryMetricLabel.value,
     data: chartData.value.map((d) => d.value),
   }];
-  // Y2 series — only rendered when Pro + secondary selected + backend returned value2
+  // Y2 series â€” only rendered when Pro + secondary selected + backend returned value2
   if (isDual.value) {
     series.push({
       name: secondaryMetricLabel.value,
@@ -502,25 +502,25 @@ const chartOptions = computed(() => ({
   ],
 }));
 
-// ─── Summary metric cards ─────────────────────────────────────────────────────
+// â”€â”€â”€ Summary metric cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const metrics = computed(() => [
   {
     title:    'Workouts This Week',
-    value:    summaryLoading.value ? '—' : summary.value.workoutsThisWeek,
+    value:    summaryLoading.value ? 'â€”' : summary.value.workoutsThisWeek,
     subtitle: 'Completed sessions',
     trend:    '',
     icon:     'fa-solid fa-dumbbell',
   },
   {
     title:    'Current Streak',
-    value:    summaryLoading.value ? '—' : `${summary.value.currentStreak}d`,
-    subtitle: summary.value.currentStreak > 0 ? '🔥 Keep going!' : 'Start a streak today',
+    value:    summaryLoading.value ? 'â€”' : `${summary.value.currentStreak}d`,
+    subtitle: summary.value.currentStreak > 0 ? 'ðŸ”¥ Keep going!' : 'Start a streak today',
     trend:    '',
     icon:     'fa-solid fa-fire',
   },
   {
     title:    'Calories Burned',
-    value:    summaryLoading.value ? '—' : summary.value.caloriesBurned.toLocaleString(),
+    value:    summaryLoading.value ? 'â€”' : summary.value.caloriesBurned.toLocaleString(),
     subtitle: 'This week',
     trend:    '',
     icon:     'fa-solid fa-bolt',
@@ -534,7 +534,7 @@ function onDateChange([start, end]) {
   endDate.value   = end;
 }
 
-// ─── Lifecycle ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 onMounted(() => {
   loadSummary();
   loadExercises();
@@ -546,7 +546,7 @@ onMounted(() => {
   <div class="app-page-shell ps-container">
     <div class="app-page-canvas app-inner-shell ps-canvas">
 
-      <!-- ── Hero ────────────────────────────────────────────────────────── -->
+      <!-- â”€â”€ Hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
       <section class="ps-hero ff-page-header app-header-gradient">
         <div class="ps-hero__inner">
           <div class="ps-hero__text">
@@ -559,14 +559,14 @@ onMounted(() => {
         </div>
       </section>
 
-      <!-- ── Filters ─────────────────────────────────────────────────────── -->
+      <!-- â”€â”€ Filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
       <div class="ps-section-panel ps-section-panel--filter">
         <section class="ps-card ps-filter-card">
           <button class="ps-filter-toggle" @click="filtersOpen = !filtersOpen">
             <span><i class="fa-solid fa-sliders"></i> Progress Filters</span>
             <span class="ps-filter-toggle__right">
               <span class="ps-chip ps-chip--live" v-if="chartLoading" style="margin-right:6px">
-                <i class="fa-solid fa-spinner fa-spin"></i> Updating…
+                <i class="fa-solid fa-spinner fa-spin"></i> Updatingâ€¦
               </span>
               <i :class="filtersOpen ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
             </span>
@@ -579,9 +579,9 @@ onMounted(() => {
                 <label>Workout Type</label>
                 <select v-model="workoutType" class="ps-select">
                   <option value="all">All Types</option>
-                  <option value="strength">💪 Strength</option>
-                  <option value="cardio">🏃 Cardio</option>
-                  <option value="other">⚡ Other</option>
+                  <option value="strength">ðŸ’ª Strength</option>
+                  <option value="cardio">ðŸƒ Cardio</option>
+                  <option value="other">âš¡ Other</option>
                 </select>
               </div>
               <div class="ps-filter-field">
@@ -629,7 +629,7 @@ onMounted(() => {
                   <i class="fa-solid fa-chart-line"></i>
                   Secondary Metric (Y2)
                   <span class="ps-pro-badge">PRO</span>
-                  <span v-if="metricSecondary" class="ps-pro-row__active-hint">· {{ secondaryMetricLabel }}</span>
+                  <span v-if="metricSecondary" class="ps-pro-row__active-hint">Â· {{ secondaryMetricLabel }}</span>
                 </span>
                 <span class="ps-pro-row__toggle-right">
                   <span v-if="!isProUser" class="ps-pro-row__lock">
@@ -665,7 +665,7 @@ onMounted(() => {
         </section>
       </div><!-- /ps-section-panel filter -->
 
-      <!-- ── Row 2: Chart + Mini Widgets ─────────────────────────────────── -->
+      <!-- â”€â”€ Row 2: Chart + Mini Widgets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
       <div class="ps-section-panel">
         <div class="ps-analytics-row">
 
@@ -698,14 +698,14 @@ onMounted(() => {
               <div class="ps-chart-body">
                 <div v-if="chartLoading" class="ps-state">
                   <i class="fa-solid fa-spinner fa-spin"></i>
-                  <span>Loading chart…</span>
+                  <span>Loading chartâ€¦</span>
                 </div>
                 <div v-else-if="chartError" class="ps-state ps-state--error">
                   <i class="fa-solid fa-triangle-exclamation"></i>
                   <span>{{ chartError }}</span>
                 </div>
                 <div v-else-if="!chartData.length" class="ps-empty-state">
-                  <div class="ps-empty-icon">📊</div>
+                  <div class="ps-empty-icon">ðŸ“Š</div>
                   <h6 class="ps-empty-title">No workout history found</h6>
                   <div class="ps-empty-tips">
                     <span>Complete workouts to generate analytics</span>
@@ -729,7 +729,7 @@ onMounted(() => {
               </div>
               <div class="ps-mini-widget__body">
                 <span class="ps-mini-widget__label">Workouts This Week</span>
-                <span class="ps-mini-widget__value">{{ summaryLoading ? '—' : summary.workoutsThisWeek }}</span>
+                <span class="ps-mini-widget__value">{{ summaryLoading ? 'â€”' : summary.workoutsThisWeek }}</span>
                 <span class="ps-mini-widget__sub">Completed sessions</span>
               </div>
             </div>
@@ -741,8 +741,8 @@ onMounted(() => {
               </div>
               <div class="ps-mini-widget__body">
                 <span class="ps-mini-widget__label">Current Streak</span>
-                <span class="ps-mini-widget__value">{{ summaryLoading ? '—' : summary.currentStreak + 'd' }}</span>
-                <span class="ps-mini-widget__sub">{{ summary.currentStreak > 0 ? '🔥 Keep going!' : 'Start a streak today' }}</span>
+                <span class="ps-mini-widget__value">{{ summaryLoading ? 'â€”' : summary.currentStreak + 'd' }}</span>
+                <span class="ps-mini-widget__sub">{{ summary.currentStreak > 0 ? 'ðŸ”¥ Keep going!' : 'Start a streak today' }}</span>
               </div>
             </div>
 
@@ -753,7 +753,7 @@ onMounted(() => {
               </div>
               <div class="ps-mini-widget__body">
                 <span class="ps-mini-widget__label">Calories Burned</span>
-                <span class="ps-mini-widget__value">{{ summaryLoading ? '—' : summary.caloriesBurned.toLocaleString() }}</span>
+                <span class="ps-mini-widget__value">{{ summaryLoading ? 'â€”' : summary.caloriesBurned.toLocaleString() }}</span>
                 <span class="ps-mini-widget__sub">This week</span>
               </div>
             </div>
@@ -763,7 +763,7 @@ onMounted(() => {
         </div><!-- /ps-analytics-row -->
       </div><!-- /ps-section-panel analytics -->
 
-      <!-- ── Row 3: Exercises | Summary | Quick Insights ─────────────────── -->
+      <!-- â”€â”€ Row 3: Exercises | Summary | Quick Insights â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
       <div class="ps-section-panel">
         <div class="ps-row3">
 
@@ -781,7 +781,7 @@ onMounted(() => {
                 <i class="fa-solid fa-spinner fa-spin"></i>
               </div>
               <div v-else-if="!exercises.length" class="ps-empty-state">
-                <div class="ps-empty-icon">🏋️</div>
+                <div class="ps-empty-icon">ðŸ‹ï¸</div>
                 <h6 class="ps-empty-title">No exercises found</h6>
               </div>
               <div v-else class="ps-ex-grid">
@@ -847,7 +847,7 @@ onMounted(() => {
                 <h5><i class="fa-solid fa-lightbulb"></i> Quick Insights</h5>
                 <p class="ps-card__subhead">{{ currentMetricLabel }}</p>
               </div>
-              <span v-if="chartInsights?.isPB" class="ps-pb-badge">🏆 PB!</span>
+              <span v-if="chartInsights?.isPB" class="ps-pb-badge">ðŸ† PB!</span>
             </div>
             <div v-if="!chartInsights" class="ps-state">
               <i class="fa-solid fa-chart-simple"></i>
@@ -890,9 +890,9 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /* PAGE SHELL                                                          */
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .ps-container {
   overflow-x: hidden;
@@ -906,9 +906,9 @@ onMounted(() => {
   padding-block: 4px !important;
 }
 
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /* HERO                                                                */
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .ps-hero {
   border: 1px solid #e5e7eb;
@@ -936,9 +936,9 @@ onMounted(() => {
   opacity: 0.82;
 }
 
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /* ANALYTICS ROW  (chart+exercises 2.4fr | side rail 1fr)             */
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .ps-analytics-row {
   display: grid;
@@ -961,9 +961,9 @@ onMounted(() => {
   gap: 12px;
 }
 
-/* ─────────────────────────────────────────────────────────────────── */
-/* ROW 3  (Exercises | Summary | Quick Insights — 3 equal cols)       */
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ROW 3  (Exercises | Summary | Quick Insights â€” 3 equal cols)       */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .ps-row3 {
   display: grid;
@@ -972,9 +972,9 @@ onMounted(() => {
   align-items: start;
 }
 
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /* HERO DATE PICKER  (mirrors HomeDashboard .header-picker exactly)   */
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .header-picker {
   margin-top: 2px;
@@ -983,9 +983,9 @@ onMounted(() => {
   overflow: hidden;
 }
 
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /* MINI STAT WIDGETS (side rail)                                       */
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .ps-mini-widget {
   display: flex;
@@ -1042,9 +1042,9 @@ onMounted(() => {
   text-overflow: ellipsis;
 }
 
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /* CARD BASE                                                           */
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .ps-card {
   border: 1px solid rgba(120, 130, 150, 0.32);
@@ -1092,9 +1092,9 @@ onMounted(() => {
 
 .ps-card__body { padding: 16px 18px; }
 
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /* FILTER CARD (collapsible)                                           */
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .ps-filter-toggle {
   display: flex;
@@ -1305,9 +1305,9 @@ onMounted(() => {
 
 .ps-select:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* ───────────────────────────────────────────────────────────────── */
-/* PRO BADGE + PRO ROW — Y2 collapsible section                      */
-/* ───────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* PRO BADGE + PRO ROW â€” Y2 collapsible section                      */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .ps-pro-badge {
   display: inline-block;
@@ -1450,13 +1450,13 @@ onMounted(() => {
   gap: 10px;
 }
 
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /* CHART CARD                                                          */
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /* SECTION PANELS  (soft outer grouping borders)                       */
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .ps-section-panel {
   border: 1px solid rgba(120, 130, 150, 0.32);
@@ -1485,7 +1485,7 @@ onMounted(() => {
   border-color: rgba(120, 130, 150, 0.28);
 }
 
-/* Analytics row inside panel — remove outer gap padding since panel provides it */
+/* Analytics row inside panel â€” remove outer gap padding since panel provides it */
 .ps-section-panel > .ps-analytics-row {
   margin: 0;
 }
@@ -1603,14 +1603,14 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-/* Quick insights card — lighter header */
+/* Quick insights card â€” lighter header */
 .ps-quick-card .ps-card__header {
   background: #f8fafc;
 }
 
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /* INSIGHTS PANEL                                                      */
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .ps-insights-card { height: auto; }
 
@@ -1755,9 +1755,9 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /* EXERCISE CARD GRID                                                  */
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .ps-ex-grid {
   display: flex;
@@ -1816,8 +1816,6 @@ onMounted(() => {
 .ps-ex-card--active.ps-ex-card--cardio   { background: #f0fdf4; box-shadow: 0 0 0 2px #16a34a, 0 0 12px rgba(22,163,74,0.2); }
 .ps-ex-card--active.ps-ex-card--other    { background: #fefce8; box-shadow: 0 0 0 2px #ca8a04, 0 0 12px rgba(202,138,4,0.2); }
 
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/ProgressStats.vue
-=======
 /* -- 0.84.39 Progress Analytics dark-theme normalization (scoped) ---------- */
 .ps-container {
   --ps-surface-1: var(--wa-shell-surface, #121923);
@@ -2105,10 +2103,9 @@ onMounted(() => {
   color: var(--ps-text-muted);
 }
 
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/ProgressStats.vue
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /* RESPONSIVE                                                          */
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 @media (max-width: 1100px) {
   .ps-row3 { grid-template-columns: 1fr 1fr; }
@@ -2141,12 +2138,9 @@ onMounted(() => {
   .ps-card__body { padding: 12px 14px; }
   .ps-row3 { grid-template-columns: 1fr; }
   .ps-filter-grid { grid-template-columns: 1fr 1fr; }
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/ProgressStats.vue
-=======
   .ps-select { font-size: 16px; min-height: 44px; }
   .ps-reset-btn { min-height: 44px; }
   .header-picker :deep(.mx-input) { font-size: 16px !important; min-height: 44px !important; }
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/ProgressStats.vue
   .ps-chart-wrap { height: 260px; }
   .ps-group-btn { padding: 5px 9px; font-size: 0.73rem; }
 }
@@ -2158,10 +2152,7 @@ onMounted(() => {
   .ps-chart-controls { gap: 6px; }
   .ps-filter-grid { grid-template-columns: 1fr; }
   .ps-right-col { flex-direction: column; }
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Member/ProgressStats.vue
-=======
   .header-picker { width: 100%; min-width: 0; max-width: 100%; }
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Member/ProgressStats.vue
   .ps-insight-total__value { font-size: 1.3rem; }
 }
 </style>

@@ -1,28 +1,14 @@
-<script setup>
+﻿<script setup>
 import { ref } from "vue";
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-import axios from "axios";
-=======
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
 import { useRouter } from "vue-router";
 import { API_BASE } from '@/config/env';
 import { isDemoMode } from '@/config/appConfig';
 import { useAuth } from '@/composable/useAuth';
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-
-const router = useRouter();
-const { fetchUser } = useAuth();
-const apiClient = axios.create({
-  baseURL: API_BASE,
-  withCredentials: true,
-});
-=======
 import loginLogo from '@/assets/logo/login-logo.png';
 import apiClient from '@/services/apiClient';
 
 const router = useRouter();
 const { fetchUser } = useAuth();
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
 
 const username = ref("");
 const password = ref("");
@@ -163,13 +149,10 @@ const buildLoginDiagnostics = ({
 };
 
 const buildCompactLoginMessage = ({ status, fallbackMessage, code = '' } = {}) => {
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-=======
   if (!status && String(fallbackMessage || '').toLowerCase().includes('could not reach the local api server')) {
     return fallbackMessage;
   }
 
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
   if (code === 'ER_ACCESS_DENIED_ERROR') {
     return 'Database connection failed. The WorkoutAtlas server reached the database but authentication was rejected. Please verify environment variables: DB_HOST, DB_USER, DB_PASSWORD, DB_DATABASE.';
   }
@@ -332,11 +315,7 @@ const goToDashboard = async () => {
   await router.replace({ name: "dashboard_index" });
 };
 
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-// 🔹 Login Function
-=======
 // Login Function
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
 const login = async () => {
   if (isSubmitting.value) return;
 
@@ -411,10 +390,6 @@ const login = async () => {
         });
         return;
       }
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-      // Hydrate the auth store before navigating so user/role are available immediately
-=======
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
       await fetchUser();
       await goToDashboard();
       return;
@@ -434,27 +409,15 @@ const login = async () => {
       data: error?.response?.data,
       message: error?.message,
     });
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-    // The global error handler on the backend always returns { error, code }.
-    // Older route-level errors return { error } or { message }.
-    // error?.response?.data may be a string if Express returned HTML (shouldn't
-    // happen now that we have the global handler, but guard anyway).
-    const rawData = error?.response?.data;
-=======
     const rawData = error?.response?.data;
     const hasNoResponse = !error?.response;
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
     const apiMessage =
       (typeof rawData === 'object' && rawData !== null
         ? (rawData.message || rawData.error || null)
         : null) ||
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-      'Server error during sign-in. Please try again.';
-=======
       (hasNoResponse
         ? 'WorkoutAtlas could not reach the local API server. Verify that the backend is running and that the API URL is correct.'
         : 'Server error during sign-in. Please try again.');
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
     const errorCode = typeof rawData === 'object' ? (rawData.code || '') : '';
     const isConnLimit =
       String(apiMessage).includes('ER_TOO_MANY_USER_CONNECTIONS') ||
@@ -472,11 +435,8 @@ const login = async () => {
         ? 'Database credentials were rejected by MySQL. Verify Render environment variables.'
         : isConnLimit
         ? 'Database connection limit reached on hosting provider.'
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-=======
         : hasNoResponse
         ? 'No HTTP response was received from the API server.'
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
         : isSessionStore
         ? 'Session store temporarily unavailable.'
         : 'Browser could not complete sign-in request.',
@@ -497,122 +457,16 @@ const login = async () => {
   }
 };
 
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-// 🔹 Demo Login — prefill credentials and reuse existing login()
-const DEMO_ACCOUNTS = {
-  user:    { email: 'user@demo.com',    password: '-^LtH1kqJrDn' },
-  trainer: { email: 'trainer@demo.com', password: '-^LtH1kqJrDn' },
-  admin:   { email: 'admin@demo.com',   password: '-^LtH1kqJrDn' },
-=======
 // Demo Login: prefill credentials and reuse existing login()
 const DEMO_ACCOUNTS = {
   user: { email: 'user@demo.com', password: '-^LtH1kqJrDn' },
   trainer: { email: 'trainer@demo.com', password: '-^LtH1kqJrDn' },
   admin: { email: 'admin@demo.com', password: '-^LtH1kqJrDn' },
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
 };
 
 const demoLogin = async (role) => {
   const account = DEMO_ACCOUNTS[role];
   if (!account) return;
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-  username.value  = account.email;
-  password.value  = account.password;
-  rememberMe.value = true;
-  await login();
-};
-
-</script>
-
-<template>
-  <div class="container login-center-wrap auth-wrapper">
-    <div class="d-flex justify-content-center align-items-center">
-      <div class="login-body auth-card">
-        <div class="top d-flex justify-content-between align-items-center auth-header">
-          <div class="logo auth-logo-wrap">
-            <img src="@/assets/images/flex-fitlogo-transparent.png" alt="Logo">
-          </div>
-          <router-link :to="{ name: 'dashboard_index' }"><i class="fa-duotone fa-house-chimney"></i></router-link>
-        </div>
-
-        <div class="bottom auth-content auth-column">
-          <h3 class="panel-title panel-title-form auth-title">Login</h3>
-
-          <form @submit.prevent="login" class="auth-form">
-            <div class="input-group input-group-rounded auth-form-group">
-              <span class="input-group-text auth-input-icon"><i class="fa-regular fa-user"></i></span>
-              <input v-model="username" type="text" class="form-control form-control-rounded auth-input" placeholder="Username or email address" required>
-            </div>
-
-            <div class="input-group input-group-rounded auth-form-group">
-              <span class="input-group-text auth-input-icon"><i class="fa-regular fa-lock"></i></span>
-              <input v-model="password" :type="[isPasswordShow ? 'text' : 'password']" class="form-control form-control-rounded auth-input" placeholder="Password" required>
-              <button type="button" class="password-show auth-password-toggle" @click="isPasswordShow = !isPasswordShow" :aria-label="isPasswordShow ? 'Hide password' : 'Show password'">
-                <i class="fa-duotone" :class="[isPasswordShow ? 'fa-eye-slash' : 'fa-eye']"></i>
-              </button>
-            </div>
-
-            <div class="d-flex justify-content-between align-items-center auth-subtitle auth-checkbox-row">
-              <div class="form-check">
-                <input v-model="rememberMe" class="form-check-input" type="checkbox" id="loginCheckbox">
-                <label class="form-check-label text-white" for="loginCheckbox">Remember Me</label>
-              </div>
-              <router-link :to="{ name: 'reset_password' }" class="text-white fs-14">Forgot Password?</router-link>
-            </div>
-
-            <div v-if="errorMsg" class="alert alert-danger login-error-alert-compact">
-              <div class="fw-semibold">{{ errorMsg }}</div>
-              <div class="small mt-1">Login diagnostics available.</div>
-            </div>
-
-            <div v-if="errorMsg" class="login-diagnostics-row">
-              <button
-                type="button"
-                class="btn auth-button auth-button-outline"
-                @click="openDiagnosticsModal"
-              >
-                <i class="fa-regular fa-magnifying-glass me-1"></i> View Login Diagnostics
-              </button>
-            </div>
-
-            <button class="btn btn-primary w-100 login-btn auth-button" :disabled="isSubmitting">
-              {{ isSubmitting ? 'Signing in...' : 'Sign in' }}
-            </button>
-
-            <!-- Demo mode buttons — only visible when VITE_OPERATING_MODE=demo -->
-            <template v-if="isDemoMode">
-              <div class="demo-divider">
-                <span>Demo Accounts</span>
-              </div>
-              <div class="demo-buttons-row">
-                <button type="button" class="btn demo-btn demo-btn-user" :disabled="isSubmitting" @click="demoLogin('user')">User Login</button>
-                <button type="button" class="btn demo-btn demo-btn-trainer" :disabled="isSubmitting" @click="demoLogin('trainer')">Trainer Login</button>
-                <button type="button" class="btn demo-btn demo-btn-admin" :disabled="isSubmitting" @click="demoLogin('admin')">Admin Login</button>
-              </div>
-            </template>
-          </form>
-
-          <div class="other-option auth-social-row">
-            <p>Or continue with</p>
-            <div class="social-box d-flex justify-content-center gap-20">
-              <a href="#"><i class="fa-brands fa-facebook-f"></i></a>
-              <a href="#"><i class="fa-brands fa-twitter"></i></a>
-              <a href="#"><i class="fa-brands fa-google"></i></a>
-              <a href="#"><i class="fa-brands fa-instagram"></i></a>
-            </div>
-          </div>
-
-          <div class="other-option auth-footer auth-footer-row">
-            <p class="mb-0 text-white">Don't have an account? <router-link to="/register" class="text-white text-decoration-underline">Click here to sign up.</router-link></p>
-          </div>
-
-          <div class="other-option auth-footer auth-footer-row">
-            <p class="mb-0 text-white">Version: {{ appVersion }} - <a href="/changelog.html" class="text-white text-decoration-underline" target="_blank" rel="noopener noreferrer">Change Log</a></p>
-          </div>
-        </div>
-      </div>
-
-=======
   username.value = account.email;
   password.value = account.password;
   rememberMe.value = true;
@@ -752,11 +606,10 @@ const demoLogin = async (role) => {
 
       <p class="wa-version login-footer">
         Version: {{ appVersion }}
-        <span aria-hidden="true">•</span>
+        <span aria-hidden="true">â€¢</span>
         <a href="/changelog.html" target="_blank" rel="noopener noreferrer">Change Log</a>
       </p>
 
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
       <div
         v-if="showDiagnosticsModal"
         class="login-diagnostics-backdrop"
@@ -768,30 +621,18 @@ const demoLogin = async (role) => {
             <button type="button" class="btn-close btn-close-white" aria-label="Close" @click="closeDiagnosticsModal"></button>
           </div>
           <div class="login-diagnostics-body">
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-            <!-- Connection limit banner -->
-=======
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
             <div v-if="isConnectionLimitError" class="login-diag-conn-limit">
               <p class="login-diag-conn-title">Database server connection limit reached.</p>
               <p class="login-diag-conn-sub">WorkoutAtlas login succeeded but database resources were unavailable.</p>
               <p class="login-diag-conn-error">Error: <code>ER_TOO_MANY_USER_CONNECTIONS</code></p>
               <p class="login-diag-conn-suggestions">Suggestions:</p>
               <ul class="login-diag-conn-list">
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-                <li>Wait 1–2 minutes</li>
-=======
                 <li>Wait 1-2 minutes</li>
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
                 <li>Retry login</li>
                 <li>Contact administrator</li>
               </ul>
             </div>
 
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-            <!-- DB auth error banner -->
-=======
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
             <div v-if="isDbAuthError" class="login-diag-conn-limit">
               <p class="login-diag-conn-title">Database authentication failed.</p>
               <p class="login-diag-conn-sub">The WorkoutAtlas server reached the database but authentication was rejected.</p>
@@ -806,26 +647,14 @@ const demoLogin = async (role) => {
               <p class="login-diag-conn-sub">This is not a browser or cookie issue.</p>
             </div>
 
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-            <!-- Server diagnostics -->
-            <div v-if="diagnosticsLoading" class="login-diag-loading">Loading diagnostics…</div>
-
-            <template v-else-if="serverDiagnostics">
-              <!-- DEBUG disabled: show contact message only -->
-=======
             <div v-if="diagnosticsLoading" class="login-diag-loading">Loading diagnostics...</div>
 
             <template v-else-if="serverDiagnostics">
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
               <div v-if="!serverDiagnostics.enabled" class="login-diag-contact">
                 <i class="fa-regular fa-circle-info login-diag-contact-icon"></i>
                 {{ serverDiagnostics.message || 'Contact administrator for details.' }}
               </div>
 
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-              <!-- DEBUG enabled: structured sections -->
-=======
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
               <template v-else>
                 <div class="login-diag-section">
                   <div class="login-diag-section-title">Environment</div>
@@ -854,10 +683,6 @@ const demoLogin = async (role) => {
               </template>
             </template>
 
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-            <!-- Client-side diagnostics (always shown for copy) -->
-=======
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
             <details class="login-diag-client-details">
               <summary>Client diagnostics</summary>
               <pre class="login-diagnostics-pre">{{ loginDiagnostics }}</pre>
@@ -871,263 +696,6 @@ const demoLogin = async (role) => {
           </div>
         </div>
       </div>
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-    </div>
-  </div>
-</template>
-
-<style scoped>
-.login-center-wrap {
-  min-height: 100vh;
-  min-height: 100dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px 12px;
-}
-
-
-.login-body {
-  max-width: 430px;
-  width: 100%;
-  border: 8px solid rgba(0, 0, 0, 0.08) !important;
-  border-radius: 10px !important;
-  background: rgba(255, 255, 255, 0.95) !important;
-  padding: 20px !important;
-}
-
-.login-body {
-  border-radius: 10px;
-  background: #f3f3f3;
-
-  /* OUTER soft shadow */
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.1),   /* thin outer border */
-    0 3px 10px rgba(0, 0, 0, 0.12); /* drop shadow */
-
-  padding: 20px;
-}
-
-
-.light-theme .main-content .login-body {
-  background: rgba(255, 255, 255, 1);
-  border: 1px solid black;
-}
-
-.panel-title-form {
-  color: #A9B4CC;
-  font-weight: 600;
-  font-size: 1.22rem;
-  line-height: 1.25;
-  margin-bottom: 14px;
-}
-
-/* Input Group Rounded Borders */
-.input-group-rounded {
-  display: flex;
-  align-items: center;
-  border: 1.5px solid rgba(13, 153, 255, 0.5);
-  border-radius: 9px;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  padding: 0;
-  background: transparent;
-}
-
-.input-group-rounded:focus-within {
-  border-color: #0D99FF;
-  box-shadow: 0 0 0 4px rgba(13, 153, 255, 0.25);
-}
-
-.form-control-rounded {
-  border: none !important;
-  border-radius: 0 !important;
-  flex: 1;
-  padding: 10px 12px !important;
-  min-height: 42px;
-  font-size: 0.92rem;
-}
-
-.input-group-rounded .input-group-text {
-  border: none !important;
-  border-right: 1px solid rgba(13, 153, 255, 0.3) !important;
-  background: transparent !important;
-  border-radius: 0 !important;
-  padding: 0 10px !important;
-  min-width: auto !important;
-  font-size: 0.9rem;
-}
-
-.password-show {
-  border: none !important;
-  border-left: 2px solid rgba(13, 153, 255, 0.2) !important;
-  background: transparent !important;
-  padding: 0 9px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  color: #A9B4CC;
-  font-size: 0.9rem;
-}
-
-.password-show:hover {
-  color: #0D99FF;
-}
-
-.login-error-alert-compact {
-  text-align: left !important;
-  font-size: 0.86rem;
-  padding: 8px 10px;
-}
-
-.auth-header {
-  margin-bottom: 4px;
-}
-
-.auth-logo-wrap img {
-  max-height: 38px;
-  width: auto;
-}
-
-.auth-title {
-  margin-top: 2px;
-  margin-bottom: 8px;
-}
-
-.auth-content.auth-column {
-  width: 100%;
-  max-width: 360px;
-  margin: 0 auto;
-}
-
-.auth-form,
-.auth-social-row,
-.auth-footer-row {
-  width: 100%;
-}
-
-.auth-form-group {
-  width: 100%;
-  margin: 0 0 8px;
-}
-
-.auth-subtitle,
-.auth-subtitle .form-check-label,
-.auth-subtitle a,
-.other-option p,
-.other-option a {
-  font-size: 0.85rem !important;
-}
-
-.auth-checkbox-row {
-  width: 100%;
-  margin: 0 0 10px;
-}
-
-.auth-checkbox-row .form-check {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  padding-left: 0;
-}
-
-.auth-checkbox-row .form-check-input {
-  margin: 0 !important;
-  float: none;
-}
-
-.auth-checkbox-row .form-check-label {
-  margin: 0;
-}
-
-.auth-social-row {
-  margin: 8px 0 0;
-}
-
-.auth-social-row p {
-  margin-bottom: 6px;
-}
-
-.auth-social-row .social-box {
-  width: 100%;
-  gap: 14px !important;
-}
-
-.auth-social-row .social-box a {
-  width: 34px;
-  height: 34px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.auth-social-row .social-box a i {
-  font-size: 1.02rem;
-}
-
-.auth-button {
-  width: 100%;
-  min-height: 40px;
-  padding-top: 8px;
-  padding-bottom: 8px;
-  font-size: 0.92rem;
-  border-radius: 8px;
-}
-
-.auth-form .auth-button + .auth-button {
-  margin-top: 8px;
-}
-
-/* ── Login diagnostics button row ── */
-.login-diagnostics-row {
-  display: flex;
-  justify-content: center;
-  margin-top: 12px;
-  margin-bottom: 12px;
-}
-
-/* ── Diagnostics button — amber, defeats Bootstrap ── */
-button.auth-button-outline,
-.auth-button-outline {
-  background: #fff8e1 !important;
-  color: #8a5300 !important;
-  border: 2px solid #ffb300 !important;
-  opacity: 1 !important;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  font-weight: 700;
-  border-radius: 10px;
-  padding: 8px 20px;
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-
-button.auth-button-outline:hover,
-.auth-button-outline:hover {
-  background: #fff3c4 !important;
-  transform: translateY(-1px);
-}
-
-button.auth-button-outline:disabled,
-.auth-button-outline:disabled {
-  opacity: 0.75 !important;
-}
-
-.auth-button-secondary {
-  border-color: rgba(58, 79, 118, 0.85);
-  background-color: rgba(58, 79, 118, 0.9);
-}
-
-.auth-password-toggle {
-  appearance: none;
-}
-
-/* ── Demo mode buttons ─────────────────────────────────────── */
-.demo-divider {
-=======
     </section>
   </main>
 </template>
@@ -1464,78 +1032,10 @@ button.auth-button-outline:disabled,
 
 .wa-divider {
   width: 100%;
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
   display: flex;
   align-items: center;
   gap: 8px;
   margin: 10px 0 6px;
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-  font-size: 0.75rem;
-  color: #A9B4CC;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.demo-divider::before,
-.demo-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: rgba(169, 180, 204, 0.35);
-}
-
-.demo-buttons-row {
-  display: flex;
-  gap: 6px;
-  width: 100%;
-}
-
-.demo-btn {
-  flex: 1;
-  min-height: 36px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  border-radius: 8px;
-  padding: 5px 4px;
-  letter-spacing: 0.01em;
-  transition: opacity 0.2s, transform 0.1s;
-}
-.demo-btn:active { transform: scale(0.97); }
-.demo-btn:disabled { opacity: 0.55; }
-
-.demo-btn-user {
-  background: rgba(13, 153, 255, 0.15);
-  border: 1.5px solid rgba(13, 153, 255, 0.55);
-  color: #0D99FF;
-}
-.demo-btn-user:hover { background: rgba(13, 153, 255, 0.25); }
-
-.demo-btn-trainer {
-  background: rgba(32, 201, 151, 0.12);
-  border: 1.5px solid rgba(32, 201, 151, 0.55);
-  color: #20c997;
-}
-.demo-btn-trainer:hover { background: rgba(32, 201, 151, 0.22); }
-
-.demo-btn-admin {
-  background: rgba(253, 126, 20, 0.12);
-  border: 1.5px solid rgba(253, 126, 20, 0.55);
-  color: #fd7e14;
-}
-.demo-btn-admin:hover { background: rgba(253, 126, 20, 0.22); }
-
-.auth-footer {
-  margin-top: 6px;
-}
-
-.auth-footer-row p {
-  width: 100%;
-  text-align: center;
-  line-height: 1.35;
-}
-
-.login-error-alert-compact {
-  margin-bottom: 10px;
-=======
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-size: 0.73rem;
@@ -1976,17 +1476,12 @@ button.auth-button-outline:disabled,
     animation: none !important;
     transition: none !important;
   }
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
 }
 
 .login-diagnostics-backdrop {
   position: fixed;
   inset: 0;
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-  background: rgba(7, 23, 57, 0.72);
-=======
   background: rgba(2, 6, 23, 0.76);
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1997,15 +1492,9 @@ button.auth-button-outline:disabled,
 .login-diagnostics-modal {
   width: min(92vw, 680px);
   max-height: 82vh;
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-  background: #0f1f45;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 12px;
-=======
   background: #111827;
   border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: 14px;
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2017,11 +1506,7 @@ button.auth-button-outline:disabled,
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px;
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-  background: rgba(255, 255, 255, 0.04);
-=======
   background: rgba(148, 163, 184, 0.08);
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
 }
 
 .login-diagnostics-body {
@@ -2035,22 +1520,12 @@ button.auth-button-outline:disabled,
   margin: 0;
   font-size: 0.78rem;
   line-height: 1.38;
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-  color: #d7e4ff;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-}
-
-/* ── Diagnostics modal: loading / contact-admin ── */
-.login-diag-loading {
-  color: #a9c4ff;
-=======
   color: #e2e8f0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
 .login-diag-loading {
   color: #93c5fd;
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
   font-size: 0.84rem;
   padding: 10px 0;
   text-align: center;
@@ -2060,37 +1535,21 @@ button.auth-button-outline:disabled,
   display: flex;
   align-items: center;
   gap: 8px;
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 8px;
-  padding: 12px 14px;
-  color: #d7e4ff;
-=======
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   padding: 12px 14px;
   color: #e2e8f0;
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
   font-size: 0.86rem;
   margin-bottom: 10px;
 }
 
 .login-diag-contact-icon {
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-  color: #7ba8ff;
-=======
   color: #60a5fa;
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
   font-size: 1rem;
   flex-shrink: 0;
 }
 
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-/* ── Diagnostics modal: structured sections ── */
-=======
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
 .login-diag-section {
   margin-bottom: 14px;
 }
@@ -2100,17 +1559,10 @@ button.auth-button-outline:disabled,
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-  color: #7ba8ff;
-  margin-bottom: 6px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-=======
   color: #60a5fa;
   margin-bottom: 6px;
   padding-bottom: 4px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
 }
 
 .login-diag-row {
@@ -2120,37 +1572,15 @@ button.auth-button-outline:disabled,
   gap: 8px;
   padding: 3px 0;
   font-size: 0.81rem;
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-  color: #c5d6f5;
-}
-
-.login-diag-row span {
-  color: #8aa8d8;
-=======
   color: #dbeafe;
 }
 
 .login-diag-row span {
   color: #93c5fd;
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
   flex-shrink: 0;
 }
 
 .login-diag-row code {
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-  background: rgba(255,255,255,0.08);
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-size: 0.78rem;
-  color: #d7e4ff;
-  word-break: break-all;
-}
-
-/* ── Client diagnostics collapsible ── */
-.login-diag-client-details {
-  margin-top: 12px;
-  border-top: 1px solid rgba(255,255,255,0.08);
-=======
   background: rgba(255, 255, 255, 0.08);
   padding: 1px 6px;
   border-radius: 4px;
@@ -2162,17 +1592,12 @@ button.auth-button-outline:disabled,
 .login-diag-client-details {
   margin-top: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
   padding-top: 8px;
 }
 
 .login-diag-client-details summary {
   font-size: 0.78rem;
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-  color: #7ba8ff;
-=======
   color: #60a5fa;
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
   cursor: pointer;
   user-select: none;
   margin-bottom: 6px;
@@ -2185,30 +1610,13 @@ button.auth-button-outline:disabled,
   padding: 12px 14px;
   margin-bottom: 12px;
 }
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-=======
 
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
 .login-diag-conn-title {
   font-weight: 700;
   font-size: 0.92rem;
   color: #ff8a7a;
   margin: 0 0 4px;
 }
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-.login-diag-conn-sub {
-  font-size: 0.83rem;
-  color: #d7e4ff;
-  margin: 0 0 6px;
-}
-.login-diag-conn-error {
-  font-size: 0.82rem;
-  color: #d7e4ff;
-  margin: 0 0 8px;
-}
-.login-diag-conn-error code {
-  background: rgba(255,255,255,0.08);
-=======
 
 .login-diag-conn-sub {
   font-size: 0.83rem;
@@ -2224,20 +1632,11 @@ button.auth-button-outline:disabled,
 
 .login-diag-conn-error code {
   background: rgba(255, 255, 255, 0.08);
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
   padding: 1px 5px;
   border-radius: 4px;
   font-size: 0.8rem;
   color: #ffb3ab;
 }
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-.login-diag-conn-suggestions {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #a9c4ff;
-  margin: 0 0 4px;
-}
-=======
 
 .login-diag-conn-suggestions {
   font-size: 0.82rem;
@@ -2246,20 +1645,11 @@ button.auth-button-outline:disabled,
   margin: 0 0 4px;
 }
 
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue
 .login-diag-conn-list {
   margin: 0;
   padding-left: 18px;
   font-size: 0.82rem;
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/views/Guest/Login.vue
-  color: #d7e4ff;
-  line-height: 1.7;
-}
-
-</style>
-=======
   color: #e2e8f0;
   line-height: 1.7;
 }
 </style>
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/views/Guest/Login.vue

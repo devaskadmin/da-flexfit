@@ -1,6 +1,6 @@
-@import url("https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+﻿@import url("https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 
-/* ── Global rendering normalization (0.68.4) ────────────────────────
+/* â”€â”€ Global rendering normalization (0.68.4) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Ensures consistent base font size and prevents mobile browsers
    (especially Safari on iOS) from auto-inflating text.           */
 html {
@@ -22,7 +22,7 @@ body {
   max-width: 100%;
   overflow-x: hidden;
 }
-/* ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 /*============================================================
 [Master Stylesheet]
@@ -1814,11 +1814,6 @@ input[type=checkbox] {
 
 :root {
   --bs-border-radius: 3px;
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/assets/css/style.css
-  --bs-border-color: rgba(255, 255, 255, 0.07);
-  --bs-primary-bg-subtle: #23365e;
-  --ff-page-header-gradient: linear-gradient(135deg, #0b2f67 0%, #14458f 45%, #1d5fb8 100%);
-=======
   --wa-topbar-bg: #05070C;
   --wa-sidebar-bg: #151C35;
   --wa-page-bg: #161D38;
@@ -1876,7 +1871,6 @@ input[type=checkbox] {
   --wa-shadow: 0 18px 50px rgba(0, 0, 0, 0.42);
   --wa-shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.24);
   --ff-page-header-gradient: var(--wa-panel-bg);
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/assets/css/style.css
   --ff-page-header-bg: var(--ff-page-header-gradient);
   --ff-page-header-radius: 14px;
   --ff-page-header-padding: 15px 20px;
@@ -16081,9 +16075,9 @@ th.fc-col-header-cell {
   color:black;
  }
 
-/* ─────────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Profile Dropdown Component - Theme Support
-   ───────────────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 /* Dark Theme (Default) - Profile Dropdown */
 body.dark-theme {

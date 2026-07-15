@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import {sidebarDropdownManage} from "@/composable/manageSidebarMenu";
 
 const props = defineProps(['isCollapsed','isTwoColumnMenu','isSidebarMini','isSubMenuCollapsed', 'closeMainLeftSidebar'])
@@ -71,16 +71,9 @@ const normalizedRole = computed(() =>
 const isAdmin = computed(() => normalizedRole.value === 'admin')
 const isTrainer = computed(() => normalizedRole.value === 'trainer')
 const isUser = computed(() => normalizedRole.value === 'user')
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/components/MainSidebarComponent.vue
-const isMember = computed(() => normalizedRole.value === 'member')
-
-const canViewTrainerMenu = computed(() =>
-  isAdmin.value || isTrainer.value || isUser.value || isMember.value || !normalizedRole.value
-=======
 
 const canViewTrainerMenu = computed(() =>
   isAdmin.value || isTrainer.value
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/components/MainSidebarComponent.vue
 )
 
 const canViewAdminMenu = computed(() =>
@@ -195,11 +188,7 @@ onMounted(() => {
 
 
 
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/components/MainSidebarComponent.vue
-      <div class="sidebar-menu" :id="horizontalMenuEnabled ? 'accordionExample' : 'testAccordionExample'" style="overflow-y: scroll;">
-=======
       <div class="sidebar-menu wa-sidebar-scroll" :id="horizontalMenuEnabled ? 'accordionExample' : 'testAccordionExample'">
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/components/MainSidebarComponent.vue
           <li
             v-for="(sidebar, index) in sidebarMenus"
             :key="`section-${index}-${sidebar.menu_name}`"
@@ -458,26 +447,12 @@ onMounted(() => {
             </template>
             </template>
           </li>
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/components/MainSidebarComponent.vue
-          <li class="help-center sidebar-highlight-card app-header-gradient">
-            <h3>Help Center</h3>
-            <p>We're an award-winning, forward thinking</p>
-            <a href="#" class="btn btn-sm btn-light">Go to Help Center</a>
-          </li>
-=======
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/components/MainSidebarComponent.vue
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/components/MainSidebarComponent.vue
-.sidebar-link.admin-light-gray,
-.sidebar-link.admin-light-gray .sidebar-txt,
-.sidebar-link.admin-light-gray .nav-icon i {
-  color: #797979 !important;
-=======
 .wa-sidebar-scroll {
   overflow-y: auto;
   max-height: calc(100vh - 88px);
@@ -487,19 +462,15 @@ onMounted(() => {
 .sidebar-link.admin-light-gray .sidebar-txt,
 .sidebar-link.admin-light-gray .nav-icon i {
   color: #9aabbc !important;
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/components/MainSidebarComponent.vue
 }
 
 .sidebar-link.admin-light-gray:hover,
 .sidebar-link.admin-light-gray:hover .sidebar-txt,
 .sidebar-link.admin-light-gray:hover .nav-icon i {
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/components/MainSidebarComponent.vue
-  color: #797979 !important;
-=======
   color: #c0d0e0 !important;
 }
 
-/* ── WorkoutAtlas dark sidebar — always-on overrides ─────── */
+/* â”€â”€ WorkoutAtlas dark sidebar â€” always-on overrides â”€â”€â”€â”€â”€â”€â”€ */
 
 /* Root panel */
 .main-sidebar {
@@ -531,13 +502,13 @@ onMounted(() => {
   padding-bottom: 6px !important;
 }
 
-/* Section wrappers — no heavy card borders */
+/* Section wrappers â€” no heavy card borders */
 .sidebar-item {
   background: transparent !important;
   border-color: transparent !important;
 }
 
-/* Section header titles — compact, distinct from nav links */
+/* Section header titles â€” compact, distinct from nav links */
 .sidebar-link-group-title,
 .sidebar-link-group-title.sidebar-section-header,
 .sidebar-link-group-title.app-header-gradient {
@@ -636,7 +607,7 @@ onMounted(() => {
   border-color: var(--wa-sidebar-divider) !important;
 }
 
-/* Scrollbar — narrow, dark-themed */
+/* Scrollbar â€” narrow, dark-themed */
 .wa-sidebar-scroll::-webkit-scrollbar {
   width: 4px;
 }
@@ -646,6 +617,5 @@ onMounted(() => {
 .wa-sidebar-scroll::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--wa-sidebar-divider) 80%, transparent 20%);
   border-radius: 2px;
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/components/MainSidebarComponent.vue
 }
 </style>

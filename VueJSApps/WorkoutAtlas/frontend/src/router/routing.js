@@ -1,4 +1,4 @@
-
+﻿
 //Default Home Page
 import HomeView from '@/views/Member/HomeDashboard.vue'
 
@@ -253,42 +253,11 @@ export const pagesRoutes = [
     },
     {
         path: '/notifications',
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/router/routing.js
-        component: () => import('@/views/notifications/NotificationCenter.vue'),
-=======
         component: () => import('@/views/Member/Notifications.vue'),
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/router/routing.js
         name: 'notifications',
         meta: { layout: 'AppLayout', isPartials: true },
     },
     {
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/router/routing.js
-        path: '/messages',
-        component: () => import('@/views/messages/MessageInbox.vue'),
-        name: 'messages_inbox',
-        meta: { layout: 'AppLayout', isPartials: true },
-    },
-    {
-        path: '/messages/compose',
-        component: () => import('@/views/messages/ComposeMessage.vue'),
-        name: 'messages_compose',
-        meta: { layout: 'AppLayout', isPartials: true },
-    },
-    {
-        path: '/messages/broadcast',
-        component: () => import('@/views/messages/BroadcastMessage.vue'),
-        name: 'messages_broadcast',
-        meta: { layout: 'AppLayout', isPartials: true },
-    },
-    {
-        path: '/messages/:conversationId',
-        component: () => import('@/views/messages/MessageInbox.vue'),
-        name: 'messages_conversation',
-        meta: { layout: 'AppLayout', isPartials: true },
-    },
-    {
-=======
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/router/routing.js
         path: '/help',
         component: () => import('@/views/Member/Help.vue'),
         name: 'help',

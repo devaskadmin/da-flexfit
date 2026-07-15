@@ -14,6 +14,10 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  getSetSaveState: {
+    type: Function,
+    default: null,
+  },
 });
 
 const emit = defineEmits(['add-set', 'remove-set', 'update-set', 'select', 'exercise-completed']);
@@ -52,6 +56,12 @@ const hasPrefilledValues = computed(() =>
 );
 
 const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input--prefilled' : '');
+const getSaveState = (exerciseId, setNum) => {
+  if (typeof props.getSetSaveState !== 'function') {
+    return { status: 'idle', message: '' };
+  }
+  return props.getSetSaveState(exerciseId, setNum) || { status: 'idle', message: '' };
+};
 </script>
 
 <template>
@@ -159,6 +169,15 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
               </button>
             </div>
             <div class="c3-col-value c3-done-cell">
+              <template v-if="getSaveState(exercise.id, set.setNum).status === 'saving'">
+                <small class="set-save-state">Saving…</small>
+              </template>
+              <template v-else-if="getSaveState(exercise.id, set.setNum).status === 'saved'">
+                <small class="set-save-state set-save-state--saved">Saved</small>
+              </template>
+              <template v-else-if="getSaveState(exercise.id, set.setNum).status === 'error'">
+                <small class="set-save-state set-save-state--error">Save failed</small>
+              </template>
               <button
                 type="button"
                 class="c3-complete-btn"
@@ -233,6 +252,15 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
               </button>
             </div>
             <div class="c3-col-value c3-done-cell">
+              <template v-if="getSaveState(exercise.id, set.setNum).status === 'saving'">
+                <small class="set-save-state">Saving…</small>
+              </template>
+              <template v-else-if="getSaveState(exercise.id, set.setNum).status === 'saved'">
+                <small class="set-save-state set-save-state--saved">Saved</small>
+              </template>
+              <template v-else-if="getSaveState(exercise.id, set.setNum).status === 'error'">
+                <small class="set-save-state set-save-state--error">Save failed</small>
+              </template>
               <button
                 type="button"
                 class="c3-complete-btn"
@@ -343,6 +371,15 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
             </button>
           </div>
           <div class="c3-col-value c3-done-cell">
+            <template v-if="getSaveState(exercise.id, set.setNum).status === 'saving'">
+              <small class="set-save-state">Saving…</small>
+            </template>
+            <template v-else-if="getSaveState(exercise.id, set.setNum).status === 'saved'">
+              <small class="set-save-state set-save-state--saved">Saved</small>
+            </template>
+            <template v-else-if="getSaveState(exercise.id, set.setNum).status === 'error'">
+              <small class="set-save-state set-save-state--error">Save failed</small>
+            </template>
             <button
               type="button"
               class="c3-complete-btn"
@@ -486,6 +523,22 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
 .sec-body {
   display: grid;
   gap: 14px;
+}
+
+.set-save-state {
+  display: inline-block;
+  margin-right: 8px;
+  color: #6b7280;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.set-save-state--saved {
+  color: #15803d;
+}
+
+.set-save-state--error {
+  color: #b91c1c;
 }
 
 .sec-identity {

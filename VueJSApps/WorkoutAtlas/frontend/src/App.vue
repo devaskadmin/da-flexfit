@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import {computed, onMounted, onUnmounted, provide, ref, shallowRef, watch} from "vue";
 import {RouterView, useRoute} from 'vue-router';
 import {OverlayScrollbars} from "overlayscrollbars";
@@ -162,119 +162,6 @@ const closeSidebar = () => {
   isBodyOverflowHidden.value = false;
 };
 
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/App.vue
-const applyThemeConfig = (themeConfig = {}) => {
-  if (!isAdmin.value) {
-    closeSidebar()
-    return
-  }
-  if (!themeConfig || typeof themeConfig !== 'object') return;
-
-  if (themeConfig.themeColor) {
-    localStorage.setItem('currentActiveTheme', themeConfig.themeColor);
-    currentActiveTheme.value = themeConfig.themeColor;
-  }
-
-  if (themeConfig.themeDirection === 'rtl') {
-    setRtl();
-  } else if (themeConfig.themeDirection === 'ltr') {
-    setLtr();
-  }
-
-  if (themeConfig.primaryColor) {
-    setStyleSheet(themeConfig.primaryColor);
-  }
-
-  if (themeConfig.navPosition) {
-    handleNavPositionClick(themeConfig.navPosition);
-  }
-
-  if (themeConfig.navbarSize === 'small') {
-    sidebarSmallClick({ preventDefault: () => {}, stopPropagation: () => {} });
-  } else if (themeConfig.navbarSize === 'expand') {
-    sidebarHoverClick();
-  } else {
-    handleNavbarSize();
-  }
-
-  if (typeof themeConfig.sidebarBackground === 'string') {
-    if (themeConfig.sidebarBackground) {
-      localStorage.setItem('navbackgroundImage', themeConfig.sidebarBackground);
-    } else {
-      localStorage.removeItem('navbackgroundImage');
-    }
-  }
-
-  if (typeof themeConfig.mainBackground === 'string') {
-    if (themeConfig.mainBackground) {
-      localStorage.setItem('mainBackgroundImage', themeConfig.mainBackground);
-    } else {
-      localStorage.removeItem('mainBackgroundImage');
-    }
-    useMainContentCurrentBG();
-  }
-
-  if (typeof themeConfig.preloaderEnabled === 'boolean') {
-    localStorage.setItem('preloaderEnabled', String(themeConfig.preloaderEnabled));
-
-    // Do not leave the global loader permanently visible.
-    // If enabled, briefly show it then auto-hide.
-    if (themeConfig.preloaderEnabled) {
-      preloader.value = true;
-      window.setTimeout(() => {
-        preloader.value = false;
-      }, 650);
-    } else {
-      preloader.value = false;
-    }
-  }
-
-  if (typeof themeConfig.hideThemeSidebar === 'boolean') {
-    hideThemeSidebar.value = themeConfig.hideThemeSidebar;
-    localStorage.setItem('hideThemeSidebar', String(themeConfig.hideThemeSidebar));
-    if (themeConfig.hideThemeSidebar) {
-      closeSidebar();
-    }
-  }
-};
-
-const isProtectedUiRoute = (routeLike = route) => {
-  return Boolean(routeLike?.meta?.isPartials);
-};
-
-const loadUserThemeSettings = async () => {
-  if (!isProtectedUiRoute()) return;
-  if (!isAdmin.value) return;
-
-  try {
-    const response = await fetch(`${API_BASE}/api/user-profile-settings`, {
-      credentials: 'include',
-    });
-    if (!response.ok) return;
-
-    const data = await response.json();
-    const settings = data?.settings || {};
-    const themeConfig = settings.themeConfig || {};
-    applyThemeConfig(themeConfig);
-  } catch (e) {
-    // Non-blocking: app still works with localStorage defaults.
-  }
-};
-
-const onThemeSettingsUpdated = (event) => {
-  if (!isAdmin.value) return
-  applyThemeConfig(event?.detail || {});
-};
-
-const activeTheme = (() => {
-  let element = document.body
-  if(currentActiveTheme.value === 'light-theme') {
-    element.classList.remove('dark-theme')
-    element.classList.add('light-theme')
-  } else if (currentActiveTheme.value === 'dark-theme') {
-    element.classList.add('dark-theme')
-    element.classList.remove('light-theme')
-=======
 const applyBodyThemeClass = (themeValue) => {
   const normalizedTheme = sanitizeTheme(themeValue);
   const element = document.body;
@@ -285,7 +172,6 @@ const applyBodyThemeClass = (themeValue) => {
   } else if (normalizedTheme === 'dark-theme') {
     element.classList.add('dark-theme');
     element.classList.remove('light-theme');
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/App.vue
   } else {
     element.classList.remove('light-theme');
     element.classList.remove('dark-theme');
@@ -413,13 +299,8 @@ onMounted(() => {
   if (isProtectedUiRoute()) {
     loadUserThemeSettings()
   }
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/App.vue
-  // getCurrentTheme()
-  activeTheme()
-=======
   currentActiveTheme.value = syncThemePreference();
   applyBodyThemeClass(currentActiveTheme.value);
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/App.vue
 
   if (layoutDirection.value === 'rtl') {
     setRtl();
@@ -568,8 +449,6 @@ provide('app:layout', layout.value)
 .mx-calendar-header .mx-btn:hover i {
   color: #007bff !important;
 }
-<<<<<<< HEAD:VueJSApps/WorkoutAtlas/frontend/src/App.vue
-=======
 
 body.wa-dashboard-active {
   --wa-shell-bg: var(--wa-page-bg);
@@ -669,7 +548,7 @@ body.wa-dashboard-active .right-sidebar-btn button:hover {
   background: color-mix(in srgb, var(--wa-shell-surface-elevated) 82%, var(--wa-shell-accent-soft) 18%) !important;
 }
 
-/* ── WorkoutAtlas layout cleanup ─────────────────────────── */
+/* â”€â”€ WorkoutAtlas layout cleanup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 /* Settings gear: pull 12px inward so it never covers the scrollbar */
 .right-sidebar-btn {
@@ -679,7 +558,7 @@ body.wa-dashboard-active .right-sidebar-btn button:hover {
   border-radius: 6px !important;
 }
 
-/* Sidebar right border — separates sidebar from content area */
+/* Sidebar right border â€” separates sidebar from content area */
 .main-sidebar {
   border-right: 1px solid var(--wa-shell-divider, rgba(255, 255, 255, 0.09)) !important;
 }
@@ -692,8 +571,8 @@ body.wa-dashboard-active .right-sidebar-btn button:hover {
   }
 }
 
-/* ── Dark sidebar: override light-theme global rules ─────── */
-/* style.css sets light-theme sidebar to #fff — cancel that */
+/* â”€â”€ Dark sidebar: override light-theme global rules â”€â”€â”€â”€â”€â”€â”€ */
+/* style.css sets light-theme sidebar to #fff â€” cancel that */
 .light-theme .main-sidebar,
 .light-theme .main-sidebar::after,
 .dark-theme .main-sidebar,
@@ -711,7 +590,7 @@ body.wa-dashboard-active .right-sidebar-btn button:hover {
   color: var(--wa-shell-text-secondary, #a5afbd) !important;
 }
 
-/* Section header gradient variable — overridden to dark surface */
+/* Section header gradient variable â€” overridden to dark surface */
 .main-sidebar .sidebar-link-group-title.sidebar-section-header {
   --ff-page-header-gradient: transparent !important;
   --ff-page-header-bg: rgba(255, 255, 255, 0.04) !important;
@@ -720,7 +599,7 @@ body.wa-dashboard-active .right-sidebar-btn button:hover {
   color: var(--wa-shell-text-muted, #748094) !important;
 }
 
-/* Light-theme link colors — keep dark */
+/* Light-theme link colors â€” keep dark */
 .light-theme .sidebar-item .sidebar-link .nav-icon,
 .light-theme .sidebar-item .sidebar-dropdown-item .sidebar-link {
   color: var(--wa-shell-text-secondary, #a5afbd) !important;
@@ -728,6 +607,5 @@ body.wa-dashboard-active .right-sidebar-btn button:hover {
 .light-theme .sidebar-link-group-title {
   color: var(--wa-shell-text-muted, #748094) !important;
 }
->>>>>>> origin/0.84-Mobile:VueJSApps/FlexFit/frontend/src/App.vue
 </style>
 
