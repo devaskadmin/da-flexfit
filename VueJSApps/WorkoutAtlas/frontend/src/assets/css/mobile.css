@@ -235,3 +235,73 @@ body,
   max-width: 100%;
   overflow-x: hidden;
 }
+
+/* ── 0.84.68.3 Mobile scrollbar hide ───────────────────────────────────
+  Keeps scrolling functional while removing visible scrollbar rails. */
+@media (max-width: 768px) {
+  html,
+  body,
+  #app,
+  .body-padding,
+  .body-padding .main-content,
+  .app-page-shell,
+  .app-page-canvas,
+  .app-inner-shell,
+  .workout-builder-page,
+  .workout-builder-canvas,
+  .wl-page,
+  .main-sidebar,
+  .wa-sidebar-scroll,
+  .mobile-nav-menu {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .main-sidebar,
+  .wa-sidebar-scroll,
+  .mobile-nav-menu {
+    overflow-y: auto;
+  }
+
+  html,
+  body,
+  #app,
+  .body-padding .main-content,
+  .app-page-shell,
+  .app-page-canvas,
+  .app-inner-shell,
+  .workout-builder-page,
+  .workout-builder-canvas,
+  .wl-page,
+  .main-sidebar,
+  .wa-sidebar-scroll,
+  .mobile-nav-menu,
+  .body-padding,
+  .main-content {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  #app::-webkit-scrollbar,
+  .body-padding::-webkit-scrollbar,
+  .main-content::-webkit-scrollbar,
+  .body-padding .main-content::-webkit-scrollbar,
+  .app-page-shell::-webkit-scrollbar,
+  .app-page-canvas::-webkit-scrollbar,
+  .app-inner-shell::-webkit-scrollbar,
+  .workout-builder-page::-webkit-scrollbar,
+  .workout-builder-canvas::-webkit-scrollbar,
+  .wl-page::-webkit-scrollbar,
+  .main-sidebar::-webkit-scrollbar,
+  .wa-sidebar-scroll::-webkit-scrollbar,
+  .mobile-nav-menu::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}

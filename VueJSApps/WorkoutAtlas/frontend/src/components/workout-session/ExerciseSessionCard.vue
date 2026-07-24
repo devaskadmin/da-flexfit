@@ -88,10 +88,12 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
           type="button"
           class="sec-select-btn"
           :class="{ 'sec-select-btn--active': isExpanded }"
+          :title="isExpanded ? 'Collapse exercise' : 'Select exercise'"
+          :aria-label="isExpanded ? 'Collapse exercise' : 'Select exercise'"
           @click.stop="emit('select', exercise.id)"
         >
           <i :class="isExpanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
-          {{ isExpanded ? 'Collapse' : 'Select Exercise' }}
+          <span class="sr-only">{{ isExpanded ? 'Collapse exercise' : 'Select exercise' }}</span>
         </button>
       </div>
     </div>
@@ -513,26 +515,45 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
 .sec-select-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
   background: transparent;
   border: 1.5px solid #3b82f6;
   color: #2563eb;
-  border-radius: 8px;
-  padding: 5px 11px;
-  font-size: 0.75rem;
+  border-radius: 999px;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0;
+  font-size: 0.86rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.14s ease;
-  white-space: nowrap;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
 }
 
 .sec-select-btn:hover {
   background: #eff6ff;
 }
 
+.sec-select-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
 .sec-select-btn--active {
   background: #dbeafe;
   border-color: #2563eb;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .sec-body {
@@ -1083,10 +1104,11 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
   .sec-type-chip { font-size: 0.62rem; padding: 2px 6px; }
   .sec-sets-summary { font-size: 0.68rem; }
   .sec-select-btn {
-    height: 32px;
-    padding: 0 9px;
-    font-size: 0.68rem;
-    border-radius: 7px;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    font-size: 0.8rem;
+    border-radius: 999px;
   }
 
   /* §5 Cardio set layout — 2-column grid (Duration|Calories / Distance|Speed) */
@@ -1195,6 +1217,7 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
   .session-exercise-card { padding: 8px 10px; gap: 8px; }
   .sec-thumb, .sec-thumb-placeholder { width: 36px; height: 36px; }
   .sec-meta h5 { font-size: 0.8rem; }
+  .sec-select-btn { width: 40px; min-width: 40px; height: 40px; }
   .set-input { min-height: 34px; height: 34px; font-size: 0.78rem; }
   .c3-icon-btn { width: 28px; height: 28px; border-radius: 6px; }
   .c3-rm-btn,
@@ -1209,6 +1232,12 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
   .strength-mobile-row {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px 36px;
     gap: 4px;
+  }
+
+  .sec-select-btn {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
   }
 
   .strength-mobile-row .c3-icon-btn,

@@ -763,6 +763,16 @@ onMounted(async () => {
 .wd-btn-end:hover { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
 
 /* Responsive */
+@media (max-width: 768px) {
+  .workout-detail-page {
+    padding-bottom: calc(108px + var(--wa-mobile-bottom-nav-clearance, calc(92px + env(safe-area-inset-bottom))));
+  }
+
+  .wd-bottom-bar {
+    bottom: var(--wa-mobile-bottom-nav-clearance, calc(92px + env(safe-area-inset-bottom)));
+  }
+}
+
 @media (max-width: 600px) {
   .wd-hero__body { flex-direction: column; }
   .wd-hero__stats { justify-content: space-around; width: 100%; }

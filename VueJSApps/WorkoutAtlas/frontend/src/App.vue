@@ -560,6 +560,12 @@ body.wa-dashboard-active .right-sidebar-btn button:hover {
 }
 
 @media (max-width: 991px) {
+  :root {
+    --wa-mobile-bottom-nav-height: 70px;
+    --wa-mobile-bottom-nav-gap: 10px;
+    --wa-mobile-bottom-nav-clearance: calc(var(--wa-mobile-bottom-nav-height) + var(--wa-mobile-bottom-nav-gap) + 12px + env(safe-area-inset-bottom));
+  }
+
   html,
   body,
   #app {
@@ -581,7 +587,7 @@ body.wa-dashboard-active .right-sidebar-btn button:hover {
     overflow-x: hidden;
     overflow-y: visible;
     padding-inline: 12px !important;
-    padding-bottom: calc(92px + env(safe-area-inset-bottom));
+    padding-bottom: var(--wa-mobile-bottom-nav-clearance);
   }
 
   .body-padding .main-content > *,

@@ -178,4 +178,43 @@ const emit = defineEmits(['open', 'edit', 'delete']);
     justify-content: flex-end;
   }
 }
+
+@media (max-width: 768px) {
+  .schedule-card__badge {
+    padding: 2px 8px;
+    font-size: 0.68rem;
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    background: rgba(59, 130, 246, 0.16);
+    color: #93c5fd;
+  }
+
+  .schedule-card__actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+  }
+
+  .schedule-btn {
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    border-radius: 999px;
+    font-size: 13px;
+    padding: 0 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (max-width: 390px) {
+  .schedule-card__actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .schedule-btn--danger {
+    grid-column: 1 / -1;
+  }
+}
 </style>

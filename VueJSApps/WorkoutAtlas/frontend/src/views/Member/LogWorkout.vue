@@ -1870,22 +1870,51 @@ onMounted(async () => {
 
 /* ── Tabs ───────────────────────────────────────────────────────────────── */
 .wl-tabs {
-  display: flex; gap: 4px;
-  border-bottom: 2px solid var(--border-color, #e5e7eb);
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--border-color, #dbe3ee);
+  border-radius: 12px;
+  background: #e2e8f0;
   margin-bottom: 20px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 .wl-tab {
-  background: none; border: none;
-  border-bottom: 2px solid transparent; margin-bottom: -2px;
-  padding: 10px 18px; font-size: 0.88rem; font-weight: 700;
+  flex: 1 1 0;
+  min-width: 0;
+  background: #cbd5e1;
+  border: 1px solid #c0ccd9;
+  margin-bottom: 0;
+  padding: 9px 12px;
+  font-size: 0.86rem;
+  font-weight: 700;
   cursor: pointer; color: var(--text-color-secondary, #6b7280);
-  display: flex; align-items: center; gap: 7px;
-  transition: color 0.15s, border-color 0.15s;
-  border-radius: 8px 8px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  border-radius: 9px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
 }
-.wl-tab:hover      { color: #2563eb; }
-.wl-tab--active    { color: #2563eb; border-bottom-color: #2563eb; }
-.wl-tab--disabled  { opacity: 0.4; cursor: not-allowed; }
+.wl-tab:hover {
+  background: #bfcbd9;
+  color: #334155;
+}
+.wl-tab--active {
+  background: #334155;
+  color: #f8fafc;
+  border-color: #475569;
+}
+.wl-tab--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .wl-tab-badge {
   background: #dbeafe; color: #1d4ed8;
   border-radius: 999px; padding: 1px 9px;
@@ -2556,20 +2585,25 @@ onMounted(async () => {
 }
 
 .wl-page .wl-tabs {
-  border-bottom-color: var(--wl-border);
+  background: color-mix(in srgb, var(--wl-surface-2) 82%, #1f2937 18%);
+  border-color: var(--wl-border);
 }
 
 .wl-page .wl-tab {
-  color: var(--wl-text-muted);
+  background: color-mix(in srgb, var(--wl-surface-3) 78%, #334155 22%);
+  border-color: color-mix(in srgb, var(--wl-border) 72%, #334155 28%);
+  color: var(--wl-text-secondary);
 }
 
 .wl-page .wl-tab:hover,
 .wl-page .wl-tab--active {
-  color: var(--wl-accent);
+  color: var(--wl-text);
 }
 
 .wl-page .wl-tab--active {
-  border-bottom-color: var(--wl-accent);
+  background: color-mix(in srgb, var(--wl-surface-2) 60%, #3b4257 40%);
+  border-color: color-mix(in srgb, var(--wl-accent) 46%, var(--wl-border) 54%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wl-accent) 24%, transparent 76%);
 }
 
 .wl-page .wl-tab-badge,
@@ -2722,6 +2756,15 @@ onMounted(async () => {
   color: var(--wl-text-secondary);
 }
 
+.wl-page :deep(.sec-meta h5),
+.wl-page :deep(.sec-summary),
+.wl-page :deep(.c3-head span),
+.wl-page :deep(.c3-set-num),
+.wl-page :deep(.c3-col-value),
+.wl-page :deep(.c3-btn-label) {
+  color: var(--wl-text);
+}
+
 .wl-page :deep(.sec-type-chip),
 .wl-page :deep(.sec-select-btn--active) {
   background: color-mix(in srgb, var(--wl-accent) 22%, transparent 78%);
@@ -2737,7 +2780,7 @@ onMounted(async () => {
 .wl-page :deep(.c3-finish-btn) {
   background: var(--wl-surface-2);
   border-color: var(--wl-border);
-  color: var(--wl-text-secondary);
+  color: var(--wl-text);
   border-radius: 8px;
 }
 
@@ -2745,6 +2788,28 @@ onMounted(async () => {
 .wl-page :deep(.add-set-btn) {
   border-color: color-mix(in srgb, var(--wl-accent) 45%, var(--wl-border) 55%);
   color: var(--wl-accent);
+}
+
+.wl-page :deep(.set-input::placeholder) {
+  color: var(--wl-text-muted);
+}
+
+.wl-page :deep(.c3-rm-btn) {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.5);
+  background: rgba(239, 68, 68, 0.14);
+}
+
+.wl-page :deep(.c3-complete-btn),
+.wl-page :deep(.c3-finish-btn) {
+  background: #16a34a;
+  border-color: #15803d;
+  color: #f8fafc;
+}
+
+.wl-page :deep(.c3-complete-btn:hover),
+.wl-page :deep(.c3-finish-btn:hover) {
+  background: #15803d;
 }
 
 .wl-page :deep(.set-input:focus) {
@@ -2762,196 +2827,293 @@ onMounted(async () => {
   color: #bbf7d0;
 }
 
-/* ── v0.81.9 Mobile 768px — Workout Log Compact Layout ───────────────────── */
+/* ── v0.84.68.5 Mobile — Workout Log Compact Rework ──────────────────────── */
 @media (max-width: 768px) {
   .wl-page {
-    padding-bottom: calc(144px + env(safe-area-inset-bottom));
+    padding-bottom: calc(120px + var(--wa-mobile-bottom-nav-clearance, calc(92px + env(safe-area-inset-bottom))));
     overflow-x: clip;
   }
 
-  /* Global density */
-  .workout-log-mobile .app-page-canvas { gap: 8px; }
-  .wl-exercise-list { gap: 8px; }
-  .wl-accordion      { gap: 8px; }
-  .wl-history-list   { gap: 8px; }
-  .wl-day-grid       { gap: 8px; }
-
-  /* Hero: compact padding */
-  .builder-hero {
-    padding: 18px;
-    gap: 12px;
-    border-radius: 18px;
-    min-height: auto;
+  .wl-bottom-bar {
+    bottom: var(--wa-mobile-bottom-nav-clearance, calc(92px + env(safe-area-inset-bottom)));
   }
-  .builder-hero__content { gap: 6px; }
+
+  /* Global density */
+  .workout-log-mobile .app-page-canvas { gap: 6px; }
+  .wl-exercise-list { gap: 6px; }
+  .wl-accordion      { gap: 6px; }
+  .wl-history-list   { gap: 6px; }
+  .wl-day-grid       { gap: 6px; }
+
+  /* Hero: compact padding, no glow */
+  .builder-hero {
+    padding: 10px 12px;
+    gap: 6px;
+    border-radius: 12px;
+    min-height: auto;
+    box-shadow: none;
+  }
+  .builder-hero__content { gap: 3px; }
 
   /* Title + date row: side-by-side, subtitle hidden */
   .wl-hero-title-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 12px;
+    gap: 6px;
     flex-wrap: wrap;
   }
-  .builder-hero__text h2 { font-size: 1.15rem; margin: 0; }
+  .builder-hero__text h2 { font-size: 0.88rem; margin: 0; }
   .builder-hero__subtitle { display: none; }
 
-  /* Date picker: auto width, pill style */
+  /* Date picker: small pill */
   .wl-date-input {
     width: auto;
-    min-width: 140px;
-    height: 44px;
-    padding: 8px 14px;
-    font-size: 16px;
+    min-width: 92px;
+    height: 30px;
+    padding: 3px 7px;
+    font-size: 10px;
     font-weight: 600;
     flex-shrink: 0;
   }
 
-  /* Toolbar: 2-column grid */
+  /* Header action buttons: short pills, same height */
   .wl-toolbar {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 10px;
+    gap: 6px;
+    margin-top: 6px;
   }
   .wl-toolbar .wl-btn {
-    height: 46px;
-    font-size: 14px;
-    padding: 8px;
+    height: 32px;
+    min-height: 32px;
+    font-size: 10px;
+    padding: 0 6px;
+    border-radius: 999px;
+    line-height: 1;
+    gap: 3px;
     justify-content: center;
+    box-shadow: none;
   }
+  .wl-toolbar .wl-btn i { font-size: 10px; }
 
-  /* Stats cards: 3-col compact */
+  /* Stat cards: compact */
   .wl-stats {
     grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-bottom: 10px;
+    gap: 5px;
+    margin-bottom: 6px;
   }
   .wl-stat-card {
-    min-height: 80px;
-    padding: 10px;
-    gap: 4px;
+    min-height: 44px;
+    padding: 5px 6px;
+    gap: 1px;
+    border-radius: 9px;
     align-content: center;
+    box-shadow: none;
   }
-  .wl-stat-card span   { font-size: 0.72rem; }
-  .wl-stat-card strong { font-size: 1.05rem; }
+  .wl-stat-card span   { font-size: 0.56rem; }
+  .wl-stat-card strong { font-size: 0.78rem; }
 
-  /* Tabs: compact 3-column grid, no horizontal scroll */
+  /* Tabs: short, gray/navy-gray, no glow — Overview | Day Details | Workout History only */
   .wl-tabs {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     white-space: normal;
     flex-wrap: initial;
     max-width: 100%;
-    gap: 2px;
-    border-bottom: 0;
-    padding: 2px;
-    margin-bottom: 12px;
+    gap: 1px;
+    border: 1px solid #334155;
+    padding: 1px;
+    margin-bottom: 6px;
+    overflow: hidden;
+    border-radius: 9px;
+    background: #1e293b;
   }
   .wl-tab {
     min-width: 0;
-    padding: 8px 6px;
-    font-size: 0.8rem;
-    gap: 5px;
+    min-height: 30px;
+    padding: 3px 3px;
+    font-size: 0.6rem;
+    gap: 2px;
     margin-bottom: 0;
     justify-content: center;
     text-align: center;
-    background: #273142;
-    color: #d1d5db;
-    border: 1px solid #334155;
-    border-radius: 10px;
+    background: #242e3d;
+    color: #cbd5e1;
+    border: none;
+    border-radius: 6px;
     white-space: normal;
-    line-height: 1.1;
+    line-height: 1.05;
   }
+  .wl-tab i { font-size: 0.62rem; }
   .wl-tab:hover {
     background: #334155;
     color: #f3f4f6;
   }
   .wl-tab--active {
-    background: #374151;
+    background: #3b4759;
     color: #f8fafc !important;
-    border-color: #3b82f6;
-    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.35);
+    box-shadow: none;
   }
   .wl-tab--disabled {
-    opacity: 0.55;
-    background: #1f2937;
-    color: #94a3b8;
+    opacity: 0.5;
+    background: #1c2531;
+    color: #8b98ab;
   }
-  .wl-tab-badge {
-    font-size: 0.64rem;
+  /* Remove the day badge/text from the tab row entirely on mobile */
+  .wl-tab-badge { display: none; }
+
+  /* Plan card: tight spacing, small pill badges, no glow */
+  .wl-plan { border-radius: 10px; }
+  .wl-plan--expanded { box-shadow: none; }
+  .wl-plan__header  { padding: 8px 10px; gap: 6px; }
+  .wl-plan__left    { gap: 8px; }
+  .wl-plan__chevron { font-size: 0.7rem; width: 16px; }
+  .wl-plan__info    { gap: 2px; }
+  .wl-plan__name    { font-size: 0.76rem; }
+  .wl-plan__meta    { font-size: 0.6rem; gap: 6px; }
+  .wl-plan__tag     { padding: 0 6px; font-size: 0.58rem; }
+  .wl-plan__body    { padding: 6px 8px; }
+  .wl-plan__loading { font-size: 0.72rem; padding: 6px 0; }
+  .wl-plan__right   { gap: 6px; }
+  .wl-plan__selected-badge {
     padding: 1px 6px;
-    max-width: 110px;
-    background: rgba(59, 130, 246, 0.18);
-    border: 1px solid rgba(59, 130, 246, 0.45);
-    color: #bfdbfe;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-size: 0.58rem;
+    gap: 3px;
+  }
+  .wl-btn-edit {
+    min-height: 26px;
+    padding: 3px 8px;
+    font-size: 0.62rem;
+    border-radius: 8px;
+    gap: 3px;
   }
 
-  /* Plan accordion */
-  .wl-plan__header  { padding: 12px 14px; }
-  .wl-plan__name    { font-size: 0.9rem; }
-  .wl-plan__meta    { font-size: 0.74rem; gap: 8px; }
-  .wl-plan__body    { padding: 10px 12px; }
-
-  /* Day cards */
-  .wl-day-card          { padding: 12px; gap: 8px; }
-  .wl-day-card__title h4 { font-size: 0.9rem; }
-  .wl-day-card__meta    { font-size: 0.74rem; gap: 8px; }
+  /* Day order toolbar: tighter */
   .wl-day-order-toolbar {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     width: 100%;
-    align-items: flex-start;
+    align-items: center;
     justify-content: flex-start;
+    padding: 0 4px;
+    gap: 2px;
+    margin-top: 0;
+    margin-bottom: 0;
+    min-height: 0;
   }
+  .wl-day-order-toolbar.app-section-card {
+    padding: 0 4px !important;
+  }
+  .wl-day-order-toggle {
+    font-size: 0.6rem;
+    gap: 4px;
+    line-height: 1.15;
+  }
+  .wl-day-order-toggle input { width: 12px; height: 12px; }
+  .wl-custom-order-badge { font-size: 0.54rem; padding: 1px 6px; }
   .wl-day-order-actions {
-    width: 100%;
+    width: auto;
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 3px;
+    align-items: center;
+    margin: 0;
   }
   .wl-order-toolbar-btn {
-    min-height: 30px;
-    padding: 5px 9px;
-    font-size: 0.73rem;
+    min-height: 34px;
+    height: 34px;
+    padding: 0 10px;
+    font-size: 0.62rem;
+    border-radius: 999px;
+    gap: 4px;
+    line-height: 1;
+    white-space: nowrap;
   }
   .wl-order-btn {
-    padding: 2px 6px;
-    min-height: 22px;
-    font-size: 0.66rem;
+    padding: 0 5px;
+    min-height: 18px;
+    font-size: 0.54rem;
   }
-  .wl-day-card__ex-row  { font-size: 0.78rem; }
 
-  /* §3 Global font reduction — secondary labels */
-  .wl-ex-detail { font-size: 0.72rem; }
-  .wl-plan__meta span { font-size: 0.72rem; }
-  .wl-history-session__meta { font-size: 0.72rem; }
-  .wl-hist-tag  { font-size: 0.66rem; padding: 1px 7px; }
+  /* Workout day cards: smaller text, tighter rows, no glow */
+  .wl-day-card {
+    padding: 5px 7px 6px;
+    gap: 4px;
+    border-radius: 10px;
+  }
+  .wl-day-card--active { box-shadow: none; }
+  .wl-day-card__header   { gap: 4px; }
+  .wl-day-card__title    { gap: 5px; }
+  .wl-day-card__title h4 { font-size: 0.78rem; }
+  .wl-in-progress-chip   { padding: 1px 7px; font-size: 0.56rem; }
+  .wl-day-card__meta     { font-size: 0.6rem; gap: 4px; }
+  .wl-day-card__exercises { gap: 2px; padding-top: 5px; }
+  .wl-day-card__ex-row   { font-size: 0.62rem; padding: 1px 0; }
+  .wl-ex-detail          { font-size: 0.58rem; }
+  .wl-day-card__footer   { gap: 6px; }
 
-  /* Day detail header */
-  .wl-day-detail-header { padding: 12px; gap: 8px; margin-bottom: 10px; }
+  /* Preview / Start / Resume buttons: compact */
+  .wl-btn-preview,
+  .wl-btn-start,
+  .wl-btn-resume {
+    padding: 6px 10px;
+    min-height: 32px;
+    font-size: 0.66rem;
+    border-radius: 9px;
+    gap: 5px;
+  }
+
+  /* Secondary label sizes (global ~20% reduction) */
+  .wl-plan__meta span        { font-size: 0.6rem; }
+  .wl-history-session__meta  { font-size: 0.6rem; }
+  .wl-hist-tag                { font-size: 0.56rem; padding: 1px 6px; }
+
+  /* Day detail header (Day Details panel) */
+  .wl-day-detail-header {
+    padding: 9px;
+    gap: 6px;
+    margin-bottom: 6px;
+    border-radius: 10px;
+  }
+  .wl-day-detail-header__left    { gap: 6px; }
+  .wl-day-detail-header__left h4 { font-size: 0.78rem; }
+  .wl-day-detail-count           { padding: 1px 7px; font-size: 0.58rem; }
+  .wl-day-detail-header__progress { min-width: 120px; gap: 3px; }
+  .wl-progress-label              { font-size: 0.6rem; }
+  .wl-preview-badge               { padding: 1px 7px; font-size: 0.56rem; }
 
   /* History */
-  .wl-history-session__header     { padding: 10px 14px; gap: 8px; }
-  .wl-history-exercises--detailed { padding: 10px 14px; gap: 10px; }
-  .wl-hist-ex-card    { padding: 10px; gap: 8px; }
-  .wl-hist-ex-thumb   { width: 36px; height: 36px; font-size: 0.9rem; }
-  .wl-hist-ex-name    { font-size: 0.85rem; }
-  .wl-history-datebar { padding: 8px 12px; font-size: 0.8rem; margin-bottom: 10px; }
+  .wl-history-datebar { padding: 6px 10px; font-size: 0.64rem; margin-bottom: 6px; gap: 6px; }
+  .wl-history-session { border-radius: 10px; }
+  .wl-history-session--editing { box-shadow: none; }
+  .wl-history-session__header     { padding: 8px 10px; gap: 6px; }
+  .wl-history-group__plan         { font-size: 0.74rem; }
+  .wl-history-group__day          { font-size: 0.58rem; padding: 1px 7px; }
+  .wl-history-exercises--detailed { padding: 8px 10px; gap: 8px; }
+  .wl-hist-ex-card    { padding: 8px; gap: 6px; border-radius: 9px; }
+  .wl-hist-ex-thumb   { width: 30px; height: 30px; font-size: 0.74rem; }
+  .wl-hist-ex-name    { font-size: 0.7rem; }
+  .wl-hist-edit-btn,
+  .wl-hist-save-btn,
+  .wl-hist-cancel-btn,
+  .wl-hist-delete-btn { padding: 2px 7px; font-size: 0.58rem; gap: 3px; }
+  .wl-hist-sets-table--cardio { overflow-x: auto; }
 
-  /* Bottom bar */
-  .wl-bottom-bar { padding: 8px 12px; }
+  /* Bottom bar: compact */
+  .wl-bottom-bar { padding: 6px 10px; }
+  .wl-bottom-bar__label { font-size: 0.68rem; }
   .wl-btn-complete,
   .wl-btn-end {
-    padding: 8px 12px;
-    font-size: 0.82rem;
-    border-radius: 8px;
+    padding: 6px 10px;
+    min-height: 34px;
+    font-size: 0.66rem;
+    border-radius: 9px;
+    gap: 4px;
   }
 }
 
-/* ── Small mobile (≤ 640px) ──────────────────────────────────────────────── */
+/* ── Small mobile (≤ 640px) — layout stacking only, sizes inherited from 768px ── */
 @media (max-width: 640px) {
   .wl-stats { grid-template-columns: repeat(3, 1fr); }
   .wl-plan__header { flex-direction: column; align-items: flex-start; }
@@ -2959,90 +3121,21 @@ onMounted(async () => {
   .wl-day-detail-header { flex-direction: column; }
   .wl-bottom-bar__inner { flex-direction: column; align-items: stretch; }
   .wl-bottom-bar__actions { justify-content: flex-end; }
-
-  /* Toolbar: keep 2-column grid (Progress | Builder side-by-side) */
-  .wl-toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .wl-toolbar .wl-btn { height: 46px; justify-content: center; padding: 8px; font-size: 14px; min-width: 0; }
-
-  /* Tabs */
-  .wl-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; padding-bottom: 0; }
-  .wl-tab { min-width: 0; padding: 9px 6px; font-size: 0.78rem; white-space: normal; line-height: 1.1; }
-  .wl-tab-badge { max-width: 92px; }
-
-  /* Stats */
-  .wl-stat-card { padding: 10px; gap: 4px; }
-  .wl-stat-card strong { font-size: 1.05rem; }
-  .wl-stat-card span   { font-size: 0.76rem; }
-
-  /* History */
-  .wl-history-session__meta { flex-direction: column; gap: 6px; }
-  .wl-history-datebar { flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px 12px; font-size: 0.82rem; }
-
-  /* Day card footer */
+  .wl-history-session__meta { flex-direction: column; gap: 4px; }
+  .wl-history-datebar { flex-direction: column; align-items: flex-start; gap: 6px; }
   .wl-day-card__footer { flex-direction: column; }
   .wl-btn-preview, .wl-btn-start, .wl-btn-resume { width: 100%; justify-content: center; }
-
-  /* Bottom bar */
-  .wl-bottom-bar__actions { gap: 8px; }
-  .wl-btn-end, .wl-btn-complete { flex: 1; justify-content: center; font-size: 0.82rem; padding: 9px 12px; }
+  .wl-bottom-bar__actions { gap: 6px; }
+  .wl-btn-end, .wl-btn-complete { flex: 1; justify-content: center; }
 }
 
-/* ── Tiny mobile (≤ 480px) ──────────────────────────────────────────────── */
-@media (max-width: 480px) {
-  /* Stats: keep 3-col, shrink further */
-  .wl-stats { gap: 6px; }
-  .wl-stat-card { padding: 7px 8px; min-height: 60px; }
-  .wl-stat-card span   { font-size: 0.66rem; }
-  .wl-stat-card strong { font-size: 0.92rem; }
-
-  /* Hero text */
-  .builder-hero__text h2  { font-size: 1.1rem; }
-  .builder-hero__subtitle { font-size: 0.78rem; }
-
-  /* Toolbar stays 2-column grid (DO NOT stack on 480) */
-  .wl-toolbar {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-  .wl-toolbar .wl-btn { height: 42px; font-size: 13px; }
-
-  /* Tabs smaller */
-  .wl-tab { padding: 7px 6px; font-size: 0.74rem; }
-  .wl-tab-badge { max-width: 74px; font-size: 0.6rem; }
-
-  /* Plan header: always stacked */
-  .wl-plan__header { gap: 10px; padding: 10px 12px; }
-
-  /* Day cards */
-  .wl-day-card { padding: 10px; }
-
-  .wl-day-order-toolbar {
-    padding: 7px 8px;
-  }
-  .wl-order-toolbar-btn {
-    font-size: 0.7rem;
-    min-height: 29px;
-    padding: 5px 8px;
-  }
-
-  /* History edit buttons smaller */
-  .wl-hist-edit-btn, .wl-hist-save-btn, .wl-hist-cancel-btn, .wl-hist-delete-btn {
-    padding: 3px 8px; font-size: 0.7rem;
-  }
-
-  /* Cardio set table */
-  .wl-hist-sets-table--cardio { overflow-x: auto; }
-}
-
-/* ── Narrow mobile (≤ 390px) ─────────────────────────────────────────────── */
+/* ── Tiny mobile (≤ 390px) — final trim, badges hidden for width ────────── */
 @media (max-width: 390px) {
-  .wl-stat-card { padding: 6px; }
-  .wl-stat-card span   { font-size: 0.62rem; }
-  .wl-stat-card strong { font-size: 0.86rem; }
-  .wl-tab { padding: 6px 4px; font-size: 0.7rem; }
-  .wl-tab-badge { display: none; }
-  .wl-toolbar .wl-btn  { font-size: 0.74rem; height: 32px; }
+  .wl-stat-card { padding: 4px 5px; }
+  .wl-stat-card span   { font-size: 0.52rem; }
+  .wl-stat-card strong { font-size: 0.72rem; }
+  .wl-tab { min-height: 28px; padding: 2px 3px; font-size: 0.56rem; }
+  .wl-toolbar .wl-btn  { font-size: 9px; }
 }
 </style>
 

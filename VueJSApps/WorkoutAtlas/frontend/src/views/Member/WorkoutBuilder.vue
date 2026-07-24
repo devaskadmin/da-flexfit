@@ -2927,15 +2927,21 @@ watch(
   .schedule-hub-head__actions,
   .schedule-hub-empty__actions {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(156px, 1fr));
+    gap: 8px;
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
 
   .btn-create-plan,
   .btn-ai-suggest {
     width: 100%;
-    padding: 0 10px;
-    font-size: 0.83rem;
+    min-height: 42px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    line-height: 1;
   }
 
   /* Tab bar: 3 tabs fit without scrolling */
@@ -3089,7 +3095,10 @@ watch(
 
   .selected-badge {
     font-size: 10px;
-    padding: 2px 6px;
+    padding: 1px 7px;
+    border: 1px solid rgba(96, 165, 250, 0.28);
+    background: rgba(59, 130, 246, 0.16);
+    color: #93c5fd;
   }
 
   .exercise-count {
@@ -3177,10 +3186,11 @@ watch(
   /* ── Create/AI buttons ── */
   .btn-create-plan,
   .btn-ai-suggest {
-    min-height: 36px;
-    font-size: 0.8rem;
+    min-height: 42px;
+    font-size: 13px;
     padding: 0 12px;
-    border-radius: 10px;
+    border-radius: 999px;
+    box-shadow: none;
   }
 
   /* ── Empty states ── */
@@ -3233,8 +3243,9 @@ watch(
   }
 
   .btn-save {
-    min-height: 40px;
-    font-size: 0.88rem;
+    min-height: 42px;
+    font-size: 13px;
+    padding: 0 14px;
   }
 
   /* ── Heading groups ── */

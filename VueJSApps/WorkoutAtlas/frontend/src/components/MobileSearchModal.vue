@@ -125,7 +125,7 @@ onUnmounted(() => {
 .mobile-search-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(2, 6, 23, 0.62);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   z-index: 2000;
@@ -139,12 +139,13 @@ onUnmounted(() => {
 
 /* Modal card */
 .mobile-search-modal {
-  background: #fff;
+  background: #111827;
   border-radius: 14px;
   width: 100%;
   max-width: 480px;
   padding: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  box-shadow: 0 18px 50px rgba(2, 6, 23, 0.48);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -163,7 +164,7 @@ onUnmounted(() => {
 .modal-title {
   font-size: 1.05rem;
   font-weight: 600;
-  color: #1e293b;
+  color: #f8fafc;
 }
 
 .modal-close-btn {
@@ -171,7 +172,7 @@ onUnmounted(() => {
   border: none;
   cursor: pointer;
   font-size: 1.1rem;
-  color: #64748b;
+  color: #cbd5e1;
   padding: 6px 8px;
   border-radius: 8px;
   display: flex;
@@ -181,8 +182,8 @@ onUnmounted(() => {
 }
 
 .modal-close-btn:hover {
-  background: #f1f5f9;
-  color: #1e293b;
+  background: rgba(59, 130, 246, 0.14);
+  color: #f8fafc;
 }
 
 /* Search form */
@@ -194,31 +195,33 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #f1f5f9;
+  background: #0b1220;
   border-radius: 10px;
   padding: 10px 14px;
-  border: 1.5px solid transparent;
+  border: 1.5px solid rgba(96, 165, 250, 0.35);
   transition: border-color 0.2s, background 0.2s;
 }
 
 .modal-search-input-wrap:focus-within {
-  border-color: #0d99ff;
-  background: #fff;
+  border-color: #3b82f6;
+  background: #0f172a;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
 }
 
 .search-icon {
-  color: #94a3b8;
+  color: #3b82f6;
   font-size: 1rem;
   flex-shrink: 0;
 }
 
 .modal-search-input {
   flex: 1;
-  background: none;
-  border: none;
+  background: transparent !important;
+  border: none !important;
   outline: none;
+  box-shadow: none !important;
   font-size: 0.95rem;
-  color: #1e293b;
+  color: #f8fafc;
 }
 
 .modal-search-input::placeholder {
@@ -237,7 +240,7 @@ onUnmounted(() => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  color: #94a3b8;
+  color: #cbd5e1;
   margin: 0;
 }
 
@@ -254,56 +257,27 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+  background: #1f2937;
+  border: 1px solid rgba(96, 165, 250, 0.25);
   padding: 10px 12px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.9rem;
-  color: #334155;
+  color: #f8fafc;
   transition: background 0.15s;
   user-select: none;
 }
 
 .recents-item:hover {
-  background: #f1f5f9;
+  background: #243041;
 }
 
 .recent-icon {
-  color: #94a3b8;
+  color: #3b82f6;
   font-size: 0.95rem;
   width: 18px;
   text-align: center;
   flex-shrink: 0;
-}
-
-/* Dark theme */
-:global(.dark-theme) .mobile-search-modal {
-  background: #1e293b;
-}
-:global(.dark-theme) .modal-title {
-  color: #f1f5f9;
-}
-:global(.dark-theme) .modal-search-input-wrap {
-  background: #0f172a;
-}
-:global(.dark-theme) .modal-search-input-wrap:focus-within {
-  background: #1e293b;
-  border-color: #0d99ff;
-}
-:global(.dark-theme) .modal-search-input {
-  color: #f1f5f9;
-}
-:global(.dark-theme) .recents-item {
-  color: #cbd5e1;
-}
-:global(.dark-theme) .recents-item:hover {
-  background: #0f172a;
-}
-:global(.dark-theme) .modal-close-btn {
-  color: #94a3b8;
-}
-:global(.dark-theme) .modal-close-btn:hover {
-  background: #0f172a;
-  color: #f1f5f9;
 }
 
 /* Fade + slide transition */
@@ -338,8 +312,8 @@ onUnmounted(() => {
     border-radius: 20px;
     padding: 16px;
     gap: 14px;
-    background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
-    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: #111827;
+    border: 1px solid rgba(96, 165, 250, 0.25);
     box-shadow: 0 18px 50px rgba(2, 6, 23, 0.48);
     max-height: calc(100dvh - 36px);
     overflow: auto;
@@ -361,18 +335,18 @@ onUnmounted(() => {
 
   .modal-search-input-wrap {
     background: #0b1220;
-    border-color: rgba(148, 163, 184, 0.18);
+    border-color: rgba(96, 165, 250, 0.25);
     border-radius: 14px;
     padding: 12px 14px;
   }
 
   .modal-search-input-wrap:focus-within {
-    background: #111827;
-    border-color: #0d99ff;
+    background: #0f172a;
+    border-color: #3b82f6;
   }
 
   .search-icon {
-    color: #94a3b8;
+    color: #3b82f6;
   }
 
   .modal-search-input {
@@ -381,7 +355,7 @@ onUnmounted(() => {
   }
 
   .modal-search-input::placeholder {
-    color: #64748b;
+    color: #cbd5e1;
   }
 
   .modal-recents {
@@ -389,7 +363,7 @@ onUnmounted(() => {
   }
 
   .recents-label {
-    color: #94a3b8;
+    color: #cbd5e1;
     letter-spacing: 0.12em;
   }
 
@@ -400,17 +374,17 @@ onUnmounted(() => {
   .recents-item {
     padding: 12px 14px;
     border-radius: 12px;
-    background: rgba(15, 23, 42, 0.62);
-    border: 1px solid rgba(148, 163, 184, 0.12);
-    color: #e2e8f0;
+    background: #1f2937;
+    border: 1px solid rgba(96, 165, 250, 0.25);
+    color: #f8fafc;
   }
 
   .recents-item:hover {
-    background: rgba(30, 41, 59, 0.92);
+    background: #243041;
   }
 
   .recent-icon {
-    color: #7dd3fc;
+    color: #3b82f6;
   }
 }
 
@@ -450,49 +424,4 @@ onUnmounted(() => {
   }
 }
 
-@media (max-width: 768px) and (prefers-color-scheme: light) {
-  .mobile-search-modal {
-    background: #ffffff;
-    border-color: rgba(15, 23, 42, 0.08);
-  }
-
-  .modal-title {
-    color: #1e293b;
-  }
-
-  .modal-close-btn {
-    color: #64748b;
-  }
-
-  .modal-close-btn:hover {
-    background: #f1f5f9;
-    color: #1e293b;
-  }
-
-  .modal-search-input-wrap {
-    background: #f8fafc;
-  }
-
-  .modal-search-input-wrap:focus-within {
-    background: #ffffff;
-  }
-
-  .modal-search-input {
-    color: #0f172a;
-  }
-
-  .modal-search-input::placeholder {
-    color: #94a3b8;
-  }
-
-  .recents-item {
-    background: #f8fafc;
-    color: #334155;
-    border-color: rgba(148, 163, 184, 0.12);
-  }
-
-  .recents-item:hover {
-    background: #eef2f7;
-  }
-}
 </style>
