@@ -7,23 +7,17 @@ export const sidebarMenus = ref([
             {
                 name: 'Dashboard',
                 link_name: 'dashboard_index',
-                icon: 'fa-solid fa-house'              
+                icon: 'fa-solid fa-house'
             },
             {
-                name: 'Workout Log',
+                name: 'Exercise Log',
                 link_name: 'workouts',
-                icon: 'fa-solid fa-list-check',
-                requiresWorkoutLists: true
+                icon: 'fa-solid fa-list-check'
             },
             {
-                name: 'Workout Builder',
+                name: 'Workout Planner',
                 link_name: 'workout_builder',
                 icon: 'fa-solid fa-dumbbell'
-            },
-            {
-                name: 'Exercise Database',
-                link_name: 'exercises',
-                icon: 'fa-solid fa-database'
             },
             {
                 name: 'Nutrition',
@@ -43,7 +37,7 @@ export const sidebarMenus = ref([
             {
                 name: 'Logout',
                 link_name: 'logout',
-                icon: 'fa-light fa-calendar'
+                icon: 'fa-solid fa-right-from-bracket'
             },
         ]
     },

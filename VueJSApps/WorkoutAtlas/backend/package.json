@@ -3,8 +3,9 @@
   "version": "0.85.gbp.33",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "node -r dotenv/config server.js"
+    "test": "node --test",
+    "dev": "concurrently --handle-input --kill-others --names backend,frontend --prefix-colors cyan,magenta \"npm run dev:backend\" \"npm --prefix ../frontend run dev\"",
+    "dev:backend": "node -r dotenv/config server.js"
   },
   "keywords": [],
   "author": "",
@@ -29,5 +30,8 @@
     "mysql2": "^3.22.3",
     "nodemailer": "^6.9.15",
     "request": "^2.88.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
   }
 }

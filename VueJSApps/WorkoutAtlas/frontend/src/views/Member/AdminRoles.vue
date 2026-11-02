@@ -185,10 +185,13 @@ onMounted(loadRoles)
         </div>
         <div class="col-md-2">
           <label class="form-label">Status</label>
-          <select v-model="form.isActive" class="form-select">
-            <option :value="true">Active</option>
-            <option :value="false">Inactive</option>
-          </select>
+          <div class="admin-roles-select-wrap">
+            <select v-model="form.isActive" class="form-select admin-roles-form-select">
+              <option :value="true">Active</option>
+              <option :value="false">Inactive</option>
+            </select>
+            <span class="admin-roles-select-arrow" aria-hidden="true">▼</span>
+          </div>
         </div>
       </div>
       <div class="mt-3 d-flex gap-2 justify-content-end">
@@ -276,6 +279,33 @@ onMounted(loadRoles)
   border-radius: 12px;
   padding: 14px;
 }
+
+.admin-roles-select-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.admin-roles-form-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: none !important;
+  background-color: rgba(8, 14, 11, 0.9) !important;
+  padding-right: 2.5rem;
+}
+
+.admin-roles-select-arrow {
+  position: absolute;
+  right: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.72rem;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 1;
+}
+
 :global(body.dark-theme) .role-form-wrap,
 :global(body.dark-theme) .role-table-wrap {
   border-color: rgba(255,255,255,.16);

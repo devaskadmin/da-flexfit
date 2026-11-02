@@ -15,7 +15,11 @@ export const filterExerciseRows = (rows = [], filters = {}) => {
     const muscle = normalizeText(exercise?.MuscleGroup);
     const equip = normalizeText(exercise?.Equipment);
     const type = normalizeText(exercise?.WorkoutType);
-    const isGlobal = Number(exercise?.IsGlobalExercise || 0) === 1;
+    const scope = normalizeText(exercise?.ExerciseScope);
+    const isSystem = scope === 'system' || Number(exercise?.IsSystemExercise || 0) === 1;
+    const isTrainerShared = scope === 'trainer_shared';
+    const isPrivate = scope === 'private';
+    const isGlobal = isSystem || isTrainerShared || Number(exercise?.IsGlobalExercise || 0) === 1;
     const isOwnedByCurrentUser = Number(exercise?.IsOwnedByCurrentUser || 0) === 1;
 
     if (workoutType !== 'all' && type !== workoutType) {
@@ -34,7 +38,7 @@ export const filterExerciseRows = (rows = [], filters = {}) => {
       return false;
     }
 
-    if ((ownership === 'custom' || ownership === 'mine') && !isOwnedByCurrentUser) {
+    if ((ownership === 'custom' || ownership === 'mine') && !isOwnedByCurrentUser && !isPrivate) {
       return false;
     }
 

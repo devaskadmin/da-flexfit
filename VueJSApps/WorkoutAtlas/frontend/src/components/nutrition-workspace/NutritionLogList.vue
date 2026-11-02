@@ -38,34 +38,34 @@ const emit = defineEmits(['remove']);
 <style scoped>
 .log-list {
   border: 1px solid var(--border-color);
-  border-radius: 14px;
-  padding: 14px;
+  border-radius: 10px;
+  padding: 10px;
 }
 
 .log-list header h3 {
   margin: 0;
-  color: var(--text-color);
-  font-size: 1rem;
+  color: #edf4ff;
+  font-size: 0.9rem;
 }
 
 .log-list header p {
-  margin: 4px 0 0;
+  margin: 2px 0 0;
   color: var(--text-color-secondary);
-  font-size: 0.82rem;
+  font-size: 0.76rem;
 }
 
 .log-list ul {
-  margin: 12px 0 0;
+  margin: 8px 0 0;
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .log-list li {
   border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 10px;
+  border-radius: 8px;
+  padding: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -79,7 +79,7 @@ const emit = defineEmits(['remove']);
 
 .left strong {
   color: var(--text-color);
-  font-size: 0.9rem;
+  font-size: 0.86rem;
 }
 
 .left span,
@@ -91,17 +91,17 @@ const emit = defineEmits(['remove']);
   border: 1px solid #fca5a5;
   color: #fca5a5;
   background: transparent;
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 0.75rem;
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 0.72rem;
 }
 
 .empty {
-  margin-top: 12px;
+  margin-top: 8px;
   border: 1px dashed var(--border-color);
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--text-color-secondary);
-  padding: 14px;
+  padding: 10px;
   text-align: center;
 }
 </style>

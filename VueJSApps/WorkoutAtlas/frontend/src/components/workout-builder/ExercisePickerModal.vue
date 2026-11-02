@@ -93,6 +93,24 @@ const loadMore = () => {
   visibleCount.value += PAGE_SIZE;
 };
 
+const handleKeydown = (event) => {
+  if (event.key === 'Escape') {
+    emit('close');
+  }
+};
+
+watch(
+  () => props.isOpen,
+  (open) => {
+    if (open) {
+      window.addEventListener('keydown', handleKeydown);
+    } else {
+      window.removeEventListener('keydown', handleKeydown);
+    }
+  },
+  { immediate: true }
+);
+
 const getPrimaryImage = (exercise) => getExerciseImage(exercise);
 
 const onImageError = (event) => {
@@ -312,12 +330,15 @@ const quickAdd = (exercise) => {
   background: rgba(2, 10, 24, 0.78);
   display: grid;
   place-items: center;
-  z-index: 1050;
+  z-index: 2000;
   padding: 16px;
+  pointer-events: auto;
 }
 
 .picker-modal {
   --picker-side-gutter: 18px;
+  position: relative;
+  z-index: 1;
   width: min(720px, 100%);
   max-height: 72vh;
   overflow: hidden;
@@ -361,17 +382,17 @@ const quickAdd = (exercise) => {
 }
 
 .btn-close {
-  border: 1px solid rgba(255, 171, 171, 0.56);
-  background: #b4232c;
+  border: 1px solid var(--wa-btn-danger-border, #dc2626);
+  background: var(--wa-btn-danger, #3b1d2b);
   color: #ffffff;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 16px;
   line-height: 1;
   width: 32px;
   height: 32px;
   min-width: 32px;
   min-height: 32px;
-  border-radius: 9px;
+  border-radius: 5px;
   margin: 4px 0 0;
   padding: 0;
   display: inline-flex;
@@ -383,8 +404,8 @@ const quickAdd = (exercise) => {
 
 .btn-close:hover,
 .btn-close:focus {
-  background: #cf2d37;
-  border-color: rgba(255, 199, 199, 0.72);
+  background: var(--wa-btn-danger-hover, #512334);
+  border-color: var(--wa-btn-danger-border, #dc2626);
   color: #ffffff;
   opacity: 1;
 }
@@ -836,6 +857,13 @@ const quickAdd = (exercise) => {
 }
 
 @media (max-width: 640px) {
+  .btn-close {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+  }
+
   .picker-modal {
     --picker-side-gutter: 14px;
   }

@@ -16,6 +16,7 @@ import MainSidebarComponent from "@/components/MainSidebarComponent.vue";
 import HeaderComponent from "@/components/HeaderComponent.vue";
 import ProfileRightSidebarComponent from "@/components/ProfileRightSidebarComponent.vue";
 import AppBottomNav from "@/components/navigation/AppBottomNav.vue";
+import MobileMoreScreen from "@/components/navigation/MobileMoreScreen.vue";
 
 import router from '@/router/index'
 import layouts from "@/layouts";
@@ -343,7 +344,7 @@ provide('app:layout', layout.value)
       <!-- profile right sidebar end -->
 
       <!-- main sidebar start -->
-        <MainSidebarComponent v-if="isPartials && (!isMobileBottomNav || isMobileMenuOpen)"
+        <MainSidebarComponent v-if="isPartials && !isMobileBottomNav"
             class="wa-main-sidebar"
             :class="{ 'wa-mobile-drawer-open': isMobileMenuOpen }"
           :isCollapsed="isCollapsed"
@@ -355,21 +356,10 @@ provide('app:layout', layout.value)
       />
       <!-- main sidebar end -->
 
-        <div
-          v-if="isPartials && isMobileBottomNav && isMobileMenuOpen"
-          class="wa-mobile-menu-backdrop"
-          @click="closeMobileMenu"
-        ></div>
-
-        <button
-          v-if="isPartials && isMobileBottomNav && isMobileMenuOpen"
-          type="button"
-          class="wa-mobile-menu-close"
-          aria-label="Close menu"
-          @click="closeMobileMenu"
-        >
-          <i class="fa-solid fa-xmark"></i>
-        </button>
+      <MobileMoreScreen
+        v-if="isPartials && isMobileBottomNav && isMobileMenuOpen"
+        @close="closeMobileMenu"
+      />
     
     <!-- main content start -->
     <component :is="layout">
@@ -545,6 +535,7 @@ body.wa-dashboard-active .mx-calendar-header .mx-btn:hover i {
     --wa-mobile-bottom-nav-height: 70px;
     --wa-mobile-bottom-nav-gap: 10px;
     --wa-mobile-bottom-nav-clearance: calc(var(--wa-mobile-bottom-nav-height) + var(--wa-mobile-bottom-nav-gap) + 12px + env(safe-area-inset-bottom));
+    --wa-mobile-sheet-height: min(76dvh, 680px);
   }
 
   body.wa-mobile-menu-open {
@@ -558,21 +549,24 @@ body.wa-dashboard-active .mx-calendar-header .mx-btn:hover i {
   .main-sidebar.wa-main-sidebar.wa-mobile-drawer-open {
     display: block !important;
     position: fixed !important;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100% !important;
-    max-width: 100% !important;
-    height: 100dvh;
-    max-height: 100dvh;
+    top: auto;
+    bottom: var(--wa-mobile-bottom-nav-clearance);
+    left: 8px;
+    right: 8px;
+    width: auto !important;
+    max-width: none !important;
+    height: auto;
+    max-height: var(--wa-mobile-sheet-height);
     z-index: 1410;
     transform: none !important;
-    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+    box-shadow: 0 -8px 28px rgba(2, 8, 24, 0.54);
     background: #0b1630 !important;
-    border-right: 0 !important;
+    border: 1px solid rgba(145, 160, 200, 0.24) !important;
+    border-right: 1px solid rgba(145, 160, 200, 0.24) !important;
+    border-bottom: 0 !important;
+    border-radius: 18px 18px 0 0;
     overflow-x: hidden;
-    overflow-y: auto;
+    overflow-y: hidden;
   }
 
   .main-sidebar.wa-main-sidebar.wa-mobile-drawer-open,
@@ -582,17 +576,62 @@ body.wa-dashboard-active .mx-calendar-header .mx-btn:hover i {
 
   .main-sidebar.wa-main-sidebar.wa-mobile-drawer-open .main-menu,
   .main-sidebar.wa-main-sidebar.wa-mobile-drawer-open .wa-sidebar-scroll {
-    max-height: 100dvh;
+    max-height: var(--wa-mobile-sheet-height);
     height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
     overscroll-behavior: contain;
   }
 
+  .main-sidebar.wa-main-sidebar.wa-mobile-drawer-open .main-menu {
+    overflow: hidden;
+  }
+
   .main-sidebar.wa-main-sidebar.wa-mobile-drawer-open .wa-sidebar-scroll {
     box-sizing: border-box;
-    padding-top: calc(62px + env(safe-area-inset-top));
-    padding-bottom: calc(120px + env(safe-area-inset-bottom));
+    padding-top: 56px;
+    padding-bottom: 14px;
+  }
+
+  .main-sidebar.wa-main-sidebar.wa-mobile-drawer-open .sidebar-link-group-title {
+    margin: 0;
+    min-height: 34px;
+    padding: 8px 12px;
+    border-top: 1px solid rgba(148, 163, 184, 0.24);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(16, 31, 62, 0.78) !important;
+    color: #cdd8ef !important;
+  }
+
+  .main-sidebar.wa-main-sidebar.wa-mobile-drawer-open .sidebar-link-group-title:first-of-type {
+    border-top: 0;
+  }
+
+  .main-sidebar.wa-main-sidebar.wa-mobile-drawer-open .sidebar-link {
+    min-height: 38px;
+    padding: 8px 12px;
+    color: #e9efff !important;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .main-sidebar.wa-main-sidebar.wa-mobile-drawer-open .sidebar-link .sidebar-txt {
+    color: #e9efff !important;
+    font-size: 13px;
+    line-height: 1.2;
+  }
+
+  .main-sidebar.wa-main-sidebar.wa-mobile-drawer-open .sidebar-link .nav-icon,
+  .main-sidebar.wa-main-sidebar.wa-mobile-drawer-open .sidebar-link .nav-icon i {
+    width: 16px;
+    min-width: 16px;
+    font-size: 12px;
+    color: #d6e3ff !important;
+    text-align: center;
+  }
+
+  .main-sidebar.wa-main-sidebar.wa-mobile-drawer-open .sidebar-dropdown-item + .sidebar-dropdown-item {
+    border-top: 1px solid rgba(148, 163, 184, 0.1);
   }
 
   .wa-mobile-menu-backdrop {
@@ -604,20 +643,25 @@ body.wa-dashboard-active .mx-calendar-header .mx-btn:hover i {
 
   .wa-mobile-menu-close {
     position: fixed;
-    top: calc(10px + env(safe-area-inset-top));
-    right: 12px;
-    width: 42px;
-    height: 42px;
+    right: 18px;
+    bottom: calc(var(--wa-mobile-bottom-nav-clearance) + var(--wa-mobile-sheet-height) - 46px);
+    width: 36px;
+    height: 36px;
     border: 1px solid rgba(148, 163, 184, 0.35);
-    border-radius: 12px;
+    border-radius: 999px;
     background: rgba(14, 29, 58, 0.92);
     color: #e2e8f0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
+    font-size: 1rem;
     cursor: pointer;
     z-index: 1420;
+  }
+
+  .wa-mobile-menu-close:focus-visible {
+    outline: 2px solid #93c5fd;
+    outline-offset: 2px;
   }
 
   .body-padding .main-content {

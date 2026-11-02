@@ -3,7 +3,7 @@
     "version": "0.85.gbp.33",
     "private": true,
     "scripts": {
-        "dev": "concurrently --handle-input --kill-others --names backend,frontend --prefix-colors cyan,magenta \"node ../backend/server.js\" \"vite\"",
+        "dev": "vite",
         "build": "vite build",
         "preview": "vite preview"
     },

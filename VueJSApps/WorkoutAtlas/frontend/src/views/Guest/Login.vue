@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, onMounted, ref } from "vue";
+import { nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { API_BASE } from '@/config/env';
 import { isDemoMode } from '@/config/appConfig';
@@ -21,12 +21,27 @@ const showDiagnosticsModal = ref(false);
 const isSubmitting = ref(false);
 const isConnectionLimitError = ref(false);
 const isDbAuthError = ref(false);
+const loginDiagnosticContext = ref(null);
 const appVersion = import.meta.env.VITE_APP_VERSION || '0.69.0';
 const isDev = import.meta.env.DEV;
-const googleClientId = String(import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim();
+const localHostnames = new Set(['localhost', '127.0.0.1']);
+const isLocalhostFrontend = localHostnames.has(String(window.location.hostname || '').toLowerCase());
+const canShowDevDiagnostics = isDev && isLocalhostFrontend;
+const GENERIC_AUTH_ERROR_MESSAGE = 'Incorrect email or password. Please try again.';
+const googleClientId = ref('');
 const googleButtonHost = ref(null);
 const isGoogleAvailable = ref(false);
 const isGoogleLoading = ref(false);
+const googleTestUnlinkEnabled = ref(false);
+const isUnlinkingGoogleTestUser = ref(false);
+const googleTestUnlinkMessage = ref('');
+const showGoogleLinkModal = ref(false);
+const googleLinkEmail = ref('');
+const pendingGoogleCredential = ref('');
+const googleLinkPassword = ref('');
+const isGoogleLinkPasswordVisible = ref(false);
+const isLinkingGoogleAccount = ref(false);
+const googleLinkError = ref('');
 
 let googleScriptPromise;
 
@@ -185,8 +200,22 @@ const buildLoginDiagnostics = ({
 };
 
 const buildCompactLoginMessage = ({ status, fallbackMessage, code = '' } = {}) => {
+  const fallbackText = String(fallbackMessage || '').toLowerCase();
+  const looksLikeCredentialFailure =
+    fallbackText.includes('invalid credentials') ||
+    fallbackText.includes('invalid username') ||
+    fallbackText.includes('invalid password') ||
+    fallbackText.includes('incorrect password') ||
+    fallbackText.includes('user not found') ||
+    fallbackText.includes('no user') ||
+    fallbackText.includes('authentication failed');
+
   if (!status && String(fallbackMessage || '').toLowerCase().includes('could not reach the local api server')) {
     return fallbackMessage;
+  }
+
+  if (looksLikeCredentialFailure) {
+    return GENERIC_AUTH_ERROR_MESSAGE;
   }
 
   if (code === 'ER_ACCESS_DENIED_ERROR') {
@@ -212,6 +241,16 @@ const buildCompactLoginMessage = ({ status, fallbackMessage, code = '' } = {}) =
 
   if (fallbackMessage) {
     const lowerFallback = String(fallbackMessage).toLowerCase();
+    const looksSensitive =
+      lowerFallback.includes('stack') ||
+      lowerFallback.includes('sqlstate') ||
+      lowerFallback.includes('select ') ||
+      lowerFallback.includes('insert ') ||
+      lowerFallback.includes('authorization:') ||
+      lowerFallback.includes('set-cookie:');
+    if (looksSensitive) {
+      return 'Sign-in failed: server error. Please try again.';
+    }
     if (lowerFallback.includes('login succeeded') || lowerFallback.includes('session cookie')) {
       return fallbackMessage;
     }
@@ -221,8 +260,8 @@ const buildCompactLoginMessage = ({ status, fallbackMessage, code = '' } = {}) =
     return 'Sign-in failed: endpoint not found (404).';
   }
 
-  if (status === 401) {
-    return 'Sign-in failed: invalid username or password.';
+  if (status === 401 || status === 403) {
+    return GENERIC_AUTH_ERROR_MESSAGE;
   }
 
   if (status && status >= 500) {
@@ -236,10 +275,68 @@ const buildCompactLoginMessage = ({ status, fallbackMessage, code = '' } = {}) =
   return fallbackMessage || `Sign-in failed (${status}).`;
 };
 
+const sanitizeDiagnosticText = (value) => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return 'n/a';
+
+  const redacted = raw
+    .replace(/(password|passwd|pwd)\s*[=:]\s*[^\s,;]+/gi, '$1=[redacted]')
+    .replace(/(token|access_token|refresh_token|id_token)\s*[=:]\s*[^\s,;]+/gi, '$1=[redacted]')
+    .replace(/(authorization)\s*[:=]\s*[^\n]+/gi, '$1: [redacted]')
+    .replace(/(cookie|set-cookie)\s*[:=]\s*[^\n]+/gi, '$1: [redacted]')
+    .replace(/(secret|api[_-]?key|private[_-]?key)\s*[=:]\s*[^\s,;]+/gi, '$1=[redacted]');
+
+  const firstLine = redacted.split(/\r?\n/)[0]?.trim() || 'n/a';
+  return firstLine.slice(0, 500);
+};
+
+const buildNetworkTroubleshooting = ({ hasNoResponse, networkMessage = '', status } = {}) => {
+  if (!hasNoResponse && status) {
+    return '';
+  }
+
+  const lowerNetwork = String(networkMessage || '').toLowerCase();
+  if (lowerNetwork.includes('cors')) {
+    return 'CORS/network issue detected. Verify backend CORS origin includes this frontend origin and that the API server is reachable.';
+  }
+
+  return 'Network/API connectivity issue detected. Verify backend is running, API URL is correct, and browser devtools show no CORS blocks.';
+};
+
+const updateDiagnosticContext = ({
+  status,
+  code,
+  apiEndpoint = '/api/login',
+  apiMessage,
+  networkMessage,
+  requestId,
+  hasNoResponse = false,
+  troubleshooting = '',
+} = {}) => {
+  loginDiagnosticContext.value = {
+    statusCode: status ?? 'none',
+    errorCode: sanitizeDiagnosticText(code || 'n/a'),
+    endpoint: apiEndpoint,
+    timestamp: new Date().toISOString(),
+    environment: canShowDevDiagnostics ? 'localhost development (Vite DEV)' : 'production-safe mode',
+    backendInfo: sanitizeDiagnosticText(apiMessage),
+    networkInfo: sanitizeDiagnosticText(networkMessage),
+    requestId: sanitizeDiagnosticText(requestId || 'n/a'),
+    hasNoResponse: Boolean(hasNoResponse),
+    troubleshooting: sanitizeDiagnosticText(troubleshooting),
+  };
+};
+
 const serverDiagnostics = ref(null);
 const diagnosticsLoading = ref(false);
 
 const fetchServerDiagnostics = async () => {
+  if (!canShowDevDiagnostics) {
+    serverDiagnostics.value = null;
+    diagnosticsLoading.value = false;
+    return;
+  }
+
   diagnosticsLoading.value = true;
   try {
     const res = await apiClient.get('/api/debug/login-diagnostics');
@@ -252,6 +349,7 @@ const fetchServerDiagnostics = async () => {
 };
 
 const openDiagnosticsModal = () => {
+  if (!canShowDevDiagnostics) return;
   showDiagnosticsModal.value = true;
   fetchServerDiagnostics();
 };
@@ -259,6 +357,12 @@ const openDiagnosticsModal = () => {
 const closeDiagnosticsModal = () => {
   showDiagnosticsModal.value = false;
   serverDiagnostics.value = null;
+};
+
+const handleModalEscape = (event) => {
+  if (event.key === 'Escape' && showDiagnosticsModal.value) {
+    closeDiagnosticsModal();
+  }
 };
 
 const setLoginError = ({
@@ -272,6 +376,10 @@ const setLoginError = ({
   sessionVerificationPassed = false,
   safariDetailed = false,
   code = '',
+  requestId = '',
+  endpoint = '/api/login',
+  hasNoResponse = false,
+  troubleshooting = '',
 }) => {
   isDbAuthError.value = code === 'ER_ACCESS_DENIED_ERROR';
   const isSafari = isSafariBrowser();
@@ -281,6 +389,16 @@ const setLoginError = ({
     : (fallbackMessage || 'No additional details.');
 
   errorMsg.value = compactMessage;
+  updateDiagnosticContext({
+    status,
+    code,
+    apiEndpoint: endpoint,
+    apiMessage,
+    networkMessage,
+    requestId,
+    hasNoResponse,
+    troubleshooting,
+  });
   loginDiagnostics.value = `${buildLoginDiagnostics({
     reason,
     status,
@@ -414,6 +532,71 @@ const completeSuccessfulAuthFlow = async (responseData, fallbackMessage = 'Sign-
   return true;
 };
 
+const resetGoogleLinkState = () => {
+  showGoogleLinkModal.value = false;
+  googleLinkEmail.value = '';
+  pendingGoogleCredential.value = '';
+  googleLinkPassword.value = '';
+  isGoogleLinkPasswordVisible.value = false;
+  isLinkingGoogleAccount.value = false;
+  googleLinkError.value = '';
+};
+
+const cancelGoogleLink = () => {
+  resetGoogleLinkState();
+};
+
+const submitGoogleLinkConfirmation = async () => {
+  if (isLinkingGoogleAccount.value) {
+    return;
+  }
+
+  const safeCredential = String(pendingGoogleCredential.value || '').trim();
+  const safePassword = String(googleLinkPassword.value || '');
+
+  if (!safeCredential || !safePassword) {
+    googleLinkError.value = 'Enter your WorkoutAtlas password to connect this Google account.';
+    return;
+  }
+
+  isLinkingGoogleAccount.value = true;
+  googleLinkError.value = '';
+
+  try {
+    const response = await apiClient.post('/api/auth/google', {
+      credential: safeCredential,
+      confirmLink: true,
+      linkPassword: safePassword,
+    });
+
+    resetGoogleLinkState();
+    await completeSuccessfulAuthFlow(response?.data, 'Google sign-in failed after linking. Try again.');
+  } catch (confirmErr) {
+    const confirmData = confirmErr?.response?.data;
+    const code = String(confirmData?.code || '').trim();
+
+    if (code === 'GOOGLE_LINK_PASSWORD_UNAVAILABLE') {
+      googleLinkError.value = 'This account has no local WorkoutAtlas password to verify. Sign in with your existing linked method or contact support.';
+      return;
+    }
+
+    if (confirmErr?.response?.status === 401 || confirmErr?.response?.status === 403) {
+      googleLinkError.value = 'Incorrect WorkoutAtlas password.';
+      return;
+    }
+
+    const confirmMessage =
+      (typeof confirmData === 'object' && confirmData !== null
+        ? (confirmData.message || confirmData.error || null)
+        : null) ||
+      'Google linking failed. Please try again.';
+
+    googleLinkError.value = confirmMessage;
+  } finally {
+    isLinkingGoogleAccount.value = false;
+  }
+};
+
 const handleGoogleSignInCredential = async (credential) => {
   const safeCredential = String(credential || '').trim();
   if (!safeCredential || isSubmitting.value || isGoogleLoading.value) {
@@ -423,6 +606,7 @@ const handleGoogleSignInCredential = async (credential) => {
   isGoogleLoading.value = true;
   errorMsg.value = "";
   loginDiagnostics.value = "";
+  loginDiagnosticContext.value = null;
   diagnosticsCopied.value = false;
   showDiagnosticsModal.value = false;
   isConnectionLimitError.value = false;
@@ -433,6 +617,18 @@ const handleGoogleSignInCredential = async (credential) => {
     await completeSuccessfulAuthFlow(response?.data, 'Google sign-in failed. Try again.');
   } catch (error) {
     const rawData = error?.response?.data;
+    const requiresLinkConfirmation = Boolean(rawData?.linkRequired) || String(rawData?.code || '').trim() === 'GOOGLE_LINK_CONFIRM_REQUIRED';
+
+    if (requiresLinkConfirmation) {
+      pendingGoogleCredential.value = safeCredential;
+      googleLinkEmail.value = String(rawData?.email || username.value || '').trim();
+      googleLinkPassword.value = '';
+      googleLinkError.value = '';
+      isGoogleLinkPasswordVisible.value = false;
+      showGoogleLinkModal.value = true;
+      return;
+    }
+
     const apiMessage =
       (typeof rawData === 'object' && rawData !== null
         ? (rawData.message || rawData.error || null)
@@ -449,14 +645,57 @@ const handleGoogleSignInCredential = async (credential) => {
       sessionCookiePersisted: null,
       sessionVerificationPassed: false,
       safariDetailed: true,
+      endpoint: '/api/auth/google',
     });
   } finally {
     isGoogleLoading.value = false;
   }
 };
 
+const unlinkGoogleTestUser = async () => {
+  if (!isDev || !googleTestUnlinkEnabled.value || isUnlinkingGoogleTestUser.value) {
+    return;
+  }
+
+  const shouldProceed = window.confirm('Unlink Google from the configured local test user account?');
+  if (!shouldProceed) {
+    return;
+  }
+
+  isUnlinkingGoogleTestUser.value = true;
+  googleTestUnlinkMessage.value = '';
+
+  try {
+    const response = await apiClient.post('/api/auth/google/test-unlink');
+    const message = String(response?.data?.message || '').trim() || 'Google test user unlinked successfully.';
+    googleTestUnlinkMessage.value = message;
+    await fetchUser();
+  } catch (error) {
+    const apiMessage = String(error?.response?.data?.error || '').trim();
+    googleTestUnlinkMessage.value = apiMessage || 'Google test user unlink failed.';
+  } finally {
+    isUnlinkingGoogleTestUser.value = false;
+  }
+};
+
+const loadGoogleClientId = async () => {
+  try {
+    const response = await apiClient.get('/api/config/google');
+    const configuredClientId = String(response?.data?.clientId || '').trim();
+    googleTestUnlinkEnabled.value = Boolean(response?.data?.googleTestUnlinkEnabled);
+    googleClientId.value = configuredClientId;
+    return configuredClientId;
+  } catch (err) {
+    googleTestUnlinkEnabled.value = Boolean(err?.response?.data?.googleTestUnlinkEnabled);
+    googleClientId.value = '';
+    return '';
+  }
+};
+
 const renderGoogleButton = async () => {
-  if (!googleClientId) {
+  const configuredClientId = googleClientId.value || await loadGoogleClientId();
+
+  if (!configuredClientId) {
     isGoogleAvailable.value = false;
     return;
   }
@@ -472,7 +711,7 @@ const renderGoogleButton = async () => {
     }
 
     googleApi.initialize({
-      client_id: googleClientId,
+      client_id: configuredClientId,
       callback: (response) => {
         const credential = response?.credential;
         handleGoogleSignInCredential(credential);
@@ -498,7 +737,13 @@ const renderGoogleButton = async () => {
 };
 
 onMounted(async () => {
+  window.addEventListener('keydown', handleModalEscape);
+  await loadGoogleClientId();
   await renderGoogleButton();
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleModalEscape);
 });
 
 // Login Function
@@ -508,6 +753,7 @@ const login = async () => {
   isSubmitting.value = true;
   errorMsg.value = "";
   loginDiagnostics.value = "";
+  loginDiagnosticContext.value = null;
   diagnosticsCopied.value = false;
   showDiagnosticsModal.value = false;
   isConnectionLimitError.value = false;
@@ -564,6 +810,17 @@ const login = async () => {
       String(apiMessage).toLowerCase().includes('session store') ||
       ['ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT'].includes(errorCode);
     const isDbAuth = errorCode === 'ER_ACCESS_DENIED_ERROR';
+    const requestId =
+      error?.response?.headers?.['x-request-id'] ||
+      error?.response?.headers?.['x-correlation-id'] ||
+      rawData?.requestId ||
+      rawData?.request_id ||
+      '';
+    const troubleshooting = buildNetworkTroubleshooting({
+      hasNoResponse,
+      networkMessage: error?.message,
+      status: error?.response?.status,
+    });
     if (isConnLimit) {
       isConnectionLimitError.value = true;
     }
@@ -586,8 +843,12 @@ const login = async () => {
       sessionVerificationPassed: false,
       code: errorCode,
       safariDetailed: !isConnLimit && !isDbAuth,
+      requestId,
+      endpoint: '/api/login',
+      hasNoResponse,
+      troubleshooting,
     });
-    if (isConnLimit || isDbAuth) {
+    if ((isConnLimit || isDbAuth) && canShowDevDiagnostics) {
       openDiagnosticsModal();
     }
   } finally {
@@ -658,7 +919,7 @@ const demoLogin = async (role) => {
         <div class="wa-password-group login-password-group">
           <label class="wa-input login-input wa-input--password" for="wa-password-input">
             <span class="wa-input__icon" aria-hidden="true">
-              <i class="fa-regular fa-lock"></i>
+              <i class="fa-solid fa-lock"></i>
             </span>
             <input
               id="wa-password-input"
@@ -692,24 +953,28 @@ const demoLogin = async (role) => {
         </div>
 
         <div v-if="errorMsg" class="wa-error" role="alert" aria-live="assertive">
-          <div class="wa-error__title">{{ errorMsg }}</div>
-          <div class="wa-error__hint">Login diagnostics available.</div>
+          <div class="wa-error__title">
+            <span class="wa-error__icon" aria-hidden="true">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+            </span>
+            <span class="wa-error__text">{{ errorMsg }}</span>
+          </div>
         </div>
 
-        <div v-if="errorMsg" class="wa-diagnostics-row">
+        <div v-if="errorMsg && canShowDevDiagnostics" class="wa-diagnostics-row">
           <button
             type="button"
-            class="wa-secondary-btn"
+            class="wa-diagnostics-link"
             @click="openDiagnosticsModal"
           >
-            <i class="fa-regular fa-magnifying-glass"></i>
-            <span>View Login Diagnostics</span>
+            <i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i>
+            <span>Developer diagnostics</span>
           </button>
         </div>
 
         <button class="wa-primary-btn login-submit" :disabled="isSubmitting" aria-label="Sign in">
           <span>{{ isSubmitting ? 'Signing In...' : 'Sign In' }}</span>
-          <i class="fa-regular fa-arrow-right-long" aria-hidden="true"></i>
+          <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
         </button>
 
         <template v-if="isDemoMode">
@@ -732,22 +997,37 @@ const demoLogin = async (role) => {
       </form>
 
       <div class="wa-divider login-divider"><span>Or</span></div>
+      <p class="wa-google-test-label">TEST Sign in with Google</p>
       <div class="wa-social social-login-list" aria-label="Google sign in option">
         <div
-          v-if="isGoogleAvailable"
           ref="googleButtonHost"
           class="wa-google-button-host"
-          aria-label="Sign in with Google"
+          v-show="isGoogleAvailable"
+          aria-label="TEST Sign in with Google"
         ></div>
         <button
-          v-else
+          v-show="!isGoogleAvailable"
           type="button"
           class="wa-google-unavailable"
           disabled
           aria-label="Google sign in unavailable"
         >
-          Sign in with Google (Configuration Pending)
+          TEST Sign in with Google (Configuration Pending)
         </button>
+      </div>
+      <div
+        v-if="isDev && googleTestUnlinkEnabled"
+        class="wa-google-test-controls"
+      >
+        <button
+          type="button"
+          class="wa-secondary-btn wa-google-test-unlink-btn"
+          :disabled="isUnlinkingGoogleTestUser"
+          @click="unlinkGoogleTestUser"
+        >
+          {{ isUnlinkingGoogleTestUser ? 'Unlinking Google Test User...' : 'Unlink Google Test User' }}
+        </button>
+        <p v-if="googleTestUnlinkMessage" class="wa-google-test-message">{{ googleTestUnlinkMessage }}</p>
       </div>
 
       <p class="wa-signup login-footer">
@@ -760,6 +1040,63 @@ const demoLogin = async (role) => {
         <span aria-hidden="true">•</span>
         <a href="/changelog.html" target="_blank" rel="noopener noreferrer">Change Log</a>
       </p>
+
+      <div
+        v-if="showGoogleLinkModal"
+        class="login-google-link-backdrop"
+        @click.self="cancelGoogleLink"
+      >
+        <div class="login-google-link-modal" role="dialog" aria-modal="true" aria-label="Existing WorkoutAtlas account found">
+          <div class="login-google-link-header">
+            <h5 class="mb-0">Existing WorkoutAtlas Account Found</h5>
+            <button type="button" class="btn-close btn-close-white" aria-label="Close" @click="cancelGoogleLink"></button>
+          </div>
+
+          <div class="login-google-link-body">
+            <p class="google-link-message">We found an existing WorkoutAtlas account using:</p>
+            <p class="google-link-email">{{ googleLinkEmail || 'unknown account' }}</p>
+            <p class="google-link-message">To connect your Google account, confirm your existing WorkoutAtlas password.</p>
+
+            <label class="wa-input login-input wa-input--password" for="wa-google-link-password-input">
+              <span class="wa-input__icon" aria-hidden="true">
+                <i class="fa-solid fa-lock"></i>
+              </span>
+              <input
+                id="wa-google-link-password-input"
+                v-model="googleLinkPassword"
+                :type="isGoogleLinkPasswordVisible ? 'text' : 'password'"
+                placeholder="WorkoutAtlas Password"
+                autocomplete="current-password"
+                autocapitalize="none"
+                spellcheck="false"
+                :disabled="isLinkingGoogleAccount"
+                @keyup.enter="submitGoogleLinkConfirmation"
+              >
+              <button
+                type="button"
+                class="wa-input__toggle"
+                @click="isGoogleLinkPasswordVisible = !isGoogleLinkPasswordVisible"
+                :aria-label="isGoogleLinkPasswordVisible ? 'Hide password' : 'Show password'"
+                :aria-pressed="isGoogleLinkPasswordVisible ? 'true' : 'false'"
+                :disabled="isLinkingGoogleAccount"
+              >
+                <i class="fa-duotone" :class="[isGoogleLinkPasswordVisible ? 'fa-eye-slash' : 'fa-eye']"></i>
+              </button>
+            </label>
+
+            <div v-if="googleLinkError" class="google-link-error" role="alert">{{ googleLinkError }}</div>
+          </div>
+
+          <div class="login-google-link-footer">
+            <button type="button" class="btn btn-outline-light btn-sm" :disabled="isLinkingGoogleAccount" @click="cancelGoogleLink">
+              Cancel
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" :disabled="isLinkingGoogleAccount || !googleLinkPassword" @click="submitGoogleLinkConfirmation">
+              {{ isLinkingGoogleAccount ? 'Connecting...' : 'Connect Google Account' }}
+            </button>
+          </div>
+        </div>
+      </div>
 
       <div
         v-if="showDiagnosticsModal"
@@ -807,8 +1144,25 @@ const demoLogin = async (role) => {
               </div>
 
               <template v-else>
+                <div class="login-diag-section" v-if="loginDiagnosticContext">
+                  <div class="login-diag-section-title">Request Details</div>
+                  <div class="login-diag-row"><span>HTTP Status</span><code>{{ loginDiagnosticContext.statusCode }}</code></div>
+                  <div class="login-diag-row"><span>Error Type/Code</span><code>{{ loginDiagnosticContext.errorCode }}</code></div>
+                  <div class="login-diag-row"><span>API Endpoint</span><code>{{ loginDiagnosticContext.endpoint }}</code></div>
+                  <div class="login-diag-row"><span>Request Timestamp</span><code>{{ loginDiagnosticContext.timestamp }}</code></div>
+                  <div class="login-diag-row"><span>Environment</span><code>{{ loginDiagnosticContext.environment }}</code></div>
+                  <div class="login-diag-row"><span>Request ID</span><code>{{ loginDiagnosticContext.requestId }}</code></div>
+                  <div class="login-diag-row"><span>Backend Error</span><code>{{ loginDiagnosticContext.backendInfo }}</code></div>
+                  <div class="login-diag-row"><span>Network Error</span><code>{{ loginDiagnosticContext.networkInfo }}</code></div>
+                </div>
+
+                <div class="login-diag-section" v-if="loginDiagnosticContext?.troubleshooting && loginDiagnosticContext?.hasNoResponse">
+                  <div class="login-diag-section-title">Network/CORS Troubleshooting</div>
+                  <p class="login-diag-help">{{ loginDiagnosticContext.troubleshooting }}</p>
+                </div>
+
                 <div class="login-diag-section">
-                  <div class="login-diag-section-title">Environment</div>
+                  <div class="login-diag-section-title">Environment Snapshot</div>
                   <div class="login-diag-row"><span>Node Mode</span><code>{{ serverDiagnostics.environment?.nodeEnv }}</code></div>
                   <div class="login-diag-row"><span>Debug Enabled</span><code>{{ serverDiagnostics.environment?.debug }}</code></div>
                   <div class="login-diag-row"><span>Frontend Configured</span><code>{{ serverDiagnostics.environment?.frontendConfigured }}</code></div>
@@ -1178,15 +1532,44 @@ const demoLogin = async (role) => {
 }
 
 .wa-error {
-  border: 1px solid rgba(239, 68, 68, 0.55);
-  border-radius: 0;
-  background: rgba(127, 29, 29, 0.22);
-  padding: 10px 12px;
-  color: #fecaca;
+  border: 1px solid #7f1d1d;
+  border-radius: 8px;
+  background: #991b1b;
+  padding: 7px 10px;
+  color: #ffffff;
 }
 
 .wa-error__title {
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.wa-error__icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #111827;
+  border: 1px solid #000000;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.wa-error__icon i {
+  font-size: 0.68rem;
+  line-height: 1;
+}
+
+.wa-error__text {
+  color: #ffffff;
+  font-size: 0.86rem;
+  font-weight: 500;
+  word-break: break-word;
 }
 
 .wa-error__hint {
@@ -1196,7 +1579,44 @@ const demoLogin = async (role) => {
 
 .wa-diagnostics-row {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
+  margin-top: -2px;
+}
+
+.wa-diagnostics-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.77rem;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 0;
+  min-height: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(148, 163, 184, 0.42);
+  text-underline-offset: 2px;
+  transition: color 150ms ease, text-decoration-color 150ms ease;
+}
+
+.wa-diagnostics-link i {
+  font-size: 0.76rem;
+  color: #8fa1ba;
+}
+
+.wa-diagnostics-link:hover {
+  color: #bfdbfe;
+  text-decoration-color: rgba(191, 219, 254, 0.62);
+}
+
+.wa-diagnostics-link:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, 0.72);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .wa-secondary-btn {
@@ -1349,10 +1769,41 @@ const demoLogin = async (role) => {
   flex-wrap: wrap;
 }
 
+.wa-google-test-label {
+  width: 100%;
+  margin: 0 0 4px;
+  text-align: center;
+  color: #93c5fd;
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .wa-google-button-host {
   width: 100%;
   display: flex;
   justify-content: center;
+}
+
+.wa-google-test-controls {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.wa-google-test-unlink-btn {
+  width: min(100%, 320px);
+}
+
+.wa-google-test-message {
+  width: min(100%, 320px);
+  margin: 0;
+  text-align: center;
+  color: #bfdbfe;
+  font-size: 0.8rem;
 }
 
 .wa-google-unavailable {
@@ -1609,6 +2060,10 @@ const demoLogin = async (role) => {
     font-size: 0.82rem;
   }
 
+  .wa-google-test-label {
+    font-size: 0.8rem;
+  }
+
   .wa-signup,
   .wa-version,
   .login-footer {
@@ -1730,6 +2185,67 @@ const demoLogin = async (role) => {
   padding: 16px;
 }
 
+.login-google-link-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.76);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2100;
+  padding: 16px;
+}
+
+.login-google-link-modal {
+  width: min(92vw, 560px);
+  max-height: 84vh;
+  background: #111827;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.login-google-link-header,
+.login-google-link-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.login-google-link-body {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.google-link-message {
+  margin: 0;
+  color: #dbeafe;
+  font-size: 0.9rem;
+}
+
+.google-link-email {
+  margin: 0;
+  color: #60a5fa;
+  font-size: 0.96rem;
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.google-link-error {
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  border-radius: 8px;
+  background: rgba(127, 29, 29, 0.22);
+  color: #fecaca;
+  padding: 9px 10px;
+  font-size: 0.82rem;
+}
+
 .login-diagnostics-modal {
   width: min(92vw, 680px);
   max-height: 82vh;
@@ -1828,6 +2344,17 @@ const demoLogin = async (role) => {
   font-size: 0.78rem;
   color: #e2e8f0;
   word-break: break-all;
+}
+
+.login-diag-help {
+  margin: 0;
+  font-size: 0.83rem;
+  line-height: 1.45;
+  color: #dbeafe;
+  background: rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  border-radius: 8px;
+  padding: 10px;
 }
 
 .login-diag-client-details {

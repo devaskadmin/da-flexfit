@@ -15,10 +15,13 @@ const DEFAULT_LOCAL_AWS_RELATIVE_PATH = 'backend/workoutatlas-s3-data';
 const CONTENT_ROOT = path.resolve(BACKEND_ROOT, 'workoutatlas-s3-data');
 const LEGACY_EXERCISE_ROOT = path.resolve(__dirname, '..', '..', 'frontend', 'src', 'assets', 'Excerises');
 
+const DEFAULT_EXERCISE_IMAGE_NAME = 'default.JPG';
+const DEFAULT_EXERCISE_STORAGE_KEY = 'APP/exercise-library/default.JPG';
+
 const MEDIA_PROVIDER_LOCAL = 'LOCAL';
 const MEDIA_PROVIDER_MINIO = 'MINIO';
 const MEDIA_PROVIDER_AWS = 'AWS';
-const DEFAULT_IMAGE_NAME = 'default/default.jpg';
+const DEFAULT_IMAGE_NAME = DEFAULT_EXERCISE_IMAGE_NAME;
 
 const ALLOWED_MEDIA_PROVIDERS = new Set([
   MEDIA_PROVIDER_LOCAL,
@@ -69,6 +72,39 @@ function resolveLocalContentRoot() {
   return candidateFromRepo;
 }
 
+function buildExerciseMediaFolderPath(exerciseId) {
+  const id = Number(exerciseId || 0);
+  if (!id) {
+    return path.join(resolveLocalContentRoot(), 'APP', 'exercise-library', '0', 'images');
+  }
+
+  return path.join(resolveLocalContentRoot(), 'APP', 'exercise-library', String(id), 'images');
+}
+
+function isDefaultExerciseImageReference(value) {
+  const raw = String(value || '').trim().replace(/\\/g, '/').replace(/^\/+/, '');
+  if (!raw) return false;
+
+  const normalized = raw.toLowerCase();
+  return [
+    'default.jpg',
+    'default.jpeg',
+    'default.png',
+    'default.gif',
+    'default/default.jpg',
+    'default/default.jpeg',
+    'default/default.png',
+    'default/default.gif',
+    'default.JPG',
+    'default.jpeg',
+    'app/exercise-library/default.JPG',
+    'app/exercise-library/default.jpg',
+    'app/exercise-library/default/default.jpg',
+    'app/exercise-library/default/default.JPG',
+    DEFAULT_EXERCISE_STORAGE_KEY.toLowerCase(),
+  ].includes(normalized);
+}
+
 function normalizeMediaPath(value, exerciseId) {
   const provided = toSafeRelativePath(value);
   if (provided) {
@@ -115,13 +151,16 @@ function toSafeFileName(value) {
 function pickPrimaryImageFromRow(row = {}) {
   const explicitPrimary = toSafeRelativePath(row.PrimaryImage);
   if (explicitPrimary) {
+    if (isDefaultExerciseImageReference(explicitPrimary)) {
+      return DEFAULT_EXERCISE_IMAGE_NAME;
+    }
     return explicitPrimary;
   }
 
   const gallery = parseJsonArray(row.ImageGallery);
   if (gallery.length > 0) {
     const galleryCandidate = toSafeRelativePath(gallery[0]);
-    if (galleryCandidate) {
+    if (galleryCandidate && !isDefaultExerciseImageReference(galleryCandidate)) {
       return galleryCandidate;
     }
   }
@@ -134,24 +173,27 @@ function pickPrimaryImageFromRow(row = {}) {
     if (markerIndex >= 0) {
       const relative = withoutQuery.slice(markerIndex + marker.length);
       const legacyPath = toSafeRelativePath(relative);
-      if (legacyPath) {
+      if (legacyPath && !isDefaultExerciseImageReference(legacyPath)) {
         return legacyPath;
       }
     }
 
     const fallbackName = toSafeFileName(withoutQuery);
-    if (fallbackName) {
+    if (fallbackName && !isDefaultExerciseImageReference(fallbackName)) {
       return fallbackName;
     }
   }
 
-  return DEFAULT_IMAGE_NAME;
+  return DEFAULT_EXERCISE_IMAGE_NAME;
 }
 
 function buildExerciseImageUrl(exerciseId, imageName) {
   const id = Number(exerciseId || 0);
-  const safeName = toSafeRelativePath(imageName) || DEFAULT_IMAGE_NAME;
-  return `/api/media/exercises/${id}/image?name=${encodeURIComponent(safeName)}`;
+  const safeName = toSafeRelativePath(imageName) || DEFAULT_EXERCISE_IMAGE_NAME;
+  const resolvedName = isDefaultExerciseImageReference(safeName)
+    ? DEFAULT_EXERCISE_IMAGE_NAME
+    : safeName;
+  return `/api/media/exercises/${id}/image?name=${encodeURIComponent(resolvedName)}`;
 }
 
 function buildExerciseImagePath(exercise = {}) {
@@ -159,9 +201,25 @@ function buildExerciseImagePath(exercise = {}) {
   const providerFromEnv = normalizeProvider(process.env.MEDIA_PROVIDER || MEDIA_PROVIDER_LOCAL);
   const mediaProvider = normalizeProvider(exercise.MediaProvider || exercise.mediaProvider || providerFromEnv);
   const mediaPath = normalizeMediaPath(exercise.MediaPath || exercise.mediaPath, id);
-  const safeName = toSafeRelativePath(exercise.PrimaryImage || exercise.primaryImage || DEFAULT_IMAGE_NAME) || DEFAULT_IMAGE_NAME;
-  const safeFileName = toSafeFileName(safeName) || '1.jpg';
+  const rawName = exercise.PrimaryImage || exercise.primaryImage || DEFAULT_EXERCISE_IMAGE_NAME;
+  const safeName = toSafeRelativePath(rawName) || DEFAULT_EXERCISE_IMAGE_NAME;
+  const normalizedName = isDefaultExerciseImageReference(safeName)
+    ? DEFAULT_EXERCISE_IMAGE_NAME
+    : safeName;
+  const safeFileName = toSafeFileName(normalizedName) || 'default.JPG';
   const localRoot = resolveLocalContentRoot();
+
+  if (isDefaultExerciseImageReference(normalizedName)) {
+    return {
+      exerciseId: id,
+      mediaProvider,
+      mediaPath: 'APP/exercise-library',
+      imageName: DEFAULT_EXERCISE_IMAGE_NAME,
+      storageRelativePath: DEFAULT_EXERCISE_STORAGE_KEY,
+      localFilePath: path.join(localRoot, DEFAULT_EXERCISE_STORAGE_KEY),
+      publicUrl: buildExerciseImageUrl(id, DEFAULT_EXERCISE_IMAGE_NAME),
+    };
+  }
 
   return {
     exerciseId: id,
@@ -204,7 +262,7 @@ function shouldTraceMedia() {
 function buildPublicGatewayUrl(baseUrl) {
   const trimmed = String(baseUrl || '').trim().replace(/\/+$/, '');
   if (!trimmed) {
-    return '';
+    throw new Error('PUBLIC_GATEWAY_URL is not configured.');
   }
 
   return `${trimmed}/api/gateway`;
@@ -247,15 +305,23 @@ function extractGatewayBase64(payload) {
 function buildExerciseStorageKey(exercise = {}, requestedImageName = '') {
   const id = Number(exercise.ExerciseID || exercise.exerciseId || 0);
   const mediaPath = normalizeMediaPath(exercise.MediaPath || exercise.mediaPath, id);
-  const imageName = toSafeRelativePath(requestedImageName || exercise.PrimaryImage || exercise.primaryImage) || DEFAULT_IMAGE_NAME;
-  return `${mediaPath}/${imageName}`.replace(/\/+/, '/').replace(/\/{2,}/g, '/');
+  const rawImageName = toSafeRelativePath(requestedImageName || exercise.PrimaryImage || exercise.primaryImage) || DEFAULT_EXERCISE_IMAGE_NAME;
+  const normalizedFileName = toSafeFileName(rawImageName) || DEFAULT_EXERCISE_IMAGE_NAME;
+  const imageName = isDefaultExerciseImageReference(rawImageName) ? DEFAULT_EXERCISE_IMAGE_NAME : normalizedFileName;
+
+  if (isDefaultExerciseImageReference(imageName)) {
+    return DEFAULT_EXERCISE_STORAGE_KEY;
+  }
+
+  return `${mediaPath}/${imageName}`.replace(/\/+/g, '/').replace(/\/{2,}/g, '/');
 }
 
 async function fetchObjectViaGateway(storageKey) {
+  const publicGatewayUrl = String(process.env.PUBLIC_GATEWAY_URL || '').trim();
   const gatewayConfig = resolveGatewayConfig(process.env);
-  const gatewayUrl = buildPublicGatewayUrl(process.env.PUBLIC_GATEWAY_URL);
+  const gatewayUrl = buildPublicGatewayUrl(publicGatewayUrl);
 
-  if (!gatewayUrl) {
+  if (!publicGatewayUrl) {
     throw new Error('PUBLIC_GATEWAY_URL is not configured.');
   }
 
@@ -347,7 +413,7 @@ async function fetchObjectViaGateway(storageKey) {
 
 function getLocalImageCandidates(exercise = {}, requestedImageName = '') {
   const id = Number(exercise.ExerciseID || exercise.exerciseId || 0);
-  const relativeName = toSafeRelativePath(requestedImageName || exercise.PrimaryImage || exercise.primaryImage) || DEFAULT_IMAGE_NAME;
+  const relativeName = toSafeRelativePath(requestedImageName || exercise.PrimaryImage || exercise.primaryImage) || DEFAULT_EXERCISE_IMAGE_NAME;
   const baseName = toSafeFileName(relativeName);
   const localPath = buildExerciseImagePath({
     ExerciseID: id,
@@ -372,11 +438,14 @@ function getLocalImageCandidates(exercise = {}, requestedImageName = '') {
     candidates.push(localBaseName.localFilePath);
   }
 
-  candidates.push(path.join(LEGACY_EXERCISE_ROOT, relativeName));
-
-  if (relativeName !== DEFAULT_IMAGE_NAME) {
-    candidates.push(path.join(LEGACY_EXERCISE_ROOT, DEFAULT_IMAGE_NAME));
+  if (!isDefaultExerciseImageReference(relativeName)) {
+    candidates.push(path.join(LEGACY_EXERCISE_ROOT, relativeName));
+    candidates.push(path.join(resolveLocalContentRoot(), DEFAULT_EXERCISE_STORAGE_KEY));
   }
+
+  candidates.push(path.join(resolveLocalContentRoot(), DEFAULT_EXERCISE_STORAGE_KEY));
+  candidates.push(path.join(LEGACY_EXERCISE_ROOT, DEFAULT_EXERCISE_IMAGE_NAME));
+  candidates.push(path.join(LEGACY_EXERCISE_ROOT, 'default', 'default.jpg'));
 
   return Array.from(new Set(candidates));
 }
@@ -410,7 +479,7 @@ async function streamExerciseImage(res, exerciseOrRow, imageName) {
     console.log('MEDIA SOURCE: GATEWAY_S3');
     res.setHeader('content-type', gatewayObject.contentType);
     res.setHeader('content-length', gatewayObject.contentLength);
-    res.setHeader('cache-control', 'public, max-age=300');
+    res.setHeader('cache-control', 'no-store, max-age=0');
     res.end(gatewayObject.buffer);
     return;
   } catch (gatewayError) {
@@ -440,7 +509,7 @@ async function streamExerciseImage(res, exerciseOrRow, imageName) {
   const stat = fs.statSync(match);
   res.setHeader('content-type', detectMimeType(match));
   res.setHeader('content-length', stat.size);
-  res.setHeader('cache-control', 'public, max-age=300');
+  res.setHeader('cache-control', 'no-store, max-age=0');
 
   fs.createReadStream(match).pipe(res);
 }
@@ -467,6 +536,11 @@ async function ensureExerciseMediaColumns(pool) {
 module.exports = {
   MEDIA_PROVIDER_LOCAL,
   DEFAULT_IMAGE_NAME,
+  DEFAULT_EXERCISE_IMAGE_NAME,
+  DEFAULT_EXERCISE_STORAGE_KEY,
+  isDefaultExerciseImageReference,
+  resolveLocalContentRoot,
+  buildExerciseMediaFolderPath,
   ensureExerciseMediaColumns,
   resolveExerciseMediaRow,
   streamExerciseImage,

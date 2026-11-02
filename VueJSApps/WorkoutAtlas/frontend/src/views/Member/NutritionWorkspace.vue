@@ -408,7 +408,7 @@ onMounted(async () => {
     </section>
 
     <!-- ── Sticky macro summary ── -->
-    <div class="sticky-summary">
+    <div class="sticky-summary" aria-label="Secondary macro summary">
       <span class="sticky-macro sticky-cal">🔥 {{ macroSummary.calories || 0 }}</span>
       <span class="sticky-macro sticky-pro">🥩 {{ macroSummary.protein || 0 }}g</span>
       <span class="sticky-macro sticky-carb">🌾 {{ macroSummary.carbs || 0 }}g</span>
@@ -417,7 +417,7 @@ onMounted(async () => {
 
     <button
       type="button"
-      class="nutrition-ai-action"
+      class="nutrition-ai-action wa-btn--red"
       :class="{ 'nutrition-ai-action--active': activeNutritionTab === 'ai-scan' }"
       @click="activeNutritionTab = 'ai-scan'"
     >
@@ -455,14 +455,23 @@ onMounted(async () => {
           <p class="search-card-sub">Find and log meals quickly</p>
         </div>
         <div class="search-controls">
-          <input v-model="foodSearchQuery" type="text" placeholder="Search food by name..." @keyup.enter="searchFood" />
-          <select v-model="selectedCategory">
-            <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
-          </select>
-          <select v-model="selectedBrand">
-            <option v-for="brand in brands" :key="brand" :value="brand">{{ brand }}</option>
-          </select>
-          <button type="button" class="btn-search" @click="searchFood">
+          <label class="search-field">
+            <span>Search food by name</span>
+            <input v-model="foodSearchQuery" type="text" placeholder="e.g. Greek yogurt" @keyup.enter="searchFood" />
+          </label>
+          <label class="search-field">
+            <span>Category</span>
+            <select v-model="selectedCategory">
+              <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+            </select>
+          </label>
+          <label class="search-field">
+            <span>Brand</span>
+            <select v-model="selectedBrand">
+              <option v-for="brand in brands" :key="brand" :value="brand">{{ brand }}</option>
+            </select>
+          </label>
+          <button type="button" class="btn-search wa-btn--blue" @click="searchFood">
             <i class="fa-solid fa-magnifying-glass"></i> Search Foods
           </button>
         </div>
@@ -684,7 +693,7 @@ onMounted(async () => {
   --main-color: var(--nw-surface-1);
   --border-color: var(--nw-border);
   display: grid;
-  gap: 12px;
+  gap: 10px;
   color: var(--nw-text);
   padding-right: 56px;
 }
@@ -697,8 +706,8 @@ onMounted(async () => {
   min-height: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px 18px;
+  gap: 8px;
+  padding: 12px 16px;
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
 }
 
@@ -712,20 +721,20 @@ onMounted(async () => {
 .hero-macro-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 0;
 }
 
 .hero-macro-card {
-  background: rgba(10, 17, 28, 0.78);
-  border-radius: 12px;
-  padding: 9px 12px;
-  min-height: 70px;
+  background: rgba(7, 14, 30, 0.86);
+  border-radius: 10px;
+  padding: 8px 11px;
+  min-height: 64px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   border: 1px solid var(--nw-border);
-  border-left: 4px solid rgba(255, 255, 255, 0.25);
+  border-left: 3px solid rgba(255, 255, 255, 0.25);
 }
 
 .hero-macro-card > div {
@@ -742,7 +751,7 @@ onMounted(async () => {
 .hero-macro-fat      { border-left-color: #ff5d73; }
 
 .hero-macro-icon {
-  font-size: 1.4rem;
+  font-size: 1.25rem;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -750,15 +759,15 @@ onMounted(async () => {
 .hero-macro-card strong {
   display: block;
   color: var(--nw-text);
-  font-size: 1.25rem;
+  font-size: 1.28rem;
   font-weight: 700;
   line-height: 1.15;
 }
 
 .hero-macro-card span {
   display: block;
-  color: var(--nw-text-secondary);
-  font-size: 0.72rem;
+  color: #d7e6ff;
+  font-size: 0.69rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -774,7 +783,7 @@ onMounted(async () => {
 }
 
 .nutrition-date-label {
-  color: var(--nw-text-secondary);
+  color: #e6efff;
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -791,13 +800,13 @@ onMounted(async () => {
 
 .nutrition-date-input {
   width: 100%;
-  height: 48px;
+  height: 42px;
   padding-left: 14px;
-  padding-right: 52px;
-  border-radius: 12px;
+  padding-right: 46px;
+  border-radius: 8px;
   background: var(--nw-surface-2);
   color: var(--nw-text);
-  font-size: 16px;
+  font-size: 0.94rem;
   font-weight: 600;
   border: 1px solid var(--nw-border-strong);
   box-sizing: border-box;
@@ -826,12 +835,12 @@ onMounted(async () => {
 
 .nutrition-calendar-icon {
   position: absolute;
-  right: 16px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 18px;
-  opacity: 0.82;
-  color: var(--nw-text-muted);
+  font-size: 16px;
+  opacity: 0.95;
+  color: #dbeafe;
   z-index: 5;
   pointer-events: none;
   line-height: 1;
@@ -842,7 +851,7 @@ onMounted(async () => {
   background: var(--nw-surface-1);
   border: 1.5px solid var(--ff-border-strong);
   border-radius: 16px;
-  padding: 12px 14px;
+  padding: 12px;
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22);
 }
 
@@ -868,6 +877,20 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr auto;
   gap: 8px;
+  align-items: end;
+}
+
+.search-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.search-field > span {
+  color: #e7efff;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 .search-controls input,
@@ -875,10 +898,13 @@ onMounted(async () => {
   border: 1.5px solid var(--ff-border-soft);
   background: var(--nw-surface-2);
   color: var(--nw-text);
-  border-radius: 10px;
+  border-radius: 7px;
   padding: 8px 10px;
-  height: 44px;
-  font-size: 0.95rem;
+  height: 40px;
+  font-size: 0.9rem;
+  border-radius: 7px !important;
+  height: 40px !important;
+  min-height: 40px !important;
 }
 
 .search-controls input::placeholder {
@@ -898,27 +924,28 @@ onMounted(async () => {
 }
 
 .btn-search {
-  border: none;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  border-radius: 6px;
   color: #fff;
-  border-radius: 999px;
-  padding: 0 18px;
+  padding: 0 14px;
   font-weight: 700;
-  font-size: 0.95rem;
-  height: 48px;
+  font-size: 0.88rem;
+  height: 40px;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
   white-space: nowrap;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.24);
+  box-shadow: none;
+  min-height: 40px !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  border-radius: 6px !important;
+  padding: 0 14px !important;
 }
-
-.btn-search:hover { background: linear-gradient(135deg, #1d4ed8, #1e40af); }
 
 .btn-search:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.45), 0 8px 18px rgba(37, 99, 235, 0.24);
+  box-shadow: var(--wa-btn-primary-focus, 0 0 0 4px rgba(164, 255, 79, 0.18));
 }
 
 .btn-search:disabled {
@@ -1074,14 +1101,14 @@ onMounted(async () => {
 .collapsible-section {
   background: var(--nw-surface-1);
   border: 1.5px solid var(--ff-border-strong);
-  border-radius: 16px;
+  border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.17);
 }
 
 .section-toggle {
   width: 100%;
-  padding: 14px 16px;
+  padding: 10px 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1089,10 +1116,13 @@ onMounted(async () => {
   border: none;
   cursor: pointer;
   font-weight: 700;
-  font-size: 0.95rem;
-  color: var(--nw-text);
+  font-size: 0.88rem;
+  color: #eef4ff;
   text-align: left;
   transition: background 0.15s;
+  min-height: 40px !important;
+  border-radius: 0 !important;
+  padding: 10px 12px !important;
 }
 
 .section-toggle:hover { background: rgba(148, 163, 184, 0.08); }
@@ -1111,7 +1141,7 @@ onMounted(async () => {
 }
 
 .section-body {
-  padding: 0 14px 14px;
+  padding: 0 10px 10px;
   background: color-mix(in srgb, var(--nw-surface-1) 68%, var(--nw-surface-2) 32%);
   border-top: 1px solid var(--ff-border-soft);
 }
@@ -1244,13 +1274,13 @@ onMounted(async () => {
   z-index: 50;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
-  background: color-mix(in srgb, var(--nw-surface-1) 84%, var(--nw-surface-2) 16%);
-  border: 1.5px solid var(--ff-border-strong);
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-  backdrop-filter: blur(8px);
+  gap: 6px;
+  padding: 5px 8px;
+  background: color-mix(in srgb, var(--nw-surface-1) 90%, var(--nw-surface-2) 10%);
+  border: 1px solid var(--ff-border-soft);
+  border-radius: 8px;
+  box-shadow: none;
+  backdrop-filter: blur(6px);
   flex-wrap: nowrap;
   overflow-x: auto;
 }
@@ -1259,14 +1289,14 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 0.88rem;
+  font-size: 0.78rem;
   font-weight: 700;
-  color: var(--nw-text);
-  padding: 6px 10px;
-  min-height: 32px;
-  border-radius: 8px;
-  background: rgba(15, 23, 35, 0.66);
-  border: 1px solid var(--ff-border-soft);
+  color: #dbeafe;
+  padding: 3px 8px;
+  min-height: 26px;
+  border-radius: 6px;
+  background: rgba(15, 23, 35, 0.52);
+  border: 1px solid color-mix(in srgb, var(--ff-border-soft) 78%, transparent 22%);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -1279,34 +1309,40 @@ onMounted(async () => {
 .nutrition-tab-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
+  gap: 6px;
 }
 
 .nutrition-ai-action {
-  min-height: 44px;
-  border: 2px solid transparent;
-  border-radius: 10px;
-  background: #b91c1c;
+  min-height: 38px;
+  border-radius: 6px;
   color: #ffffff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  font-size: 0.9rem;
+  gap: 7px;
+  font-size: 0.86rem;
   font-weight: 700;
+  padding: 0 12px;
   cursor: pointer;
-  box-shadow: 0 8px 18px rgba(127, 29, 29, 0.28);
+  box-shadow: none;
+  min-height: 38px !important;
+  border-radius: 6px !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  padding: 0 12px !important;
+  align-self: flex-start;
+  width: auto;
+  max-width: 100%;
+  justify-self: start;
 }
 
 .nutrition-ai-action--active {
-  border-color: #f8fafc;
-  box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.35), 0 10px 18px rgba(2, 6, 23, 0.3);
+  box-shadow: var(--wa-btn-danger-focus, 0 0 0 4px rgba(220, 38, 38, 0.24));
 }
 
 .nutrition-ai-action:focus-visible {
   outline: none;
-  border-color: #ffffff;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
+  box-shadow: var(--wa-btn-danger-focus, 0 0 0 4px rgba(220, 38, 38, 0.24));
 }
 
 .nutrition-tab-panel {
@@ -1325,10 +1361,10 @@ onMounted(async () => {
 }
 
 .nutrition-tab {
-  min-height: 46px;
-  border-radius: 3px;
+  min-height: 40px;
+  border-radius: 6px;
   border: 1px solid transparent;
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
@@ -1336,6 +1372,32 @@ onMounted(async () => {
   gap: 6px;
   cursor: pointer;
   white-space: nowrap;
+  min-height: 40px !important;
+  border-radius: 6px !important;
+  padding: 0 10px !important;
+}
+
+.nutrition-tab--search {
+  background: #1d4f9f;
+  color: #ffffff;
+}
+
+.nutrition-tab--myfoods {
+  background: #0d5b55;
+  color: #ffffff;
+}
+
+.nutrition-tab--search:hover:not(.nutrition-tab--active) {
+  background: #1b458c;
+}
+
+.nutrition-tab--myfoods:hover:not(.nutrition-tab--active) {
+  background: #0b4c47;
+}
+
+.nutrition-tab--active {
+  border: 1px solid rgba(248, 250, 252, 0.45) !important;
+  box-shadow: inset 0 0 0 1px rgba(248, 250, 252, 0.2);
 }
 
 .nutrition-tab i {
@@ -1446,7 +1508,7 @@ onMounted(async () => {
   .nutrition-date-input {
     max-width: 100%;
     width: 100%;
-    height: 48px;
+    height: 42px;
     font-size: 0.88rem;
   }
 
@@ -1458,7 +1520,7 @@ onMounted(async () => {
 
   .hero-macro-card {
     padding: 8px 10px;
-    min-height: 62px;
+    min-height: 58px;
     border-radius: 10px;
     gap: 8px;
   }
@@ -1487,17 +1549,22 @@ onMounted(async () => {
   }
 
   .nutrition-ai-action {
-    min-height: 42px;
+    min-height: 40px;
     font-size: 0.86rem;
+    min-height: 40px !important;
+    width: 100%;
+    align-self: stretch;
   }
 
   .nutrition-tab {
-    min-height: 44px;
+    min-height: 40px;
     padding: 0 8px;
     font-size: 0.8rem;
     white-space: normal;
     line-height: 1.15;
     text-align: center;
+    min-height: 40px !important;
+    border-radius: 6px !important;
   }
 
   .nutrition-tab i {
@@ -1527,26 +1594,28 @@ onMounted(async () => {
 
   .search-controls input,
   .search-controls select {
-    height: 42px;
+    height: 40px;
     font-size: 16px;
   }
 
   .btn-search {
     width: 100%;
-    height: 46px;
-    min-height: 46px;
+    height: 40px;
+    min-height: 40px;
     justify-content: center;
     margin-top: 2px;
+    min-height: 40px !important;
+    border-radius: 6px !important;
   }
 
   /* Collapsible sections */
   .section-toggle {
-    padding: 12px 14px;
-    font-size: 0.9rem;
+    padding: 10px 12px;
+    font-size: 0.86rem;
   }
 
   .section-body {
-    padding: 0 12px 12px;
+    padding: 0 10px 10px;
   }
 
   /* Add/Edit: single column */

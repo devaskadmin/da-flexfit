@@ -15,6 +15,7 @@ const publicPages = ['login', 'register', 'reset_password', 'terms_policy'];
 const errorPages = ['error_400', 'error_403', 'error_404', 'error_408', 'error_500', 'error_503', 'error_504'];
 const alwaysAllowedPages = new Set([...publicPages, ...errorPages]);
 const adminOnlyPages = new Set(['admin_users', 'admin_roles', 'admin_test_roles', 'admin_tools']);
+const incompleteRegistrationAllowedPages = new Set(['ext_register', 'logout']);
 
 const safeParseStoredUser = () => {
   try {
@@ -45,6 +46,7 @@ router.beforeEach(async (to, from, next) => {
 
     const isLoggedIn = sessionResult?.data?.loggedIn === true;
     const requiresPasswordReset = sessionResult?.data?.requiresPasswordReset === true;
+    const registrationIncomplete = sessionResult?.data?.registrationIncomplete === true;
     const sessionUser = sessionResult?.data?.user || null;
     const storedUser = safeParseStoredUser();
 
@@ -65,6 +67,18 @@ router.beforeEach(async (to, from, next) => {
     // Never block access to login because health checks can fail while auth is still recoverable.
     if (!isLoggedIn) {
       return next({ name: 'login' });
+    }
+
+    if (registrationIncomplete) {
+      if (incompleteRegistrationAllowedPages.has(to.name)) {
+        return next();
+      }
+
+      return next({ name: 'ext_register' });
+    }
+
+    if (!registrationIncomplete && to.name === 'ext_register') {
+      return next({ name: 'dashboard_index' });
     }
 
     // Force reset-password flow for temporary-password sessions.

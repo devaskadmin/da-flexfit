@@ -169,7 +169,6 @@ app.use((req, res, next) => {
       corsAllowed,
       hasCookieHeader: Boolean(req.headers.cookie),
       cookieDetected: /flexfit\.sid=/.test(rawCookie),
-      sessionId: req.sessionID || null,
       hasUserSession: Boolean(req.session?.user),
       secureFlag: sessionCookieSecure,
       sameSiteValue: sessionCookieSameSite,
@@ -178,7 +177,6 @@ app.use((req, res, next) => {
 
     console.log('FlexFit Session Diagnostics', {
       cookiePresent: /flexfit\.sid=/.test(rawCookie),
-      sessionId: req.sessionID || null,
       sameSiteValue: sessionCookieSameSite,
       secureFlag: sessionCookieSecure,
       origin,
@@ -191,6 +189,79 @@ app.use((req, res, next) => {
 
 // ✅ DB Connect
 const pool = require('./db.js');
+
+const EXTERNAL_REGISTRATION_ALLOWED_PATH_PREFIXES = [
+  '/api/auth/google',
+  '/api/auth/google/test-unlink',
+  '/api/logout',
+  '/api/session',
+  '/api/session/check',
+  '/api/auth/session-test',
+  '/api/register-tiers',
+  '/api/ext-register',
+  '/api/health',
+  '/api/db-status',
+  '/api/debug/',
+];
+
+const isExternalRegistrationAllowedPath = (pathName = '') => {
+  return EXTERNAL_REGISTRATION_ALLOWED_PATH_PREFIXES.some((prefix) => {
+    if (prefix.endsWith('/')) {
+      return pathName.startsWith(prefix);
+    }
+
+    return pathName === prefix || pathName.startsWith(`${prefix}/`);
+  });
+};
+
+app.use(async (req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+
+  const userId = Number(req.session?.user?.id || 0);
+  if (!userId) {
+    return next();
+  }
+
+  if (isExternalRegistrationAllowedPath(req.path)) {
+    return next();
+  }
+
+  try {
+    const [rows] = await pool.query(
+      'SELECT external_auth, membershipType FROM users WHERE id = ? LIMIT 1',
+      [userId]
+    );
+    const user = rows?.[0];
+
+    if (!user) {
+      return next();
+    }
+
+    const isExternalAuth = Number(user.external_auth || 0) === 1;
+    const hasMembershipType = !(user.membershipType === null || typeof user.membershipType === 'undefined' || String(user.membershipType).trim() === '');
+    const registrationIncomplete = isExternalAuth && !hasMembershipType;
+
+    req.session.registrationIncomplete = registrationIncomplete;
+    if (req.session.user) {
+      req.session.user.registrationIncomplete = registrationIncomplete;
+    }
+
+    if (registrationIncomplete) {
+      return res.status(403).json({
+        error: 'External registration is incomplete. Complete registration to continue.',
+        registrationIncomplete: true,
+        redirectPath: '/ext-register',
+      });
+    }
+
+    return next();
+  } catch (err) {
+    console.error('❌ External registration gate error:', err?.message || err);
+    return res.status(500).json({ error: 'Failed to verify registration state.' });
+  }
+});
 
 // ✅ Prevent idle app pool connections from emitting unhandled 'error' events.
 // mysql2 emits 'error' on the pool when an idle connection is reset by the server
@@ -217,6 +288,7 @@ const nutritionRoutes       = require('./api/nutrition.js');
 
 // Import routes
 app.use('/api', require('./api/auth.js'));
+app.use('/api', require('./api/config.js'));
 app.use('/api', require('./api/users.js'));
 app.use('/api', require('./api/excerises.js'));
 app.use('/api', require('./api/notifications.js'));
@@ -245,7 +317,10 @@ app.get('/api/health', (_req, res) => {
 // causing the fallback "Sign-in request failed before authentication could complete."
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  const status = err?.status || err?.statusCode || 500;
+  const isCorsOriginDenied = String(err?.message || '') === 'Not allowed by CORS';
+  const status = isCorsOriginDenied
+    ? 403
+    : (err?.status || err?.statusCode || 500);
 
   // Classify the error so we can give the user a meaningful message.
   const isSessionStoreErr = (
@@ -260,9 +335,11 @@ app.use((err, req, res, next) => {
     (err?.constructor?.name === 'Error' && /session/i.test(err?.message || ''))
   );
 
-  const userMessage = isSessionStoreErr
-    ? 'The session store is temporarily unavailable. Please wait a moment and try again.'
-    : (err?.message || 'An unexpected server error occurred.');
+  const userMessage = isCorsOriginDenied
+    ? 'Request origin not allowed.'
+    : (isSessionStoreErr
+      ? 'The session store is temporarily unavailable. Please wait a moment and try again.'
+      : (err?.message || 'An unexpected server error occurred.'));
 
   console.error('❌ [Global error handler]', {
     status,
@@ -398,39 +475,14 @@ const startServer = (port, isLocalFallbackMode) => {
   return server;
 };
 
-const startServerWithLocalFallback = (initialPort) => {
-  const tryPort = (port) => {
-    const server = startServer(port, true);
-
-    server.on('error', (err) => {
-      if (err && err.code === 'EADDRINUSE') {
-        const nextPort = port + 1;
-        console.warn(`⚠️ Local port ${port} is in use, retrying on ${nextPort}...`);
-        tryPort(nextPort);
-        return;
-      }
-
-      console.error('❌ Startup failed:', err);
-      process.exit(1);
-    });
-  };
-
-  tryPort(initialPort);
-};
-
-const useLocalFallback = !isProduction && !process.env.PORT;
-
-if (useLocalFallback) {
-  startServerWithLocalFallback(START_PORT);
-} else {
-  const server = startServer(START_PORT, false);
-  server.on('error', (err) => {
-    if (err && err.code === 'EADDRINUSE') {
-      console.error(`❌ Startup failed: port ${START_PORT} is already in use.`);
-      process.exit(1);
-    }
-
-    console.error('❌ Startup failed:', err);
+const server = startServer(START_PORT, false);
+server.on('error', (err) => {
+  if (err && err.code === 'EADDRINUSE') {
+    console.error(`❌ Startup failed: backend port ${START_PORT} is already in use.`);
+    console.error('   Stop the existing process bound to this port before retrying.');
     process.exit(1);
-  });
-}
+  }
+
+  console.error('❌ Startup failed:', err);
+  process.exit(1);
+});

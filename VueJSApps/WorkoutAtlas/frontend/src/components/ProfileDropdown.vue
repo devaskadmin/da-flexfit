@@ -595,7 +595,7 @@ onUnmounted(() => {
             role="menuitem"
           >
             <span class="dropdown-icon">
-              <i class="fa-regular fa-gear"></i>
+              <i class="fa-solid fa-gear"></i>
             </span>
             <span class="dropdown-label">Account Settings</span>
           </button>
@@ -625,7 +625,7 @@ onUnmounted(() => {
             role="menuitem"
           >
             <span class="dropdown-icon">
-              <i class="fa-regular fa-arrow-right-from-bracket"></i>
+              <i class="fa-solid fa-right-from-bracket"></i>
             </span>
             <span class="dropdown-label" v-if="logoutInProgress">Signing out...</span>
             <span class="dropdown-label" v-else>Sign Out</span>
@@ -808,7 +808,7 @@ onUnmounted(() => {
 .user-display-name {
   font-size: 14px;
   font-weight: 600;
-  color: var(--dropdown-text, #c8d4f0);
+  color: #ffffff !important;
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -817,7 +817,7 @@ onUnmounted(() => {
 
 .user-email {
   font-size: 12px;
-  color: var(--dropdown-subtext, #8b97b2);
+  color: #ffffff !important;
   margin: 4px 0 0 0;
   white-space: nowrap;
   overflow: hidden;
@@ -846,7 +846,7 @@ onUnmounted(() => {
   padding: 10px 16px;
   background: none;
   border: none;
-  color: var(--dropdown-text, #c8d4f0);
+  color: #ffffff !important;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -859,22 +859,35 @@ onUnmounted(() => {
 
 .dropdown-item:hover {
   background: var(--dropdown-hover-bg, rgba(59, 130, 246, 0.15));
-  color: var(--dropdown-text-hover, #ffffff);
+  color: #ffffff !important;
   padding-left: 18px;
 }
 
 .dropdown-item:active {
   background: var(--dropdown-active-bg, rgba(59, 130, 246, 0.25));
+  color: #ffffff !important;
+}
+
+.dropdown-item:focus-visible {
+  color: #ffffff !important;
+  background: var(--dropdown-hover-bg, rgba(59, 130, 246, 0.15));
+  outline: 2px solid rgba(255, 255, 255, 0.45);
+  outline-offset: -2px;
 }
 
 /* Danger variant for Sign Out */
 .dropdown-item-danger {
-  color: var(--dropdown-danger-text, #f87171);
+  color: #ffffff !important;
 }
 
 .dropdown-item-danger:hover {
   background: var(--dropdown-danger-bg, rgba(248, 113, 113, 0.1));
-  color: var(--dropdown-danger-hover, #fca5a5);
+  color: #ffffff !important;
+}
+
+.dropdown-item-danger:active,
+.dropdown-item-danger:focus-visible {
+  color: #ffffff !important;
 }
 
 /* Icon */
@@ -885,6 +898,15 @@ onUnmounted(() => {
   width: 18px;
   flex-shrink: 0;
   font-size: 16px;
+  color: #ffffff !important;
+}
+
+.dropdown-icon i {
+  color: #ffffff !important;
+}
+
+.dropdown-label {
+  color: #ffffff !important;
 }
 
 .dropdown-label {

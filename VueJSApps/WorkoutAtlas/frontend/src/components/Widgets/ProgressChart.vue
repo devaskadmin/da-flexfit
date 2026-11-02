@@ -339,18 +339,51 @@ onMounted(loadChart);
     padding: 10px 12px;
   }
 
+  .ps-chart-header {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .ps-chart-sub {
+    font-size: 0.69rem;
+  }
+
+  .ps-chart-controls {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .ps-group-btns {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
   .ps-chart-body {
     padding: 8px 10px 12px;
   }
 
   .ps-group-btn {
-    padding: 4px 10px;
-    font-size: 0.72rem;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 4px 6px;
+    font-size: 0.68rem;
+    line-height: 1.15;
+    white-space: nowrap;
+  }
+
+  .ps-chart-type-btns {
+    flex: 0 0 auto;
+    gap: 3px;
+    padding: 2px;
   }
 
   .ps-type-btn {
-    padding: 4px 8px;
-    font-size: 0.74rem;
+    min-width: 28px;
+    padding: 4px 6px;
+    font-size: 0.7rem;
   }
 }
 </style>

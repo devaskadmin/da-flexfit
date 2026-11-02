@@ -26,7 +26,7 @@ const navItems = [
     matches: ['/workout-log', '/workouts'],
   },
   {
-    label: 'Build',
+    label: 'Plans',
     to: '/workout-builder',
     icon: 'fa-solid fa-clipboard-list',
     matches: ['/workout-builder'],
@@ -112,20 +112,30 @@ const handleNavClick = (item, event) => {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  border-radius: 10px;
-  font-size: 11px;
+  border-radius: 9px;
+  font-size: 10.5px;
   font-weight: 600;
+  line-height: 1;
   min-width: 0;
+  min-height: 100%;
+  padding: 4px 2px;
   cursor: pointer;
 }
 
 .wa-app-bottom-link i {
   font-size: 14px;
+  line-height: 1;
+}
+
+.wa-app-bottom-link span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .wa-app-bottom-link.is-active {
   color: var(--wa-action-blue, #4c7bff);
-  background: color-mix(in srgb, var(--wa-action-blue, #4c7bff) 18%, transparent 82%);
+  background: color-mix(in srgb, var(--wa-action-blue, #4c7bff) 12%, transparent 88%);
 }
 
 .wa-app-bottom-nav {
@@ -141,6 +151,67 @@ const handleNavClick = (item, event) => {
 @media (max-width: 768px) {
   .wa-app-bottom-nav {
     display: grid;
+    left: 10px;
+    right: 10px;
+    padding: 3px;
+  }
+
+  .wa-app-bottom-link:nth-child(1) i {
+    color: #60A5FA;
+  }
+
+  .wa-app-bottom-link:nth-child(2) i {
+    color: #4ADE80;
+  }
+
+  .wa-app-bottom-link:nth-child(3) i {
+    color: #FB923C;
+  }
+
+  .wa-app-bottom-link:nth-child(4) i {
+    color: #F87171;
+  }
+
+  .wa-app-bottom-link:nth-child(1).is-active {
+    color: #60A5FA !important;
+    background: color-mix(in srgb, #60A5FA 14%, transparent 86%) !important;
+  }
+
+  .wa-app-bottom-link:nth-child(2).is-active {
+    color: #4ADE80 !important;
+    background: color-mix(in srgb, #4ADE80 14%, transparent 86%) !important;
+  }
+
+  .wa-app-bottom-link:nth-child(3).is-active {
+    color: #FB923C !important;
+    background: color-mix(in srgb, #FB923C 14%, transparent 86%) !important;
+  }
+
+  .wa-app-bottom-link:nth-child(4).is-active {
+    color: #F87171 !important;
+    background: color-mix(in srgb, #F87171 14%, transparent 86%) !important;
+  }
+
+  .wa-app-bottom-link {
+    gap: 3px;
+    border-radius: 8px;
+    padding: 4px 1px;
+  }
+
+  .wa-app-bottom-link i {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 360px) {
+  .wa-app-bottom-nav {
+    left: 8px;
+    right: 8px;
+  }
+
+  .wa-app-bottom-link {
+    font-size: 10px;
+    gap: 2px;
   }
 }
 </style>

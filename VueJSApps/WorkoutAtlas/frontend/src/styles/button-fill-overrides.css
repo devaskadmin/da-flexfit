@@ -2,14 +2,23 @@
    Goal: remove transparent/outline action buttons and keep high contrast in dark UI. */
 
 :root {
-  --wa-btn-primary: #2563eb;
-  --wa-btn-primary-hover: #1d4ed8;
+  --wa-btn-radius: 6px;
+  --wa-btn-border-width: 1px;
+  --wa-btn-primary: rgba(30, 64, 175, 0.3);
+  --wa-btn-primary-hover: rgba(37, 99, 235, 0.42);
+  --wa-btn-primary-border: rgba(59, 130, 246, 0.55);
+  --wa-btn-primary-focus: var(--wa-focus, 0 0 0 4px rgba(164, 255, 79, 0.18));
+  --wa-btn-primary-radius: var(--wa-btn-radius);
+  --wa-btn-success: rgba(6, 95, 70, 0.45);
+  --wa-btn-success-hover: rgba(5, 150, 105, 0.55);
+  --wa-btn-success-border: rgba(16, 185, 129, 0.5);
+  --wa-btn-success-focus: 0 0 0 4px rgba(16, 185, 129, 0.22);
+  --wa-btn-danger: #3b1d2b;
+  --wa-btn-danger-hover: #512334;
+  --wa-btn-danger-border: #dc2626;
+  --wa-btn-danger-focus: 0 0 0 4px rgba(220, 38, 38, 0.24);
   --wa-btn-info: #0e7490;
   --wa-btn-info-hover: #0b5f77;
-  --wa-btn-danger: #c62828;
-  --wa-btn-danger-hover: #ad1f1f;
-  --wa-btn-success: #2e7d32;
-  --wa-btn-success-hover: #24662a;
   --wa-btn-neutral: #334155;
   --wa-btn-neutral-hover: #273646;
   --wa-btn-text: #f8fbff;
@@ -31,13 +40,27 @@
   border-color: var(--wa-btn-neutral-hover);
 }
 
+.wa-btn--blue,
+.wa-blue-action-btn,
 .btn-primary,
 .btn-outline-primary {
   color: #ffffff;
   background-color: var(--wa-btn-primary);
-  border-color: var(--wa-btn-primary);
+  border-color: var(--wa-btn-primary-border);
+  border-width: var(--wa-btn-border-width);
+  border-style: solid;
+  border-radius: var(--wa-btn-primary-radius);
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
 }
 
+.wa-btn--blue:hover,
+.wa-btn--blue:focus,
+.wa-btn--blue:active,
+.wa-btn--blue.active,
+.wa-blue-action-btn:hover,
+.wa-blue-action-btn:focus,
+.wa-blue-action-btn:active,
+.wa-blue-action-btn.active,
 .btn-primary:hover,
 .btn-primary:focus,
 .btn-primary:active,
@@ -48,7 +71,84 @@
 .btn-outline-primary.active {
   color: #ffffff;
   background-color: var(--wa-btn-primary-hover);
-  border-color: var(--wa-btn-primary-hover);
+  border-color: var(--wa-btn-primary-border);
+}
+
+.wa-btn--blue:focus-visible,
+.wa-blue-action-btn:focus-visible,
+.btn-primary:focus-visible,
+.btn-outline-primary:focus-visible {
+  box-shadow: var(--wa-btn-primary-focus);
+}
+
+.wa-btn--green,
+.btn-success,
+.btn-outline-success {
+  color: #ffffff;
+  background-color: var(--wa-btn-success);
+  border-color: var(--wa-btn-success-border);
+  border-width: var(--wa-btn-border-width);
+  border-style: solid;
+  border-radius: var(--wa-btn-radius);
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+}
+
+.wa-btn--green:hover,
+.wa-btn--green:focus,
+.wa-btn--green:active,
+.wa-btn--green.active,
+.btn-success:hover,
+.btn-success:focus,
+.btn-success:active,
+.btn-success.active,
+.btn-outline-success:hover,
+.btn-outline-success:focus,
+.btn-outline-success:active,
+.btn-outline-success.active {
+  color: #ffffff;
+  background-color: var(--wa-btn-success-hover);
+  border-color: var(--wa-btn-success-border);
+}
+
+.wa-btn--green:focus-visible,
+.btn-success:focus-visible,
+.btn-outline-success:focus-visible {
+  box-shadow: var(--wa-btn-success-focus);
+}
+
+.wa-btn--red,
+.btn-danger,
+.btn-outline-danger {
+  color: #ffffff;
+  background-color: var(--wa-btn-danger);
+  border-color: var(--wa-btn-danger-border);
+  border-width: var(--wa-btn-border-width);
+  border-style: solid;
+  border-radius: var(--wa-btn-radius);
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+}
+
+.wa-btn--red:hover,
+.wa-btn--red:focus,
+.wa-btn--red:active,
+.wa-btn--red.active,
+.btn-danger:hover,
+.btn-danger:focus,
+.btn-danger:active,
+.btn-danger.active,
+.btn-outline-danger:hover,
+.btn-outline-danger:focus,
+.btn-outline-danger:active,
+.btn-outline-danger.active {
+  color: #ffffff;
+  background-color: var(--wa-btn-danger-hover);
+  border-color: var(--wa-btn-danger-border);
+}
+
+.wa-btn--red:focus-visible,
+.btn-danger:focus-visible,
+.btn-outline-danger:focus-visible {
+  box-shadow: var(--wa-btn-danger-focus);
 }
 
 .btn-info,
@@ -69,46 +169,6 @@
   color: #ffffff;
   background-color: var(--wa-btn-info-hover);
   border-color: var(--wa-btn-info-hover);
-}
-
-.btn-danger,
-.btn-outline-danger {
-  color: #ffffff;
-  background-color: var(--wa-btn-danger);
-  border-color: var(--wa-btn-danger);
-}
-
-.btn-danger:hover,
-.btn-danger:focus,
-.btn-danger:active,
-.btn-danger.active,
-.btn-outline-danger:hover,
-.btn-outline-danger:focus,
-.btn-outline-danger:active,
-.btn-outline-danger.active {
-  color: #ffffff;
-  background-color: var(--wa-btn-danger-hover);
-  border-color: var(--wa-btn-danger-hover);
-}
-
-.btn-success,
-.btn-outline-success {
-  color: #ffffff;
-  background-color: var(--wa-btn-success);
-  border-color: var(--wa-btn-success);
-}
-
-.btn-success:hover,
-.btn-success:focus,
-.btn-success:active,
-.btn-success.active,
-.btn-outline-success:hover,
-.btn-outline-success:focus,
-.btn-outline-success:active,
-.btn-outline-success.active {
-  color: #ffffff;
-  background-color: var(--wa-btn-success-hover);
-  border-color: var(--wa-btn-success-hover);
 }
 
 .btn-secondary,
@@ -187,4 +247,131 @@ fieldset:disabled .btn,
   border-color: #475569;
   opacity: 0.62;
   box-shadow: none;
+}
+
+.wa-btn--blue:disabled,
+.wa-btn--blue[disabled],
+.wa-btn--green:disabled,
+.wa-btn--green[disabled],
+.wa-btn--red:disabled,
+.wa-btn--red[disabled],
+.wa-blue-action-btn:disabled,
+.wa-blue-action-btn[disabled] {
+  color: #dce7f9;
+  background-color: #475569;
+  border-color: #475569;
+  opacity: 0.62;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Shared modal close (X) control styling */
+.wa-modal-close-btn,
+.goal-picker-modal__close,
+.picker-head .btn-close,
+.wl-modal__close,
+.avatar-modal .close-btn,
+#closeComposeMail,
+.close-mail,
+.modal .modal-header .btn-close,
+.modal .modal-header button[aria-label="Close"] {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid var(--wa-btn-danger-border);
+  border-radius: 5px;
+  background: var(--wa-btn-danger);
+  color: #ffffff;
+  font-size: 16px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 1;
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+}
+
+.wa-modal-close-btn i,
+.goal-picker-modal__close i,
+.picker-head .btn-close i,
+.wl-modal__close i,
+.avatar-modal .close-btn i,
+#closeComposeMail i,
+.close-mail i,
+.modal .modal-header button[aria-label="Close"] i {
+  font-size: 16px;
+  color: #ffffff;
+}
+
+.modal .modal-header .btn-close {
+  filter: brightness(0) invert(1);
+  background-size: 16px 16px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.wa-modal-close-btn:hover,
+.wa-modal-close-btn:focus,
+.wa-modal-close-btn:active,
+.goal-picker-modal__close:hover,
+.goal-picker-modal__close:focus,
+.goal-picker-modal__close:active,
+.picker-head .btn-close:hover,
+.picker-head .btn-close:focus,
+.picker-head .btn-close:active,
+.wl-modal__close:hover,
+.wl-modal__close:focus,
+.wl-modal__close:active,
+.avatar-modal .close-btn:hover,
+.avatar-modal .close-btn:focus,
+.avatar-modal .close-btn:active,
+#closeComposeMail:hover,
+#closeComposeMail:focus,
+#closeComposeMail:active,
+.close-mail:hover,
+.close-mail:focus,
+.close-mail:active,
+.modal .modal-header .btn-close:hover,
+.modal .modal-header .btn-close:focus,
+.modal .modal-header .btn-close:active,
+.modal .modal-header button[aria-label="Close"]:hover,
+.modal .modal-header button[aria-label="Close"]:focus,
+.modal .modal-header button[aria-label="Close"]:active {
+  background: var(--wa-btn-danger-hover);
+  border-color: var(--wa-btn-danger-border);
+  color: #ffffff;
+  opacity: 1;
+}
+
+.wa-modal-close-btn:focus-visible,
+.goal-picker-modal__close:focus-visible,
+.picker-head .btn-close:focus-visible,
+.wl-modal__close:focus-visible,
+.avatar-modal .close-btn:focus-visible,
+#closeComposeMail:focus-visible,
+.close-mail:focus-visible,
+.modal .modal-header .btn-close:focus-visible,
+.modal .modal-header button[aria-label="Close"]:focus-visible {
+  outline: none;
+  box-shadow: var(--wa-btn-danger-focus);
+}
+
+@media (max-width: 767px) {
+  .wa-modal-close-btn,
+  .goal-picker-modal__close,
+  .picker-head .btn-close,
+  .wl-modal__close,
+  .avatar-modal .close-btn,
+  #closeComposeMail,
+  .close-mail,
+  .modal .modal-header .btn-close,
+  .modal .modal-header button[aria-label="Close"] {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+  }
 }

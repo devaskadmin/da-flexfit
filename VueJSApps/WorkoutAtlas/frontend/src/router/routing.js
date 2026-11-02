@@ -42,6 +42,12 @@ const guestRoutes = [
         meta: {layout: 'GuestLayout'}
     },
     {
+        path: '/ext-register',
+        component: () => import('@/views/Guest/ExternalRegister.vue'),
+        name: 'ext_register',
+        meta: { layout: 'GuestLayout' },
+    },
+    {
         path: '/login-status',
         component: () => import('@/views/template/pages/authentication/LoginStatus.vue'),
         name: 'login_status',

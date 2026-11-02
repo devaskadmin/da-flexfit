@@ -1,11 +1,13 @@
 ﻿<script setup>
 import { ref, reactive, onMounted, onUnmounted, watch, computed } from 'vue'
+import { useRoute } from 'vue-router';
 import { API_BASE } from '@/config/env';
 import { useAuth } from '@/composable/useAuth';
 import AvatarModal from '@/components/AvatarModal.vue';
 import ExercisePickerModal from '@/components/workout-builder/ExercisePickerModal.vue';
 
 const activeTab = ref('profile')
+const route = useRoute();
 const authStore = useAuth()
 const showAvatarModal = ref(false)
 
@@ -467,6 +469,11 @@ const goalDisplayText = (goal) => {
 }
 
 onMounted(() => {
+  const requestedTab = String(route.query?.tab || '').trim().toLowerCase();
+  if (requestedTab && visibleTabs.value.some((tab) => String(tab.id || '').toLowerCase() === requestedTab)) {
+    activeTab.value = requestedTab;
+  }
+
   authStore.fetchUser()
   loadDisplayFromLocalStorage();
   loadUserSettings();
@@ -517,7 +524,7 @@ watch(
         <p class="settings-subtitle">Manage your profile, fitness data and preferences</p>
       </div>
       <!-- Desktop save in header -->
-      <button class="ff-btn-save ff-btn-save-desktop" :class="{ saving: saveStatus==='saving', saved: saveStatus==='saved' }" @click="save">
+      <button class="ff-btn-save ff-btn-save-desktop wa-btn--blue" :class="{ saving: saveStatus==='saving', saved: saveStatus==='saved' }" @click="save">
         <i v-if="saveStatus==='saving'" class="fa-solid fa-spinner fa-spin"></i>
         <i v-else-if="saveStatus==='saved'" class="fa-solid fa-check"></i>
         <i v-else class="fa-solid fa-floppy-disk"></i>
@@ -577,18 +584,30 @@ watch(
 
           <!-- Centered profile header -->
           <div class="profile-header">
-            <div class="avatar-circle has-image">
-              <img :src="getAvatarUrl()" alt="Profile avatar" class="profile-avatar" />
-              <button class="avatar-cam" @click="openAvatarModal" title="Change avatar">
-                <i class="fa-solid fa-camera"></i>
+            <div class="profile-header__avatar">
+              <div class="avatar-circle has-image">
+                <img :src="getAvatarUrl()" alt="Profile avatar" class="profile-avatar" />
+                <button class="avatar-cam" @click="openAvatarModal" title="Change avatar">
+                  <i class="fa-solid fa-camera"></i>
+                </button>
+              </div>
+            </div>
+            <div class="profile-header__identity">
+              <div class="avatar-name">{{ profile.firstName }} {{ profile.lastName }}</div>
+              <div class="avatar-handle">@{{ profile.username }}</div>
+              <div class="profile-meta">
+                <span v-if="profile.email" class="profile-meta-pill">
+                  <i class="fa-regular fa-envelope"></i>
+                  {{ profile.email }}
+                </span>
+              </div>
+              <span class="member-badge"><i class="fa-solid fa-crown"></i> Elite Member</span>
+            </div>
+            <div class="profile-header__actions">
+              <button @click="openAvatarModal" class="change-avatar-btn wa-btn--blue">
+                <i class="fa-solid fa-image"></i> Change Avatar
               </button>
             </div>
-            <div class="avatar-name">{{ profile.firstName }} {{ profile.lastName }}</div>
-            <div class="avatar-handle">@{{ profile.username }}</div>
-            <span class="member-badge"><i class="fa-solid fa-crown"></i> Elite Member</span>
-            <button @click="openAvatarModal" class="change-avatar-btn">
-              <i class="fa-solid fa-image"></i> Change Avatar
-            </button>
           </div>
 
           <!-- Basic Information -->
@@ -647,7 +666,7 @@ watch(
               </div>
               <div class="ff-field">
                 <label class="ff-label">Date of Birth</label>
-                <input v-model="profile.dateOfBirth" class="form-control ff-field-needs-update" type="date" />
+                <input v-model="profile.dateOfBirth" class="form-control ff-field-needs-update ff-date-input" type="date" />
               </div>
             </div>
           </div>
@@ -848,7 +867,7 @@ watch(
                 <h5 class="danger-title"><i class="fa-solid fa-triangle-exclamation"></i> Danger Zone</h5>
                 <p class="danger-desc">Permanently delete your account and all associated data. This cannot be undone.</p>
               </div>
-              <button class="btn-delete-account">Delete Account</button>
+              <button class="btn-delete-account wa-btn--red">Delete Account</button>
             </div>
           </div>
         </section>
@@ -860,7 +879,7 @@ watch(
               <h4 class="s-panel-title">My Goals</h4>
               <p class="s-panel-sub">Track your body weight and exercise weight targets</p>
             </div>
-            <button v-if="!goalFormOpen" class="btn-add-goal" @click="openAddGoal">
+            <button v-if="!goalFormOpen" class="btn-add-goal wa-btn--green" @click="openAddGoal">
               <i class="fa-solid fa-plus"></i> Add Goal
             </button>
           </div>
@@ -920,7 +939,7 @@ watch(
               </div>
               <div class="goal-form-field">
                 <label class="ff-label">Target Date</label>
-                <input v-model="goalForm.targetDate" class="form-control" type="date" />
+                <input v-model="goalForm.targetDate" class="form-control ff-date-input" type="date" />
               </div>
               <div class="goal-form-field">
                 <label class="ff-label">Unit</label>
@@ -2245,4 +2264,609 @@ textarea::placeholder {
   cursor: pointer; transition: background .15s, color .15s;
 }
 .ex-clear-btn-icon:hover { background: rgba(239,68,68,.2); color: #ef4444; }
+
+/* 0.85.164 - Account Settings modernization */
+.settings-page {
+  --ff-border-strong: rgba(148, 163, 184, 0.36);
+  --ff-border-soft: rgba(148, 163, 184, 0.22);
+}
+
+.settings-header {
+  align-items: flex-start;
+  gap: 12px;
+  border-radius: 10px;
+  padding: 16px 20px;
+}
+
+.settings-title {
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.settings-subtitle {
+  font-size: 0.86rem;
+  margin-top: 4px;
+  color: #cbd5e1 !important;
+}
+
+.ff-btn-save,
+.change-avatar-btn,
+.btn-add-goal,
+.btn-goal-save,
+.btn-delete-account {
+  border-radius: 7px !important;
+  min-height: 38px;
+  font-weight: 650;
+}
+
+.ff-btn-save,
+.change-avatar-btn {
+  background: rgba(30, 64, 175, 0.3) !important;
+  border: 1px solid rgba(59, 130, 246, 0.6) !important;
+  color: #ffffff !important;
+}
+
+.ff-btn-save:hover,
+.change-avatar-btn:hover {
+  background: rgba(30, 64, 175, 0.45) !important;
+  border-color: rgba(147, 197, 253, 0.74) !important;
+  color: #ffffff !important;
+}
+
+.ff-btn-save:focus-visible,
+.change-avatar-btn:focus-visible,
+.btn-add-goal:focus-visible,
+.btn-goal-save:focus-visible,
+.btn-delete-account:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(148, 197, 253, 0.34);
+}
+
+.btn-add-goal,
+.btn-goal-save {
+  background: rgba(13, 91, 85, 0.32) !important;
+  border: 1px solid rgba(16, 185, 129, 0.54) !important;
+  color: #ffffff !important;
+}
+
+.btn-add-goal:hover,
+.btn-goal-save:hover:not(:disabled) {
+  background: rgba(13, 91, 85, 0.46) !important;
+  border-color: rgba(110, 231, 183, 0.72) !important;
+}
+
+.btn-delete-account {
+  background: rgba(91, 24, 45, 0.36) !important;
+  border: 1px solid rgba(248, 113, 113, 0.54) !important;
+  color: #ffffff !important;
+}
+
+.btn-delete-account:hover {
+  background: rgba(127, 29, 29, 0.58) !important;
+  border-color: rgba(252, 165, 165, 0.78) !important;
+}
+
+.profile-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  text-align: left;
+  gap: 12px;
+  padding-bottom: 10px;
+  margin-bottom: 8px;
+}
+
+.profile-header__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-header__identity {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.profile-header__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.profile-avatar,
+.profile-header .avatar-circle {
+  width: 74px;
+  height: 74px;
+}
+
+.avatar-name {
+  color: #f8fafc;
+  font-size: 1.02rem;
+  line-height: 1.22;
+}
+
+.avatar-handle {
+  color: #cbd5e1;
+  margin-top: 0;
+  line-height: 1.2;
+}
+
+.profile-meta {
+  margin-top: 1px;
+}
+
+.profile-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  background: rgba(15, 23, 42, 0.44);
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  color: #e2e8f0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.change-avatar-btn {
+  margin-top: 0;
+  padding: 7px 14px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.profile-header .change-avatar-btn {
+  margin-top: 0;
+}
+
+.profile-header .member-badge {
+  margin-top: 3px;
+}
+
+.ff-settings-nav {
+  width: 198px;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.s-nav-item {
+  min-height: 40px;
+  min-height: 40px !important;
+  border-radius: 6px !important;
+  padding: 8px 11px;
+  border: 1px solid transparent;
+  color: #e2e8f0;
+  background: #0f1d33;
+}
+
+.s-nav-item .s-nav-label,
+.s-nav-item i {
+  color: #e2e8f0 !important;
+}
+
+.s-nav-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.56) !important;
+  color: #cbd5e1 !important;
+}
+
+.s-nav-item:hover {
+  background: #152540 !important;
+  border-color: rgba(96, 165, 250, 0.34);
+}
+
+.s-nav-item.active {
+  background: #1a3d75 !important;
+  border-color: rgba(147, 197, 253, 0.54);
+  box-shadow: inset 3px 0 0 #2081e2 !important;
+}
+
+.s-nav-item.active .s-nav-label,
+.s-nav-item.active i {
+  color: #ffffff !important;
+}
+
+.settings-content {
+  min-width: 0;
+}
+
+.s-panel {
+  border-radius: 10px;
+  padding: 20px 22px;
+  border: 1px solid var(--ff-border-strong);
+}
+
+.settings-section {
+  border-radius: 9px;
+  padding: 13px;
+  margin-bottom: 11px;
+  border: 1px solid var(--ff-border-soft);
+}
+
+.section-label,
+.s-panel-title {
+  color: #e2e8f0 !important;
+}
+
+.section-label {
+  font-size: 0.74rem;
+  margin-bottom: 9px;
+}
+
+.ff-label {
+  color: #f1f5f9 !important;
+  opacity: 1;
+}
+
+.form-control,
+.form-select {
+  height: 40px;
+  min-height: 40px;
+  border-radius: 7px !important;
+  color: #ffffff !important;
+}
+
+.form-select option {
+  color: #ffffff;
+  background: #1e293b;
+}
+
+textarea.form-control {
+  min-height: 92px;
+  height: auto;
+}
+
+.settings-grid {
+  gap: 11px 12px;
+}
+
+.ff-date-input {
+  color-scheme: dark;
+  padding-right: 34px;
+}
+
+.settings-page .ff-date-input::-webkit-calendar-picker-indicator {
+  filter: brightness(0) invert(1);
+  opacity: 0.95;
+  width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  cursor: pointer;
+}
+
+:global(body.light-theme) .settings-page .section-label,
+:global(body.light-theme) .settings-page .s-panel-title {
+  color: #e2e8f0 !important;
+}
+
+:global(body.light-theme) .settings-page .ff-label {
+  color: #f1f5f9 !important;
+  opacity: 1 !important;
+}
+
+@media (max-width: 768px) {
+  .settings-header {
+    padding: 13px 14px;
+  }
+
+  .s-panel {
+    padding: 14px 12px;
+  }
+
+  .profile-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    padding-bottom: 10px;
+  }
+
+  .profile-header__identity {
+    align-items: center;
+    text-align: center;
+  }
+
+  .profile-header__actions {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .change-avatar-btn {
+    width: 100%;
+    max-width: 240px;
+  }
+
+  .settings-section {
+    padding: 12px;
+  }
+
+  .settings-grid,
+  .ff-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ff-btn-save,
+  .account-save-mobile .ff-btn-save,
+  .btn-add-goal,
+  .btn-goal-save,
+  .btn-goal-cancel,
+  .btn-delete-account {
+    min-height: 40px;
+  }
+}
+
+/* 0.85.164-A - Keep settings nav text/icons white across all states */
+.settings-page .ff-settings-nav .s-nav-item,
+.settings-page .ff-settings-nav .s-nav-item.inactive,
+.settings-page .ff-settings-nav .s-nav-item.active,
+.settings-page .ff-settings-nav .s-nav-item:hover,
+.settings-page .ff-settings-nav .s-nav-item:focus,
+.settings-page .ff-settings-nav .s-nav-item:focus-visible,
+.settings-page .ff-settings-nav .s-nav-item .s-nav-label,
+.settings-page .ff-settings-nav .s-nav-item .s-nav-label:link,
+.settings-page .ff-settings-nav .s-nav-item .s-nav-label:visited,
+.settings-page .ff-settings-nav .s-nav-item .s-nav-label:hover,
+.settings-page .ff-settings-nav .s-nav-item .s-nav-label:focus,
+.settings-page .ff-settings-nav .s-nav-item .s-nav-label:focus-visible,
+.settings-page .ff-settings-nav .s-nav-item .s-nav-icon,
+.settings-page .ff-settings-nav .s-nav-item .s-nav-icon i,
+.settings-page .ff-settings-nav .s-nav-item .s-nav-icon i:link,
+.settings-page .ff-settings-nav .s-nav-item .s-nav-icon i:visited,
+.settings-page .ff-settings-nav .s-nav-item .s-nav-icon i:hover,
+.settings-page .ff-settings-nav .s-nav-item .s-nav-icon i:focus,
+.settings-page .ff-settings-nav .s-nav-item .s-nav-icon i:focus-visible,
+.settings-page .ff-settings-nav .s-nav-item i {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.settings-page .ff-settings-nav .s-nav-item:focus-visible {
+  outline: none;
+  box-shadow: inset 3px 0 0 #2081e2, 0 0 0 2px rgba(147, 197, 253, 0.35);
+}
+
+/* Keep mobile settings nav labels/icons readable at 390px checks */
+.settings-page .mobile-nav-selected,
+.settings-page .mobile-nav-item,
+.settings-page .mobile-nav-item:hover,
+.settings-page .mobile-nav-item.active,
+.settings-page .mobile-nav-item-emoji,
+.settings-page .mobile-nav-item span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+/* 0.85.164-D - Account Settings button polish */
+.settings-page .ff-btn-save,
+.settings-page .change-avatar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 6px !important;
+  border: 1px solid rgba(59, 130, 246, 0.72) !important;
+  background: rgba(30, 64, 175, 0.34) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-weight: 650;
+  padding: 0 14px;
+}
+
+.settings-page .ff-btn-save:hover,
+.settings-page .change-avatar-btn:hover {
+  background: rgba(30, 64, 175, 0.5) !important;
+  border-color: rgba(147, 197, 253, 0.82) !important;
+  color: #ffffff !important;
+}
+
+.settings-page .ff-btn-save-desktop,
+.settings-page .profile-header .change-avatar-btn {
+  height: 36px;
+  min-height: 36px;
+}
+
+.settings-page .profile-header .change-avatar-btn {
+  margin-top: 0 !important;
+}
+
+.settings-page .ff-settings-nav {
+  padding: 9px;
+  gap: 4px;
+}
+
+.settings-page .ff-settings-nav .s-nav-item {
+  height: 40px;
+  min-height: 40px !important;
+  border-radius: 6px !important;
+  padding: 0 10px;
+  gap: 10px;
+  background: #0d1e38 !important;
+  border: 1px solid transparent;
+  color: #ffffff !important;
+}
+
+.settings-page .ff-settings-nav .s-nav-item .s-nav-label,
+.settings-page .ff-settings-nav .s-nav-item i,
+.settings-page .ff-settings-nav .s-nav-item .s-nav-icon,
+.settings-page .ff-settings-nav .s-nav-item .s-nav-icon i {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.settings-page .ff-settings-nav .s-nav-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  background: rgba(15, 23, 42, 0.52) !important;
+}
+
+.settings-page .ff-settings-nav .s-nav-item:hover {
+  background: #173056 !important;
+  border-color: rgba(96, 165, 250, 0.44);
+}
+
+.settings-page .ff-settings-nav .s-nav-item.active {
+  background: #1a3d75 !important;
+  border-color: rgba(147, 197, 253, 0.62) !important;
+  box-shadow: inset 3px 0 0 #2081e2 !important;
+}
+
+.settings-page .ff-settings-nav .s-nav-item:focus-visible {
+  outline: none;
+  box-shadow: inset 3px 0 0 #2081e2, 0 0 0 2px rgba(147, 197, 253, 0.38);
+}
+
+@media (max-width: 768px) {
+  .settings-page .account-save-mobile .ff-btn-save {
+    height: 42px;
+    min-height: 42px;
+    border-radius: 6px !important;
+    padding: 0 14px;
+  }
+
+  .settings-page .profile-header .change-avatar-btn {
+    min-height: 40px;
+    height: 40px;
+  }
+}
+
+/* 0.85.164-E - Mobile profile card correction */
+@media (max-width: 768px) {
+  .settings-page .profile-header {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    align-items: start;
+    justify-items: start;
+    text-align: left;
+    gap: 8px 10px;
+    padding-bottom: 6px;
+    margin-bottom: 2px;
+  }
+
+  .settings-page .profile-header__avatar {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    width: 56px;
+    height: 56px;
+    align-self: start;
+    justify-self: start;
+  }
+
+  .settings-page .profile-header .avatar-circle,
+  .settings-page .profile-header .profile-avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .settings-page .profile-header .avatar-circle {
+    position: relative;
+    overflow: visible;
+  }
+
+  .settings-page .profile-header .avatar-cam {
+    width: 22px !important;
+    height: 22px !important;
+    min-height: 0 !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    top: auto !important;
+    left: auto !important;
+    right: -2px !important;
+    bottom: -2px !important;
+    font-size: 0.58rem;
+    line-height: 1;
+    z-index: 2;
+  }
+
+  .settings-page .profile-header__identity {
+    grid-column: 2;
+    grid-row: 1;
+    width: 100%;
+    align-items: flex-start;
+    text-align: left;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .settings-page .avatar-name,
+  .settings-page .avatar-handle {
+    width: 100%;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .settings-page .profile-meta {
+    width: 100%;
+    margin-top: 2px;
+  }
+
+  .settings-page .profile-meta-pill {
+    max-width: 100%;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    line-height: 1.15;
+  }
+
+  .settings-page .profile-header .member-badge {
+    margin-top: 3px;
+  }
+
+  .settings-page .profile-header__actions {
+    grid-column: 2;
+    grid-row: 2;
+    width: auto;
+    justify-content: flex-start;
+  }
+
+  .settings-page .profile-header .change-avatar-btn {
+    width: auto;
+    max-width: none;
+    min-height: 36px;
+    height: 36px;
+    padding: 0 12px;
+  }
+}
+
+@media (max-width: 340px) {
+  .settings-page .profile-header {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    gap: 6px;
+  }
+
+  .settings-page .profile-header__avatar,
+  .settings-page .profile-header__identity,
+  .settings-page .profile-header__actions {
+    grid-column: 1;
+    grid-row: auto;
+    align-self: auto;
+    justify-self: center;
+  }
+
+  .settings-page .profile-header__identity {
+    align-items: center;
+    text-align: center;
+  }
+
+  .settings-page .profile-header__actions {
+    justify-content: center;
+  }
+}
 </style>

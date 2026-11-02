@@ -3,7 +3,11 @@ import { computed, onMounted, reactive, ref, watch } from "vue";
 import axios from "axios";
 import { useRouter } from "vue-router";
 import { API_BASE } from '@/config/env';
-import { isDemoMode } from '@/config/appConfig';
+import { getAccountTypeOptions } from '@/config/accountTypeOptions';
+import {
+  FALLBACK_SUBSCRIPTION_TIERS,
+  buildSubscriptionPlanOptions,
+} from '@/config/subscriptionPlans';
 
 const router = useRouter();
 
@@ -44,120 +48,14 @@ const form = reactive({
 const subscriptionTiers = ref([]);
 const planCarouselIndex = ref(0);
 
-const FALLBACK_TIERS = [
-  { id: 1, name: 'Free', slug: 'free', price_monthly: 0, price_yearly: 0 },
-  { id: 2, name: 'Pro', slug: 'pro', price_monthly: 9.99, price_yearly: 99.99 },
-  { id: 3, name: 'Trainer', slug: 'trainer', price_monthly: 19.99, price_yearly: 199.99 },
-];
-
-const PLAN_DEFINITIONS = [
-  {
-    key: 'free',
-    name: 'Free',
-    priceLabel: '$0/month',
-    description: 'Great for getting started with your fitness routine.',
-    icon: 'fa-regular fa-star',
-    features: [
-      'Basic workout logging',
-      'Basic progress tracking',
-      'Standard exercise access',
-    ],
-  },
-  {
-    key: 'pro',
-    name: 'Pro',
-    priceLabel: '$9.99/month',
-    description: 'Built for committed users who want deeper fitness insights.',
-    icon: 'fa-regular fa-bolt',
-    features: [
-      'Advanced workout tools',
-      'Enhanced progress tracking',
-      'Nutrition insights',
-      'Premium features',
-    ],
-  },
-  {
-    key: 'trainer',
-    name: 'Trainer',
-    priceLabel: '$19.99/month',
-    description: 'Designed for coaching workflows and client management.',
-    icon: 'fa-regular fa-dumbbell',
-    features: [
-      'Client management',
-      'Program building',
-      'Progress review tools',
-      'Trainer-focused features',
-    ],
-  },
-];
-
 const accountTypeOptions = computed(() => {
-  const base = [
-    {
-      value: 'User',
-      title: 'User',
-      description: 'Track workouts, view progress, and manage your fitness journey.',
-      icon: 'fa-regular fa-user',
-    },
-    {
-      value: 'Trainer',
-      title: 'Trainer',
-      description: 'Manage clients, guide programs, and support training goals.',
-      icon: 'fa-regular fa-dumbbell',
-    },
-  ];
-
-  if (isDemoMode) {
-    base.push({
-      value: 'Admin',
-      title: 'Admin',
-      description: 'Demo-only access for platform administration and review.',
-      icon: 'fa-regular fa-shield-check',
-    });
-  }
-
-  return base;
+  return getAccountTypeOptions(false);
 });
 
-const tiersForLookup = computed(() => (subscriptionTiers.value.length ? subscriptionTiers.value : FALLBACK_TIERS));
-
-const normalizeTierName = (value) => String(value || '').trim().toLowerCase();
-
-const resolveTierIdForPlan = (planKey) => {
-  const rows = tiersForLookup.value || [];
-
-  const findByNames = (names = []) => {
-    const lowered = names.map((n) => normalizeTierName(n));
-    return rows.find((row) => lowered.includes(normalizeTierName(row.slug)) || lowered.includes(normalizeTierName(row.name)));
-  };
-
-  if (planKey === 'free') {
-    const freeTier = findByNames(['free']);
-    return freeTier?.id ?? null;
-  }
-
-  if (planKey === 'pro') {
-    const proTier = findByNames(['pro']);
-    return proTier?.id ?? null;
-  }
-
-  if (planKey === 'trainer') {
-    const trainerTier = findByNames(['trainer', 'elite']);
-    return trainerTier?.id ?? null;
-  }
-
-  return null;
-};
+const tiersForLookup = computed(() => (subscriptionTiers.value.length ? subscriptionTiers.value : FALLBACK_SUBSCRIPTION_TIERS));
 
 const subscriptionPlanOptions = computed(() => {
-  return PLAN_DEFINITIONS.map((plan) => {
-    const tierId = resolveTierIdForPlan(plan.key);
-    return {
-      ...plan,
-      tierId,
-      available: tierId !== null,
-    };
-  });
+  return buildSubscriptionPlanOptions(tiersForLookup.value);
 });
 
 const activeSubscriptionPlan = computed(() => subscriptionPlanOptions.value[planCarouselIndex.value] || null);
@@ -287,7 +185,7 @@ const restoreDraft = () => {
       hasReadTerms: draft?.form?.hasReadTerms ?? false,
     });
 
-    if (!isDemoMode && form.membershipType === 'Admin') {
+    if (form.membershipType === 'Admin') {
       form.membershipType = '';
     }
 
@@ -461,7 +359,7 @@ const loadSubscriptionTiers = async () => {
     const response = await axios.get(`${API_BASE}/api/register-tiers`);
     subscriptionTiers.value = Array.isArray(response.data) ? response.data : [];
   } catch {
-    subscriptionTiers.value = FALLBACK_TIERS;
+    subscriptionTiers.value = FALLBACK_SUBSCRIPTION_TIERS;
   } finally {
     if (form.subscriptionPlanKey) {
       const plan = subscriptionPlanOptions.value.find((item) => item.key === form.subscriptionPlanKey);

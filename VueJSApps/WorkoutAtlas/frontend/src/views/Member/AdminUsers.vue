@@ -399,24 +399,33 @@ onMounted(async () => {
           </div>
           <div class="col-md-4">
             <label class="form-label">Role</label>
-            <select v-model="form.role" class="form-select">
-              <option v-for="r in roles" :key="r.id" :value="r.slug">{{ r.name }}</option>
-            </select>
+            <div class="admin-users-select-wrap">
+              <select v-model="form.role" class="form-select admin-users-form-select">
+                <option v-for="r in roles" :key="r.id" :value="r.slug">{{ r.name }}</option>
+              </select>
+              <span class="admin-users-select-arrow" aria-hidden="true">▼</span>
+            </div>
           </div>
           <div class="col-md-4">
             <label class="form-label">Tier</label>
-            <select v-model="form.tier" class="form-select">
-              <option v-for="t in tiers" :key="t.id" :value="t.id">{{ t.name }}</option>
-            </select>
+            <div class="admin-users-select-wrap">
+              <select v-model="form.tier" class="form-select admin-users-form-select">
+                <option v-for="t in tiers" :key="t.id" :value="t.id">{{ t.name }}</option>
+              </select>
+              <span class="admin-users-select-arrow" aria-hidden="true">▼</span>
+            </div>
           </div>
           <div class="col-md-4">
             <label class="form-label">Billing Cycle</label>
-            <select v-model="form.billingCycle" class="form-select">
-              <option value="none">None</option>
-              <option value="monthly">Monthly</option>
-              <option value="yearly">Yearly</option>
-              <option value="lifetime">Lifetime</option>
-            </select>
+            <div class="admin-users-select-wrap">
+              <select v-model="form.billingCycle" class="form-select admin-users-form-select">
+                <option value="none">None</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+                <option value="lifetime">Lifetime</option>
+              </select>
+              <span class="admin-users-select-arrow" aria-hidden="true">▼</span>
+            </div>
           </div>
 
           <template v-if="isEditMode">
@@ -531,6 +540,32 @@ onMounted(async () => {
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 0.85rem;
+}
+
+.admin-users-select-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.admin-users-form-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: none !important;
+  background-color: rgba(8, 14, 11, 0.9) !important;
+  padding-right: 2.6rem;
+}
+
+.admin-users-select-arrow {
+  position: absolute;
+  right: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.72rem;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 1;
 }
 
 :global(body.dark-theme) .delete-target-details {

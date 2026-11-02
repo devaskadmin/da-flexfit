@@ -100,9 +100,12 @@ onMounted(async () => {
                 <span class="badge bg-info-subtle text-info-emphasis">{{ member.user_role || 'member' }}</span>
               </td>
               <td>
-                <select v-model="member.selectedRole" class="form-select form-select-sm">
-                  <option v-for="r in roles" :key="r.id" :value="r.slug">{{ r.name }}</option>
-                </select>
+                <div class="admin-role-tester-select-wrap">
+                  <select v-model="member.selectedRole" class="form-select form-select-sm admin-role-tester-form-select">
+                    <option v-for="r in roles" :key="r.id" :value="r.slug">{{ r.name }}</option>
+                  </select>
+                  <span class="admin-role-tester-select-arrow" aria-hidden="true">▼</span>
+                </div>
               </td>
               <td class="text-end">
                 <button class="btn btn-sm btn-primary" @click="applyRole(member)">Apply</button>
@@ -125,6 +128,33 @@ onMounted(async () => {
   border-radius: 12px;
   padding: 14px;
 }
+
+.admin-role-tester-select-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.admin-role-tester-form-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: none !important;
+  background-color: rgba(8, 14, 11, 0.9) !important;
+  padding-right: 2.2rem;
+}
+
+.admin-role-tester-select-arrow {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.7rem;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 1;
+}
+
 :global(body.dark-theme) .role-tester-toolbar,
 :global(body.dark-theme) .role-tester-table {
   border-color: rgba(255,255,255,.16);

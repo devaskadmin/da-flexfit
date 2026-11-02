@@ -203,20 +203,36 @@ onMounted(() => {
 }
 
 .close-btn {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: #64748b;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid var(--wa-btn-danger-border, #dc2626);
+  border-radius: 5px;
+  background: var(--wa-btn-danger, #3b1d2b);
+  font-size: 16px;
+  color: #ffffff;
   cursor: pointer;
-  padding: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s ease;
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .close-btn:hover {
-  color: #1e293b;
+  background: var(--wa-btn-danger-hover, #512334);
+  border-color: var(--wa-btn-danger-border, #dc2626);
+}
+
+.close-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--wa-btn-danger-focus, 0 0 0 4px rgba(220, 38, 38, 0.24));
+}
+
+.close-btn i {
+  font-size: 16px;
+  color: #ffffff;
 }
 
 .modal-body {

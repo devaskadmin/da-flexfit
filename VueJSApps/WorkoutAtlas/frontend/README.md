@@ -26,4 +26,4 @@ See [Configuration Reference](https://cli.vuejs.org/config/).
 ## Environment
 
 - `VITE_API_BASE` / `VITE_API_BASE_URL`: Backend API base URL.
-- `VITE_GOOGLE_CLIENT_ID`: Google OAuth web client ID used by Google Sign-In UI. Leave empty until Google Cloud is configured.
+- Google Sign-In client ID is provided by backend runtime config (`GET /api/config/google`).

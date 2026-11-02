@@ -1,14 +1,11 @@
 const { OAuth2Client } = require('google-auth-library');
 
 const GOOGLE_ISSUERS = new Set(['accounts.google.com', 'https://accounts.google.com']);
+const TOKEN_CLOCK_SKEW_SECONDS = 300;
 
 const getAllowedClientIds = () => {
   return [
     process.env.GOOGLE_CLIENT_ID,
-    // Backward-compatible fallbacks for older env naming.
-    process.env.GOOGLE_WEB_CLIENT_ID,
-    process.env.GOOGLE_ANDROID_CLIENT_ID,
-    process.env.GOOGLE_IOS_CLIENT_ID,
   ]
     .map((value) => String(value || '').trim())
     .filter(Boolean);
@@ -66,6 +63,14 @@ const verifyGoogleIdToken = async (idToken) => {
   const now = Math.floor(Date.now() / 1000);
   if (!Number.isFinite(exp) || exp <= now) {
     throw new GoogleTokenVerificationError('Token verification failed.', 401);
+  }
+
+  const issuedAtRaw = payload.iat;
+  if (issuedAtRaw !== undefined && issuedAtRaw !== null && issuedAtRaw !== '') {
+    const issuedAt = Number(issuedAtRaw);
+    if (!Number.isFinite(issuedAt) || issuedAt > now + TOKEN_CLOCK_SKEW_SECONDS || issuedAt > exp) {
+      throw new GoogleTokenVerificationError('Token verification failed.', 401);
+    }
   }
 
   const emailVerified = payload.email_verified === true || payload.email_verified === 'true';

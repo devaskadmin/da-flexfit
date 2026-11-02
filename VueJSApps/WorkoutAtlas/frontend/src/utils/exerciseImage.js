@@ -1,7 +1,35 @@
 import { API_BASE } from '@/config/env';
 
-export const DEFAULT_EXERCISE_IMAGE =
-  'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360"%3E%3Crect width="640" height="360" fill="%23e2e8f0"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23475569" font-family="Arial,sans-serif" font-size="26"%3EExercise%20Image%3C/text%3E%3C/svg%3E';
+export const DEFAULT_EXERCISE_IMAGE_NAME = 'default.JPG';
+export const DEFAULT_EXERCISE_IMAGE = `${API_BASE}/api/media/default-exercise-image?name=${encodeURIComponent(DEFAULT_EXERCISE_IMAGE_NAME)}`;
+
+export const isDefaultExerciseImageReference = (value) => {
+  const raw = String(value || '').trim().replace(/\\/g, '/').replace(/^\/+/, '');
+  if (!raw) return false;
+
+  const normalized = raw.toLowerCase();
+  return [
+    'default.jpg',
+    'default.jpeg',
+    'default.png',
+    'default.gif',
+    'default/default.jpg',
+    'default/default.jpeg',
+    'default/default.png',
+    'default/default.gif',
+    'default.JPG'.toLowerCase(),
+    'app/exercise-library/default.jpg',
+    'app/exercise-library/default/default.jpg',
+  ].includes(normalized);
+};
+
+const getDefaultExerciseImageUrl = (exerciseId = 0) => {
+  const id = Number(exerciseId || 0);
+  if (id > 0) {
+    return buildExerciseImageUrl(id, DEFAULT_EXERCISE_IMAGE_NAME);
+  }
+  return DEFAULT_EXERCISE_IMAGE;
+};
 
 export const buildExerciseImageUrl = (exerciseId, imageName) => {
   const id = Number(exerciseId || 0);
@@ -121,16 +149,16 @@ export const getExerciseImage = (exercise) => {
     }
 
     const normalizedGalleryImage = normalizeExerciseImagePath(gallery[0]);
-    return normalizedGalleryImage || DEFAULT_EXERCISE_IMAGE;
+    return normalizedGalleryImage || getDefaultExerciseImageUrl(exerciseId);
   }
 
-  return DEFAULT_EXERCISE_IMAGE;
+  return getDefaultExerciseImageUrl(exerciseId);
 };
 
 export const getExerciseImageFromGallery = (gallery, exerciseId = 0) => {
   const images = parseImageGallery(gallery);
   if (images.length === 0) {
-    return DEFAULT_EXERCISE_IMAGE;
+    return getDefaultExerciseImageUrl(exerciseId);
   }
 
   const id = Number(exerciseId || 0);
@@ -141,5 +169,5 @@ export const getExerciseImageFromGallery = (gallery, exerciseId = 0) => {
     }
   }
 
-  return normalizeExerciseImagePath(images[0]) || DEFAULT_EXERCISE_IMAGE;
+  return normalizeExerciseImagePath(images[0]) || getDefaultExerciseImageUrl(id);
 };

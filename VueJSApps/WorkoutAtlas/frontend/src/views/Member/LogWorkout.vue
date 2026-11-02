@@ -184,6 +184,75 @@ const activeWorkoutElapsedSeconds = computed(() =>
 
 const activeWorkoutTimerLabel = computed(() => formatDurationHms(activeWorkoutElapsedSeconds.value));
 
+const normalizeSessionStatus = (session) =>
+  String(session?.sessionStatus || session?.status || '').trim().toLowerCase();
+
+const sessionHasTerminalState = (session) => {
+  if (!session) return false;
+
+  // Defensive: treat sessions with completion/end/cancel markers as not live.
+  return Boolean(
+    session?.sessionCompletedAt ||
+    session?.sessionEndedAt ||
+    session?.endedAt ||
+    session?.completedAt ||
+    session?.canceledAt ||
+    session?.cancelledAt
+  );
+};
+
+const isInProgressSessionStatus = (status) =>
+  status === 'in_progress' || status === 'in-progress' || status === 'active';
+
+const isLiveSessionStatus = (status) =>
+  isInProgressSessionStatus(status) || status === 'paused';
+
+const normalizedSessionStatus = computed(() => normalizeSessionStatus(activeSession.value));
+
+const isWorkoutSessionActive = computed(() => {
+  if (!hasActiveWorkout.value || !activeSession.value || isPreviewMode.value) {
+    return false;
+  }
+
+  if (sessionHasTerminalState(activeSession.value)) {
+    return false;
+  }
+
+  const status = normalizedSessionStatus.value;
+  if (!status) {
+    return false;
+  }
+
+  return isInProgressSessionStatus(status);
+});
+
+const hasLiveWorkoutSession = computed(() => {
+  if (!hasActiveWorkout.value || !activeSession.value) {
+    return false;
+  }
+
+  if (sessionHasTerminalState(activeSession.value)) {
+    return false;
+  }
+
+  const status = normalizedSessionStatus.value;
+  if (!status) {
+    return false;
+  }
+
+  return isLiveSessionStatus(status);
+});
+
+const selectedDaySessionState = computed(() => {
+  const day = String(selectedDay.value || '').trim();
+  const sessionDay = String(activeSession.value?.workoutDayName || '').trim();
+  if (!day || !sessionDay || day !== sessionDay || !hasLiveWorkoutSession.value || isPreviewMode.value) {
+    return null;
+  }
+
+  return normalizedSessionStatus.value === 'paused' ? 'paused' : 'active';
+});
+
 const setWorkoutTimerRunning = (isRunning) => {
   if (isRunning) {
     if (workoutTimerIntervalId != null) return;
@@ -218,10 +287,13 @@ const summaryStats = computed(() => {
     averageDuration: Math.round(totalDuration / workoutLists.value.length),
   };
 });
+const isStatsExpanded = ref(false);
 const hasWorkoutPlans = computed(() => plansLoaded.value && Array.isArray(workoutLists.value) && workoutLists.value.length > 0);
 const shouldShowPlanLoadError = computed(() =>
   plansLoaded.value && plansLoadRequested.value && !loading.value && Boolean(plansLoadError.value)
 );
+const isWorkoutLogView = computed(() => route.name === 'workouts' || route.path === '/workouts' || route.path === '/workout-log');
+const isExercisesView = computed(() => route.name === 'exercises' || route.path === '/exercises');
 /* ─── Workout History grouped view ──────────────────────────────────────────── */
 const scheduleMode = computed(() => expandedPlanData.value?.scheduleMode || 'day');
 
@@ -874,19 +946,30 @@ const checkActiveSession = async () => {
     if (!res.ok) return;
     const data = await res.json();
     if (data.session) {
-      activeSession.value    = data.session;
+      const nextSession = data.session;
+      const nextStatus = normalizeSessionStatus(nextSession);
+      const isTerminalSession = sessionHasTerminalState(nextSession);
+      const hasLiveState = isLiveSessionStatus(nextStatus);
+
+      if (isTerminalSession || !hasLiveState) {
+        activeSession.value = null;
+        hasActiveWorkout.value = false;
+        return;
+      }
+
+      activeSession.value    = nextSession;
       hasActiveWorkout.value = true;
       isPreviewMode.value    = false;
       // Restore the date picker to the active session's start date so the
       // page always shows the correct workout even when returning on a later day.
-      if (data.session.workoutDate) {
-        const d = new Date(data.session.workoutDate);
+      if (nextSession.workoutDate) {
+        const d = new Date(nextSession.workoutDate);
         if (!isNaN(d)) {
           selectedWorkoutDate.value = d.toISOString().split('T')[0];
         }
       }
       // Auto-expand the plan that has an active session
-      const pid = String(data.session.workoutPlanId || '');
+      const pid = String(nextSession.workoutPlanId || '');
       if (pid) {
         expandedPlanId.value = pid;
         try {
@@ -902,11 +985,11 @@ const checkActiveSession = async () => {
           // non-fatal: keep previously loaded plan if refresh fails
         }
       }
-      selectedDay.value = data.session.workoutDayName;
+      selectedDay.value = nextSession.workoutDayName;
       // Rebuild sessionExercises from expanded plan
       if (expandedPlanData.value) {
         sessionExercises.value = await buildSessionExercisesWithHistoryPrefill(expandedPlanData.value.exercises || []);
-        applyWorkoutDraft(data.session.notes);
+        applyWorkoutDraft(nextSession.notes);
         queueWorkoutDraftSave(true);
       }
     } else {
@@ -933,7 +1016,7 @@ const startDayWorkout = async (dayName) => {
   saveError.value       = '';
   const planId = expandedPlanId.value;
 
-  if (activeSession.value) {
+  if (hasLiveWorkoutSession.value && activeSession.value) {
     if (activeSession.value.workoutDayName === dayName) {
       selectedDay.value = dayName;
       activeTab.value   = 'dayDetails';
@@ -943,6 +1026,11 @@ const startDayWorkout = async (dayName) => {
       `You already have a workout in progress (${activeSession.value.workoutDayName}). ` +
       'Please finish or end it before starting another.';
     return;
+  }
+
+  if (activeSession.value && !hasLiveWorkoutSession.value) {
+    activeSession.value = null;
+    hasActiveWorkout.value = false;
   }
 
   // Use the user's selected date as the workout start date; fall back to today only if unset.
@@ -1043,21 +1131,6 @@ const completeWorkout = async () => {
 };
 
 /* ─── Navigation helpers ─────────────────────────────────────────────────── */
-const editCurrentPlan = () => {
-  const activePlanId = String(activeSession.value?.workoutPlanId || '').trim();
-  if (!activePlanId) {
-    saveError.value = 'No active workout plan found to edit.';
-    return;
-  }
-
-  router.push({
-    name: 'workout_builder',
-    query: { planId: activePlanId, tab: 'create' },
-  });
-};
-
-const canEditCurrentPlan = computed(() => Boolean(String(activeSession.value?.workoutPlanId || '').trim()));
-
 const openInBuilder = (planId) => {
   const pid = String(planId || '').trim();
   router.push(pid
@@ -1279,19 +1352,6 @@ const deleteWorkoutPlan = async (plan) => {
   }
 };
 
-const goToInProgress = () => {
-  if (hasActiveWorkout.value && activeSession.value) {
-    // Restore the date picker to the locked workout start date.
-    if (activeSession.value.workoutDate) {
-      const d = new Date(activeSession.value.workoutDate);
-      if (!isNaN(d)) {
-        selectedWorkoutDate.value = d.toISOString().split('T')[0];
-      }
-    }
-    selectedDay.value = activeSession.value.workoutDayName || selectedDay.value;
-    activeTab.value   = 'dayDetails';
-  }
-};
 /* ─── Workout History loader ───────────────────────────────────────────── */
 const loadWorkoutHistory = async () => {
   historyLoading.value  = true;
@@ -1488,25 +1548,34 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
-        <!-- Action toolbar inside hero -->
-        <div class="wl-toolbar">
-          <button
-            type="button"
-            :class="['wl-btn', hasActiveWorkout ? 'wl-btn--active' : 'wl-btn--secondary']"
-            @click="goToInProgress"
-          >
-            <i class="fa-solid fa-clock-rotate-left"></i> Workouts In Progress
-          </button>
-          <button
-            type="button"
-            class="wl-btn"
-            :disabled="!canEditCurrentPlan"
-            @click="editCurrentPlan"
-          >
-            <i class="fa-solid fa-dumbbell"></i> Edit Current Plan
-          </button>
-        </div>
       </section>
+
+      <nav class="wl-view-switch wa-h-tabs" aria-label="Workout log and exercises navigation">
+        <router-link
+          to="/workout-log"
+          class="wl-view-switch__link wl-view-switch__link--log wa-h-tab"
+          :class="{
+            'wl-view-switch__link--active wa-h-tab--active': isWorkoutLogView,
+            'wl-view-switch__link--expanded': isWorkoutLogView,
+            'wl-view-switch__link--compact': isExercisesView,
+          }"
+        >
+          <i class="fa-solid fa-dumbbell" aria-hidden="true"></i>
+          <span>Workout Log</span>
+        </router-link>
+        <router-link
+          to="/exercises"
+          class="wl-view-switch__link wl-view-switch__link--exercises wa-h-tab"
+          :class="{
+            'wl-view-switch__link--active wa-h-tab--active': isExercisesView,
+            'wl-view-switch__link--expanded': isExercisesView,
+            'wl-view-switch__link--compact': isWorkoutLogView,
+          }"
+        >
+          <i class="fa-solid fa-book-open" aria-hidden="true"></i>
+          <span>Exercises</span>
+        </router-link>
+      </nav>
 
       <!-- ── Banners ─────────────────────────────────────────────────────── -->
       <div v-if="conflictMessage" class="wl-banner wl-banner--warn">
@@ -1521,22 +1590,6 @@ onUnmounted(() => {
         <i class="fa-solid fa-circle-check"></i> {{ saveMessage }}
       </div>
 
-      <!-- ── Stats row ───────────────────────────────────────────────────── -->
-      <section v-if="workoutLists.length > 0" class="wl-stats">
-        <article class="wl-stat-card app-section-card">
-          <span>Saved Plans</span>
-          <strong>{{ summaryStats.totalPlans }}</strong>
-        </article>
-        <article class="wl-stat-card app-section-card">
-          <span>Avg Duration</span>
-          <strong>{{ summaryStats.averageDuration }} min</strong>
-        </article>
-        <article class="wl-stat-card app-section-card">
-          <span>Total Exercises</span>
-          <strong>{{ summaryStats.totalExercises }}</strong>
-        </article>
-      </section>
-
       <!-- ── Tab bar ─────────────────────────────────────────────────────── -->
       <nav class="wl-tabs wa-h-tabs wa-h-tabs--tricolor" role="tablist">
         <button
@@ -1544,7 +1597,7 @@ onUnmounted(() => {
           :class="['wl-tab', 'wa-h-tab', activeTab === 'overview' ? 'wl-tab--active wa-h-tab--active' : '']"
           @click="activeTab = 'overview'"
         >
-          <i class="fa-solid fa-list-ul"></i> Overview
+          <i class="fa-solid fa-list-ul"></i> Start My Workout
         </button>
         <button
           type="button" role="tab"
@@ -1552,20 +1605,59 @@ onUnmounted(() => {
           :disabled="!selectedDay || !hasWorkoutPlans"
           @click="selectedDay && hasWorkoutPlans && (activeTab = 'dayDetails')"
         >
-          <i class="fa-solid fa-dumbbell"></i> Day Details
-          <span v-if="selectedDay" class="wl-tab-badge">{{ selectedDay }}</span>
+          <i class="fa-solid fa-dumbbell"></i> Current Workout
         </button>
         <button
           type="button" role="tab"
           :class="['wl-tab', 'wa-h-tab', activeTab === 'workoutHistory' ? 'wl-tab--active wa-h-tab--active' : '']"
           @click="openHistoryTab"
         >
-          <i class="fa-solid fa-clock-rotate-left"></i> Workout History
+          <i class="fa-solid fa-clock-rotate-left"></i> Workout Log
         </button>
       </nav>
 
       <!-- ══ OVERVIEW TAB ════════════════════════════════════════════════ -->
       <div v-show="activeTab === 'overview'" class="wl-tab-panel">
+
+        <section class="wl-stats-section app-section-card">
+          <button
+            type="button"
+            class="wl-stats-toggle"
+            :aria-expanded="isStatsExpanded ? 'true' : 'false'"
+            aria-controls="workout-statistics-panel"
+            @click="isStatsExpanded = !isStatsExpanded"
+          >
+            <span class="wl-stats-toggle__title">Workout Statistics</span>
+            <i
+              class="fa-solid"
+              :class="isStatsExpanded ? 'fa-chevron-up' : 'fa-chevron-down'"
+              aria-hidden="true"
+            ></i>
+          </button>
+
+          <transition name="wl-stats-collapse">
+            <div
+              v-if="isStatsExpanded"
+              id="workout-statistics-panel"
+              class="wl-stats-collapse-body"
+            >
+              <section class="wl-stats">
+                <article class="wl-stat-card app-section-card">
+                  <span>Saved Plans</span>
+                  <strong>{{ summaryStats.totalPlans }}</strong>
+                </article>
+                <article class="wl-stat-card app-section-card">
+                  <span>Avg Duration</span>
+                  <strong>{{ summaryStats.averageDuration }} min</strong>
+                </article>
+                <article class="wl-stat-card app-section-card">
+                  <span>Total Exercises</span>
+                  <strong>{{ summaryStats.totalExercises }}</strong>
+                </article>
+              </section>
+            </div>
+          </transition>
+        </section>
 
         <!-- Loading -->
         <div v-if="loading || !plansLoaded" class="wl-empty"><p>Loading workout plans...</p></div>
@@ -1628,16 +1720,24 @@ onUnmounted(() => {
                   <i class="fa-solid fa-arrows-up-down"></i>
                   Reorder
                 </button>
-                <button type="button" class="wl-btn-edit" @click="openInBuilder(plan.planId)">
-                  <i class="fa-solid fa-pencil"></i> Edit Plan
+                <button
+                  type="button"
+                  class="wl-btn-edit"
+                  @click="openInBuilder(plan.planId)"
+                  title="Edit Plan"
+                  aria-label="Edit Plan"
+                >
+                  <i class="fa-solid fa-pencil" aria-hidden="true"></i>
                 </button>
                 <button
                   v-if="canDeleteWorkoutPlan(plan)"
                   type="button"
                   class="wl-btn-plan-delete"
                   @click="deleteWorkoutPlan(plan)"
+                  title="Delete Plan"
+                  aria-label="Delete Plan"
                 >
-                  <i class="fa-solid fa-trash"></i> Delete
+                  <i class="fa-solid fa-trash" aria-hidden="true"></i>
                 </button>
               </div>
             </div>
@@ -2167,15 +2267,42 @@ onUnmounted(() => {
   margin-top: 12px; flex-wrap: wrap;
 }
 
+.wl-session-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 999px;
+  padding: 6px 11px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.wl-session-status-badge--active {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #86efac;
+}
+
+.wl-session-status-badge--paused {
+  background: #fff7ed;
+  color: #9a3412;
+  border-color: #fdba74;
+}
+
 .wl-day-order-toolbar {
   grid-column: 1 / -1;
-  display: inline-flex;
+  display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  width: 100%;
+  box-sizing: border-box;
   margin-top: 10px;
   margin-bottom: 10px;
-  padding: 8px 10px;
+  padding: 10px 12px;
 }
 
 .wl-day-order-toggle {
@@ -2184,7 +2311,7 @@ onUnmounted(() => {
   gap: 7px;
   font-weight: 600;
   font-size: 0.79rem;
-  color: #1e293b;
+  color: #f8fafc;
 }
 
 .wl-day-order-toggle input {
@@ -2208,18 +2335,21 @@ onUnmounted(() => {
   display: inline-flex;
   gap: 8px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .wl-order-toolbar-btn {
   border-radius: 8px;
-  padding: 5px 10px;
-  min-height: 30px;
+  padding: 7px 10px;
+  min-height: 32px;
   font-size: 0.74rem;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   line-height: 1;
+  text-align: center;
   transition: background 0.14s, border-color 0.14s, color 0.14s, box-shadow 0.14s;
 }
 
@@ -2266,14 +2396,16 @@ onUnmounted(() => {
   background: #f8fafc;
   color: #475569;
   border-radius: 6px;
-  padding: 2px 7px;
-  min-height: 24px;
+  padding: 4px 8px;
+  min-height: 28px;
   font-size: 0.68rem;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   line-height: 1;
+  text-align: center;
   transition: background 0.14s, border-color 0.14s, color 0.14s;
 }
 
@@ -2331,8 +2463,8 @@ onUnmounted(() => {
 
 /* ── Stats ──────────────────────────────────────────────────────────────── */
 .wl-stats {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
-  margin-bottom: 16px;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;
+  margin: 0;
 }
 .wl-stat-card {
   border: 1px solid var(--border-color, #e5e7eb);
@@ -2340,6 +2472,72 @@ onUnmounted(() => {
 }
 .wl-stat-card span   { color: var(--text-color-secondary, #6b7280); font-size: 0.82rem; }
 .wl-stat-card strong { color: var(--text-color, #111827); font-size: 1.25rem; font-weight: 800; }
+.wl-stats-section {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 10px;
+}
+.wl-stats-toggle {
+  width: 100%;
+  border: 1px solid rgba(145, 160, 200, 0.22);
+  background: rgba(51, 65, 103, 0.88);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 14px;
+  font-size: 0.98rem;
+  font-weight: 800;
+  cursor: pointer;
+  border-radius: 10px;
+  text-align: left;
+  transition: background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.wl-stats-toggle i {
+  color: #ffffff;
+  font-size: 0.94rem;
+}
+.wl-stats-toggle__title {
+  display: inline-flex;
+  align-items: center;
+}
+.wl-stats-toggle:hover {
+  background: rgba(59, 74, 116, 0.94);
+  border-color: rgba(145, 160, 200, 0.32);
+}
+.wl-stats-toggle:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.wl-stats-toggle:focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.wl-stats-toggle:focus-visible {
+  outline: none !important;
+  border-color: rgba(148, 163, 184, 0.62);
+  box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.28) !important;
+}
+.wl-stats-collapse-body {
+  overflow: hidden;
+  padding-top: 2px;
+}
+.wl-stats-collapse-enter-active,
+.wl-stats-collapse-leave-active {
+  transition: max-height 250ms ease, opacity 250ms ease;
+}
+.wl-stats-collapse-enter-from,
+.wl-stats-collapse-leave-to {
+  max-height: 0;
+  opacity: 0;
+}
+.wl-stats-collapse-enter-to,
+.wl-stats-collapse-leave-from {
+  max-height: 320px;
+  opacity: 1;
+}
 
 /* ── Tabs ───────────────────────────────────────────────────────────────── */
 .wl-tabs {
@@ -2351,6 +2549,136 @@ onUnmounted(() => {
   max-width: 100%;
   box-sizing: border-box;
   overflow: hidden;
+}
+
+.wl-tabs.wa-h-tabs--tricolor > :nth-child(1):not(.wa-h-tab--active):not(.active):not([aria-selected="true"]) {
+  background: #1d4f9f !important;
+}
+.wl-tabs.wa-h-tabs--tricolor > :nth-child(2):not(.wa-h-tab--active):not(.active):not([aria-selected="true"]) {
+  background: #15803D !important;
+}
+.wl-tabs.wa-h-tabs--tricolor > :nth-child(3):not(.wa-h-tab--active):not(.active):not([aria-selected="true"]) {
+  background: #8f1f2a !important;
+}
+.wl-tabs .wl-tab.wa-h-tab--active,
+.wl-tabs .wl-tab.active,
+.wl-tabs .wl-tab[aria-selected="true"] {
+  background: #15803D !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+  box-shadow: inset 0 -2px 0 0 rgba(200, 221, 255, 0.95), 0 0 0 1px rgba(196, 220, 255, 0.28) !important;
+}
+
+/* Keep Start My Workout on the original navy/blue active treatment only. */
+.wl-tabs .wl-tab:nth-child(1).wa-h-tab--active,
+.wl-tabs .wl-tab:nth-child(1).active,
+.wl-tabs .wl-tab:nth-child(1)[aria-selected="true"] {
+  background: #1d4f9f !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+.wl-view-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 12px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.wl-view-switch.wa-h-tabs {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-items: stretch;
+}
+.wl-view-switch__link {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  margin-bottom: 0;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  line-height: 1.12;
+  white-space: nowrap;
+  border-radius: 3px;
+  color: #ffffff !important;
+  transition: color 0.2s ease, background-color 0.2s ease, font-size 200ms ease;
+}
+.wl-view-switch__link::after {
+  content: '';
+  display: none;
+}
+.wl-view-switch__link i,
+.wl-view-switch__link span {
+  color: inherit;
+}
+.wl-view-switch__link--expanded {
+  flex-basis: auto;
+  max-width: 100%;
+  width: 100%;
+}
+.wl-view-switch__link--compact {
+  flex-basis: auto;
+  max-width: 100%;
+  width: 100%;
+}
+.wl-view-switch.wa-h-tabs .wl-view-switch__link--log {
+  background: #1E305C !important;
+}
+.wl-view-switch.wa-h-tabs .wl-view-switch__link--exercises {
+  background: #1E305C !important;
+}
+.wl-view-switch__link:hover {
+  color: #ffffff !important;
+  filter: brightness(1.06);
+}
+.wl-view-switch.wa-h-tabs .wl-view-switch__link--log.wl-view-switch__link--active {
+  color: #ffffff !important;
+  background: #15803D !important;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 0 rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.2) !important;
+}
+.wl-view-switch.wa-h-tabs .wl-view-switch__link--exercises.wl-view-switch__link--active {
+  color: #ffffff !important;
+  background: #15803D !important;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 0 rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.2) !important;
+}
+.wl-view-switch__link.wl-view-switch__link--active::after {
+  content: 'ACTIVE';
+  display: block;
+  width: 100%;
+  margin-top: 2px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  color: #ffffff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wl-view-switch__link {
+    transition: none;
+  }
+  .wl-stats-collapse-enter-active,
+  .wl-stats-collapse-leave-active {
+    transition: none;
+  }
 }
 .wl-tab {
   flex: 1 1 0;
@@ -2379,6 +2707,32 @@ onUnmounted(() => {
   background: #dbeafe; color: #1d4ed8;
   border-radius: 999px; padding: 1px 9px;
   font-size: 0.72rem; font-weight: 800;
+}
+
+.wl-tab-active-badge,
+.wl-tab-paused-badge,
+.wl-tab-inactive-badge {
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 0.69rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.wl-tab-active-badge {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.wl-tab-paused-badge {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.wl-tab-inactive-badge {
+  background: #e2e8f0;
+  color: #475569;
 }
 .wl-tab-panel { min-height: 200px; }
 
@@ -2453,18 +2807,24 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
-.wl-plan__right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.wl-plan__right {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 10px; flex-shrink: 0; flex-wrap: wrap;
+}
 .wl-plan__selected-badge {
   background: #dbeafe; color: #1d4ed8;
-  border-radius: 999px; padding: 3px 11px;
+  border-radius: 999px; padding: 6px 11px;
+  min-height: 30px;
   font-size: 0.75rem; font-weight: 800;
-  display: flex; align-items: center; gap: 5px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  text-align: center;
 }
 .wl-btn-edit {
   background: #f1f5f9; border: 1px solid #cbd5e1;
   color: #475569; border-radius: 8px; padding: 7px 12px;
-  font-size: 0.8rem; font-weight: 700; cursor: pointer;
-  display: flex; align-items: center; gap: 5px; transition: background 0.12s;
+  min-height: 30px; font-size: 0.8rem; font-weight: 700; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  text-align: center; transition: background 0.12s;
 }
 .wl-btn-edit:hover { background: #e0e7ef; }
 
@@ -2485,6 +2845,52 @@ onUnmounted(() => {
 
 .wl-btn-plan-delete:hover {
   background: #ffe4e6;
+}
+
+.wl-plan__right .wl-btn-edit,
+.wl-plan__right .wl-btn-plan-delete {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.wl-plan__right .wl-btn-edit {
+  background: var(--wa-action-blue, #2f6bff);
+  border: 1px solid var(--wa-action-blue, #2f6bff);
+  color: #ffffff;
+}
+
+.wl-plan__right .wl-btn-edit:hover,
+.wl-plan__right .wl-btn-edit:focus-visible {
+  background: var(--wa-action-blue-hover, #2459d8);
+  border-color: var(--wa-action-blue-hover, #2459d8);
+  color: #ffffff;
+}
+
+.wl-plan__right .wl-btn-plan-delete {
+  background: #dc2626;
+  border: 1px solid #dc2626;
+  color: #ffffff;
+}
+
+.wl-plan__right .wl-btn-plan-delete:hover,
+.wl-plan__right .wl-btn-plan-delete:focus-visible {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  color: #ffffff;
+}
+
+.wl-plan__right .wl-btn-edit i,
+.wl-plan__right .wl-btn-plan-delete i {
+  font-size: 0.95rem;
+  line-height: 1;
 }
 
 .wl-btn-reorder {
@@ -2516,7 +2922,12 @@ onUnmounted(() => {
 .wl-day-order-helper {
   margin: 0;
   font-size: 0.7rem;
-  color: #64748b;
+  color: #cbd5e1;
+}
+
+.wl-day-order-collapsible {
+  width: 100%;
+  grid-column: 1 / -1;
 }
 
 .wl-plan__body { border-top: 1px solid var(--border-color, #e5e7eb); padding: 16px 18px; }
@@ -2724,6 +3135,27 @@ onUnmounted(() => {
   margin-bottom: 16px;
 }
 .wl-history-datebar i { color: #3b82f6; }
+
+.wl-tab-panel .wl-history-datebar,
+.wl-tab-panel .wl-history-datebar span,
+.wl-tab-panel .wl-history-datebar strong {
+  color: #ffffff;
+}
+
+.wl-tab-panel .wl-empty.app-section-card {
+  color: #cbd5e1;
+}
+.wl-tab-panel .wl-empty.app-section-card h6 {
+  color: #ffffff;
+  font-weight: 600;
+}
+.wl-tab-panel .wl-empty.app-section-card p,
+.wl-tab-panel .wl-empty.app-section-card p strong {
+  color: #cbd5e1;
+}
+.wl-tab-panel .wl-empty.app-section-card p strong {
+  color: #ffffff;
+}
 
 .wl-history-list { display: grid; gap: 14px; }
 
@@ -2955,11 +3387,41 @@ onUnmounted(() => {
   display: flex; align-items: center; gap: 8px;
 }
 .wl-modal__close {
-  background: none; border: none; font-size: 1.4rem;
-  line-height: 1; cursor: pointer; color: #9ca3af;
-  padding: 0 4px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid var(--wa-btn-danger-border, #dc2626);
+  border-radius: 5px;
+  background: var(--wa-btn-danger, #3b1d2b);
+  color: #ffffff;
+  font-size: 16px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
-.wl-modal__close:hover { color: #374151; }
+.wl-modal__close:hover {
+  background: var(--wa-btn-danger-hover, #512334);
+  border-color: var(--wa-btn-danger-border, #dc2626);
+}
+
+.wl-modal__close:focus-visible {
+  outline: none;
+  box-shadow: var(--wa-btn-danger-focus, 0 0 0 4px rgba(220, 38, 38, 0.24));
+}
+
+@media (max-width: 640px) {
+  .wl-modal__close {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
 .wl-modal__body {
   padding: 16px 20px;
   font-size: 0.92rem; color: var(--text-color, #111827);
@@ -3565,7 +4027,19 @@ onUnmounted(() => {
 
   /* Stat cards: compact */
   .wl-stats {
-    display: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    margin: 0;
+  }
+  .wl-stats-section {
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    gap: 8px;
+  }
+  .wl-stats-toggle {
+    font-size: 0.84rem;
+    padding: 10px 11px;
   }
   .wl-stat-card {
     min-height: 44px;
@@ -4007,7 +4481,7 @@ onUnmounted(() => {
 
 /* ── Small mobile (≤ 640px) — layout stacking only, sizes inherited from 768px ── */
 @media (max-width: 640px) {
-  .wl-stats { grid-template-columns: repeat(3, 1fr); }
+  .wl-stats { grid-template-columns: minmax(0, 1fr); }
   .wl-plan__header { flex-direction: column; align-items: flex-start; }
   .wl-plan__right  { width: 100%; justify-content: flex-end; flex-wrap: wrap; }
   .wl-day-detail-header { flex-direction: column; }
@@ -4034,12 +4508,144 @@ onUnmounted(() => {
   }
 }
 
+/* ── Narrow mobile (≤ 480px) — keep same 50/50 horizontal nav ──────────── */
+@media (max-width: 480px) {
+  .wl-view-switch {
+    gap: 3px;
+    padding: 2px;
+  }
+
+  .wl-view-switch .wl-view-switch__link,
+  .wl-view-switch .wl-view-switch__link--expanded,
+  .wl-view-switch .wl-view-switch__link--compact {
+    flex: 1 1 auto;
+    flex-basis: auto;
+    max-width: 100% !important;
+    width: 100% !important;
+    min-height: 52px;
+    min-width: 0;
+    padding: 8px 6px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.1;
+    gap: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .wl-view-switch .wl-view-switch__link i {
+    font-size: 0.78rem;
+    flex-shrink: 0;
+  }
+
+  .wl-view-switch__link.wl-view-switch__link--active::after {
+    font-size: 0.52rem;
+    margin-top: 1px;
+  }
+
+  .wl-tabs {
+    gap: 2px;
+    padding: 2px;
+    margin-bottom: 8px;
+  }
+
+  .wl-tab {
+    min-height: 40px;
+    padding: 6px 5px;
+    font-size: 0.68rem;
+    line-height: 1.12;
+    gap: 3px;
+    flex-wrap: wrap;
+    align-content: center;
+  }
+
+  .wl-tab i {
+    font-size: 0.7rem;
+    flex-shrink: 0;
+  }
+
+  .wl-tab-active-badge,
+  .wl-tab-paused-badge,
+  .wl-tab-inactive-badge {
+    display: inline-flex;
+    width: fit-content;
+    margin-top: 1px;
+    line-height: 1;
+  }
+
+  .wl-stats-section {
+    padding: 10px;
+    margin-bottom: 10px;
+    gap: 9px;
+  }
+
+  .wl-stats-toggle {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 0.82rem;
+    align-items: center;
+  }
+
+  .wl-stats-toggle__title {
+    line-height: 1.2;
+  }
+
+  .wl-stats-collapse-body {
+    padding-top: 2px;
+  }
+
+  .wl-stats {
+    gap: 8px;
+  }
+
+  .wl-stat-card {
+    min-height: 46px;
+    padding: 6px 8px;
+    border-radius: 10px;
+  }
+
+  .wl-plan {
+    border-radius: 11px;
+  }
+
+  .wl-plan__header {
+    padding: 9px 10px;
+    gap: 7px;
+  }
+
+  .wl-plan__left {
+    width: 100%;
+    gap: 7px;
+  }
+
+  .wl-plan__meta {
+    row-gap: 3px;
+  }
+
+  .wl-plan__right {
+    width: 100%;
+    gap: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(148, 163, 184, 0.22);
+    justify-content: flex-end;
+  }
+
+  .wl-btn-edit,
+  .wl-btn-plan-delete {
+    min-height: 28px;
+    padding: 4px 9px;
+    border-radius: 9px;
+  }
+}
+
 /* ── Tiny mobile (≤ 390px) — final trim, badges hidden for width ────────── */
 @media (max-width: 390px) {
   .wl-stat-card { padding: 4px 5px; }
   .wl-stat-card span   { font-size: 0.52rem; }
   .wl-stat-card strong { font-size: 0.72rem; }
   .wl-tab { min-height: 28px; padding: 2px 3px; font-size: 0.56rem; }
+  .wl-tab-inactive-badge { display: none; }
   .wl-toolbar .wl-btn  { font-size: 9px; }
 }
 </style>

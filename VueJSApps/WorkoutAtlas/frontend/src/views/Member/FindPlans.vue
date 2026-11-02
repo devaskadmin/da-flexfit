@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { API_BASE } from '@/config/env'
+import { buildWorkoutPlanCoverImageUrl, applyWorkoutPlanImageFallback } from '@/utils/workoutPlanImage'
 
 const router = useRouter()
 
@@ -22,6 +23,14 @@ const access = ref('all')
 
 const CATEGORY_OPTIONS = ['all', 'Weight Loss', 'Strength', 'Muscle Building', 'Cardio', 'General Fitness', 'Beginner']
 const ACCESS_OPTIONS = ['all', 'Free', 'Premium']
+
+const buildCoverImageUrl = (planId) => {
+  return buildWorkoutPlanCoverImageUrl(planId)
+}
+
+const onCoverError = (event) => {
+  applyWorkoutPlanImageFallback(event)
+}
 
 const normalizeAccess = (value) => {
   const normalized = String(value || '').trim().toLowerCase()
@@ -107,6 +116,7 @@ const viewPlan = async (planId) => {
       duration: Number(planner?.metadata?.estimatedDuration || 0),
       access: String(response.data?.accessLevel || normalizeAccess(planner?.visibility)).trim(),
       difficulty: String(planner?.metadata?.difficulty || '').trim(),
+      coverImageUrl: buildCoverImageUrl(targetId),
       days: dayGroups,
       exercises,
     }
@@ -142,7 +152,7 @@ const useSelectedPlan = async () => {
     )
 
     const copiedPlanId = String(response.data?.planner?.planId || '').trim()
-    successMsg.value = 'Plan added to your Workout Builder.'
+    successMsg.value = 'Plan added to your Workout Planner.'
 
     router.push(copiedPlanId
       ? { name: 'workouts', query: { planId: copiedPlanId } }
@@ -223,7 +233,19 @@ onMounted(loadPlans)
               </thead>
               <tbody>
                 <tr v-for="plan in plans" :key="plan.planId">
-                  <td class="fw-semibold">{{ plan.name }}</td>
+                  <td>
+                    <div class="find-plans-table-name">
+                      <img
+                        :src="buildCoverImageUrl(plan.planId)"
+                        class="find-plans-table-cover"
+                        :alt="`${plan.name || 'Workout plan'} cover`"
+                        loading="lazy"
+                        decoding="async"
+                        @error="onCoverError"
+                      />
+                      <span class="fw-semibold">{{ plan.name }}</span>
+                    </div>
+                  </td>
                   <td>{{ plan.type || '—' }}</td>
                   <td>{{ Number(plan.dayCount || 0) }}</td>
                   <td>{{ formatDifficulty(plan) }}</td>
@@ -250,6 +272,14 @@ onMounted(loadPlans)
           <div v-if="selectedPlanLoading" class="text-muted p-3">Loading plan details...</div>
           <div v-else-if="!selectedPlan" class="text-muted p-3">Select a plan to preview days, exercises, category, duration, and access.</div>
           <div v-else>
+            <img
+              :src="selectedPlan.coverImageUrl"
+              class="find-plans-selected-cover mb-3"
+              :alt="`${selectedPlan.name} cover`"
+              loading="lazy"
+              decoding="async"
+              @error="onCoverError"
+            />
             <h5 class="mb-1">{{ selectedPlan.name }}</h5>
             <p class="text-muted mb-3">{{ selectedPlan.category }} · {{ selectedPlan.duration }} min · {{ selectedPlan.access }}</p>
 
@@ -331,6 +361,30 @@ onMounted(loadPlans)
   border: 1px solid var(--fp-border);
   border-radius: 10px;
   padding: 10px;
+}
+
+.find-plans-table-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.find-plans-table-cover {
+  width: 56px;
+  height: 36px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid rgba(139, 183, 255, 0.3);
+  background: #12233f;
+}
+
+.find-plans-selected-cover {
+  width: 100%;
+  max-height: 180px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid var(--fp-border);
+  background: #12233f;
 }
 
 @media (max-width: 991.98px) {

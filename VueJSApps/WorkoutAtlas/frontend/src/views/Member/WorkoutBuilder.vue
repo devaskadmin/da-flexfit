@@ -7,15 +7,19 @@ import WorkoutExerciseBlock from '@/components/workout-builder/WorkoutExerciseBl
 import WorkoutScheduleListItem from '@/components/workout-builder/WorkoutScheduleListItem.vue';
 import { API_BASE } from '@/config/env';
 import { refreshWorkoutStatus, setUserWorkoutStatus } from '@/composable/workoutStatusManager';
-import { getExerciseImage } from '@/utils/exerciseImage';
+import { DEFAULT_EXERCISE_IMAGE, getExerciseImage } from '@/utils/exerciseImage';
+import { DEFAULT_WORKOUT_PLAN_IMAGE, buildWorkoutPlanCoverImageUrl, applyWorkoutPlanImageFallback } from '@/utils/workoutPlanImage';
 
 const metadata = ref({
   name: '',
   description: '',
   type: 'Strength',
+  category: 'General Fitness',
   planType: '',
   estimatedDuration: 45,
+  planDurationWeeks: '',
   goalId: '',
+  goalTargetDate: '',
   goalContext: null,
   goals: [],
   otherGoal: '',
@@ -30,9 +34,11 @@ const loadingFeaturedPlans = ref(false);
 const cloningFeaturedPlanId = ref('');
 const loadingGoals = ref(false);
 const saving = ref(false);
+const publishing = ref(false);
 const saveMessage = ref('');
 const plannerMessage = ref('');
 const userId = ref(null);
+const currentRoleSlug = ref('');
 const currentPlanId = ref('');
 const selectedWorkoutId = ref('');
 const workoutSchedules = ref([]);
@@ -45,12 +51,16 @@ const isWorkoutDetailsOpen = ref(true);
 const isSchedulePlannerOpen = ref(true);
 const openMenuDay = ref(null);
 const openMenuPlacement = ref('down');
+const openMenuAnchor = ref('top');
 const aiPrompt = ref('');
 const aiResponse = ref('');
 const aiLoading = ref(false);
 const gatewayTestLoading = ref(false);
 const aiError = ref('');
 const isAdminUser = ref(false);
+const planPublicationStatus = ref('draft');
+const selectedPublicationStatus = ref('draft');
+const isGlobalPlanFeatured = ref(false);
 const adminUserPlansLoading = ref(false);
 const adminUserPlansError = ref('');
 const adminUserPlans = ref([]);
@@ -59,6 +69,8 @@ const globalPlansDeletingId = ref('');
 const globalPlansError = ref('');
 const globalPlansSuccess = ref('');
 const globalPlans = ref([]);
+const showGlobalDeletePlanModal = ref(false);
+const selectedGlobalPlanForDelete = ref(null);
 
 const MENU_ESTIMATED_HEIGHT = 260;
 const MENU_SAFE_GAP = 12;
@@ -82,17 +94,20 @@ const closeDayMenu = (e) => {
   if (!e.target.closest('.day-kebab-wrap')) {
     openMenuDay.value = null;
     openMenuPlacement.value = 'down';
+    openMenuAnchor.value = 'top';
   }
 };
 
-const toggleDayMenu = (dayName, event) => {
+const toggleDayMenu = (dayName, event, anchor = 'top') => {
   if (openMenuDay.value === dayName) {
     openMenuDay.value = null;
     openMenuPlacement.value = 'down';
+    openMenuAnchor.value = 'top';
     return;
   }
 
   openMenuPlacement.value = getDayMenuPlacement(event?.currentTarget);
+  openMenuAnchor.value = anchor;
   openMenuDay.value = dayName;
 };
 const route = useRoute();
@@ -112,18 +127,118 @@ const weekGroups = ref([]);
 const dayGroupOrders = ref([]);
 const weekGroupOrders = ref([]);
 const selectedScheduleGroup = ref(null);
+const expandedGroupIdByMode = ref({ day: null, week: null });
+const dayGroupIdentityMap = ref([]);
+const weekGroupIdentityMap = ref([]);
 const newScheduleGroupName = ref('');
 const inlineEditingDayName = ref('');
 const inlineDayNameDraft = ref('');
+const inlineDayNameError = ref('');
 const showDeleteModal = ref(false);
+const showPublishPlanModal = ref(false);
+const showSaveWorkoutPlanModal = ref(false);
 const dayToDelete = ref(null);
 const skipNextRoutePlannerLoad = ref(false);
 
 const featuredWorkoutPlans = ref([]);
+const showManagedMarketplacePlans = ref(false);
+const marketplaceSearchQuery = ref('');
+const marketplaceFiltersOpen = ref(false);
+const marketplaceFilters = ref({
+  source: 'all',
+  pricing: 'all',
+  workoutType: 'all',
+  category: 'all',
+  difficulty: 'all',
+  planDuration: 'all',
+});
 const currentWorkoutPlanSlide = ref(0);
 const selectedTemplatePlanId = ref('');
 const selectedTemplatePlanName = ref('');
+const showGlobalLibraryViewModal = ref(false);
+const globalLibraryViewLoading = ref(false);
+const globalLibraryViewError = ref('');
+const globalLibraryViewPlan = ref(null);
+const globalLibraryViewDaySchedules = ref([]);
 const personalGoals = ref([]);
+const WORKOUT_BUILDER_DRAFT_STORAGE_KEY = 'wa_workout_builder_unsaved_draft_v1';
+const coverUploadInputRef = ref(null);
+const coverImageRevision = ref(0);
+const currentPlanHasCustomCover = ref(false);
+const persistedCoverImageReference = ref('');
+const pendingCoverFile = ref(null);
+const pendingCoverPreviewUrl = ref('');
+const coverUploadInFlight = ref(false);
+const coverDeleteInFlight = ref(false);
+const coverUploadProgress = ref(0);
+const coverUiMessage = ref('');
+const coverUiMessageType = ref('info');
+
+const PLAN_TYPE_GLOBAL = 'global';
+const PLAN_TYPE_PERSONAL = 'personal';
+const PLAN_TYPE_TRAINER_SHARED = 'trainer_shared';
+const PLAN_TYPE_COMMUNITY = 'community';
+const PLAN_TYPE_MARKETPLACE = 'marketplace';
+
+const defaultWorkoutPlanTypeByRole = computed(() => {
+  return PLAN_TYPE_PERSONAL;
+});
+
+const workoutPlanTypeOptions = computed(() => {
+  const role = String(currentRoleSlug.value || '').trim().toLowerCase();
+  const isTrainerRole = role === 'trainer';
+  const canUseGlobalPlan = isTrainerRole || isAdminUser.value;
+  const showTrainerShared = isTrainerRole || isAdminUser.value;
+
+  const options = [
+    { value: PLAN_TYPE_PERSONAL, label: 'Personal (Private)' },
+    ...(showTrainerShared ? [{ value: PLAN_TYPE_TRAINER_SHARED, label: 'Trainer Shared' }] : []),
+    { value: PLAN_TYPE_COMMUNITY, label: 'Community' },
+    { value: PLAN_TYPE_MARKETPLACE, label: 'Marketplace Paid (Coming Soon)' },
+    ...(canUseGlobalPlan ? [{ value: PLAN_TYPE_GLOBAL, label: 'Global Plan (Shown to All)' }] : []),
+  ];
+
+  const selectedPlanType = String(metadata.value?.planType || '').trim();
+  const hasSelectedInOptions = options.some((option) => option.value === selectedPlanType);
+  if (!hasSelectedInOptions && ['featured', 'community_shared'].includes(selectedPlanType)) {
+    const legacyLabel = selectedPlanType === 'featured' ? 'Featured (Legacy)' : 'Community Shared (Legacy)';
+    options.push({ value: selectedPlanType, label: legacyLabel });
+  }
+
+  return options;
+});
+
+const workoutPlanCategoryOptions = [
+  'Weight Loss',
+  'Strength',
+  'Muscle Building',
+  'Cardio',
+  'General Fitness',
+  'Beginner',
+];
+
+const canEditSelectedPlanType = computed(() => {
+  const currentPlanType = String(metadata.value?.planType || '').trim();
+  if (!currentPlanType) {
+    return true;
+  }
+  return !String(currentPlanId.value || '').trim();
+});
+
+const ensureDraftPlanTypeDefault = () => {
+  if (String(currentPlanId.value || '').trim()) {
+    return;
+  }
+
+  if (String(metadata.value?.planType || '').trim()) {
+    return;
+  }
+
+  metadata.value = {
+    ...metadata.value,
+    planType: defaultWorkoutPlanTypeByRole.value,
+  };
+};
 
 const formatGoalDateLabel = (dateStr) => {
   if (!dateStr) return '';
@@ -180,8 +295,15 @@ const formatGlobalGoalTypeLabel = (value) => {
 };
 
 const normalizeGlobalCategory = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
   const raw = String(value || '').trim();
-  if (!raw) return 'General Fitness';
+  if (!raw) {
+    return null;
+  }
+
   const lookup = {
     'weight loss': 'Weight Loss',
     strength: 'Strength',
@@ -189,6 +311,7 @@ const normalizeGlobalCategory = (value) => {
     cardio: 'Cardio',
     'general fitness': 'General Fitness',
     beginner: 'Beginner',
+    global: 'General Fitness',
     featured: 'General Fitness',
     community_shared: 'General Fitness',
     'community shared': 'General Fitness',
@@ -197,15 +320,349 @@ const normalizeGlobalCategory = (value) => {
 };
 
 const normalizeGlobalPlan = (plan = {}) => ({
+  publicationStatusRaw: String(plan.status ?? plan.publicationStatus ?? plan.planStatus ?? '').trim().toLowerCase(),
   planId: String(plan.planId || '').trim(),
   name: String(plan.name || '').trim() || 'Untitled Workout',
-  category: normalizeGlobalCategory(plan.type),
+  description: String(plan.description || '').trim(),
+  type: normalizeGlobalCategory(plan.category ?? plan.type),
+  category: normalizeGlobalCategory(plan.category ?? plan.type),
+  workoutType: String(plan.workoutType || '').trim(),
+  source: String(plan.source || plan.planSource || '').trim(),
+  pricing: String(plan.pricing || '').trim(),
+  isPaid: typeof plan.isPaid === 'boolean' ? plan.isPaid : null,
+  difficulty: String(plan.difficulty || plan.level || plan.experienceLevel || '').trim(),
+  planDurationWeeks: plan.planDurationWeeks ?? plan.durationWeeks ?? plan.weeks ?? null,
+  planType: String(plan.planType || '').trim(),
+  estimatedDuration: Number(plan.estimatedDuration ?? plan.estimatedDurationMinutes ?? plan.duration ?? 0),
   goalType: normalizeGlobalGoalType(plan.goalType),
   dayCount: Number(plan.dayCount || 0),
   exerciseCount: Number(plan.exerciseCount || 0),
   updatedAt: plan.updatedAt || null,
+  status: normalizePlanPublicationStatus(plan.status ?? plan.publicationStatus ?? plan.planStatus),
   visibility: String(plan.visibility || 'private').trim() || 'private',
+  isFeatured: typeof plan?.isFeatured === 'boolean'
+    ? plan.isFeatured
+    : (typeof plan?.featured === 'boolean' ? plan.featured : String(plan?.planType || '').trim().toLowerCase() === 'featured'),
+  hasCustomCoverImage: Boolean(plan.hasCustomCoverImage),
+  coverImageUrl: buildWorkoutPlanCoverImageUrl(plan.planId),
 });
+
+const buildPlanCoverImageUrl = (planId, revision = coverImageRevision.value) => buildWorkoutPlanCoverImageUrl(planId, revision);
+
+const activePlanId = computed(() => String(currentPlanId.value || selectedWorkoutId.value || '').trim());
+
+const canEditCurrentPlanCover = computed(() => {
+  const planType = String(metadata.value?.planType || '').trim().toLowerCase();
+  if (['global', 'featured', 'community_shared'].includes(planType)) {
+    const role = String(currentRoleSlug.value || '').trim().toLowerCase();
+    return isAdminUser.value || role === 'trainer';
+  }
+
+  return true;
+});
+
+const hasPreviewCoverSelected = computed(() => Boolean(String(pendingCoverPreviewUrl.value || '').trim()));
+
+const normalizeCoverReference = (value) => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  const trimmed = String(value).trim();
+  if (!trimmed || /^(null|undefined)$/i.test(trimmed)) {
+    return '';
+  }
+  return trimmed;
+};
+
+const isDefaultWorkoutPlanCoverReference = (value) => {
+  const normalized = normalizeCoverReference(value);
+  if (!normalized) {
+    return true;
+  }
+
+  const cleaned = normalized
+    .split('?')[0]
+    .split('#')[0]
+    .replace(/\\/g, '/');
+  const segments = cleaned.split('/').filter(Boolean);
+  const rawLeaf = segments.length ? segments[segments.length - 1] : cleaned;
+  let leaf = rawLeaf;
+  try {
+    leaf = decodeURIComponent(rawLeaf);
+  } catch (_) {
+    leaf = rawLeaf;
+  }
+  const lowerLeaf = String(leaf || '').trim().toLowerCase();
+
+  return /^default(?:\.[a-z0-9]+)?$/i.test(lowerLeaf);
+};
+
+const readCoverReferenceFromSource = (source = {}) => {
+  if (!source || typeof source !== 'object') {
+    return '';
+  }
+
+  const candidates = [
+    source.coverImage,
+    source.cover_image,
+    source.coverImageReference,
+    source.cover_image_reference,
+    source.coverImageStorageKey,
+    source.cover_image_storage_key,
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeCoverReference(candidate);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return '';
+};
+
+const resolvePersistedCoverReferenceForPlan = (planner = {}) => {
+  const normalizedPlanId = String(planner?.planId || currentPlanId.value || selectedWorkoutId.value || '').trim();
+  const scheduleRow = normalizedPlanId
+    ? workoutSchedules.value.find((plan) => String(plan?.planId || '').trim() === normalizedPlanId)
+    : null;
+
+  const fromPlannerMetadata = readCoverReferenceFromSource(planner?.metadata || {});
+  const fromPlanner = readCoverReferenceFromSource(planner || {});
+  const fromScheduleRow = readCoverReferenceFromSource(scheduleRow || {});
+
+  return fromPlannerMetadata || fromPlanner || fromScheduleRow || '';
+};
+
+const hasPersistedCustomCover = computed(() => {
+  if (!hasPersistedPlanForCover.value) {
+    return false;
+  }
+  return !isDefaultWorkoutPlanCoverReference(persistedCoverImageReference.value);
+});
+
+const currentPlanCoverImageUrl = computed(() => {
+  const pendingPreview = String(pendingCoverPreviewUrl.value || '').trim();
+  if (pendingPreview) {
+    return pendingPreview;
+  }
+
+  if (!activePlanId.value) {
+    return DEFAULT_WORKOUT_PLAN_IMAGE;
+  }
+
+  return buildPlanCoverImageUrl(activePlanId.value);
+});
+
+const hasPersistedPlanForCover = computed(() => Boolean(activePlanId.value));
+
+const showDeletePlanCoverButton = computed(() => {
+  return hasPersistedPlanForCover.value
+    && canEditCurrentPlanCover.value
+    && hasPersistedCustomCover.value
+    && !hasPreviewCoverSelected.value;
+});
+
+const isCoverActionBusy = computed(() => coverUploadInFlight.value || coverDeleteInFlight.value);
+
+const updateCoverUiMessage = (message = '', type = 'info') => {
+  coverUiMessage.value = String(message || '').trim();
+  coverUiMessageType.value = type;
+};
+
+const clearPendingCoverSelection = () => {
+  if (pendingCoverPreviewUrl.value && pendingCoverPreviewUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(pendingCoverPreviewUrl.value);
+  }
+  pendingCoverPreviewUrl.value = '';
+  pendingCoverFile.value = null;
+};
+
+const setPendingCoverSelection = (file) => {
+  clearPendingCoverSelection();
+  pendingCoverFile.value = file;
+  pendingCoverPreviewUrl.value = URL.createObjectURL(file);
+};
+
+const openCoverUploadPicker = () => {
+  if (!canEditCurrentPlanCover.value || isCoverActionBusy.value) {
+    return;
+  }
+
+  coverUploadInputRef.value?.click();
+};
+
+const refreshCoverImages = () => {
+  coverImageRevision.value = Date.now();
+};
+
+const uploadCoverImageViaXhr = ({ planId, file }) => {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const formData = new FormData();
+    formData.append('coverImage', file);
+
+    xhr.open('POST', `${API_BASE}/api/workout-schedules/${encodeURIComponent(planId)}/cover`);
+    xhr.withCredentials = true;
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) {
+        coverUploadProgress.value = 0;
+        return;
+      }
+      coverUploadProgress.value = Math.min(100, Math.max(0, Math.round((event.loaded / event.total) * 100)));
+    };
+
+    xhr.onerror = () => reject(new Error('Failed to upload cover image.'));
+
+    xhr.onload = () => {
+      let payload = {};
+      try {
+        payload = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+      } catch (_) {
+        payload = {};
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(payload);
+      } else {
+        reject(new Error(payload?.error || 'Failed to upload cover image.'));
+      }
+    };
+
+    xhr.send(formData);
+  });
+};
+
+const uploadSelectedCoverImageForPlan = async ({ planId, file }) => {
+  const result = await uploadCoverImageViaXhr({ planId, file });
+  currentPlanHasCustomCover.value = true;
+  persistedCoverImageReference.value = `APP/workout-plans/${String(planId || '').trim()}/images/cover.jpg`;
+  clearPendingCoverSelection();
+  refreshCoverImages();
+  syncWorkoutSchedules(workoutSchedules.value);
+  featuredWorkoutPlans.value = featuredWorkoutPlans.value.map((plan) => {
+    if (String(plan?.planId || '').trim() !== String(planId || '').trim()) return plan;
+    return {
+      ...plan,
+      hasCustomCoverImage: true,
+      coverImageUrl: buildPlanCoverImageUrl(planId),
+    };
+  });
+  return result;
+};
+
+const uploadPendingCoverAfterPlanCreate = async (planId) => {
+  if (!pendingCoverFile.value) {
+    return;
+  }
+
+  coverUploadInFlight.value = true;
+  coverUploadProgress.value = 0;
+  updateCoverUiMessage('Uploading selected cover image...', 'info');
+
+  try {
+    const result = await uploadSelectedCoverImageForPlan({
+      planId,
+      file: pendingCoverFile.value,
+    });
+    updateCoverUiMessage(result?.message || 'Workout plan cover uploaded successfully.', 'success');
+  } catch (error) {
+    clearPendingCoverSelection();
+    refreshCoverImages();
+    updateCoverUiMessage(error?.message || 'Workout plan was created, but cover upload failed. Open Upload / Replace to retry.', 'error');
+  } finally {
+    coverUploadInFlight.value = false;
+    coverUploadProgress.value = 0;
+  }
+};
+
+const onCoverFileSelected = async (event) => {
+  const file = event?.target?.files?.[0] || null;
+  if (!file) {
+    return;
+  }
+
+  const mimeType = String(file.type || '').trim().toLowerCase();
+  const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+  if (!allowedMimeTypes.has(mimeType)) {
+    updateCoverUiMessage('Unsupported file type. Use JPG, PNG, WEBP, or GIF.', 'error');
+    event.target.value = '';
+    return;
+  }
+
+  setPendingCoverSelection(file);
+
+  if (!hasPersistedPlanForCover.value) {
+    updateCoverUiMessage('Preview ready. Save the workout plan to upload this cover image.', 'info');
+    event.target.value = '';
+    return;
+  }
+
+  const planId = activePlanId.value;
+
+  coverUploadInFlight.value = true;
+  coverUploadProgress.value = 0;
+  updateCoverUiMessage('Uploading selected cover image...', 'info');
+
+  try {
+    const result = await uploadSelectedCoverImageForPlan({ planId, file });
+    updateCoverUiMessage(result?.message || 'Workout plan cover uploaded successfully.', 'success');
+  } catch (error) {
+    clearPendingCoverSelection();
+    refreshCoverImages();
+    updateCoverUiMessage(error?.message || 'Failed to upload workout plan cover.', 'error');
+  } finally {
+    coverUploadInFlight.value = false;
+    coverUploadProgress.value = 0;
+    event.target.value = '';
+  }
+};
+
+const deleteCoverImage = async () => {
+  const planId = activePlanId.value;
+  if (!planId || !canEditCurrentPlanCover.value || isCoverActionBusy.value) {
+    return;
+  }
+
+  coverDeleteInFlight.value = true;
+  updateCoverUiMessage('Removing cover image...', 'info');
+
+  try {
+    const response = await fetch(`${API_BASE}/api/workout-schedules/${encodeURIComponent(planId)}/cover`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload?.error || 'Failed to remove workout plan cover.');
+    }
+
+    currentPlanHasCustomCover.value = false;
+    persistedCoverImageReference.value = 'default.JPG';
+    clearPendingCoverSelection();
+    refreshCoverImages();
+    syncWorkoutSchedules(workoutSchedules.value);
+    featuredWorkoutPlans.value = featuredWorkoutPlans.value.map((plan) => {
+      if (String(plan?.planId || '').trim() !== planId) return plan;
+      return {
+        ...plan,
+        hasCustomCoverImage: false,
+        coverImageUrl: buildPlanCoverImageUrl(planId),
+      };
+    });
+    updateCoverUiMessage(payload?.message || 'Workout plan cover removed.', 'success');
+  } catch (error) {
+    updateCoverUiMessage(error?.message || 'Failed to remove workout plan cover.', 'error');
+  } finally {
+    coverDeleteInFlight.value = false;
+  }
+};
+
+const onPlanCoverImageError = (event) => {
+  applyWorkoutPlanImageFallback(event);
+};
 
 const formatGlobalAccess = (plan = {}) => {
   const visibility = String(plan?.visibility || '').trim().toLowerCase();
@@ -227,17 +684,38 @@ const clearGlobalPlansMessages = () => {
   globalPlansSuccess.value = '';
 };
 
-const buildGlobalPlanDraftPayload = () => ({
-  title: 'Untitled Global Workout',
-  description: '',
-  estimatedDurationMinutes: 45,
-  planType: 'featured',
-  goalType: 'none',
-  accessLevel: 'public',
+const resolveSelectedGoalTypeForGlobalPlan = () => {
+  const selectedGoalId = String(metadata.value?.goalId || '').trim();
+  const goalCandidates = Array.isArray(goalOptionsForSelect.value) ? goalOptionsForSelect.value : [];
+
+  if (selectedGoalId) {
+    const selectedGoal = goalCandidates.find((option) => String(option?.value || '').trim() === selectedGoalId);
+    const goalType = String(selectedGoal?.goalType || metadata.value?.goalContext?.goalType || '').trim().toLowerCase();
+    if (goalType === 'exercise_weight') return 'exercise_weight';
+    if (goalType === 'body_weight') return 'body_weight';
+  }
+
+  const fallbackGoalType = String(metadata.value?.goalContext?.goalType || '').trim().toLowerCase();
+  if (fallbackGoalType === 'exercise_weight') return 'exercise_weight';
+  if (fallbackGoalType === 'body_weight') return 'body_weight';
+
+  return 'none';
+};
+
+const buildGlobalPlanDraftPayload = (overrides = {}) => ({
+  title: String(overrides.title ?? metadata.value?.name ?? 'Untitled Global Workout').trim() || 'Untitled Global Workout',
+  description: String(overrides.description ?? metadata.value?.description ?? '').trim(),
+  estimatedDurationMinutes: Number(overrides.estimatedDurationMinutes ?? metadata.value?.estimatedDuration ?? 45) || 45,
+  category: overrides.category ?? metadata.value?.category ?? null,
+  planType: String(overrides.planType ?? 'global').trim().toLowerCase() || 'global',
+  goalType: String(overrides.goalType ?? resolveSelectedGoalTypeForGlobalPlan()).trim().toLowerCase() || 'none',
+  goalTargetDate: overrides.goalTargetDate ?? ((metadata.value?.goalTargetDate === null || metadata.value?.goalTargetDate === undefined || metadata.value?.goalTargetDate === '') ? null : String(metadata.value?.goalTargetDate || '').trim()),
+  planDurationWeeks: overrides.planDurationWeeks ?? ((metadata.value?.planDurationWeeks === null || metadata.value?.planDurationWeeks === undefined || metadata.value?.planDurationWeeks === '') ? null : Number(metadata.value?.planDurationWeeks)),
+  accessLevel: String(overrides.accessLevel ?? 'public').trim().toLowerCase() || 'public',
 });
 
 const loadGlobalPlans = async () => {
-  if (!isAdminUser.value) {
+  if (!canAccessGlobalManagement.value) {
     globalPlans.value = [];
     return;
   }
@@ -304,32 +782,41 @@ const viewGlobalPlanSummary = async (plan = {}) => {
 
   clearGlobalPlansMessages();
   try {
-    const response = await fetch(`${API_BASE}/api/admin/global-workout-plans/${encodeURIComponent(targetId)}`, {
-      credentials: 'include',
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data?.error || 'Failed to open global workout plan.');
-    }
-
-    const planner = data?.planner || {};
-    const dayCount = Array.isArray(planner?.dayGroups) ? planner.dayGroups.length : Number(plan?.dayCount || 0);
-    const exerciseCount = Array.isArray(planner?.exercises) ? planner.exercises.length : Number(plan?.exerciseCount || 0);
-    const name = String(planner?.metadata?.name || plan?.name || 'Untitled Workout').trim() || 'Untitled Workout';
-    globalPlansSuccess.value = `Viewing ${name} (${dayCount} day${dayCount === 1 ? '' : 's'}, ${exerciseCount} exercise${exerciseCount === 1 ? '' : 's'}). Inline edit workflow remains in the embedded Global Plans panel.`;
+    await router.replace({ query: { ...route.query, planId: targetId } });
+    builderTab.value = 'create';
+    await loadWorkoutPlanner(targetId);
+    const name = String(plan?.name || 'Untitled Workout').trim() || 'Untitled Workout';
+    globalPlansSuccess.value = `Loaded ${name} for editing.`;
   } catch (error) {
     globalPlansError.value = error?.message || 'Failed to open global workout plan.';
   }
 };
 
-const deleteGlobalPlan = async (plan = {}) => {
+const requestDeleteGlobalPlan = (plan = {}) => {
   const targetId = String(plan?.planId || '').trim();
-  if (!targetId) {
+  if (!targetId || globalPlansDeletingId.value) {
     return;
   }
 
-  const confirmed = window.confirm(`Delete ${plan?.name || 'this plan'}?`);
-  if (!confirmed) {
+  selectedGlobalPlanForDelete.value = {
+    planId: targetId,
+    name: String(plan?.name || 'Untitled Workout').trim() || 'Untitled Workout',
+  };
+  showGlobalDeletePlanModal.value = true;
+};
+
+const closeGlobalDeletePlanModal = ({ force = false } = {}) => {
+  if (globalPlansDeletingId.value && !force) {
+    return;
+  }
+  showGlobalDeletePlanModal.value = false;
+  selectedGlobalPlanForDelete.value = null;
+};
+
+const confirmDeleteGlobalPlan = async () => {
+  const plan = selectedGlobalPlanForDelete.value || {};
+  const targetId = String(plan?.planId || '').trim();
+  if (!targetId || globalPlansDeletingId.value) {
     return;
   }
 
@@ -347,26 +834,40 @@ const deleteGlobalPlan = async (plan = {}) => {
       throw new Error(data?.error || 'Failed to delete global workout plan.');
     }
 
-    globalPlans.value = Array.isArray(data?.workoutLists)
-      ? data.workoutLists.map(normalizeGlobalPlan)
-      : globalPlans.value.filter((item) => String(item.planId) !== targetId);
+    closeGlobalDeletePlanModal({ force: true });
+    globalPlansDeletingId.value = '';
+    await loadGlobalPlans();
     globalPlansSuccess.value = 'Global workout plan deleted.';
   } catch (error) {
     globalPlansError.value = error?.message || 'Failed to delete global workout plan.';
   } finally {
-    globalPlansDeletingId.value = '';
+    if (globalPlansDeletingId.value === targetId) {
+      globalPlansDeletingId.value = '';
+    }
   }
 };
 
 const goalOptionsForSelect = computed(() => {
+  const toGoalDateLabel = (rawDate) => {
+    const trimmed = String(rawDate || '').trim();
+    if (!trimmed) return '';
+    const parsed = new Date(`${trimmed}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return trimmed;
+    return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
   const activeGoalOptions = personalGoals.value.map((goal) => ({
     value: String(goal?.id || ''),
     label: formatGoalOptionLabel(goal),
+    displayName: String(goal?.goalType || '').trim() === 'exercise_weight'
+      ? `${String(goal?.exerciseName || 'Exercise').trim() || 'Exercise'} (${Number(goal?.targetValue || 0)} ${String(goal?.targetUnit || 'lb').trim() || 'lb'})`
+      : `Reach ${Number(goal?.targetValue || 0)} ${String(goal?.targetUnit || 'lb').trim() || 'lb'}`,
     goalType: String(goal?.goalType || '').trim(),
     exerciseName: String(goal?.exerciseName || '').trim(),
     targetValue: Number(goal?.targetValue || 0),
     targetUnit: String(goal?.targetUnit || 'lb').trim() || 'lb',
     targetDate: String(goal?.targetDate || '').trim(),
+    targetDateLabel: toGoalDateLabel(goal?.targetDate),
   })).filter((entry) => entry.value);
 
   const selectedGoalId = String(metadata.value?.goalId || '').trim();
@@ -378,6 +879,8 @@ const goalOptionsForSelect = computed(() => {
     : {
         value: selectedGoalId,
         label: `${formatGoalContextOptionLabel(metadata.value?.goalContext)} (Archived or unavailable)`,
+        displayName: `${formatGoalContextOptionLabel(metadata.value?.goalContext)} (Archived or unavailable)`,
+        targetDateLabel: metadata.value?.goalContext?.targetDate ? formatGoalDateLabel(metadata.value?.goalContext?.targetDate) : '',
       };
 
   return [
@@ -386,6 +889,81 @@ const goalOptionsForSelect = computed(() => {
     ...(unavailableSelectedGoalOption ? [unavailableSelectedGoalOption] : []),
   ];
 });
+
+const storeUnsavedBuilderDraft = () => {
+  try {
+    const snapshot = {
+      metadata: metadata.value,
+      workoutExercises: workoutExercises.value,
+      dayGroups: dayGroups.value,
+      weekGroups: weekGroups.value,
+      dayGroupOrders: dayGroupOrders.value,
+      weekGroupOrders: weekGroupOrders.value,
+      selectedScheduleGroup: selectedScheduleGroup.value,
+      planPublicationStatus: planPublicationStatus.value,
+      selectedPublicationStatus: selectedPublicationStatus.value,
+      isGlobalPlanFeatured: isGlobalPlanFeatured.value,
+      currentPlanId: currentPlanId.value,
+      selectedWorkoutId: selectedWorkoutId.value,
+      isCreatingWorkout: isCreatingWorkout.value,
+      hasSavedWorkoutDetails: hasSavedWorkoutDetails.value,
+      isWorkoutDetailsOpen: isWorkoutDetailsOpen.value,
+      isSchedulePlannerOpen: isSchedulePlannerOpen.value,
+      builderTab: builderTab.value,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(WORKOUT_BUILDER_DRAFT_STORAGE_KEY, JSON.stringify(snapshot));
+  } catch {
+    // Ignore storage failures and continue using in-memory state.
+  }
+};
+
+const restoreUnsavedBuilderDraft = () => {
+  try {
+    const raw = localStorage.getItem(WORKOUT_BUILDER_DRAFT_STORAGE_KEY);
+    if (!raw) return false;
+    const snapshot = JSON.parse(raw);
+
+    if (!snapshot || typeof snapshot !== 'object') {
+      localStorage.removeItem(WORKOUT_BUILDER_DRAFT_STORAGE_KEY);
+      return false;
+    }
+
+    if (snapshot.metadata && typeof snapshot.metadata === 'object') {
+      metadata.value = {
+        ...metadata.value,
+        ...snapshot.metadata,
+      };
+    }
+
+    workoutExercises.value = Array.isArray(snapshot.workoutExercises) ? snapshot.workoutExercises : workoutExercises.value;
+    dayGroups.value = Array.isArray(snapshot.dayGroups) ? snapshot.dayGroups : dayGroups.value;
+    weekGroups.value = Array.isArray(snapshot.weekGroups) ? snapshot.weekGroups : weekGroups.value;
+    dayGroupOrders.value = Array.isArray(snapshot.dayGroupOrders) ? snapshot.dayGroupOrders : dayGroupOrders.value;
+    weekGroupOrders.value = Array.isArray(snapshot.weekGroupOrders) ? snapshot.weekGroupOrders : weekGroupOrders.value;
+    selectedScheduleGroup.value = snapshot.selectedScheduleGroup ?? selectedScheduleGroup.value;
+    planPublicationStatus.value = String(snapshot.planPublicationStatus || planPublicationStatus.value || 'draft').trim() || 'draft';
+    selectedPublicationStatus.value = String(snapshot.selectedPublicationStatus || selectedPublicationStatus.value || planPublicationStatus.value).trim() || planPublicationStatus.value;
+    isGlobalPlanFeatured.value = Boolean(snapshot.isGlobalPlanFeatured);
+    currentPlanId.value = String(snapshot.currentPlanId || currentPlanId.value || '').trim();
+    selectedWorkoutId.value = String(snapshot.selectedWorkoutId || selectedWorkoutId.value || '').trim();
+    isCreatingWorkout.value = Boolean(snapshot.isCreatingWorkout);
+    hasSavedWorkoutDetails.value = Boolean(snapshot.hasSavedWorkoutDetails);
+    isWorkoutDetailsOpen.value = snapshot.isWorkoutDetailsOpen !== false;
+    isSchedulePlannerOpen.value = snapshot.isSchedulePlannerOpen !== false;
+    builderTab.value = String(snapshot.builderTab || 'create').trim() || 'create';
+
+    localStorage.removeItem(WORKOUT_BUILDER_DRAFT_STORAGE_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const openExistingGoalCreationFlow = async () => {
+  storeUnsavedBuilderDraft();
+  await router.push({ path: '/settings', query: { tab: 'goals', returnTo: '/workout-builder' } });
+};
 
 const loadActiveGoals = async () => {
   loadingGoals.value = true;
@@ -433,7 +1011,303 @@ const featuredWorkoutPlanSlides = computed(() => {
 });
 
 const hasFeaturedWorkoutPlans = computed(() => featuredWorkoutPlanSlides.value.length > 0);
+
+const normalizeMarketplaceText = (value) => String(value || '').trim().toLowerCase();
+
+const resolveMarketplaceSource = (plan = {}) => {
+  const directSource = normalizeMarketplaceText(
+    plan?.source || plan?.planSource || plan?.sourceType || plan?.ownerType || plan?.createdByRole || plan?.authorRole
+  );
+  if (directSource) {
+    if (directSource.includes('trainer')) return 'trainer';
+    if (directSource.includes('community')) return 'community';
+    if (directSource.includes('global') || directSource.includes('workoutatlas') || directSource.includes('admin')) return 'global';
+  }
+
+  const explicitPlanType = normalizeMarketplaceText(plan?.planType);
+  if (explicitPlanType === 'trainer_shared' || explicitPlanType === 'trainer') return 'trainer';
+  if (explicitPlanType === 'community' || explicitPlanType === 'community_shared') return 'community';
+  if (explicitPlanType === 'global' || explicitPlanType === 'featured') return 'global';
+
+  return '';
+};
+
+const resolveMarketplacePricing = (plan = {}) => {
+  const pricingText = normalizeMarketplaceText(plan?.pricing || plan?.priceType || plan?.billingModel || plan?.accessTier);
+  if (pricingText) {
+    if (pricingText.includes('free')) return 'free';
+    if (pricingText.includes('paid') || pricingText.includes('premium')) return 'paid';
+  }
+
+  if (typeof plan?.isPaid === 'boolean') {
+    return plan.isPaid ? 'paid' : 'free';
+  }
+
+  if (typeof plan?.isPremium === 'boolean') {
+    return plan.isPremium ? 'paid' : 'free';
+  }
+
+  return '';
+};
+
+const resolveMarketplaceWorkoutType = (plan = {}) => {
+  return normalizeMarketplaceText(plan?.workoutType);
+};
+
+const resolveMarketplaceCategory = (plan = {}) => {
+  return normalizeMarketplaceText(plan?.category || plan?.type);
+};
+
+const resolveMarketplaceDifficulty = (plan = {}) => {
+  return normalizeMarketplaceText(plan?.difficulty || plan?.level || plan?.experienceLevel);
+};
+
+const resolveMarketplaceDurationWeeks = (plan = {}) => {
+  const rawValue = plan?.planDurationWeeks ?? plan?.durationWeeks ?? plan?.weeks;
+  const numeric = Number(rawValue);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+};
+const formatMarketplaceSourceLabel = (plan = {}) => {
+  const normalizedSource = resolveMarketplaceSource(plan);
+  if (normalizedSource === 'global') return 'WorkoutAtlas Global';
+  if (normalizedSource === 'trainer') return 'Trainer';
+  if (normalizedSource === 'community') return 'Community';
+  return '—';
+};
+
+const resolveMarketplacePublicationStatus = (plan = {}) => {
+  const normalizedRawStatus = normalizeMarketplaceText(
+    plan?.publicationStatusRaw
+    || plan?.status
+    || plan?.publicationStatus
+    || plan?.planStatus
+  );
+
+  if (!normalizedRawStatus) {
+    return '';
+  }
+
+  if (normalizedRawStatus === 'active' || normalizedRawStatus === 'published') {
+    return 'active';
+  }
+  if (normalizedRawStatus === 'draft') {
+    return 'draft';
+  }
+  if (normalizedRawStatus === 'archived' || normalizedRawStatus === 'inactive') {
+    return 'archived';
+  }
+
+  return '';
+};
+
+const resolveMarketplaceFeaturedFlag = (plan = {}) => {
+  if (typeof plan?.isFeatured === 'boolean') {
+    return plan.isFeatured;
+  }
+
+  if (typeof plan?.featured === 'boolean') {
+    return plan.featured;
+  }
+
+  const normalizedPlanType = normalizeMarketplaceText(plan?.planType);
+  return normalizedPlanType === 'featured';
+};
+
+const getMarketplaceStatusBadges = (plan = {}) => {
+  const publicationStatus = resolveMarketplacePublicationStatus(plan);
+  const isFeaturedPlan = resolveMarketplaceFeaturedFlag(plan);
+
+  const badges = [];
+  if (publicationStatus === 'draft') {
+    badges.push({ key: 'draft', label: 'Draft', tone: 'draft' });
+  }
+
+  if (publicationStatus === 'active') {
+    badges.push({ key: 'published', label: 'Published', tone: 'published' });
+    if (isFeaturedPlan) {
+      badges.push({ key: 'featured', label: 'Featured', tone: 'featured' });
+    }
+  }
+
+  return badges;
+};
+
+const formatMarketplaceStatusLabel = (plan = {}) => {
+  const publicationStatus = resolveMarketplacePublicationStatus(plan);
+  if (publicationStatus === 'active') return 'Published';
+  if (publicationStatus === 'archived') return 'Archived';
+  if (publicationStatus === 'draft') return 'Draft';
+  return '—';
+};
+
+const manageableMarketplacePlans = computed(() => {
+  return Array.isArray(globalPlans.value)
+    ? globalPlans.value.map((plan) => ({
+        planId: String(plan?.planId || '').trim(),
+        name: String(plan?.name || '').trim() || 'Untitled Workout',
+        description: String(plan?.description || '').trim(),
+        type: String(plan?.type || plan?.category || 'General Fitness').trim() || 'General Fitness',
+        category: String(plan?.category || plan?.type || 'General Fitness').trim() || 'General Fitness',
+        workoutType: String(plan?.workoutType || '').trim(),
+        source: String(plan?.source || plan?.planSource || '').trim(),
+        pricing: String(plan?.pricing || '').trim(),
+        isPaid: typeof plan?.isPaid === 'boolean' ? plan.isPaid : null,
+        difficulty: String(plan?.difficulty || plan?.level || '').trim(),
+        planDurationWeeks: plan?.planDurationWeeks ?? plan?.durationWeeks ?? null,
+        planType: String(plan?.planType || '').trim(),
+        estimatedDuration: Number(plan?.estimatedDuration || 0),
+        exerciseCount: Number(plan?.exerciseCount || 0),
+        dayCount: Number(plan?.dayCount || 0),
+        publicationStatusRaw: String(plan?.publicationStatusRaw ?? plan?.status ?? plan?.publicationStatus ?? plan?.planStatus ?? '').trim().toLowerCase(),
+        status: String(plan?.status ?? plan?.publicationStatus ?? plan?.planStatus ?? '').trim().toLowerCase(),
+        isFeatured: typeof plan?.isFeatured === 'boolean'
+          ? plan.isFeatured
+          : (typeof plan?.featured === 'boolean' ? plan.featured : String(plan?.planType || '').trim().toLowerCase() === 'featured'),
+        coverImageUrl: buildPlanCoverImageUrl(plan?.planId),
+      }))
+    : [];
+});
+const activeMarketplacePlans = computed(() => {
+  return showManagedMarketplacePlans.value ? manageableMarketplacePlans.value : featuredWorkoutPlans.value;
+});
+const hasActiveMarketplacePlans = computed(() => activeMarketplacePlans.value.length > 0);
+const normalizedMarketplaceSearchQuery = computed(() => String(marketplaceSearchQuery.value || '').trim().toLowerCase());
+const marketplaceFilterCapabilities = computed(() => {
+  const plans = Array.isArray(activeMarketplacePlans.value) ? activeMarketplacePlans.value : [];
+  return {
+    source: plans.some((plan) => Boolean(resolveMarketplaceSource(plan))),
+    pricing: plans.some((plan) => Boolean(resolveMarketplacePricing(plan))),
+    workoutType: plans.some((plan) => Boolean(resolveMarketplaceWorkoutType(plan))),
+    category: plans.some((plan) => Boolean(resolveMarketplaceCategory(plan))),
+    difficulty: plans.some((plan) => Boolean(resolveMarketplaceDifficulty(plan))),
+    planDuration: plans.some((plan) => Number.isFinite(resolveMarketplaceDurationWeeks(plan))),
+  };
+});
+const categoryFilterOptions = computed(() => {
+  const canonical = ['Weight Loss', 'Muscle Building', 'Endurance', 'General Fitness'];
+  const canonicalSlugs = canonical.map((entry) => normalizeMarketplaceText(entry));
+  const discovered = Array.from(new Set(
+    activeMarketplacePlans.value
+      .map((plan) => String(plan?.category || plan?.type || '').trim())
+      .filter(Boolean)
+  ));
+  const extra = discovered
+    .filter((entry) => !canonicalSlugs.includes(normalizeMarketplaceText(entry)))
+    .sort((a, b) => a.localeCompare(b));
+
+  return [
+    { value: 'all', label: 'All Categories' },
+    ...canonical.map((entry) => ({ value: normalizeMarketplaceText(entry), label: entry })),
+    ...extra.map((entry) => ({ value: normalizeMarketplaceText(entry), label: entry })),
+  ];
+});
+const hasMarketplaceActiveFilters = computed(() => {
+  const values = marketplaceFilters.value;
+  return Object.keys(values).some((key) => String(values[key] || 'all') !== 'all');
+});
+const activeMarketplaceFilterCount = computed(() => {
+  const values = marketplaceFilters.value;
+  const capabilities = marketplaceFilterCapabilities.value;
+  const supportedKeys = Object.keys(values).filter((key) => capabilities[key] !== false);
+  return supportedKeys.reduce((count, key) => (String(values[key] || 'all') === 'all' ? count : count + 1), 0);
+});
+const filteredMarketplacePlans = computed(() => {
+  const searchText = normalizedMarketplaceSearchQuery.value;
+  return activeMarketplacePlans.value.filter((plan) => {
+    if (searchText) {
+      const searchableFields = [
+        plan?.name,
+        plan?.description,
+        plan?.category,
+        plan?.type,
+        plan?.workoutType,
+      ];
+      const matchesSearch = searchableFields.some((value) => String(value || '').toLowerCase().includes(searchText));
+      if (!matchesSearch) {
+        return false;
+      }
+    }
+
+    if (marketplaceFilterCapabilities.value.source && marketplaceFilters.value.source !== 'all') {
+      if (resolveMarketplaceSource(plan) !== marketplaceFilters.value.source) {
+        return false;
+      }
+    }
+
+    if (marketplaceFilterCapabilities.value.pricing && marketplaceFilters.value.pricing !== 'all') {
+      if (resolveMarketplacePricing(plan) !== marketplaceFilters.value.pricing) {
+        return false;
+      }
+    }
+
+    if (marketplaceFilterCapabilities.value.workoutType && marketplaceFilters.value.workoutType !== 'all') {
+      const workoutType = resolveMarketplaceWorkoutType(plan);
+      if (marketplaceFilters.value.workoutType === 'other') {
+        if (!workoutType || ['strength', 'cardio'].includes(workoutType)) {
+          return false;
+        }
+      } else if (workoutType !== marketplaceFilters.value.workoutType) {
+        return false;
+      }
+    }
+
+    if (marketplaceFilterCapabilities.value.category && marketplaceFilters.value.category !== 'all') {
+      if (resolveMarketplaceCategory(plan) !== marketplaceFilters.value.category) {
+        return false;
+      }
+    }
+
+    if (marketplaceFilterCapabilities.value.difficulty && marketplaceFilters.value.difficulty !== 'all') {
+      if (resolveMarketplaceDifficulty(plan) !== marketplaceFilters.value.difficulty) {
+        return false;
+      }
+    }
+
+    if (marketplaceFilterCapabilities.value.planDuration && marketplaceFilters.value.planDuration !== 'all') {
+      const weeks = resolveMarketplaceDurationWeeks(plan);
+      if (!Number.isFinite(weeks)) {
+        return false;
+      }
+      if (marketplaceFilters.value.planDuration === '1-4' && (weeks < 1 || weeks > 4)) {
+        return false;
+      }
+      if (marketplaceFilters.value.planDuration === '5-8' && (weeks < 5 || weeks > 8)) {
+        return false;
+      }
+      if (marketplaceFilters.value.planDuration === '9-12' && (weeks < 9 || weeks > 12)) {
+        return false;
+      }
+      if (marketplaceFilters.value.planDuration === '13+' && weeks < 13) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+});
+const hasFilteredMarketplacePlans = computed(() => filteredMarketplacePlans.value.length > 0);
+const marketplaceFiltersHaveNoMatches = computed(() => {
+  return hasActiveMarketplacePlans.value
+    && !hasFilteredMarketplacePlans.value
+    && (Boolean(normalizedMarketplaceSearchQuery.value) || hasMarketplaceActiveFilters.value);
+});
+const marketplacePlansLoading = computed(() => showManagedMarketplacePlans.value ? globalPlansLoading.value : loadingFeaturedPlans.value);
 const hasMultipleFeaturedWorkoutPlanSlides = computed(() => featuredWorkoutPlanSlides.value.length > 1);
+
+const clearMarketplaceSearch = () => {
+  marketplaceSearchQuery.value = '';
+};
+
+const clearMarketplaceFilters = () => {
+  marketplaceFilters.value = {
+    source: 'all',
+    pricing: 'all',
+    workoutType: 'all',
+    category: 'all',
+    difficulty: 'all',
+    planDuration: 'all',
+  };
+};
 
 const activeWorkoutPlanSlide = computed(() => {
   if (!featuredWorkoutPlanSlides.value.length) {
@@ -499,7 +1373,7 @@ const selectTemplatePlan = async (plan) => {
   cloningFeaturedPlanId.value = templatePlanId;
   saveMessage.value = '';
   try {
-    const response = await fetch(`${API_BASE}/api/featured-workout-plans/${encodeURIComponent(templatePlanId)}/clone`, {
+    const response = await fetch(`${API_BASE}/api/global-workout-plans/${encodeURIComponent(templatePlanId)}/use`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -507,7 +1381,7 @@ const selectTemplatePlan = async (plan) => {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData?.error || 'Failed to copy featured workout plan.');
+      throw new Error(errorData?.error || 'Failed to copy global workout plan.');
     }
 
     const data = await response.json();
@@ -517,7 +1391,7 @@ const selectTemplatePlan = async (plan) => {
     const planner = data?.planner || {};
     const newPlanId = String(planner?.planId || '').trim();
     if (!newPlanId) {
-      throw new Error('Featured workout copied, but no personal plan was returned.');
+      throw new Error('Global workout copied, but no personal plan was returned.');
     }
 
     selectedWorkoutId.value = newPlanId;
@@ -527,14 +1401,256 @@ const selectTemplatePlan = async (plan) => {
 
     hydratePlanner(planner, { markSaved: false });
     builderTab.value = 'create';
-    saveMessage.value = 'Featured workout plan loaded. Save to keep your personal copy.';
+    saveMessage.value = 'Global workout plan loaded. Save to keep your personal copy.';
 
     await router.replace({ query: { ...route.query, planId: newPlanId } });
   } catch (error) {
-    saveMessage.value = error.message || 'Failed to copy featured workout plan.';
+    saveMessage.value = error.message || 'Failed to copy global workout plan.';
   } finally {
     cloningFeaturedPlanId.value = '';
   }
+};
+
+const closeGlobalLibraryViewModal = () => {
+  if (globalLibraryViewLoading.value) {
+    return;
+  }
+  showGlobalLibraryViewModal.value = false;
+  globalLibraryViewError.value = '';
+  globalLibraryViewPlan.value = null;
+  globalLibraryViewDaySchedules.value = [];
+};
+
+const openGlobalLibraryViewModal = async (plan) => {
+  const templatePlanId = String(plan?.planId || '').trim();
+  if (!templatePlanId) {
+    return;
+  }
+
+  globalLibraryViewLoading.value = true;
+  globalLibraryViewError.value = '';
+  showGlobalLibraryViewModal.value = true;
+  globalLibraryViewDaySchedules.value = [];
+  globalLibraryViewPlan.value = {
+    planId: templatePlanId,
+    name: String(plan?.name || 'Untitled Workout').trim() || 'Untitled Workout',
+    description: String(plan?.description || '').trim(),
+    type: String(plan?.type || '').trim() || 'General Fitness',
+    category: String(plan?.category || plan?.type || '').trim(),
+    difficulty: String(plan?.difficulty || '').trim(),
+    estimatedDuration: Number(plan?.estimatedDuration || 0),
+    exerciseCount: Number(plan?.exerciseCount || 0),
+    dayCount: Number(plan?.dayCount || 0),
+    objective: String(plan?.objective || plan?.planObjective || '').trim(),
+    goal: String(plan?.goal || plan?.planGoal || '').trim(),
+    coverImageUrl: String(plan?.coverImageUrl || buildPlanCoverImageUrl(templatePlanId)).trim(),
+  };
+
+  try {
+    const detailsEndpoint = showManagedMarketplacePlans.value
+      ? `${API_BASE}/api/admin/global-workout-plans/${encodeURIComponent(templatePlanId)}`
+      : `${API_BASE}/api/global-workout-plans/${encodeURIComponent(templatePlanId)}`;
+
+    const response = await fetch(detailsEndpoint, {
+      credentials: 'include',
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data?.error || 'Failed to load global workout plan details.');
+    }
+
+    const planner = data?.planner || {};
+    const metadata = planner?.metadata || {};
+    const exercises = Array.isArray(planner?.exercises) ? planner.exercises : [];
+
+    const normalizedExercises = exercises.map((exercise) => ({
+      ...exercise,
+      scheduleGroup: String(exercise?.scheduleGroup || '').trim(),
+    }));
+
+    const explicitDayGroups = Array.isArray(planner?.dayGroups)
+      ? planner.dayGroups.map((group) => String(group || '').trim()).filter(Boolean)
+      : [];
+
+    const exerciseDayGroups = Array.from(
+      new Set(normalizedExercises.map((exercise) => String(exercise?.scheduleGroup || '').trim()).filter(Boolean))
+    );
+
+    const mergedDayGroups = [...explicitDayGroups, ...exerciseDayGroups]
+      .filter((group, index, source) => source.findIndex((entry) => entry.toLowerCase() === group.toLowerCase()) === index);
+
+    const resolvedDayGroups = mergedDayGroups.length ? mergedDayGroups : ['Unscheduled'];
+    const daySchedules = resolvedDayGroups.map((groupLabel) => {
+      const dayExercises = normalizedExercises.filter((exercise) => {
+        const group = String(exercise?.scheduleGroup || '').trim();
+        if (!groupLabel || groupLabel === 'Unscheduled') {
+          return !group;
+        }
+        return group.toLowerCase() === groupLabel.toLowerCase();
+      });
+
+      return {
+        name: groupLabel,
+        exercises: dayExercises,
+      };
+    });
+
+    const numericMetaDayCount = Number(metadata?.workoutDays || metadata?.dayCount || metadata?.numberOfWorkoutDays || 0);
+    const resolvedDayCount = daySchedules.some((entry) => entry.exercises.length)
+      ? daySchedules.filter((entry) => entry.exercises.length).length
+      : (numericMetaDayCount > 0 ? numericMetaDayCount : Number(plan?.dayCount || 0));
+
+    const rawDifficulty = String(
+      metadata?.difficulty
+      || metadata?.level
+      || metadata?.fitnessLevel
+      || plan?.difficulty
+      || ''
+    ).trim();
+
+    const resolvedCategory = String(
+      metadata?.category
+      || metadata?.goalType
+      || metadata?.fitnessGoal
+      || plan?.category
+      || plan?.type
+      || ''
+    ).trim();
+
+    const resolvedObjective = String(
+      metadata?.objective
+      || metadata?.planObjective
+      || metadata?.trainingObjective
+      || metadata?.focus
+      || plan?.objective
+      || ''
+    ).trim();
+
+    const resolvedGoal = String(
+      metadata?.goal
+      || metadata?.planGoal
+      || metadata?.goalSummary
+      || metadata?.targetGoal
+      || ''
+    ).trim();
+
+    const resolvedGoalFromContext = (!resolvedGoal && metadata?.goalContext && typeof metadata.goalContext === 'object')
+      ? formatGoalContextOptionLabel(metadata.goalContext)
+      : '';
+
+    const resolvedGoalFromGoalsArray = (!resolvedGoal && !resolvedGoalFromContext && Array.isArray(metadata?.goals) && metadata.goals.length)
+      ? metadata.goals.map((entry) => String(entry || '').trim()).filter(Boolean).join(', ')
+      : '';
+
+    globalLibraryViewPlan.value = {
+      planId: String(planner?.planId || templatePlanId).trim(),
+      name: String(metadata?.name || plan?.name || 'Untitled Workout').trim() || 'Untitled Workout',
+      description: String(metadata?.description || plan?.description || '').trim(),
+      type: String(metadata?.category || plan?.type || 'General Fitness').trim() || 'General Fitness',
+      category: resolvedCategory,
+      difficulty: rawDifficulty,
+      estimatedDuration: Number(metadata?.estimatedDuration || plan?.estimatedDuration || 0),
+      exerciseCount: Number(exercises.length || plan?.exerciseCount || 0),
+      dayCount: Number(resolvedDayCount || 0),
+      objective: resolvedObjective,
+      goal: resolvedGoal || resolvedGoalFromContext || resolvedGoalFromGoalsArray,
+      accessLevel: String(data?.accessLevel || '').trim(),
+      coverImageUrl: String(plan?.coverImageUrl || buildPlanCoverImageUrl(String(planner?.planId || templatePlanId).trim())).trim(),
+    };
+
+    globalLibraryViewDaySchedules.value = daySchedules;
+  } catch (error) {
+    globalLibraryViewError.value = error?.message || 'Failed to load global workout plan details.';
+  } finally {
+    globalLibraryViewLoading.value = false;
+  }
+};
+
+const closeGlobalLibraryInlinePreview = () => {
+  closeGlobalLibraryViewModal();
+};
+
+const hasValue = (value) => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value > 0;
+  }
+  if (typeof value === 'string') {
+    return String(value).trim().length > 0;
+  }
+  return Boolean(value);
+};
+
+const formatPreviewStat = (value, suffix = '') => {
+  const numeric = Number(value || 0);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return '—';
+  }
+  return suffix ? `${numeric} ${suffix}` : String(numeric);
+};
+
+const formatPreviewText = (value, fallback = '—') => {
+  const text = String(value || '').trim();
+  return text || fallback;
+};
+
+const resolvePreviewExerciseType = (exercise = {}) => {
+  const workoutType = String(exercise?.workoutType || exercise?.WorkoutType || '').trim().toLowerCase();
+  const recordingType = String(exercise?.recordingType || exercise?.RecordingType || '').trim().toLowerCase();
+
+  if (workoutType === 'cardio') {
+    return 'cardio';
+  }
+  if (workoutType === 'strength') {
+    return 'strength';
+  }
+  if (recordingType === 'time & distance') {
+    return 'cardio';
+  }
+  if (recordingType === 'sets & reps') {
+    return 'strength';
+  }
+
+  if (hasValue(exercise?.duration) || hasValue(exercise?.distance)) {
+    return 'cardio';
+  }
+  if (hasValue(exercise?.sets) || hasValue(exercise?.reps) || hasValue(exercise?.weight) || hasValue(exercise?.restTime)) {
+    return 'strength';
+  }
+
+  return 'other';
+};
+
+const previewDayHasStrengthFields = (dayExercises = []) => {
+  return dayExercises.some((exercise) => {
+    if (resolvePreviewExerciseType(exercise) !== 'strength') {
+      return false;
+    }
+    return hasValue(exercise?.sets) || hasValue(exercise?.reps) || hasValue(exercise?.weight) || hasValue(exercise?.restTime);
+  });
+};
+
+const previewDayHasCardioFields = (dayExercises = []) => {
+  return dayExercises.some((exercise) => {
+    if (resolvePreviewExerciseType(exercise) !== 'cardio') {
+      return false;
+    }
+    return hasValue(exercise?.duration) || hasValue(exercise?.distance);
+  });
+};
+
+const canUsePlanFromPreview = computed(() => {
+  return !showManagedMarketplacePlans.value && Boolean(String(globalLibraryViewPlan.value?.planId || '').trim());
+});
+
+const triggerUsePlanFromPreview = () => {
+  if (!globalLibraryViewPlan.value || !canUsePlanFromPreview.value) {
+    return;
+  }
+  selectTemplatePlan({
+    ...globalLibraryViewPlan.value,
+    planId: globalLibraryViewPlan.value.planId,
+  });
 };
 
 const openMainAccordion = (panel) => {
@@ -598,11 +1714,363 @@ const syncGroupOrders = (mode, groups) => {
   }
 };
 
+const normalizeScheduleMode = (modeCandidate) => {
+  return String(modeCandidate || '').trim().toLowerCase() === 'week' ? 'week' : 'day';
+};
+
+const groupRefsByMode = {
+  day: dayGroups,
+  week: weekGroups,
+};
+
+const groupOrderRefsByMode = {
+  day: dayGroupOrders,
+  week: weekGroupOrders,
+};
+
+const getGroupRefForMode = (modeCandidate = scheduleMode.value) => {
+  const mode = normalizeScheduleMode(modeCandidate);
+  return groupRefsByMode[mode] || dayGroups;
+};
+
+const getGroupOrderRefForMode = (modeCandidate = scheduleMode.value) => {
+  const mode = normalizeScheduleMode(modeCandidate);
+  return groupOrderRefsByMode[mode] || dayGroupOrders;
+};
+
 const activeGroups = computed(() => {
-  return sortGroupsByOrder(dayGroups.value, dayGroupOrders.value);
+  const mode = normalizeScheduleMode(scheduleMode.value);
+  const groups = getGroupRefForMode(mode);
+  const orders = getGroupOrderRefForMode(mode);
+  return sortGroupsByOrder(groups.value, orders.value);
 });
 
+const scheduleModeLabel = computed(() => normalizeScheduleMode(scheduleMode.value) === 'week' ? 'Week' : 'Day');
+const scheduleModeLabelLower = computed(() => scheduleModeLabel.value.toLowerCase());
+const scheduleGroupEditorLabel = computed(() => `Add Workout ${scheduleModeLabel.value}:`);
+const scheduleGroupInputPlaceholder = computed(() => `${scheduleModeLabel.value} Name`);
+const scheduleGroupAddButtonLabel = computed(() => `+ Add ${scheduleModeLabel.value}`);
+const scheduleGroupEmptyStateText = computed(() => `No workout ${scheduleModeLabelLower.value}s added. Add a ${scheduleModeLabelLower.value} to begin.`);
+
+const WORKOUT_DAY_NAME_MAX_LENGTH = 60;
+const WORKOUT_DAY_NAME_ALLOWED_PATTERN = /^[A-Za-z0-9'() -]+$/;
+const WORKOUT_DAY_NAME_INLINE_ALLOWED_MESSAGE = 'Only letters, numbers, spaces, hyphens, apostrophes, and parentheses are allowed.';
+
+const normalizeGroupKey = (value) => String(value || '').trim().toLowerCase();
+let scheduleGroupIdentitySeed = 0;
+
+const createScheduleGroupId = (mode) => {
+  scheduleGroupIdentitySeed += 1;
+  return `${mode}-group-${Date.now().toString(36)}-${scheduleGroupIdentitySeed.toString(36)}`;
+};
+
+const getGroupIdentityRefForMode = (modeCandidate = scheduleMode.value) => {
+  const mode = normalizeScheduleMode(modeCandidate);
+  return mode === 'week' ? weekGroupIdentityMap : dayGroupIdentityMap;
+};
+
+const transferScheduleGroupIdentity = (modeCandidate, oldGroupName, newGroupName) => {
+  const mode = normalizeScheduleMode(modeCandidate);
+  const identityRef = getGroupIdentityRefForMode(mode);
+  const oldKey = normalizeGroupKey(oldGroupName);
+  const newKey = normalizeGroupKey(newGroupName);
+  if (!oldKey || !newKey || oldKey === newKey) {
+    return;
+  }
+
+  const next = [...identityRef.value];
+  const existingNew = next.find((entry) => entry?.normalizedName === newKey);
+  if (existingNew) {
+    return;
+  }
+
+  const target = next.find((entry) => entry?.normalizedName === oldKey);
+  if (!target) {
+    return;
+  }
+
+  target.normalizedName = newKey;
+  identityRef.value = next;
+};
+
+const syncScheduleGroupIdentityMap = (modeCandidate, groups = []) => {
+  const mode = normalizeScheduleMode(modeCandidate);
+  const identityRef = getGroupIdentityRefForMode(mode);
+  const current = Array.isArray(identityRef.value) ? identityRef.value : [];
+  const usedIds = new Set();
+
+  const next = groups
+    .map((groupName) => normalizeGroupKey(groupName))
+    .filter(Boolean)
+    .map((normalizedName) => {
+      const existing = current.find((entry) => entry?.normalizedName === normalizedName && !usedIds.has(entry.id));
+      if (existing) {
+        usedIds.add(existing.id);
+        return existing;
+      }
+      const created = {
+        id: createScheduleGroupId(mode),
+        normalizedName,
+      };
+      usedIds.add(created.id);
+      return created;
+    });
+
+  identityRef.value = next;
+};
+
+const getScheduleGroupId = (groupName, modeCandidate = scheduleMode.value) => {
+  const mode = normalizeScheduleMode(modeCandidate);
+  const normalized = normalizeGroupKey(groupName);
+  if (!normalized) {
+    return null;
+  }
+
+  const identityRef = getGroupIdentityRefForMode(mode);
+  const hit = identityRef.value.find((entry) => entry?.normalizedName === normalized);
+  return hit?.id || null;
+};
+
+const resolveScheduleGroupNameFromId = (groupId, modeCandidate = scheduleMode.value) => {
+  const mode = normalizeScheduleMode(modeCandidate);
+  const identityRef = getGroupIdentityRefForMode(mode);
+  const groupRef = getGroupRefForMode(mode);
+
+  const identity = identityRef.value.find((entry) => entry?.id === groupId);
+  if (!identity) {
+    return '';
+  }
+
+  return groupRef.value.find((groupName) => normalizeGroupKey(groupName) === identity.normalizedName) || '';
+};
+
+const getExpandedGroupId = (modeCandidate = scheduleMode.value) => {
+  const mode = normalizeScheduleMode(modeCandidate);
+  return expandedGroupIdByMode.value[mode] || null;
+};
+
+const setExpandedGroupId = (modeCandidate, groupId) => {
+  const mode = normalizeScheduleMode(modeCandidate);
+  expandedGroupIdByMode.value = {
+    ...expandedGroupIdByMode.value,
+    [mode]: groupId || null,
+  };
+};
+
+const ensureAccordionSelectionForMode = (modeCandidate) => {
+  const mode = normalizeScheduleMode(modeCandidate);
+  const groupRef = getGroupRefForMode(mode);
+  syncScheduleGroupIdentityMap(mode, groupRef.value);
+
+  const identityRef = getGroupIdentityRefForMode(mode);
+  if (!identityRef.value.length) {
+    setExpandedGroupId(mode, null);
+    if (normalizeScheduleMode(scheduleMode.value) === mode) {
+      selectedScheduleGroup.value = null;
+    }
+    return;
+  }
+
+  const currentExpandedId = getExpandedGroupId(mode);
+  const stillExists = identityRef.value.some((entry) => entry?.id === currentExpandedId);
+  if (!stillExists) {
+    setExpandedGroupId(mode, identityRef.value[0].id);
+  }
+
+  if (normalizeScheduleMode(scheduleMode.value) === mode) {
+    const resolvedName = resolveScheduleGroupNameFromId(getExpandedGroupId(mode), mode);
+    selectedScheduleGroup.value = resolvedName || groupRef.value[0] || null;
+  }
+};
+
+const isScheduleGroupExpanded = (groupName, modeCandidate = scheduleMode.value) => {
+  const mode = normalizeScheduleMode(modeCandidate);
+  const groupId = getScheduleGroupId(groupName, mode);
+  if (!groupId) {
+    return false;
+  }
+  return getExpandedGroupId(mode) === groupId;
+};
+
+const toggleScheduleGroupAccordion = (groupName) => {
+  const mode = normalizeScheduleMode(scheduleMode.value);
+  const normalizedName = String(groupName || '').trim();
+  if (!normalizedName) {
+    return;
+  }
+
+  const groupId = getScheduleGroupId(normalizedName, mode);
+  if (!groupId) {
+    return;
+  }
+
+  if (getExpandedGroupId(mode) === groupId) {
+    setExpandedGroupId(mode, null);
+  } else {
+    setExpandedGroupId(mode, groupId);
+    selectedScheduleGroup.value = normalizedName;
+  }
+
+  plannerMessage.value = '';
+};
+
+const validateWorkoutDayName = (rawValue) => {
+  const typedValue = String(rawValue ?? '');
+
+  if (typedValue.length > WORKOUT_DAY_NAME_MAX_LENGTH) {
+    return {
+      ok: false,
+      message: `Workout ${scheduleModeLabelLower.value} names can be at most ${WORKOUT_DAY_NAME_MAX_LENGTH} characters.`,
+    };
+  }
+
+  const trimmedValue = typedValue.trim();
+  if (!trimmedValue) {
+    return {
+      ok: false,
+      message: `Workout ${scheduleModeLabelLower.value} name cannot be empty.`,
+    };
+  }
+
+  if (!WORKOUT_DAY_NAME_ALLOWED_PATTERN.test(trimmedValue)) {
+    return {
+      ok: false,
+      message: WORKOUT_DAY_NAME_INLINE_ALLOWED_MESSAGE,
+    };
+  }
+
+  return { ok: true, value: trimmedValue };
+};
+
 const hasMultipleScheduleGroups = computed(() => activeGroups.value.length > 1);
+const isAdminGlobalPlanDraftFlow = computed(() => {
+  if (!isAdminUser.value) {
+    return false;
+  }
+  const planType = String(metadata.value?.planType || '').trim().toLowerCase();
+  return ['global', 'featured', 'community_shared'].includes(planType);
+});
+const canAccessGlobalManagement = computed(() => isAdminUser.value || canCreateFeaturedPlans.value);
+const canViewAdminUserPlans = computed(() => isAdminUser.value);
+const hasPersistedCurrentPlan = computed(() => Boolean(String(currentPlanId.value || selectedWorkoutId.value || '').trim()));
+const isGlobalPlanTypeSelected = computed(() => String(metadata.value?.planType || '').trim().toLowerCase() === 'global');
+const showGlobalPublicationControls = computed(() => isAdminUser.value && isGlobalPlanTypeSelected.value && hasPersistedCurrentPlan.value);
+const showGlobalFeaturedToggle = computed(() => showGlobalPublicationControls.value);
+const isNewGlobalPlan = computed(() => isAdminGlobalPlanDraftFlow.value && !String(currentPlanId.value || '').trim());
+const isDraftGlobalPlan = computed(() => isAdminGlobalPlanDraftFlow.value && planPublicationStatus.value === 'draft');
+const isPublishedGlobalPlan = computed(() => isAdminGlobalPlanDraftFlow.value && planPublicationStatus.value === 'active');
+const isArchivedGlobalPlan = computed(() => isAdminGlobalPlanDraftFlow.value && planPublicationStatus.value === 'archived');
+
+const backendSupportedPublicationTransitions = {
+  draft: ['draft', 'active'],
+  active: ['active', 'draft'],
+  archived: ['draft'],
+};
+
+const normalizePlanPublicationStatus = (statusValue) => {
+  const normalized = String(statusValue || '').trim().toLowerCase();
+  if (normalized === 'active') {
+    return 'active';
+  }
+  if (normalized === 'archived') {
+    return 'archived';
+  }
+  return 'draft';
+};
+
+const publicationStatusLabel = computed(() => {
+  switch (planPublicationStatus.value) {
+    case 'active':
+      return 'Published';
+    case 'archived':
+      return 'Archived';
+    default:
+      return 'Draft';
+  }
+});
+
+const publicationStatusClass = computed(() => {
+  switch (planPublicationStatus.value) {
+    case 'active':
+      return 'publication-status-badge--published';
+    case 'archived':
+      return 'publication-status-badge--archived';
+    default:
+      return 'publication-status-badge--draft';
+  }
+});
+
+const publicationStatusOptions = computed(() => {
+  const currentStatus = normalizePlanPublicationStatus(planPublicationStatus.value);
+  const allowedTargets = backendSupportedPublicationTransitions[currentStatus] || [];
+  const baseOptions = [
+    { value: 'draft', label: 'Draft' },
+    { value: 'active', label: 'Published' },
+    { value: 'archived', label: 'Archived' },
+  ];
+
+  return baseOptions.map((option) => {
+    const disabled = !allowedTargets.includes(option.value);
+    const reason = disabled
+      ? `${publicationStatusLabel.value} -> ${option.label} is not supported by the current backend transition rules.`
+      : '';
+    return {
+      ...option,
+      disabled,
+      reason,
+    };
+  });
+});
+
+const publicationStatusDisplayLabel = (statusValue) => {
+  const normalized = normalizePlanPublicationStatus(statusValue);
+  if (normalized === 'active') {
+    return 'Published';
+  }
+  if (normalized === 'archived') {
+    return 'Archived';
+  }
+  return 'Draft';
+};
+
+const savePlanModalSummary = computed(() => {
+  const selectedStatus = normalizePlanPublicationStatus(selectedPublicationStatus.value);
+  const currentStatus = normalizePlanPublicationStatus(planPublicationStatus.value);
+  const planName = String(metadata.value?.name || '').trim() || 'Untitled Workout';
+
+  return {
+    planName,
+    currentStatusLabel: publicationStatusDisplayLabel(currentStatus),
+    selectedStatusLabel: publicationStatusDisplayLabel(selectedStatus),
+    selectedStatus,
+  };
+});
+
+const selectedPublicationStatusDisabledReason = computed(() => {
+  const selected = normalizePlanPublicationStatus(selectedPublicationStatus.value);
+  const option = publicationStatusOptions.value.find((entry) => entry.value === selected);
+  return option?.disabled ? option.reason : '';
+});
+
+const canToggleGlobalFeatured = computed(() => {
+  if (!showGlobalFeaturedToggle.value) {
+    return false;
+  }
+  return normalizePlanPublicationStatus(selectedPublicationStatus.value) === 'active';
+});
+
+watch(
+  showGlobalPublicationControls,
+  (visible) => {
+    if (!visible) {
+      selectedPublicationStatus.value = 'draft';
+      if (isGlobalPlanTypeSelected.value) {
+        isGlobalPlanFeatured.value = false;
+      }
+    }
+  },
+  { immediate: true }
+);
 
 const workoutDaysWithExercises = computed(() => {
   return activeGroups.value.map((groupName) => {
@@ -617,12 +2085,29 @@ const workoutDaysWithExercises = computed(() => {
   });
 });
 
+const accordionGroupsWithExercises = computed(() => {
+  const mode = normalizeScheduleMode(scheduleMode.value);
+  const expandedId = getExpandedGroupId(mode);
+  const identityRef = getGroupIdentityRefForMode(mode);
+  const idByNameKey = new Map(
+    identityRef.value.map((entry) => [entry.normalizedName, entry.id])
+  );
+
+  return workoutDaysWithExercises.value.map((group) => {
+    const normalizedName = normalizeGroupKey(group.name);
+    const stableId = idByNameKey.get(normalizedName) || `${mode}-group-fallback-${normalizedName || 'empty'}`;
+    return {
+      ...group,
+      stableId,
+      isExpanded: stableId === expandedId,
+    };
+  });
+});
+
 const hasWorkoutSchedules = computed(() => workoutSchedules.value.length > 0);
 const canShowWorkoutDetails = computed(() => builderTab.value === 'create' || isCreatingWorkout.value || Boolean(selectedWorkoutId.value));
 const showSaveFooter = computed(() => builderTab.value === 'create');
-const primarySaveLabel = computed(() => {
-  return saving.value ? 'Saving Workout Plan...' : 'Save Workout Plan';
-});
+const primarySaveLabel = computed(() => (saving.value || publishing.value) ? 'Saving Workout Plan...' : 'Save Workout Plan');
 
 const plannerGroupsWithExercises = computed(() => {
   const groups = activeGroups.value;
@@ -679,7 +2164,7 @@ const clearAdminUserPlansError = () => {
 };
 
 const loadAdminUserPlans = async () => {
-  if (!isAdminUser.value) {
+  if (!canViewAdminUserPlans.value) {
     adminUserPlans.value = [];
     clearAdminUserPlansError();
     return;
@@ -714,7 +2199,7 @@ const viewUserPlanReadOnly = () => {
 
 const isPersonalWorkoutPlan = (plan = {}) => {
   const planType = String(plan?.planType || '').trim().toLowerCase();
-  return planType !== 'featured' && planType !== 'community_shared';
+  return !['global', 'featured', 'community_shared'].includes(planType);
 };
 
 const syncWorkoutSchedules = (incomingLists = []) => {
@@ -722,6 +2207,8 @@ const syncWorkoutSchedules = (incomingLists = []) => {
     .filter((plan) => isPersonalWorkoutPlan(plan))
     .map((plan) => ({
       ...plan,
+      hasCustomCoverImage: Boolean(plan?.hasCustomCoverImage),
+      coverImageUrl: buildPlanCoverImageUrl(plan?.planId),
       updatedAtLabel: formatUpdatedAt(plan.updatedAt),
     }));
 };
@@ -735,9 +2222,12 @@ const resetPlannerDraft = () => {
     name: '',
     description: '',
     type: 'Strength',
-    planType: '',
+    category: 'General Fitness',
+    planType: defaultWorkoutPlanTypeByRole.value,
     estimatedDuration: 45,
+    planDurationWeeks: '',
     goalId: '',
+    goalTargetDate: '',
     goalContext: null,
     goals: [],
     otherGoal: '',
@@ -750,13 +2240,26 @@ const resetPlannerDraft = () => {
   dayGroupOrders.value = [];
   weekGroupOrders.value = [];
   selectedScheduleGroup.value = null;
+  expandedGroupIdByMode.value = { day: null, week: null };
+  dayGroupIdentityMap.value = [];
+  weekGroupIdentityMap.value = [];
   newScheduleGroupName.value = '';
   inlineEditingDayName.value = '';
   inlineDayNameDraft.value = '';
   plannerMessage.value = '';
   saveMessage.value = '';
+  planPublicationStatus.value = 'draft';
+  selectedPublicationStatus.value = 'draft';
+  isGlobalPlanFeatured.value = false;
   isWorkoutDetailsOpen.value = true;
   isSchedulePlannerOpen.value = true;
+  coverUploadInFlight.value = false;
+  coverDeleteInFlight.value = false;
+  coverUploadProgress.value = 0;
+  currentPlanHasCustomCover.value = false;
+  persistedCoverImageReference.value = '';
+  clearPendingCoverSelection();
+  updateCoverUiMessage('', 'info');
 };
 
 const normalizeLoadedDayGroups = (planner = {}) => {
@@ -775,18 +2278,41 @@ const normalizeLoadedDayGroups = (planner = {}) => {
 
 const hydratePlanner = (planner = {}, { markSaved = true } = {}) => {
   currentPlanId.value = String(planner?.planId || '').trim();
+  persistedCoverImageReference.value = resolvePersistedCoverReferenceForPlan(planner);
+  currentPlanHasCustomCover.value = !isDefaultWorkoutPlanCoverReference(persistedCoverImageReference.value);
+  clearPendingCoverSelection();
 
   const incomingGoals = Array.isArray(planner?.metadata?.goals)
     ? planner.metadata.goals.map((goal) => String(goal || '').trim()).filter(Boolean)
     : [];
 
+  planPublicationStatus.value = normalizePlanPublicationStatus(planner?.status);
+  selectedPublicationStatus.value = planPublicationStatus.value;
+
+  const loadedCategory = planner?.metadata?.category;
+  const loadedRawPlanType = String(planner?.metadata?.planType || '').trim().toLowerCase();
+  const loadedIsLegacyFeatured = loadedRawPlanType === 'featured';
+  const loadedFeaturedFlag = planner?.metadata?.isFeatured ?? planner?.metadata?.featured;
+  isGlobalPlanFeatured.value = Boolean(loadedFeaturedFlag ?? loadedIsLegacyFeatured);
+
+  const resolvedPlanType = loadedIsLegacyFeatured
+    ? PLAN_TYPE_GLOBAL
+    : String(planner?.metadata?.planType || '').trim();
+
   metadata.value = {
     name: planner?.metadata?.name || '',
     description: planner?.metadata?.description || '',
     type: planner?.metadata?.type || 'Strength',
-    planType: String(planner?.metadata?.planType || '').trim(),
+    category: loadedCategory == null ? null : String(loadedCategory || '').trim() || null,
+    planType: resolvedPlanType,
     estimatedDuration: Number(planner?.metadata?.estimatedDuration || 45),
+    planDurationWeeks: planner?.metadata?.planDurationWeeks == null || planner?.metadata?.planDurationWeeks === undefined || planner?.metadata?.planDurationWeeks === ''
+      ? ''
+      : Number(planner?.metadata?.planDurationWeeks),
     goalId: String(planner?.metadata?.goalId || '').trim(),
+    goalTargetDate: planner?.metadata?.goalTargetDate == null || planner?.metadata?.goalTargetDate === undefined || planner?.metadata?.goalTargetDate === ''
+      ? ''
+      : String(planner?.metadata?.goalTargetDate || '').trim(),
     goalContext: planner?.metadata?.goalContext && typeof planner.metadata.goalContext === 'object'
       ? planner.metadata.goalContext
       : null,
@@ -834,9 +2360,11 @@ const hydratePlanner = (planner = {}, { markSaved = true } = {}) => {
 
   dayGroups.value = appendMissingGroups(dayGroups.value);
   syncGroupOrders('day', dayGroups.value);
-  
-  // Auto-select first group when loading workout
-  selectedScheduleGroup.value = dayGroups.value[0] || null;
+
+  syncScheduleGroupIdentityMap('day', dayGroups.value);
+  syncScheduleGroupIdentityMap('week', weekGroups.value);
+  ensureAccordionSelectionForMode('day');
+  ensureAccordionSelectionForMode('week');
 
   hasSavedWorkoutDetails.value = markSaved;
   inlineEditingDayName.value = '';
@@ -879,13 +2407,18 @@ const createWorkoutPlan = async () => {
   selectedScheduleGroup.value = null;
   workoutExercises.value = [];
   plannerMessage.value = '';
+  isGlobalPlanFeatured.value = false;
 
   loadingPlanner.value = true;
   try {
+    const selectedPlanType = String(metadata.value?.planType || '').trim() || defaultWorkoutPlanTypeByRole.value;
     const response = await fetch(`${API_BASE}/api/workout-schedules`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scheduleMode: 'day' }),
+      body: JSON.stringify({
+        scheduleMode: 'day',
+        planType: selectedPlanType,
+      }),
       credentials: 'include',
     });
 
@@ -906,16 +2439,31 @@ const createWorkoutPlan = async () => {
     syncWorkoutSchedules(data?.workoutLists);
     selectedWorkoutId.value = createdPlanId;
     currentPlanId.value = createdPlanId;
+    currentPlanHasCustomCover.value = false;
+    refreshCoverImages();
     isCreatingWorkout.value = true;
     hasSavedWorkoutDetails.value = false;
+
+    const createdCategory = planner?.metadata?.category;
+    const createdRawPlanType = String(planner?.metadata?.planType || '').trim().toLowerCase();
+    const createdIsLegacyFeatured = createdRawPlanType === 'featured';
+    const createdFeaturedFlag = planner?.metadata?.isFeatured ?? planner?.metadata?.featured;
+    isGlobalPlanFeatured.value = Boolean(createdFeaturedFlag ?? createdIsLegacyFeatured);
 
     metadata.value = {
       name: '',
       description: '',
       type: planner?.metadata?.type || 'Strength',
-      planType: String(planner?.metadata?.planType || '').trim(),
+      category: createdCategory == null ? null : String(createdCategory || '').trim() || null,
+      planType: createdIsLegacyFeatured ? PLAN_TYPE_GLOBAL : (String(planner?.metadata?.planType || '').trim() || selectedPlanType),
       estimatedDuration: Number(planner?.metadata?.estimatedDuration || 45),
+      planDurationWeeks: planner?.metadata?.planDurationWeeks == null || planner?.metadata?.planDurationWeeks === undefined || planner?.metadata?.planDurationWeeks === ''
+        ? ''
+        : Number(planner?.metadata?.planDurationWeeks),
       goalId: String(planner?.metadata?.goalId || '').trim(),
+      goalTargetDate: planner?.metadata?.goalTargetDate == null || planner?.metadata?.goalTargetDate === undefined || planner?.metadata?.goalTargetDate === ''
+        ? ''
+        : String(planner?.metadata?.goalTargetDate || '').trim(),
       goalContext: planner?.metadata?.goalContext && typeof planner.metadata.goalContext === 'object'
         ? planner.metadata.goalContext
         : null,
@@ -941,6 +2489,12 @@ const createWorkoutPlan = async () => {
     isSchedulePlannerOpen.value = false;
     builderTab.value = 'create';
 
+    if (pendingCoverFile.value) {
+      await uploadPendingCoverAfterPlanCreate(createdPlanId);
+    } else {
+      updateCoverUiMessage('You can now upload a cover image for this plan.', 'info');
+    }
+
     skipNextRoutePlannerLoad.value = true;
     await router.replace({ query: { ...route.query, planId: createdPlanId } });
     saveMessage.value = 'Draft workout plan created. Add details and save to continue.';
@@ -957,7 +2511,7 @@ const clearScheduleGroupEdit = () => {
 };
 
 const canRemoveScheduleGroup = (groupName) => {
-  const target = dayGroups.value;
+  const target = getGroupRefForMode().value;
   if (!target.length) {
     return false;
   }
@@ -966,34 +2520,43 @@ const canRemoveScheduleGroup = (groupName) => {
 };
 
 const addScheduleGroup = () => {
-  const name = String(newScheduleGroupName.value || '').trim();
-  if (!name) {
-    plannerMessage.value = 'Enter a workout day name before adding.';
+  const validation = validateWorkoutDayName(newScheduleGroupName.value);
+  if (!validation.ok) {
+    plannerMessage.value = validation.message;
     return;
   }
 
-  const target = dayGroups;
-  const normalizedName = name.toLowerCase();
+  const name = validation.value;
 
-  if (target.value.some((group) => String(group).toLowerCase() === normalizedName)) {
+  const mode = normalizeScheduleMode(scheduleMode.value);
+  const target = getGroupRefForMode(mode);
+  const normalizedName = normalizeGroupKey(name);
+
+  if (target.value.some((group) => normalizeGroupKey(group) === normalizedName)) {
     plannerMessage.value = `${name} already exists.`;
     return;
   }
 
   target.value = [...target.value, name];
-  syncGroupOrders('day', target.value);
-  
-  // Auto-select first day if none is selected
+  syncGroupOrders(mode, target.value);
+
   if (!selectedScheduleGroup.value) {
     selectedScheduleGroup.value = name;
   }
+
+  ensureAccordionSelectionForMode(mode);
   
   newScheduleGroupName.value = '';
   plannerMessage.value = '';
 };
 
 const setActiveDay = (groupName) => {
+  const mode = normalizeScheduleMode(scheduleMode.value);
   selectedScheduleGroup.value = groupName;
+  const groupId = getScheduleGroupId(groupName, mode);
+  if (groupId) {
+    setExpandedGroupId(mode, groupId);
+  }
   plannerMessage.value = '';
 };
 
@@ -1004,66 +2567,101 @@ const startInlineDayNameEdit = (groupName) => {
   }
 
   selectedScheduleGroup.value = name;
+  const groupId = getScheduleGroupId(name, scheduleMode.value);
+  if (groupId) {
+    setExpandedGroupId(scheduleMode.value, groupId);
+  }
   inlineEditingDayName.value = name;
   inlineDayNameDraft.value = name;
+  inlineDayNameError.value = '';
   plannerMessage.value = '';
 };
 
+const cancelInlineDayNameEdit = () => {
+  inlineDayNameError.value = '';
+  clearScheduleGroupEdit();
+  plannerMessage.value = '';
+};
+
+const handleInlineDayNameInput = () => {
+  if (!inlineDayNameError.value) {
+    return;
+  }
+
+  const validation = validateWorkoutDayName(inlineDayNameDraft.value);
+  if (validation.ok) {
+    inlineDayNameError.value = '';
+  }
+};
+
 const saveInlineDayNameEdit = () => {
-  const target = dayGroups;
+  const mode = normalizeScheduleMode(scheduleMode.value);
+  const target = getGroupRefForMode(mode);
   const oldName = String(inlineEditingDayName.value || '').trim();
   if (!oldName) {
     return;
   }
 
-  const suggestedName = String(inlineDayNameDraft.value || '').trim();
+  const validation = validateWorkoutDayName(inlineDayNameDraft.value);
+  if (!validation.ok) {
+    inlineDayNameError.value = validation.message;
+    return;
+  }
+  inlineDayNameError.value = '';
+
+  const suggestedName = validation.value;
 
   if (!suggestedName || suggestedName === oldName) {
     clearScheduleGroupEdit();
     return;
   }
 
-  const normalizedNew = suggestedName.toLowerCase();
-  const normalizedOld = oldName.toLowerCase();
-  if (target.value.some((group) => String(group || '').trim().toLowerCase() === normalizedNew)) {
+  const normalizedNew = normalizeGroupKey(suggestedName);
+  const normalizedOld = normalizeGroupKey(oldName);
+  if (target.value.some((group) => normalizeGroupKey(group) === normalizedNew)) {
     plannerMessage.value = `${suggestedName} already exists.`;
     return;
   }
 
   target.value = target.value.map((group) => (
-    String(group || '').trim().toLowerCase() === normalizedOld ? suggestedName : group
+    normalizeGroupKey(group) === normalizedOld ? suggestedName : group
   ));
-  syncGroupOrders('day', target.value);
+  transferScheduleGroupIdentity(mode, oldName, suggestedName);
+  syncGroupOrders(mode, target.value);
 
   workoutExercises.value = workoutExercises.value.map((exercise) => {
-    if (String(exercise.scheduleGroup || '').trim().toLowerCase() === normalizedOld) {
+    if (normalizeGroupKey(exercise.scheduleGroup) === normalizedOld) {
       return { ...exercise, scheduleGroup: suggestedName };
     }
     return exercise;
   });
 
-  if (String(selectedScheduleGroup.value || '').trim().toLowerCase() === normalizedOld) {
+  if (normalizeGroupKey(selectedScheduleGroup.value) === normalizedOld) {
     selectedScheduleGroup.value = suggestedName;
   }
 
+  ensureAccordionSelectionForMode(mode);
+
   clearScheduleGroupEdit();
+  inlineDayNameError.value = '';
   plannerMessage.value = '';
 };
 
 const removeScheduleGroup = (groupName) => {
   if (!canRemoveScheduleGroup(groupName)) {
-    plannerMessage.value = 'Workout day was not found.';
+    plannerMessage.value = `Workout ${scheduleModeLabelLower.value} was not found.`;
     return;
   }
 
-  const target = dayGroups;
+  const mode = normalizeScheduleMode(scheduleMode.value);
+  const target = getGroupRefForMode(mode);
   const normalizedRemovedName = String(groupName || '').trim().toLowerCase();
 
   const nextGroups = target.value.filter(
     (group) => String(group || '').trim().toLowerCase() !== normalizedRemovedName
   );
   target.value = nextGroups;
-  syncGroupOrders('day', target.value);
+  syncGroupOrders(mode, target.value);
 
   if (String(inlineEditingDayName.value || '').trim().toLowerCase() === normalizedRemovedName) {
     clearScheduleGroupEdit();
@@ -1081,25 +2679,21 @@ const removeScheduleGroup = (groupName) => {
     selectedScheduleGroup.value = target.value[0] || null;
   }
 
+  ensureAccordionSelectionForMode(mode);
+
   plannerMessage.value = '';
 };
 
 const changeScheduleMode = (mode) => {
-  scheduleMode.value = 'day';
+  const normalizedMode = normalizeScheduleMode(mode);
+  scheduleMode.value = normalizedMode;
   clearScheduleGroupEdit();
-  dayGroups.value = sortGroupsByOrder(dayGroups.value, dayGroupOrders.value);
-  syncGroupOrders('day', dayGroups.value);
+  const targetGroups = getGroupRefForMode(normalizedMode);
+  const targetOrders = getGroupOrderRefForMode(normalizedMode);
+  targetGroups.value = sortGroupsByOrder(targetGroups.value, targetOrders.value);
+  syncGroupOrders(normalizedMode, targetGroups.value);
   plannerMessage.value = '';
-  const firstGroup = activeGroups.value[0] || null;
-
-  selectedScheduleGroup.value = firstGroup;
-
-  workoutExercises.value = workoutExercises.value.map((exercise) => ({
-    ...exercise,
-    scheduleGroup: activeGroups.value.includes(exercise.scheduleGroup)
-      ? exercise.scheduleGroup
-      : '',
-  }));
+  ensureAccordionSelectionForMode(normalizedMode);
 };
 
 const toggleWorkoutDetails = () => {
@@ -1113,6 +2707,12 @@ const toggleSchedulePlanner = () => {
 // Helper function to resolve exercise image path
 const resolveExerciseImage = (exercise) => {
   return getExerciseImage(exercise);
+};
+
+const onPreviewExerciseImageError = (event) => {
+  if (!event?.target) return;
+  if (event.target.src === DEFAULT_EXERCISE_IMAGE) return;
+  event.target.src = DEFAULT_EXERCISE_IMAGE;
 };
 
 const createBlock = (exercise) => {
@@ -1153,7 +2753,7 @@ const addExerciseToWorkout = (incoming) => {
   
   // Verify the selected group still exists
   if (!activeGroups.value.includes(selectedScheduleGroup.value)) {
-    plannerMessage.value = 'Selected workout day was not found.';
+    plannerMessage.value = `Selected workout ${scheduleModeLabelLower.value} was not found.`;
     selectedScheduleGroup.value = null;
     return;
   }
@@ -1214,7 +2814,8 @@ const moveExerciseDown = (id) => {
 };
 
 const moveScheduleGroup = (groupName, direction = 'up') => {
-  const targetRef = dayGroups;
+  const mode = normalizeScheduleMode(scheduleMode.value);
+  const targetRef = getGroupRefForMode(mode);
   const ordered = [...targetRef.value];
   const index = ordered.findIndex(
     (group) => String(group || '').trim().toLowerCase() === String(groupName || '').trim().toLowerCase()
@@ -1233,40 +2834,44 @@ const moveScheduleGroup = (groupName, direction = 'up') => {
   }
 
   targetRef.value = ordered;
-  syncGroupOrders('day', ordered);
+  syncGroupOrders(mode, ordered);
+  ensureAccordionSelectionForMode(mode);
 };
 
 const moveScheduleGroupUp = (groupName) => moveScheduleGroup(groupName, 'up');
 const moveScheduleGroupDown = (groupName) => moveScheduleGroup(groupName, 'down');
 
 const resetScheduleGroupOrder = () => {
-  const targetRef = dayGroups;
+  const mode = normalizeScheduleMode(scheduleMode.value);
+  const targetRef = getGroupRefForMode(mode);
   const ordered = [...targetRef.value];
-  syncGroupOrders('day', ordered);
+  syncGroupOrders(mode, ordered);
   plannerMessage.value = '';
 };
 
 const duplicateScheduleGroup = (groupName) => {
+  const mode = normalizeScheduleMode(scheduleMode.value);
+  const targetRef = getGroupRefForMode(mode);
   const sourceName = String(groupName || '').trim();
   if (!sourceName) return;
 
-  const sourceIndex = dayGroups.value.findIndex(
+  const sourceIndex = targetRef.value.findIndex(
     (name) => String(name || '').trim().toLowerCase() === sourceName.toLowerCase()
   );
   if (sourceIndex < 0) return;
 
   let suffix = 2;
   let duplicateName = `${sourceName} Copy`;
-  const lowerSet = new Set(dayGroups.value.map((name) => String(name || '').trim().toLowerCase()));
+  const lowerSet = new Set(targetRef.value.map((name) => String(name || '').trim().toLowerCase()));
   while (lowerSet.has(duplicateName.toLowerCase())) {
     duplicateName = `${sourceName} Copy ${suffix}`;
     suffix += 1;
   }
 
-  const nextGroups = [...dayGroups.value];
+  const nextGroups = [...targetRef.value];
   nextGroups.splice(sourceIndex + 1, 0, duplicateName);
-  dayGroups.value = nextGroups;
-  syncGroupOrders('day', dayGroups.value);
+  targetRef.value = nextGroups;
+  syncGroupOrders(mode, targetRef.value);
 
   const sourceExercises = workoutExercises.value.filter(
     (exercise) => String(exercise.scheduleGroup || '').trim().toLowerCase() === sourceName.toLowerCase()
@@ -1280,8 +2885,31 @@ const duplicateScheduleGroup = (groupName) => {
 
   workoutExercises.value = [...workoutExercises.value, ...clonedExercises];
   selectedScheduleGroup.value = duplicateName;
+  ensureAccordionSelectionForMode(mode);
+  const duplicateId = getScheduleGroupId(duplicateName, mode);
+  if (duplicateId) {
+    setExpandedGroupId(mode, duplicateId);
+  }
   plannerMessage.value = '';
 };
+
+watch(
+  dayGroups,
+  (groups) => {
+    syncScheduleGroupIdentityMap('day', groups);
+    ensureAccordionSelectionForMode('day');
+  },
+  { immediate: true }
+);
+
+watch(
+  weekGroups,
+  (groups) => {
+    syncScheduleGroupIdentityMap('week', groups);
+    ensureAccordionSelectionForMode('week');
+  },
+  { immediate: true }
+);
 
 const isFirstScheduleGroup = (groupName) => {
   const normalized = String(groupName || '').trim().toLowerCase();
@@ -1298,7 +2926,7 @@ const plannerPayload = computed(() => ({
   metadata: {
     ...metadata.value,
   },
-  scheduleMode: 'day',
+  scheduleMode: normalizeScheduleMode(scheduleMode.value),
   dayGroups: dayGroups.value,
   weekGroups: weekGroups.value,
   dayGroupOrders: buildOrderEntries(dayGroups.value),
@@ -1393,8 +3021,10 @@ const confirmDeleteDay = () => {
   cancelDeleteDay();
 };
 
-const persistWorkout = async () => {
+const persistWorkout = async (status = 'draft') => {
   saveMessage.value = '';
+  const previousStatus = normalizePlanPublicationStatus(planPublicationStatus.value);
+  const normalizedTargetStatus = normalizePlanPublicationStatus(status);
 
   if (!metadata.value.name.trim()) {
     saveMessage.value = 'Please enter a workout name.';
@@ -1406,9 +3036,151 @@ const persistWorkout = async () => {
     return;
   }
 
-  saving.value = true;
+  const selectedPlanType = String(metadata.value?.planType || '').trim().toLowerCase();
+  const isNewUnsavedGlobal = selectedPlanType === 'global' && !hasPersistedCurrentPlan.value;
+
+  if (!isNewUnsavedGlobal && showGlobalFeaturedToggle.value && isGlobalPlanFeatured.value && !canToggleGlobalFeatured.value) {
+    saveMessage.value = 'Featured can only be enabled when publication status is Published.';
+    return;
+  }
+
+  if (selectedPlanType === 'global' && !isAdminUser.value) {
+    saveMessage.value = 'Only administrators can create Global workout plans.';
+    return;
+  }
+
+  if (selectedPlanType === 'featured' && !isAdminUser.value) {
+    saveMessage.value = 'Only administrators can create Featured workout plans.';
+    return;
+  }
+
+  if (selectedPlanType === 'community_shared' && !isAdminUser.value) {
+    saveMessage.value = 'Only administrators can create Community Shared workout plans.';
+    return;
+  }
+
+  const isPublishing = normalizedTargetStatus === 'active';
+  const activePlanType = ['global', 'featured', 'community_shared'].includes(selectedPlanType);
+
+  if (isPublishing && activePlanType) {
+    const missingRequirements = [];
+    if (!String(metadata.value.name || '').trim()) missingRequirements.push('Plan Name');
+    if (!String(metadata.value.type || '').trim()) missingRequirements.push('Workout Type');
+    if (!String(metadata.value.category || '').trim()) missingRequirements.push('Category');
+    if (!activeGroups.value.length) missingRequirements.push('at least one workout day');
+    if (!workoutExercises.value.length) missingRequirements.push('at least one exercise');
+
+    if (missingRequirements.length) {
+      saveMessage.value = `Publish failed. Missing required: ${missingRequirements.join(', ')}.`;
+      return;
+    }
+  }
+
+  const spinnerState = isPublishing ? 'publishing' : 'saving';
+  if (spinnerState === 'saving') {
+    saving.value = true;
+  } else {
+    publishing.value = true;
+  }
 
   try {
+    if (activePlanType) {
+      const payloadPlanType = selectedPlanType === 'community_shared'
+        ? 'community_shared'
+        : selectedPlanType === 'featured'
+          ? 'featured'
+          : 'global';
+      const payloadFeatured = isNewUnsavedGlobal ? false : Boolean(isGlobalPlanFeatured.value);
+      const targetGlobalStatus = isNewUnsavedGlobal ? 'draft' : normalizedTargetStatus;
+      const displayPlanLabel = payloadPlanType === 'featured' ? 'Featured' : (payloadPlanType === 'community_shared' ? 'Community Shared' : 'Global');
+      const globalDraftPayload = buildGlobalPlanDraftPayload({
+        title: metadata.value.name,
+        description: metadata.value.description,
+        estimatedDurationMinutes: Number(metadata.value.estimatedDuration || 45),
+        category: metadata.value.category == null ? null : String(metadata.value.category || '').trim() || null,
+        planType: payloadPlanType,
+        goalType: resolveSelectedGoalTypeForGlobalPlan(),
+        goalTargetDate: metadata.value.goalTargetDate == null || metadata.value.goalTargetDate === undefined || metadata.value.goalTargetDate === ''
+          ? null
+          : String(metadata.value.goalTargetDate || '').trim(),
+        planDurationWeeks: metadata.value.planDurationWeeks == null || metadata.value.planDurationWeeks === undefined || metadata.value.planDurationWeeks === ''
+          ? null
+          : Number(metadata.value.planDurationWeeks),
+        accessLevel: 'public',
+        isFeatured: payloadFeatured,
+        featured: payloadFeatured,
+      });
+
+      const existingGlobalPlanId = String(currentPlanId.value || selectedWorkoutId.value || '').trim();
+      let targetPlanId = existingGlobalPlanId;
+
+      if (!targetPlanId) {
+        const createResponse = await fetch(`${API_BASE}/api/admin/global-workout-plans`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(globalDraftPayload),
+          credentials: 'include',
+        });
+
+        const createData = await createResponse.json().catch(() => ({}));
+        if (!createResponse.ok) {
+          throw new Error(createData?.error || `Failed to create ${displayPlanLabel.toLowerCase()} workout plan.`);
+        }
+
+        targetPlanId = String(createData?.planner?.planId || '').trim();
+        if (!targetPlanId) {
+          throw new Error(`${displayPlanLabel} workout plan was created but no plan ID was returned.`);
+        }
+      } else {
+        const metadataResponse = await fetch(`${API_BASE}/api/admin/global-workout-plans/${encodeURIComponent(targetPlanId)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(globalDraftPayload),
+          credentials: 'include',
+        });
+
+        const metadataData = await metadataResponse.json().catch(() => ({}));
+        if (!metadataResponse.ok) {
+          throw new Error(metadataData?.error || `Failed to update ${displayPlanLabel.toLowerCase()} workout plan metadata.`);
+        }
+      }
+
+      const scheduleResponse = await fetch(`${API_BASE}/api/admin/global-workout-plans/${encodeURIComponent(targetPlanId)}/schedule`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planner: plannerPayload.value,
+          status: targetGlobalStatus,
+        }),
+        credentials: 'include',
+      });
+
+      const scheduleData = await scheduleResponse.json().catch(() => ({}));
+      if (!scheduleResponse.ok) {
+        throw new Error(scheduleData?.error || `Failed to ${isPublishing ? 'publish' : 'save draft'} ${displayPlanLabel.toLowerCase()} workout plan.`);
+      }
+
+      currentPlanId.value = targetPlanId;
+      selectedWorkoutId.value = targetPlanId;
+      isCreatingWorkout.value = false;
+      hasSavedWorkoutDetails.value = true;
+      isSchedulePlannerOpen.value = true;
+      isGlobalPlanFeatured.value = payloadFeatured;
+      planPublicationStatus.value = targetGlobalStatus;
+      selectedPublicationStatus.value = targetGlobalStatus;
+      if (targetGlobalStatus === 'active' && previousStatus === 'active') {
+        saveMessage.value = `${displayPlanLabel} workout plan changes saved successfully.`;
+      } else if (targetGlobalStatus === 'active') {
+        saveMessage.value = `${displayPlanLabel} workout plan published successfully.`;
+      } else if (targetGlobalStatus === 'archived') {
+        saveMessage.value = `${displayPlanLabel} workout plan archived successfully.`;
+      } else {
+        saveMessage.value = `${displayPlanLabel} workout plan draft saved successfully.`;
+      }
+      await router.replace({ query: { ...route.query, planId: targetPlanId } });
+      return;
+    }
+
     const response = await fetch(`${API_BASE}/api/workout-planner`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -1437,15 +3209,262 @@ const persistWorkout = async () => {
     saveMessage.value = error.message || 'Failed to save workout planner.';
   } finally {
     saving.value = false;
+    publishing.value = false;
   }
 };
 
 const saveWorkout = async () => {
-  await persistWorkout();
+  const shouldPersistAsPublished = isPublishedGlobalPlan.value;
+  await persistWorkout(shouldPersistAsPublished ? 'active' : 'draft');
+};
+
+const saveGlobalWorkoutWithSelectedStatus = async () => {
+  if (!hasPersistedCurrentPlan.value) {
+    await persistWorkout('draft');
+    return;
+  }
+
+  const currentStatus = normalizePlanPublicationStatus(planPublicationStatus.value);
+  const selectedStatus = normalizePlanPublicationStatus(selectedPublicationStatus.value);
+  const supportedTargets = backendSupportedPublicationTransitions[currentStatus] || [];
+
+  if (!supportedTargets.includes(selectedStatus)) {
+    const selectedOption = publicationStatusOptions.value.find((option) => option.value === selectedStatus);
+    saveMessage.value = selectedOption?.reason || 'Selected publication status transition is not supported.';
+    return;
+  }
+
+  if (currentStatus === selectedStatus) {
+    await persistWorkout(currentStatus);
+    return;
+  }
+
+  if (currentStatus === 'draft' && selectedStatus === 'active') {
+    openPublishPlanConfirmation();
+    return;
+  }
+
+  if (currentStatus === 'active' && selectedStatus === 'draft') {
+    const confirmed = window.confirm('This plan will no longer be publicly discoverable. Continue unpublishing it?');
+    if (!confirmed) {
+      return;
+    }
+    await persistWorkout('draft');
+    return;
+  }
+
+  if (currentStatus === 'active' && selectedStatus === 'archived') {
+    const confirmed = window.confirm('Archive this published plan? It will no longer be publicly available until restored to draft.');
+    if (!confirmed) {
+      return;
+    }
+    await persistWorkout('archived');
+    return;
+  }
+
+  if (currentStatus === 'archived' && selectedStatus === 'draft') {
+    const confirmed = window.confirm('Restore this archived plan back to draft status? It will remain in its current plan record and be available for editing.');
+    if (!confirmed) {
+      return;
+    }
+    await persistWorkout('draft');
+    return;
+  }
+
+  saveMessage.value = 'Selected publication status transition is not supported.';
+};
+
+const publishPlanSummary = computed(() => {
+  const planTypeValue = String(metadata.value?.planType || '').trim().toLowerCase();
+  const planTypeLabel = planTypeValue === 'featured'
+    ? 'Featured'
+    : planTypeValue === 'community_shared'
+      ? 'Community Shared'
+      : planTypeValue === 'global'
+        ? 'Global'
+        : 'Global';
+
+  return {
+    planName: String(metadata.value?.name || '').trim() || 'Untitled Workout',
+    planType: planTypeLabel,
+    workoutType: String(metadata.value?.type || '').trim() || 'Strength',
+    category: String(metadata.value?.category || '').trim() || 'General Fitness',
+    planDurationWeeks: metadata.value?.planDurationWeeks === '' || metadata.value?.planDurationWeeks === null || metadata.value?.planDurationWeeks === undefined
+      ? '—'
+      : String(metadata.value?.planDurationWeeks || '0'),
+    estimatedSessionTime: `${Number(metadata.value?.estimatedDuration || 45)} min`,
+    workoutDays: String(activeGroups.value.length),
+    exerciseCount: String(workoutExercises.value.length),
+    visibility: 'Public',
+  };
+});
+
+const openPublishPlanConfirmation = () => {
+  if (!isAdminGlobalPlanDraftFlow.value || publishing.value || saving.value) {
+    return;
+  }
+  showPublishPlanModal.value = true;
+};
+
+const openSaveWorkoutPlanModal = () => {
+  if (saving.value || publishing.value) {
+    return;
+  }
+  showSaveWorkoutPlanModal.value = true;
+};
+
+const closeSaveWorkoutPlanModal = () => {
+  if (saving.value || publishing.value) {
+    return;
+  }
+  showSaveWorkoutPlanModal.value = false;
+};
+
+const saveGlobalPlanAsDraftFromModal = async () => {
+  if (saving.value || publishing.value) {
+    return;
+  }
+
+  const currentStatus = normalizePlanPublicationStatus(planPublicationStatus.value);
+
+  if (currentStatus === 'active') {
+    const confirmed = window.confirm('This plan will no longer be publicly discoverable. Continue unpublishing it?');
+    if (!confirmed) {
+      return;
+    }
+  }
+
+  if (currentStatus === 'archived') {
+    const confirmed = window.confirm('Restore this archived plan back to draft status? It will remain in its current plan record and be available for editing.');
+    if (!confirmed) {
+      return;
+    }
+  }
+
+  closeSaveWorkoutPlanModal();
+  await persistWorkout('draft');
+};
+
+const publishGlobalPlanFromModal = async () => {
+  if (saving.value || publishing.value) {
+    return;
+  }
+
+  const currentStatus = normalizePlanPublicationStatus(planPublicationStatus.value);
+  if (currentStatus === 'archived') {
+    saveMessage.value = 'Archived plans must be restored to Draft before publishing.';
+    return;
+  }
+
+  closeSaveWorkoutPlanModal();
+  await persistWorkout('active');
+};
+
+const closePublishPlanConfirmation = () => {
+  showPublishPlanModal.value = false;
+};
+
+const confirmPublishWorkoutPlan = async () => {
+  if (publishing.value || saving.value) {
+    return;
+  }
+
+  closePublishPlanConfirmation();
+  await persistWorkout('active');
+};
+
+const publishWorkoutPlan = async () => {
+  await persistWorkout('active');
+};
+
+const unpublishGlobalPlan = async () => {
+  if (!currentPlanId.value || !isAdminGlobalPlanDraftFlow.value || !isPublishedGlobalPlan.value) {
+    return;
+  }
+
+  const confirmed = window.confirm('This plan will no longer be publicly discoverable. Continue unpublishing it?');
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/api/admin/global-workout-plans/${encodeURIComponent(currentPlanId.value)}/schedule`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        planner: plannerPayload.value,
+        status: 'draft',
+      }),
+      credentials: 'include',
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data?.error || 'Failed to unpublish this global workout plan.');
+    }
+
+    planPublicationStatus.value = normalizePlanPublicationStatus(data?.planner?.status || 'draft');
+    saveMessage.value = 'Global workout plan unpublished successfully.';
+    await loadWorkoutPlanner(currentPlanId.value);
+    await router.replace({ query: { ...route.query, planId: currentPlanId.value } });
+  } catch (error) {
+    saveMessage.value = error.message || 'Failed to unpublish this global workout plan.';
+  }
+};
+
+const restoreGlobalPlanToDraft = async () => {
+  if (!currentPlanId.value || !isAdminGlobalPlanDraftFlow.value || !isArchivedGlobalPlan.value) {
+    return;
+  }
+
+  const confirmed = window.confirm('Restore this archived plan back to draft status? It will remain in its current plan record and remain available for editing.');
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/api/admin/global-workout-plans/${encodeURIComponent(currentPlanId.value)}/schedule`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        planner: plannerPayload.value,
+        status: 'draft',
+      }),
+      credentials: 'include',
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data?.error || 'Failed to restore this global workout plan to draft.');
+    }
+
+    planPublicationStatus.value = normalizePlanPublicationStatus(data?.planner?.status || 'draft');
+    saveMessage.value = 'Global workout plan restored to draft.';
+    await loadWorkoutPlanner(currentPlanId.value);
+    await router.replace({ query: { ...route.query, planId: currentPlanId.value } });
+  } catch (error) {
+    saveMessage.value = error.message || 'Failed to restore this global workout plan to draft.';
+  }
 };
 
 const handlePrimarySave = async () => {
+  if (isAdminGlobalPlanDraftFlow.value) {
+    const selectedStatus = normalizePlanPublicationStatus(selectedPublicationStatus.value);
+    if (selectedStatus === 'archived') {
+      await saveGlobalWorkoutWithSelectedStatus();
+      return;
+    }
+    openSaveWorkoutPlanModal();
+    return;
+  }
   await saveWorkout();
+};
+
+const handleGlobalSaveModalEscape = (event) => {
+  if (event.key !== 'Escape' || !showSaveWorkoutPlanModal.value) {
+    return;
+  }
+  closeSaveWorkoutPlanModal();
 };
 
 const loadExercises = async () => {
@@ -1469,25 +3488,29 @@ const loadUserId = async () => {
     const data = await response.json();
     userId.value = data?.user?.id || null;
     const normalizedRole = String(data?.user?.role || data?.user?.roleSlug || '').trim().toLowerCase();
+    currentRoleSlug.value = normalizedRole === 'administrator' ? 'admin' : normalizedRole;
     isAdminUser.value = ['administrator', 'admin'].includes(normalizedRole);
     if (!isAdminUser.value && builderTab.value === 'global') {
       builderTab.value = 'create';
     }
     canCreateFeaturedPlans.value = isAdminUser.value || Boolean(data?.canCreateFeaturedPlans || data?.user?.canCreateFeaturedPlans);
+    ensureDraftPlanTypeDefault();
   } catch {
     userId.value = null;
+    currentRoleSlug.value = '';
     isAdminUser.value = false;
     if (builderTab.value === 'global') {
       builderTab.value = 'create';
     }
     canCreateFeaturedPlans.value = false;
+    ensureDraftPlanTypeDefault();
   }
 };
 
 const loadFeaturedWorkoutPlans = async () => {
   loadingFeaturedPlans.value = true;
   try {
-    const response = await fetch(`${API_BASE}/api/featured-workout-plans`, {
+    const response = await fetch(`${API_BASE}/api/global-workout-plans`, {
       credentials: 'include',
     });
 
@@ -1499,14 +3522,27 @@ const loadFeaturedWorkoutPlans = async () => {
     const data = await response.json();
     featuredWorkoutPlans.value = Array.isArray(data?.workoutLists)
       ? data.workoutLists
-          .filter((plan) => String(plan?.planType || '').trim().toLowerCase() === 'featured')
           .map((plan) => ({
             planId: String(plan?.planId || '').trim(),
             name: String(plan?.name || '').trim(),
             description: String(plan?.description || '').trim(),
-            type: String(plan?.type || '').trim(),
+            type: String(plan?.type || plan?.category || '').trim(),
+            category: String(plan?.category || plan?.type || '').trim(),
+            workoutType: String(plan?.workoutType || '').trim(),
+            source: String(plan?.source || plan?.planSource || '').trim(),
+            pricing: String(plan?.pricing || '').trim(),
+            isPaid: typeof plan?.isPaid === 'boolean' ? plan.isPaid : null,
+            difficulty: String(plan?.difficulty || plan?.level || plan?.experienceLevel || '').trim(),
+            planDurationWeeks: plan?.planDurationWeeks ?? plan?.durationWeeks ?? plan?.weeks ?? null,
+            planType: String(plan?.planType || '').trim(),
+            publicationStatusRaw: String(plan?.status ?? plan?.publicationStatus ?? plan?.planStatus ?? '').trim().toLowerCase(),
+            status: String(plan?.status ?? plan?.publicationStatus ?? plan?.planStatus ?? '').trim().toLowerCase(),
+            isFeatured: typeof plan?.isFeatured === 'boolean'
+              ? plan.isFeatured
+              : (typeof plan?.featured === 'boolean' ? plan.featured : String(plan?.planType || '').trim().toLowerCase() === 'featured'),
             estimatedDuration: Number(plan?.estimatedDuration || 0),
             exerciseCount: Number(plan?.exerciseCount || 0),
+            coverImageUrl: buildPlanCoverImageUrl(plan?.planId),
           }))
       : [];
   } catch {
@@ -1518,9 +3554,42 @@ const loadFeaturedWorkoutPlans = async () => {
 
 const loadWorkoutPlanner = async (requestedPlanId = '') => {
   loadingPlanner.value = true;
+  const normalizedRequestedPlanId = String(requestedPlanId || '').trim();
+
+  if (normalizedRequestedPlanId) {
+    currentPlanId.value = normalizedRequestedPlanId;
+    selectedWorkoutId.value = normalizedRequestedPlanId;
+  }
+
   try {
-    const query = requestedPlanId
-      ? `?planId=${encodeURIComponent(String(requestedPlanId).trim())}`
+    if (normalizedRequestedPlanId && isAdminUser.value) {
+      const adminGlobalResponse = await fetch(`${API_BASE}/api/admin/global-workout-plans/${encodeURIComponent(normalizedRequestedPlanId)}`, {
+        credentials: 'include',
+      });
+
+      if (adminGlobalResponse.ok) {
+        const adminGlobalData = await adminGlobalResponse.json().catch(() => ({}));
+        const adminPlanner = adminGlobalData?.planner || {};
+        const adminPlanType = String(adminPlanner?.metadata?.planType || '').trim().toLowerCase();
+
+        if (['global', 'featured', 'community_shared'].includes(adminPlanType)) {
+          syncWorkoutPlannerCapabilities(adminGlobalData);
+          currentPlanId.value = String(adminPlanner?.planId || normalizedRequestedPlanId).trim();
+          selectedWorkoutId.value = currentPlanId.value;
+          isCreatingWorkout.value = false;
+          hasSavedWorkoutExerciseList.value = Array.isArray(adminPlanner?.exercises) ? adminPlanner.exercises.length > 0 : false;
+          setUserWorkoutStatus(hasSavedWorkoutExerciseList.value);
+          hydratePlanner(adminPlanner, { markSaved: true });
+          plannerMessage.value = '';
+          return;
+        }
+      } else if (adminGlobalResponse.status === 401 || adminGlobalResponse.status === 403) {
+        plannerMessage.value = 'Admin access is required to load this Global workout plan.';
+      }
+    }
+
+    const query = normalizedRequestedPlanId
+      ? `?planId=${encodeURIComponent(normalizedRequestedPlanId)}`
       : '';
 
     const response = await fetch(`${API_BASE}/api/workout-planner${query}`, {
@@ -1538,9 +3607,10 @@ const loadWorkoutPlanner = async (requestedPlanId = '') => {
     hasSavedWorkoutExerciseList.value = Boolean(data?.hasSavedWorkoutExerciseList);
     setUserWorkoutStatus(hasSavedWorkoutExerciseList.value);
 
-    if (requestedPlanId) {
+    if (normalizedRequestedPlanId) {
       const planner = data?.planner || {};
-      selectedWorkoutId.value = String(planner?.planId || requestedPlanId).trim();
+      selectedWorkoutId.value = String(planner?.planId || normalizedRequestedPlanId).trim();
+      currentPlanId.value = String(planner?.planId || normalizedRequestedPlanId).trim();
       isCreatingWorkout.value = false;
       const isPlannerReady = String(planner?.status || '').toLowerCase() !== 'draft';
       hydratePlanner(planner, { markSaved: isPlannerReady });
@@ -1617,16 +3687,24 @@ const deleteWorkoutSchedule = async (schedule) => {
 };
 
 onMounted(async () => {
+  const restoredDraft = restoreUnsavedBuilderDraft();
   const requestedPlanId = String(route.query?.planId || '').trim();
-  await Promise.all([loadExercises(), loadUserId(), loadWorkoutPlanner(requestedPlanId), loadFeaturedWorkoutPlans(), loadActiveGoals()]);
-  if (isAdminUser.value) {
+  await Promise.all([loadExercises(), loadFeaturedWorkoutPlans(), loadActiveGoals()]);
+  await loadUserId();
+  if (!restoredDraft) {
+    await loadWorkoutPlanner(requestedPlanId);
+  }
+  if (canAccessGlobalManagement.value) {
     await loadGlobalPlans();
   }
   document.addEventListener('click', closeDayMenu);
+  document.addEventListener('keydown', handleGlobalSaveModalEscape);
 });
 
 onUnmounted(() => {
   document.removeEventListener('click', closeDayMenu);
+  document.removeEventListener('keydown', handleGlobalSaveModalEscape);
+  clearPendingCoverSelection();
 });
 
 watch(
@@ -1657,6 +3735,15 @@ watch(
 );
 
 watch(
+  () => activePlanId.value,
+  () => {
+    refreshCoverImages();
+    coverUploadProgress.value = 0;
+    updateCoverUiMessage('', 'info');
+  }
+);
+
+watch(
   () => featuredWorkoutPlanSlides.value.length,
   (slideCount) => {
     if (!slideCount) {
@@ -1673,33 +3760,63 @@ watch(
 );
 
 watch(
-  () => [builderTab.value, globalPlansSubTab.value, isAdminUser.value],
-  async ([tab, subTab, isAdmin]) => {
-    if (!isAdmin || tab !== 'global') {
+  () => [builderTab.value, globalPlansSubTab.value, canAccessGlobalManagement.value, canViewAdminUserPlans.value],
+  async ([tab, subTab, canAccessGlobal, canViewUserPlans]) => {
+    if (!canAccessGlobal || tab !== 'global') {
       return;
     }
     if (subTab === 'global' && !globalPlans.value.length && !globalPlansLoading.value) {
       await loadGlobalPlans();
     }
-    if (subTab === 'user' && !adminUserPlans.value.length && !adminUserPlansLoading.value) {
+    if (canViewUserPlans && subTab === 'user' && !adminUserPlans.value.length && !adminUserPlansLoading.value) {
       await loadAdminUserPlans();
+    }
+  }
+);
+
+watch(
+  () => String(metadata.value?.planType || '').trim().toLowerCase(),
+  (nextPlanType) => {
+    if (nextPlanType !== 'global') {
+      isGlobalPlanFeatured.value = false;
+    }
+  }
+);
+
+watch(
+  () => canAccessGlobalManagement.value,
+  (allowed) => {
+    if (!allowed) {
+      showManagedMarketplacePlans.value = false;
+    }
+  }
+);
+
+watch(
+  () => showManagedMarketplacePlans.value,
+  async (enabled) => {
+    if (!enabled || !canAccessGlobalManagement.value) {
+      return;
+    }
+    if (!globalPlans.value.length && !globalPlansLoading.value) {
+      await loadGlobalPlans();
     }
   }
 );
 </script>
 
 <template>
-  <div class="app-page-shell workout-builder-page">
+  <div :class="['app-page-shell', 'workout-builder-page', { 'workout-builder-page--create': builderTab === 'create' }]">
     <div class="app-page-canvas app-inner-shell workout-builder-canvas">
       <section class="builder-hero ff-page-header app-header-gradient">
         <div>
-          <h2>Workout Builder</h2>
+          <h2>Workout Planner</h2>
           <p>Build sessions quickly with an athlete-first workflow.</p>
         </div>
 
       </section>
 
-      <section class="main-builder-accordion" aria-label="Workout Builder main sections">
+      <section class="main-builder-accordion" aria-label="Workout Planner main sections">
         <section class="main-builder-accordion__item" :class="{ open: mainAccordion.build }">
           <button
             type="button"
@@ -1715,7 +3832,7 @@ watch(
           <div v-show="mainAccordion.build" class="main-builder-accordion__body">
 
       <!-- ── Tab Bar ──────────────────────────────────────────── -->
-      <nav class="builder-tabs wa-h-tabs wa-h-tabs--tricolor" role="tablist" aria-label="Workout Builder sections">
+      <nav class="builder-tabs wa-h-tabs wa-h-tabs--tricolor" role="tablist" aria-label="Workout Planner sections">
         <button
           type="button"
           role="tab"
@@ -1735,7 +3852,7 @@ watch(
           @click="builderTab = 'create'; if (!canShowWorkoutDetails) { resetPlannerDraft(); }"
         >
           <i class="fa-solid fa-dumbbell"></i>
-          <span class="tab-label-full">Create A Workout Plan</span>
+          <span class="tab-label-full">Create Plan</span>
           <span class="tab-label-short">Create Plan</span>
         </button>
         <button
@@ -1746,20 +3863,8 @@ watch(
           @click="builderTab = 'ai'"
         >
           <i class="fa-solid fa-wand-magic-sparkles"></i>
-          <span class="tab-label-full">Suggest With AI</span>
-          <span class="tab-label-short">Suggest AI</span>
-        </button>
-        <button
-          v-if="isAdminUser"
-          type="button"
-          role="tab"
-          :aria-selected="builderTab === 'global'"
-          :class="['builder-tab', 'wa-h-tab', 'builder-tab--global-tone', { 'builder-tab--active': builderTab === 'global', 'wa-h-tab--active': builderTab === 'global' }]"
-          @click="builderTab = 'global'; globalPlansSubTab = 'global'"
-        >
-          <i class="fa-solid fa-earth-americas"></i>
-          <span class="tab-label-full">Manage Global Plans</span>
-          <span class="tab-label-short">Manage Global</span>
+          <span class="tab-label-full">Create with AI</span>
+          <span class="tab-label-short">Create with AI</span>
         </button>
       </nav>
 
@@ -1769,7 +3874,23 @@ watch(
           <div class="planner-empty__icon">📝</div>
           <h4>No plan selected</h4>
           <p>Start a new plan or select an existing one from the Select tab.</p>
-          <button type="button" class="btn-create-plan" style="margin-top:8px" @click="createWorkoutPlan" :disabled="loadingPlanner">
+          <label v-if="workoutPlanTypeOptions.length" class="builder-field builder-field--row" style="max-width: 340px; margin: 8px auto 0; text-align: left;">
+            <span>Workout Plan Type</span>
+            <select
+              v-model="metadata.planType"
+              :disabled="loadingPlanner"
+            >
+              <option
+                v-for="option in workoutPlanTypeOptions"
+                :key="`start-plan-type-${option.value}`"
+                :value="option.value"
+                :disabled="option.disabled"
+              >
+                {{ option.label }}
+              </option>
+            </select>
+          </label>
+          <button type="button" class="btn-create-plan wa-blue-action-btn" style="margin-top:8px" @click="createWorkoutPlan" :disabled="loadingPlanner">
             {{ loadingPlanner ? 'Creating...' : 'Start New Workout Plan' }}
           </button>
         </div>
@@ -1783,139 +3904,325 @@ watch(
           <div class="collapsible-panel__body">
             <WorkoutMetadataForm
               :metadata="metadata"
-              :can-create-featured-plans="canCreateFeaturedPlans"
+              :plan-type-options="workoutPlanTypeOptions"
+              :category-options="workoutPlanCategoryOptions"
+              :can-edit-plan-type="canEditSelectedPlanType"
               :goal-options="goalOptionsForSelect"
               :loading-goals="loadingGoals"
               @update:metadata="metadata = $event"
-            />
+              @create-goal="openExistingGoalCreationFlow"
+            >
+              <template #plan-cover>
+                <section class="plan-cover-panel" aria-label="Workout plan cover image">
+                  <div class="plan-cover-panel__header">
+                    <h4>Cover Image</h4>
+                    <small>Shown in workout plan cards and detail views.</small>
+                  </div>
+
+                  <div class="plan-cover-panel__content">
+                    <div class="plan-cover-main-row">
+                      <div class="plan-cover-preview-wrap">
+                        <img
+                          :src="currentPlanCoverImageUrl"
+                          class="plan-cover-preview"
+                          alt="Workout plan cover preview"
+                          loading="lazy"
+                          decoding="async"
+                          @error="onPlanCoverImageError"
+                        />
+                      </div>
+
+                      <div class="plan-cover-actions">
+                        <input
+                          ref="coverUploadInputRef"
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          class="plan-cover-upload-input"
+                          @change="onCoverFileSelected"
+                        />
+
+                        <div class="plan-cover-actions-desktop" role="group" aria-label="Cover image actions">
+                          <button
+                            v-if="!hasPersistedCustomCover"
+                            type="button"
+                            class="wa-blue-action-btn plan-cover-action"
+                            :disabled="!canEditCurrentPlanCover || isCoverActionBusy"
+                            title="Upload Image"
+                            aria-label="Upload Image"
+                            @click="openCoverUploadPicker"
+                          >
+                            <i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i>
+                            <span class="plan-cover-action__text">{{ coverUploadInFlight ? 'Uploading...' : 'Upload Image' }}</span>
+                          </button>
+
+                          <div v-else class="plan-cover-action-row">
+                            <button
+                              type="button"
+                              class="plan-cover-replace-btn"
+                              :disabled="!canEditCurrentPlanCover || isCoverActionBusy"
+                              title="Replace Image"
+                              aria-label="Replace Image"
+                              @click="openCoverUploadPicker"
+                            >
+                              <i class="fa-solid fa-pen" aria-hidden="true"></i>
+                              <span class="plan-cover-action__text">Replace</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              class="plan-cover-delete-btn"
+                              :disabled="isCoverActionBusy || !showDeletePlanCoverButton"
+                              title="Remove Image"
+                              aria-label="Remove Image"
+                              @click="deleteCoverImage"
+                            >
+                              <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                              <span class="plan-cover-action__text">{{ coverDeleteInFlight ? 'Removing...' : 'Remove' }}</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p v-if="coverUploadInFlight && coverUploadProgress > 0" class="plan-cover-progress" aria-live="polite">
+                      Uploading: {{ coverUploadProgress }}%
+                    </p>
+
+                    <p
+                      v-if="coverUiMessage"
+                      :class="[
+                        'plan-cover-feedback',
+                        coverUiMessageType === 'error' ? 'plan-cover-feedback--error' :
+                        coverUiMessageType === 'success' ? 'plan-cover-feedback--success' :
+                        coverUiMessageType === 'warn' ? 'plan-cover-feedback--warn' :
+                        'plan-cover-feedback--info',
+                      ]"
+                      aria-live="polite"
+                    >
+                      {{ coverUiMessage }}
+                    </p>
+                  </div>
+                </section>
+              </template>
+            </WorkoutMetadataForm>
           </div>
 
           <section class="planner-shell">
-          <div class="planner-heading-group planner-heading-group--combined">
-            <h3>Schedule Planner</h3>
-            <p>Manage workout days and assign exercises.</p>
+          <div class="planner-header-row">
+            <div class="planner-heading-group planner-heading-group--combined">
+              <h3>Schedule Planner</h3>
+              <p>Plan your training week, then add exercises to each day.</p>
+            </div>
+
+            <div class="planner-header-actions">
+              <div class="planner-mode-pill-wrap" aria-label="Scheduling mode">
+                <div class="planner-mode-toggle" role="tablist" aria-label="Schedule planner modes">
+                  <button
+                    type="button"
+                    :class="['planner-mode-btn', { active: scheduleMode === 'day' }]"
+                    :aria-pressed="scheduleMode === 'day'"
+                    @click="changeScheduleMode('day')"
+                  >
+                    Day View
+                  </button>
+                  <button
+                    type="button"
+                    :class="['planner-mode-btn', { active: scheduleMode === 'week' }]"
+                    :aria-pressed="scheduleMode === 'week'"
+                    @click="changeScheduleMode('week')"
+                  >
+                    Week View
+                  </button>
+                </div>
+              </div>
+              <button
+                type="button"
+                class="btn-save planner-save-top"
+                :disabled="saving || publishing"
+                @click="handlePrimarySave"
+              >
+                {{ primarySaveLabel }}
+              </button>
+            </div>
           </div>
           <div class="planner-tools">
               <div class="planner-group-editor">
+                <label class="planner-group-editor__label" for="planner-add-day-input">{{ scheduleGroupEditorLabel }}</label>
                 <input
+                  id="planner-add-day-input"
                   v-model="newScheduleGroupName"
                   type="text"
-                  placeholder="Add Day (e.g. Day 1)"
+                  :maxlength="WORKOUT_DAY_NAME_MAX_LENGTH"
+                  :placeholder="scheduleGroupInputPlaceholder"
                 />
                 <button
                   type="button"
-                  class="planner-group-add"
+                  class="planner-group-add wa-blue-action-btn"
                   @click="addScheduleGroup"
                 >
-                  Add Day
+                  {{ scheduleGroupAddButtonLabel }}
                 </button>
               </div>
 
-              <div class="workout-day-accordion" role="list" aria-label="Workout days">
+              <div
+                :class="[
+                  'workout-day-accordion',
+                  scheduleMode === 'week' ? 'workout-day-accordion--week' : 'workout-day-accordion--day',
+                ]"
+                role="list"
+                aria-label="Workout days"
+              >
                 <transition-group name="day-order" tag="div" class="workout-day-accordion__list">
                   <div
-                    v-for="day in workoutDaysWithExercises"
-                    :key="day.name"
-                    :class="['workout-day-card', { active: selectedScheduleGroup === day.name, 'is-menu-open': openMenuDay === day.name }]"
+                    v-for="day in accordionGroupsWithExercises"
+                    :key="day.stableId"
+                    :class="['workout-day-card', { active: day.isExpanded, 'is-menu-open': openMenuDay === day.name }]"
                     role="listitem"
                   >
                     <div
                       class="workout-day-header"
                       role="button"
+                      :aria-expanded="day.isExpanded"
                       tabindex="0"
-                      @click="setActiveDay(day.name)"
-                      @keydown.enter.prevent="setActiveDay(day.name)"
-                      @keydown.space.prevent="setActiveDay(day.name)"
+                      @click="toggleScheduleGroupAccordion(day.name)"
+                      @keydown.enter.prevent="toggleScheduleGroupAccordion(day.name)"
+                      @keydown.space.prevent="toggleScheduleGroupAccordion(day.name)"
                     >
-                      <div class="day-title-group day-title-edit-wrap" @click.stop>
+                      <div class="day-title-group day-title-edit-wrap">
                         <input
                           v-if="inlineEditingDayName === day.name"
                           v-model="inlineDayNameDraft"
                           class="day-title-inline-input"
                           type="text"
-                          maxlength="40"
+                          :maxlength="WORKOUT_DAY_NAME_MAX_LENGTH"
+                          @click.stop
+                          @input="handleInlineDayNameInput"
+                          @keydown.stop
+                          @keydown.esc.prevent.stop="cancelInlineDayNameEdit"
                           @keydown.enter.prevent="saveInlineDayNameEdit"
-                          @blur="saveInlineDayNameEdit"
                         />
+                        <p
+                          v-if="inlineEditingDayName === day.name && inlineDayNameError"
+                          class="day-title-inline-error"
+                        >
+                          {{ inlineDayNameError }}
+                        </p>
                         <strong
                           v-else
                           class="day-title-editable"
                           title="Click to rename"
-                          @click="startInlineDayNameEdit(day.name)"
+                          @click.stop="startInlineDayNameEdit(day.name)"
                         >
                           {{ day.name }}
                         </strong>
+                        <div v-if="inlineEditingDayName === day.name" class="day-title-inline-actions">
+                          <button
+                            type="button"
+                            class="day-title-inline-btn day-title-inline-btn--save"
+                            @mousedown.prevent
+                            @click.stop="saveInlineDayNameEdit"
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            class="day-title-inline-btn day-title-inline-btn--cancel"
+                            @mousedown.prevent
+                            @click.stop="cancelInlineDayNameEdit"
+                          >
+                            Cancel
+                          </button>
+                        </div>
                         <span v-if="day.exerciseCount > 0" class="exercise-count">{{ day.exerciseCount }} exercise{{ day.exerciseCount === 1 ? '' : 's' }}</span>
                       </div>
 
-                      <div class="day-header-actions" @click.stop>
-                        <button type="button" class="btn-add-exercise-day" @click="setActiveDay(day.name); openPicker()">
-                          <span class="btn-add-exercise__icon">＋</span>
-                          <span>Add Exercise</span>
-                        </button>
-                      </div>
+                      <div class="day-header-controls" @click.stop>
+                        <div class="day-header-actions">
+                          <button
+                            type="button"
+                            class="chevron-btn"
+                            :aria-label="day.isExpanded ? 'Collapse section' : 'Expand section'"
+                            :aria-expanded="day.isExpanded"
+                            @click.stop="toggleScheduleGroupAccordion(day.name)"
+                          >
+                            <i :class="['fa-solid', 'fa-chevron-down', 'accordion-chevron', { 'accordion-chevron--expanded': day.isExpanded }]" aria-hidden="true"></i>
+                          </button>
+                          <button type="button" class="btn-add-exercise-day wa-blue-action-btn" @click="setActiveDay(day.name); openPicker()">
+                            <span class="btn-add-exercise__icon">＋</span>
+                            <span>Add Exercise</span>
+                          </button>
+                        </div>
 
-                      <div class="day-kebab-wrap" @click.stop>
-                        <button
-                          type="button"
-                          class="day-kebab-btn"
-                          :aria-expanded="openMenuDay === day.name"
-                          @click.stop="toggleDayMenu(day.name, $event)"
-                        >
-                          <i class="fa-solid fa-ellipsis-vertical"></i>
-                        </button>
-                        <div
-                          v-if="openMenuDay === day.name"
-                          :class="['day-kebab-menu', `day-kebab-menu--${openMenuPlacement}`]"
-                        >
+                        <div class="day-kebab-wrap" @click.stop>
                           <button
                             type="button"
-                            class="day-kebab-item"
-                            @click="duplicateScheduleGroup(day.name); openMenuDay = null"
+                            class="day-kebab-btn"
+                            :aria-expanded="openMenuDay === day.name && openMenuAnchor === 'top'"
+                            @click.stop="toggleDayMenu(day.name, $event, 'top')"
                           >
-                            <i class="fa-solid fa-copy"></i>
-                            Duplicate Day
+                            <i class="fa-solid fa-ellipsis-vertical"></i>
                           </button>
-                          <button
-                            v-if="hasMultipleScheduleGroups && !isFirstScheduleGroup(day.name)"
-                            type="button"
-                            class="day-kebab-item"
-                            @click="moveScheduleGroupUp(day.name); openMenuDay = null"
+                          <div
+                            v-if="openMenuDay === day.name && openMenuAnchor === 'top'"
+                            :class="['day-kebab-menu', `day-kebab-menu--${openMenuPlacement}`]"
                           >
-                            <i class="fa-solid fa-arrow-up"></i>
-                            Move Up
-                          </button>
-                          <button
-                            v-if="hasMultipleScheduleGroups && !isLastScheduleGroup(day.name)"
-                            type="button"
-                            class="day-kebab-item"
-                            @click="moveScheduleGroupDown(day.name); openMenuDay = null"
-                          >
-                            <i class="fa-solid fa-arrow-down"></i>
-                            Move Down
-                          </button>
-                          <button
-                            v-if="canRemoveScheduleGroup(day.name)"
-                            type="button"
-                            class="day-kebab-item day-kebab-item--delete"
-                            @click="requestDeleteDay(day.name); openMenuDay = null"
-                          >
-                            <i class="fa-solid fa-trash"></i>
-                            Delete Day
-                          </button>
+                            <button
+                              type="button"
+                              class="day-kebab-item"
+                              @click="startInlineDayNameEdit(day.name); openMenuDay = null"
+                            >
+                              <i class="fa-regular fa-pen-to-square"></i>
+                              ✏️ Rename Day
+                            </button>
+                            <button
+                              type="button"
+                              class="day-kebab-item"
+                              @click="duplicateScheduleGroup(day.name); openMenuDay = null"
+                            >
+                              <i class="fa-solid fa-copy"></i>
+                              Duplicate Day
+                            </button>
+                            <button
+                              v-if="hasMultipleScheduleGroups && !isFirstScheduleGroup(day.name)"
+                              type="button"
+                              class="day-kebab-item"
+                              @click="moveScheduleGroupUp(day.name); openMenuDay = null"
+                            >
+                              <i class="fa-solid fa-arrow-up"></i>
+                              Move Up
+                            </button>
+                            <button
+                              v-if="hasMultipleScheduleGroups && !isLastScheduleGroup(day.name)"
+                              type="button"
+                              class="day-kebab-item"
+                              @click="moveScheduleGroupDown(day.name); openMenuDay = null"
+                            >
+                              <i class="fa-solid fa-arrow-down"></i>
+                              Move Down
+                            </button>
+                            <button
+                              v-if="canRemoveScheduleGroup(day.name)"
+                              type="button"
+                              class="day-kebab-item day-kebab-item--delete"
+                              @click="requestDeleteDay(day.name); openMenuDay = null"
+                            >
+                              <i class="fa-solid fa-trash"></i>
+                              Delete Day
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
 
                     <transition name="accordion-slide">
-                      <div v-if="selectedScheduleGroup === day.name" class="workout-day-panel">
+                      <div v-if="day.isExpanded" class="workout-day-panel">
                         <div v-if="day.exercises.length > 0" class="day-exercises-list">
                           <WorkoutExerciseBlock
                             v-for="(exercise, idx) in day.exercises"
                             :key="exercise.id"
                             :exercise="exercise"
-                            :index="workoutExercises.findIndex(ex => ex.id === exercise.id)"
-                            :total="workoutExercises.length"
+                            :index="idx"
+                            :total="day.exercises.length"
                             :schedule-groups="activeGroups"
                             :schedule-mode="scheduleMode"
                             @update-field="updateExerciseField"
@@ -1939,7 +4246,7 @@ watch(
               </p>
 
               <div v-if="activeGroups.length === 0" class="planner-helper-text">
-                No workout days added yet.
+                {{ scheduleGroupEmptyStateText }}
               </div>
             </div>
 
@@ -1956,22 +4263,81 @@ watch(
             </div>
 
           </section>
+
+          <section v-if="showGlobalPublicationControls || showGlobalFeaturedToggle" class="planner-shell planner-shell--publication">
+            <div class="planner-heading-group planner-heading-group--combined">
+              <h3>Publishing &amp; Administration</h3>
+              <p>Control publication visibility and featured placement.</p>
+            </div>
+
+            <div v-if="showGlobalPublicationControls" class="publication-status-actions">
+              <div class="publication-status-wrap publication-status-wrap--create">
+                <label class="publication-status-field">
+                  <span class="publication-status-field__label">Publication Status</span>
+                  <select v-model="selectedPublicationStatus" :disabled="saving || publishing">
+                    <option
+                      v-for="option in publicationStatusOptions"
+                      :key="`publication-status-${option.value}`"
+                      :value="option.value"
+                      :disabled="option.disabled"
+                    >
+                      {{ option.label }}
+                    </option>
+                  </select>
+                </label>
+              </div>
+
+              <button
+                type="button"
+                class="btn-save publication-status-save"
+                :disabled="saving || publishing"
+                @click="handlePrimarySave"
+              >
+                {{ primarySaveLabel }}
+              </button>
+            </div>
+
+            <p v-if="showGlobalPublicationControls && selectedPublicationStatusDisabledReason" class="publication-status-help publication-status-help--warn">
+              {{ selectedPublicationStatusDisabledReason }}
+            </p>
+
+            <div v-if="showGlobalFeaturedToggle" class="global-featured-toggle" role="group" aria-label="Featured global plan setting">
+              <label class="global-featured-toggle__label">
+                <input
+                  v-model="isGlobalPlanFeatured"
+                  type="checkbox"
+                  :disabled="!canToggleGlobalFeatured || saving || publishing"
+                />
+                <span>Featured</span>
+              </label>
+              <p class="global-featured-toggle__note">
+                Featured plans can be displayed during user registration. Available only to administrators for published Global Workout Plans.
+              </p>
+              <p v-if="!canToggleGlobalFeatured" class="global-featured-toggle__hint">
+                Set Publication Status to Published before enabling Featured.
+              </p>
+            </div>
+          </section>
         </div>
       </section>
 
       <footer v-if="showSaveFooter" class="builder-footer">
-        <p
-          v-if="saveMessage"
-          :class="[
-            'save-message',
-            /failed|please|unable/i.test(saveMessage) ? 'err' : 'ok',
-          ]"
-        >
-          {{ saveMessage }}
-        </p>
-        <button type="button" class="btn-save" :disabled="saving" @click="handlePrimarySave">
-          {{ primarySaveLabel }}
-        </button>
+        <div class="builder-footer__status" aria-live="polite">
+          <p
+            v-if="saveMessage"
+            :class="[
+              'save-message',
+              /failed|please|unable|missing|publish failed/i.test(saveMessage) ? 'err' : 'ok',
+            ]"
+          >
+            {{ saveMessage }}
+          </p>
+        </div>
+        <div v-if="!showGlobalPublicationControls" class="builder-footer__action">
+          <button type="button" class="btn-save" :disabled="saving || publishing" @click="handlePrimarySave">
+            {{ primarySaveLabel }}
+          </button>
+        </div>
       </footer>
 
       <!-- ── TAB 3: View/Edit Plans ─────────────────────────────── -->
@@ -1998,22 +4364,13 @@ watch(
             <button
               type="button"
               role="tab"
-              :aria-selected="planSourceTab === 'global'"
-              :class="['builder-subtab', 'wa-h-tab', 'select-source-tab', 'select-source-tab--global', { 'wa-h-tab--active': planSourceTab === 'global' }]"
-              @click="planSourceTab = 'global'"
-            >
-              <i class="fa-solid fa-earth-americas"></i>
-              <span>Global Plans</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              :aria-selected="planSourceTab === 'paid'"
-              :class="['builder-subtab', 'wa-h-tab', 'select-source-tab', 'select-source-tab--paid', { 'wa-h-tab--active': planSourceTab === 'paid' }]"
-              @click="planSourceTab = 'paid'"
+              :aria-selected="planSourceTab === 'marketplace'"
+              :class="['builder-subtab', 'wa-h-tab', 'select-source-tab', 'select-source-tab--marketplace', { 'wa-h-tab--active': planSourceTab === 'marketplace' }]"
+              @click="planSourceTab = 'marketplace'"
             >
               <i class="fa-solid fa-share-nodes"></i>
-              <span>Paid / Shared Plans</span>
+              <span class="marketplace-tab-label-full">Find Plans</span>
+              <span class="marketplace-tab-label-short">Find Plans</span>
             </button>
           </nav>
 
@@ -2044,98 +4401,542 @@ watch(
             </div>
           </div>
 
-          <div v-show="planSourceTab === 'global'" class="plan-source-panel" aria-live="polite">
-            <div v-if="loadingFeaturedPlans" class="builder-empty planner-empty planner-empty--loading" aria-live="polite">
-              <div class="planner-empty__icon">📋</div>
-              <h4>Loading Global Plans</h4>
-              <p>Pulling global workout plans now.</p>
-            </div>
-
-            <div v-else-if="!hasFeaturedWorkoutPlans" class="builder-empty planner-empty" aria-live="polite">
-              <div class="planner-empty__icon">📭</div>
-              <h4>No Global Plans Available</h4>
-              <p>Global workout plans will appear here.</p>
-            </div>
-
-            <div v-else class="plan-carousel" aria-live="polite">
-              <div class="plan-carousel__header">
-                <h4>{{ activeWorkoutPlanSlide.title }}</h4>
-                <span class="plan-carousel__position">
-                  Slide {{ currentWorkoutPlanSlide + 1 }} of {{ featuredWorkoutPlanSlides.length }}
-                </span>
-              </div>
-
-              <div class="plan-carousel__body" role="group" :aria-label="`${activeWorkoutPlanSlide.title} workout plans`">
+          <div v-show="planSourceTab === 'marketplace'" class="plan-source-panel" aria-live="polite">
+            <section v-if="showGlobalLibraryViewModal" class="global-library-inline-preview" aria-label="Workout plan preview" aria-live="polite">
+              <div class="global-library-inline-preview__actions global-library-inline-preview__actions--top">
                 <button
-                  v-for="plan in activeWorkoutPlanSlide.plans"
-                  :key="`${activeWorkoutPlanSlide.title}-${plan.planId || plan.name}`"
                   type="button"
-                  :class="['plan-carousel__item', { 'plan-carousel__item--selected': selectedTemplatePlanId === plan.planId }]"
-                  :disabled="cloningFeaturedPlanId === plan.planId"
-                  @click="selectTemplatePlan(plan)"
+                  class="btn btn-sm global-plans-table__btn global-plans-table__btn--open"
+                  @click="closeGlobalLibraryInlinePreview"
                 >
-                  <span class="plan-carousel__item-content">
-                    <span class="plan-carousel__item-name">{{ plan.name }}</span>
-                    <small class="plan-carousel__item-description">{{ plan.description || 'No description provided.' }}</small>
-                  </span>
-                  <small class="plan-carousel__item-meta">
-                    {{ plan.estimatedDuration }} min • {{ plan.exerciseCount }} exercises
-                  </small>
+                  <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                  <span>Back to Plans</span>
+                </button>
+
+                <button
+                  v-if="canUsePlanFromPreview"
+                  type="button"
+                  class="btn btn-sm global-plans-table__btn global-plans-table__btn--edit"
+                  :disabled="cloningFeaturedPlanId === globalLibraryViewPlan?.planId"
+                  @click="triggerUsePlanFromPreview"
+                >
+                  <i v-if="cloningFeaturedPlanId === globalLibraryViewPlan?.planId" class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                  <i v-else class="fa-solid fa-copy" aria-hidden="true"></i>
+                  <span>{{ cloningFeaturedPlanId === globalLibraryViewPlan?.planId ? 'Using...' : 'Use Plan' }}</span>
                 </button>
               </div>
 
-              <div class="plan-carousel__footer">
-                <button
-                  v-if="hasMultipleFeaturedWorkoutPlanSlides"
-                  type="button"
-                  class="plan-carousel__nav"
-                  @click="goToPreviousWorkoutPlanSlide"
-                >
-                  Previous
-                </button>
+              <h3 class="global-library-inline-preview__title">Workout Plan Preview (Read-Only)</h3>
 
-                <div
-                  v-if="hasMultipleFeaturedWorkoutPlanSlides"
-                  class="plan-carousel__dots"
-                  role="tablist"
-                  aria-label="Workout plan slides"
-                >
+              <p v-if="globalLibraryViewError" class="global-library-inline-preview__error">{{ globalLibraryViewError }}</p>
+
+              <div v-else-if="globalLibraryViewLoading" class="builder-empty planner-empty planner-empty--loading global-library-inline-preview__loading">
+                <div class="planner-empty__icon">📋</div>
+                <h4>Loading workout plan preview</h4>
+                <p>Fetching full read-only plan details now.</p>
+              </div>
+
+              <div v-else class="global-library-inline-preview__body">
+                <section class="global-library-inline-preview__overview">
+                  <img
+                    :src="globalLibraryViewPlan?.coverImageUrl || buildPlanCoverImageUrl(globalLibraryViewPlan?.planId)"
+                    class="global-library-inline-preview__cover"
+                    :alt="`${globalLibraryViewPlan?.name || 'Workout plan'} cover`"
+                    loading="lazy"
+                    decoding="async"
+                    @error="onPlanCoverImageError"
+                  />
+
+                  <div class="global-library-inline-preview__summary">
+                    <h4 class="global-library-inline-preview__name">{{ globalLibraryViewPlan?.name || 'Untitled Workout' }}</h4>
+                    <p class="global-library-inline-preview__description">{{ formatPreviewText(globalLibraryViewPlan?.description, 'No description provided.') }}</p>
+
+                    <div class="global-library-inline-preview__meta-grid">
+                      <div>
+                        <span>Category / Goal</span>
+                        <strong>{{ formatPreviewText(globalLibraryViewPlan?.category || globalLibraryViewPlan?.type) }}</strong>
+                      </div>
+                      <div>
+                        <span>Difficulty</span>
+                        <strong>{{ formatPreviewText(globalLibraryViewPlan?.difficulty) }}</strong>
+                      </div>
+                      <div>
+                        <span>Estimated Duration</span>
+                        <strong>{{ formatPreviewStat(globalLibraryViewPlan?.estimatedDuration, 'min') }}</strong>
+                      </div>
+                      <div>
+                        <span>Total Exercises</span>
+                        <strong>{{ formatPreviewStat(globalLibraryViewPlan?.exerciseCount) }}</strong>
+                      </div>
+                      <div>
+                        <span>Workout Days</span>
+                        <strong>{{ formatPreviewStat(globalLibraryViewPlan?.dayCount) }}</strong>
+                      </div>
+                    </div>
+
+                    <div class="global-library-inline-preview__focus-block">
+                      <div class="global-library-inline-preview__focus-item">
+                        <h5>Objective</h5>
+                        <p>{{ formatPreviewText(globalLibraryViewPlan?.objective) }}</p>
+                      </div>
+                      <div class="global-library-inline-preview__focus-item">
+                        <h5>Goal</h5>
+                        <p>{{ formatPreviewText(globalLibraryViewPlan?.goal) }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="global-library-inline-preview__schedule">
+                  <h4 class="global-library-inline-preview__schedule-title">Workout Schedule</h4>
+
+                  <article
+                    v-for="day in globalLibraryViewDaySchedules"
+                    :key="`preview-day-${day.name}`"
+                    class="global-library-inline-preview__day"
+                  >
+                    <header class="global-library-inline-preview__day-head">
+                      <h5>{{ day.name || 'Unscheduled' }}</h5>
+                      <span>{{ day.exercises.length }} exercise{{ day.exercises.length === 1 ? '' : 's' }}</span>
+                    </header>
+
+                    <div v-if="day.exercises.length" class="global-library-inline-preview__day-table-wrap">
+                      <table class="table align-middle mb-0 global-library-inline-preview__day-table">
+                        <thead>
+                          <tr>
+                            <th class="global-library-inline-preview__image-col">Image</th>
+                            <th>Exercise</th>
+                            <th v-if="previewDayHasStrengthFields(day.exercises)">Sets</th>
+                            <th v-if="previewDayHasStrengthFields(day.exercises)">Reps</th>
+                            <th v-if="previewDayHasStrengthFields(day.exercises)">Weight</th>
+                            <th v-if="previewDayHasStrengthFields(day.exercises)">Rest</th>
+                            <th v-if="previewDayHasCardioFields(day.exercises)">Duration</th>
+                            <th v-if="previewDayHasCardioFields(day.exercises)">Distance</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="(exercise, index) in day.exercises" :key="`preview-exercise-${day.name}-${exercise.id || exercise.exerciseId || index}`">
+                            <td class="global-library-inline-preview__image-cell">
+                              <img
+                                :src="resolveExerciseImage(exercise)"
+                                class="global-library-inline-preview__exercise-thumb"
+                                :alt="`${exercise.name || exercise.ExerciseTitle || 'Exercise'} image`"
+                                loading="lazy"
+                                decoding="async"
+                                @error="onPreviewExerciseImageError"
+                              />
+                            </td>
+                            <td class="global-library-inline-preview__exercise-cell">
+                              <span class="global-library-inline-preview__exercise-name">{{ exercise.name || exercise.ExerciseTitle || 'Unnamed Exercise' }}</span>
+                            </td>
+                            <td v-if="previewDayHasStrengthFields(day.exercises)">{{ resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.sets) ? Number(exercise.sets) : '—' }}</td>
+                            <td v-if="previewDayHasStrengthFields(day.exercises)">{{ resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.reps) ? Number(exercise.reps) : '—' }}</td>
+                            <td v-if="previewDayHasStrengthFields(day.exercises)">{{ resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.weight) ? `${Number(exercise.weight)} lb` : '—' }}</td>
+                            <td v-if="previewDayHasStrengthFields(day.exercises)">{{ resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.restTime) ? `${Number(exercise.restTime)} sec` : '—' }}</td>
+                            <td v-if="previewDayHasCardioFields(day.exercises)">{{ resolvePreviewExerciseType(exercise) === 'cardio' && hasValue(exercise.duration) ? `${Number(exercise.duration)} min` : '—' }}</td>
+                            <td v-if="previewDayHasCardioFields(day.exercises)">{{ resolvePreviewExerciseType(exercise) === 'cardio' && hasValue(exercise.distance) ? `${Number(exercise.distance)} mi` : '—' }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <p v-else class="global-library-inline-preview__empty-day">No exercises assigned to this day.</p>
+
+                    <div v-if="day.exercises.length" class="global-library-inline-preview__day-cards">
+                      <article
+                        v-for="(exercise, index) in day.exercises"
+                        :key="`preview-card-${day.name}-${exercise.id || exercise.exerciseId || index}`"
+                        class="global-library-inline-preview__exercise-card"
+                      >
+                        <div class="global-library-inline-preview__exercise-card-head">
+                          <img
+                            :src="resolveExerciseImage(exercise)"
+                            class="global-library-inline-preview__exercise-thumb"
+                            :alt="`${exercise.name || exercise.ExerciseTitle || 'Exercise'} image`"
+                            loading="lazy"
+                            decoding="async"
+                            @error="onPreviewExerciseImageError"
+                          />
+                          <h6>{{ exercise.name || exercise.ExerciseTitle || 'Unnamed Exercise' }}</h6>
+                        </div>
+                        <div class="global-library-inline-preview__exercise-card-grid">
+                          <span v-if="resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.sets)"><strong>Sets:</strong> {{ Number(exercise.sets) }}</span>
+                          <span v-if="resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.reps)"><strong>Reps:</strong> {{ Number(exercise.reps) }}</span>
+                          <span v-if="resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.weight)"><strong>Weight:</strong> {{ Number(exercise.weight) }} lb</span>
+                          <span v-if="resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.restTime)"><strong>Rest:</strong> {{ Number(exercise.restTime) }} sec</span>
+                          <span v-if="resolvePreviewExerciseType(exercise) === 'cardio' && hasValue(exercise.duration)"><strong>Duration:</strong> {{ Number(exercise.duration) }} min</span>
+                          <span v-if="resolvePreviewExerciseType(exercise) === 'cardio' && hasValue(exercise.distance)"><strong>Distance:</strong> {{ Number(exercise.distance) }} mi</span>
+                        </div>
+                      </article>
+                    </div>
+                  </article>
+                </section>
+
+                <div class="global-library-inline-preview__actions global-library-inline-preview__actions--bottom">
                   <button
-                    v-for="(slide, index) in featuredWorkoutPlanSlides"
-                    :key="slide.title"
                     type="button"
-                    role="tab"
-                    :aria-selected="currentWorkoutPlanSlide === index"
-                    :aria-label="`Go to ${slide.title}`"
-                    :class="['plan-carousel__dot', { 'plan-carousel__dot--active': currentWorkoutPlanSlide === index }]"
-                    @click="setWorkoutPlanSlide(index)"
-                  ></button>
+                    class="btn btn-sm global-plans-table__btn global-plans-table__btn--open"
+                    @click="closeGlobalLibraryInlinePreview"
+                  >
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                    <span>Back to Plans</span>
+                  </button>
+
+                  <button
+                    v-if="canUsePlanFromPreview"
+                    type="button"
+                    class="btn btn-sm global-plans-table__btn global-plans-table__btn--edit"
+                    :disabled="cloningFeaturedPlanId === globalLibraryViewPlan?.planId"
+                    @click="triggerUsePlanFromPreview"
+                  >
+                    <i v-if="cloningFeaturedPlanId === globalLibraryViewPlan?.planId" class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                    <i v-else class="fa-solid fa-copy" aria-hidden="true"></i>
+                    <span>{{ cloningFeaturedPlanId === globalLibraryViewPlan?.planId ? 'Using...' : 'Use Plan' }}</span>
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <template v-else>
+            <section v-if="canAccessGlobalManagement" class="marketplace-admin-tools" aria-label="Admin tools">
+              <div class="marketplace-admin-tools__title">ADMIN TOOLS</div>
+              <div class="marketplace-admin-tools__row">
+                <div class="marketplace-admin-tools__label-wrap">
+                  <span class="marketplace-admin-tools__label">Enable Plan Management</span>
+                  <span class="marketplace-admin-tools__helper">View and manage plans you are authorized to edit.</span>
+                </div>
+                <button
+                  type="button"
+                  class="marketplace-admin-tools__toggle"
+                  :class="{
+                    'marketplace-admin-tools__toggle--on': showManagedMarketplacePlans,
+                    'marketplace-admin-tools__toggle--off': !showManagedMarketplacePlans,
+                  }"
+                  role="switch"
+                  :aria-checked="showManagedMarketplacePlans ? 'true' : 'false'"
+                  @click="showManagedMarketplacePlans = !showManagedMarketplacePlans"
+                >
+                  <span
+                    class="marketplace-admin-tools__toggle-track"
+                    :class="{ 'marketplace-admin-tools__toggle-track--on': showManagedMarketplacePlans }"
+                    aria-hidden="true"
+                  >
+                    <span class="marketplace-admin-tools__toggle-thumb"></span>
+                  </span>
+                  <span class="marketplace-admin-tools__toggle-value">{{ showManagedMarketplacePlans ? 'ON' : 'OFF' }}</span>
+                </button>
+              </div>
+            </section>
+
+            <div class="marketplace-toolbar">
+              <label class="marketplace-search-field" aria-label="Search workout plans">
+                <i class="fa-solid fa-magnifying-glass marketplace-search-field__icon" aria-hidden="true"></i>
+                <input
+                  v-model="marketplaceSearchQuery"
+                  type="text"
+                  class="marketplace-search-field__input"
+                  placeholder="Search workout plans..."
+                  autocomplete="off"
+                />
+                <button
+                  v-if="marketplaceSearchQuery.trim()"
+                  type="button"
+                  class="marketplace-search-field__clear"
+                  aria-label="Clear search"
+                  @click="clearMarketplaceSearch"
+                >
+                  <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </button>
+              </label>
+
+              <button
+                type="button"
+                class="marketplace-filters-toggle"
+                :aria-expanded="marketplaceFiltersOpen"
+                :aria-label="marketplaceFiltersOpen ? 'Hide advanced filters' : 'Show advanced filters'"
+                @click="marketplaceFiltersOpen = !marketplaceFiltersOpen"
+              >
+                <i class="fa-solid fa-sliders marketplace-filters-toggle__icon" aria-hidden="true"></i>
+                <span class="marketplace-filters-toggle__label">Filters</span>
+                <span v-if="activeMarketplaceFilterCount > 0" class="marketplace-filters-toggle__count">{{ activeMarketplaceFilterCount }}</span>
+              </button>
+            </div>
+
+            <div v-if="marketplaceFiltersOpen" class="marketplace-filters-panel" aria-live="polite">
+              <div class="marketplace-filters-panel__header">
+                <p class="marketplace-filters-panel__summary">
+                  Showing {{ filteredMarketplacePlans.length }} of {{ activeMarketplacePlans.length }} plans
+                </p>
+                <button
+                  type="button"
+                  class="marketplace-filters-panel__clear"
+                  :disabled="!hasMarketplaceActiveFilters"
+                  @click="clearMarketplaceFilters"
+                >
+                  Clear Filters
+                </button>
+              </div>
+
+              <div class="marketplace-filters-panel__grid">
+                <label class="marketplace-filter-field">
+                  <span>Source</span>
+                  <select v-model="marketplaceFilters.source" :disabled="!marketplaceFilterCapabilities.source">
+                    <option value="all">All Sources</option>
+                    <option value="global">WorkoutAtlas Global</option>
+                    <option value="trainer">Trainer</option>
+                    <option value="community">Community</option>
+                  </select>
+                </label>
+
+                <label class="marketplace-filter-field">
+                  <span>Workout Type</span>
+                  <select v-model="marketplaceFilters.workoutType" :disabled="!marketplaceFilterCapabilities.workoutType">
+                    <option value="all">All</option>
+                    <option value="strength">Strength</option>
+                    <option value="cardio">Cardio</option>
+                    <option value="other">Other</option>
+                  </select>
+                </label>
+
+                <label class="marketplace-filter-field">
+                  <span>Fitness Goal / Category</span>
+                  <select v-model="marketplaceFilters.category" :disabled="!marketplaceFilterCapabilities.category">
+                    <option
+                      v-for="option in categoryFilterOptions"
+                      :key="`marketplace-category-filter-${option.value}`"
+                      :value="option.value"
+                    >
+                      {{ option.label }}
+                    </option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <p v-if="!marketplacePlansLoading && hasActiveMarketplacePlans" class="marketplace-results-count" aria-live="polite">
+              {{ filteredMarketplacePlans.length }} / {{ activeMarketplacePlans.length }} plans
+            </p>
+
+            <div v-if="marketplacePlansLoading" class="builder-empty planner-empty planner-empty--loading" aria-live="polite">
+              <div class="planner-empty__icon">📋</div>
+              <h4>{{ showManagedMarketplacePlans ? 'Loading Managed Plans' : 'Loading Published Plans' }}</h4>
+              <p>{{ showManagedMarketplacePlans ? 'Pulling plans you are authorized to manage now.' : 'Pulling discoverable workout plans now.' }}</p>
+            </div>
+
+            <div v-else-if="marketplaceFiltersHaveNoMatches" class="builder-empty planner-empty" aria-live="polite">
+              <div class="planner-empty__icon">🔎</div>
+              <h4>No workout plans match your search.</h4>
+              <p>Try another keyword or adjust filters to view available plans.</p>
+              <div class="marketplace-search-empty__actions">
+                <button
+                  v-if="marketplaceSearchQuery.trim()"
+                  type="button"
+                  class="btn btn-sm marketplace-search-empty__clear"
+                  @click="clearMarketplaceSearch"
+                >
+                  Clear Search
+                </button>
+                <button
+                  v-if="hasMarketplaceActiveFilters"
+                  type="button"
+                  class="btn btn-sm marketplace-search-empty__clear"
+                  @click="clearMarketplaceFilters"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+
+            <div v-else-if="!hasActiveMarketplacePlans" class="builder-empty planner-empty" aria-live="polite">
+              <div class="planner-empty__icon">📭</div>
+              <h4>{{ showManagedMarketplacePlans ? 'No Managed Plans Available' : 'No Published Plans Available' }}</h4>
+              <p>{{ showManagedMarketplacePlans ? 'Managed plans will appear here when your account is authorized for them.' : 'Discoverable workout plans will appear here.' }}</p>
+            </div>
+
+            <div v-else class="global-library-table-wrap" aria-live="polite">
+              <div class="table-responsive global-library-table-scroll">
+                <table class="table align-middle mb-0 global-library-table">
+                  <thead>
+                    <tr>
+                      <th>Plan Name</th>
+                      <th>Category</th>
+                      <th>Duration</th>
+                      <th>Exercises</th>
+                      <th class="text-end global-library-table__actions-col">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="plan in filteredMarketplacePlans" :key="`library-${plan.planId || plan.name}`">
+                      <td>
+                        <div class="marketplace-plan-name-cell">
+                          <img
+                            :src="plan.coverImageUrl || buildPlanCoverImageUrl(plan.planId)"
+                            class="marketplace-plan-thumb"
+                            :alt="`${plan.name || 'Workout plan'} cover`"
+                            loading="lazy"
+                            decoding="async"
+                            @error="onPlanCoverImageError"
+                          />
+                          <div class="marketplace-plan-name-content">
+                            <span class="fw-semibold">{{ plan.name || 'Untitled Workout' }}</span>
+                            <span class="marketplace-plan-inline-status">[Status - {{ formatMarketplaceStatusLabel(plan) }}]</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>{{ plan.type || 'General Fitness' }}</td>
+                      <td>{{ Number(plan.estimatedDuration || 0) > 0 ? `${Number(plan.estimatedDuration || 0)} min` : '—' }}</td>
+                      <td>{{ Number(plan.exerciseCount || 0) }}</td>
+                      <td class="text-end global-library-table__actions-cell">
+                        <div class="global-plans-table__actions global-plans-table__actions--icon-only">
+                          <button
+                            type="button"
+                            class="btn btn-sm global-plans-table__btn global-plans-table__btn--open"
+                            title="View Plan"
+                            aria-label="View Plan"
+                            @click="openGlobalLibraryViewModal(plan)"
+                          >
+                            <i class="fa-solid fa-eye" aria-hidden="true"></i>
+                          </button>
+                          <template v-if="showManagedMarketplacePlans">
+                            <button
+                              type="button"
+                              class="btn btn-sm global-plans-table__btn global-plans-table__btn--edit"
+                              title="Edit Plan"
+                              aria-label="Edit Plan"
+                              @click="viewGlobalPlanSummary(plan)"
+                            >
+                              <i class="fa-solid fa-pen" aria-hidden="true"></i>
+                            </button>
+                            <button
+                              type="button"
+                              class="btn btn-sm global-plans-table__btn global-plans-table__btn--delete"
+                              title="Delete Plan"
+                              aria-label="Delete Plan"
+                              :disabled="globalPlansDeletingId === plan.planId"
+                              @click="requestDeleteGlobalPlan(plan)"
+                            >
+                              <i v-if="globalPlansDeletingId === plan.planId" class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                              <i v-else class="fa-solid fa-trash" aria-hidden="true"></i>
+                            </button>
+                          </template>
+                          <button
+                            v-else
+                            type="button"
+                            class="btn btn-sm global-plans-table__btn global-plans-table__btn--edit"
+                            :title="cloningFeaturedPlanId === plan.planId ? 'Using Global Workout Plan' : 'Use Global Workout Plan (Create Personal Copy)'"
+                            :aria-label="cloningFeaturedPlanId === plan.planId ? 'Using Global Workout Plan' : 'Use Global Workout Plan (Create Personal Copy)'"
+                            :disabled="cloningFeaturedPlanId === plan.planId"
+                            @click="selectTemplatePlan(plan)"
+                          >
+                            <i v-if="cloningFeaturedPlanId === plan.planId" class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                            <i v-else class="fa-solid fa-copy" aria-hidden="true"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="global-library-mobile-list" aria-live="polite">
+              <article
+                v-for="plan in filteredMarketplacePlans"
+                :key="`library-mobile-${plan.planId || plan.name}`"
+                class="global-library-mobile-card"
+              >
+                <img
+                  :src="plan.coverImageUrl || buildPlanCoverImageUrl(plan.planId)"
+                  class="global-library-mobile-card__cover"
+                  :alt="`${plan.name || 'Workout plan'} cover`"
+                  loading="lazy"
+                  decoding="async"
+                  @error="onPlanCoverImageError"
+                />
+                <h5 class="global-library-mobile-card__name">{{ plan.name || 'Untitled Workout' }}</h5>
+
+                <div v-if="getMarketplaceStatusBadges(plan).length" class="marketplace-status-badges marketplace-status-badges--mobile">
+                  <span
+                    v-for="badge in getMarketplaceStatusBadges(plan)"
+                    :key="`mobile-status-${plan.planId || plan.name}-${badge.key}`"
+                    :class="['marketplace-status-badge', `marketplace-status-badge--${badge.tone}`]"
+                  >
+                    {{ badge.label }}
+                  </span>
                 </div>
 
-                <button
-                  v-if="hasMultipleFeaturedWorkoutPlanSlides"
-                  type="button"
-                  class="plan-carousel__nav"
-                  @click="goToNextWorkoutPlanSlide"
-                >
-                  Next
-                </button>
-              </div>
+                <div class="global-library-mobile-card__meta">
+                  <span>
+                    <strong>Source:</strong>
+                    {{ formatMarketplaceSourceLabel(plan) }}
+                  </span>
+                  <span v-if="plan.type || plan.category">
+                    <strong>Category:</strong>
+                    {{ plan.type || plan.category }}
+                  </span>
+                  <span v-if="Number(plan.estimatedDuration || 0) > 0">
+                    <strong>Duration:</strong>
+                    {{ Number(plan.estimatedDuration || 0) }} min
+                  </span>
+                  <span>
+                    <strong>Exercises:</strong>
+                    {{ Number(plan.exerciseCount || 0) }}
+                  </span>
+                </div>
 
-              <p class="plan-carousel__selected">
-                Selected Plan:
-                <strong>{{ selectedTemplatePlanName || 'None' }}</strong>
-              </p>
+                <div :class="['global-library-mobile-card__actions', { 'global-library-mobile-card__actions--manage': showManagedMarketplacePlans }]">
+                  <button
+                    type="button"
+                    class="btn btn-sm global-plans-table__btn global-plans-table__btn--open"
+                    title="View Global Workout Plan (Read-Only)"
+                    aria-label="View Global Workout Plan (Read-Only)"
+                    @click="openGlobalLibraryViewModal(plan)"
+                  >
+                    <i class="fa-solid fa-eye" aria-hidden="true"></i>
+                    <span>View</span>
+                  </button>
+
+                  <template v-if="showManagedMarketplacePlans">
+                    <button
+                      type="button"
+                      class="btn btn-sm global-plans-table__btn global-plans-table__btn--edit"
+                      title="Edit Global Workout Plan"
+                      aria-label="Edit Global Workout Plan"
+                      @click="viewGlobalPlanSummary(plan)"
+                    >
+                      <i class="fa-solid fa-pen" aria-hidden="true"></i>
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm global-plans-table__btn global-plans-table__btn--delete"
+                      :disabled="globalPlansDeletingId === plan.planId"
+                      @click="requestDeleteGlobalPlan(plan)"
+                    >
+                      <i v-if="globalPlansDeletingId === plan.planId" class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                      <i v-else class="fa-solid fa-trash" aria-hidden="true"></i>
+                      <span>{{ globalPlansDeletingId === plan.planId ? 'Deleting...' : 'Delete' }}</span>
+                    </button>
+                  </template>
+
+                  <button
+                    v-else
+                    type="button"
+                    class="btn btn-sm global-plans-table__btn global-plans-table__btn--edit"
+                    :title="cloningFeaturedPlanId === plan.planId ? 'Using Global Workout Plan' : 'Use Global Workout Plan (Create Personal Copy)'"
+                    :aria-label="cloningFeaturedPlanId === plan.planId ? 'Using Global Workout Plan' : 'Use Global Workout Plan (Create Personal Copy)'"
+                    :disabled="cloningFeaturedPlanId === plan.planId"
+                    @click="selectTemplatePlan(plan)"
+                  >
+                    <i v-if="cloningFeaturedPlanId === plan.planId" class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                    <i v-else class="fa-solid fa-copy" aria-hidden="true"></i>
+                    <span>{{ cloningFeaturedPlanId === plan.planId ? 'Using...' : 'Use Plan' }}</span>
+                  </button>
+                </div>
+              </article>
             </div>
+            </template>
           </div>
 
-          <div v-show="planSourceTab === 'paid'" class="plan-source-panel" aria-live="polite">
-            <div class="builder-empty planner-empty planner-empty--compact">
-              <div class="planner-empty__icon">💳</div>
-              <h4>Paid / Shared Plans</h4>
-              <p>Paid and shared workout plans will appear here.</p>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -2177,8 +4978,8 @@ watch(
         </div>
       </section>
 
-      <!-- ── TAB 5: Manage Global Plans (Admin Only) ───────────── -->
-      <section v-if="isAdminUser" v-show="builderTab === 'global'" class="builder-section ai-suggest-section">
+      <!-- ── TAB 5: Manage Global Plans (Authorized Creators) ──── -->
+      <section v-if="canAccessGlobalManagement" v-show="builderTab === 'global'" class="builder-section ai-suggest-section">
         <div class="ai-suggest-body ai-suggest-card global-plans-shell">
           <h4>Manage Global Plans</h4>
           <nav class="wa-h-tabs global-subtabs" role="tablist" aria-label="Global workout plans sub sections">
@@ -2193,6 +4994,7 @@ watch(
               <span>Global Plans</span>
             </button>
             <button
+              v-if="canViewAdminUserPlans"
               type="button"
               role="tab"
               :aria-selected="globalPlansSubTab === 'user'"
@@ -2248,7 +5050,7 @@ watch(
                             <i class="fa-solid fa-eye" aria-hidden="true"></i>
                             <span>View</span>
                           </button>
-                          <button type="button" class="btn btn-sm global-plans-table__btn global-plans-table__btn--delete" :disabled="globalPlansDeletingId === plan.planId" @click="deleteGlobalPlan(plan)">
+                          <button type="button" class="btn btn-sm global-plans-table__btn global-plans-table__btn--delete" :disabled="globalPlansDeletingId === plan.planId" @click="requestDeleteGlobalPlan(plan)">
                             <i v-if="globalPlansDeletingId === plan.planId" class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
                             <i v-else class="fa-solid fa-trash" aria-hidden="true"></i>
                             <span>Delete</span>
@@ -2264,7 +5066,7 @@ watch(
               </div>
             </div>
           </div>
-          <div v-show="globalPlansSubTab === 'user'" class="global-subtab-panel planner-empty" aria-live="polite">
+          <div v-if="canViewAdminUserPlans" v-show="globalPlansSubTab === 'user'" class="global-subtab-panel planner-empty" aria-live="polite">
             <div class="global-plans-embed">
               <div v-if="adminUserPlansError" class="global-plans-embed__feedback global-plans-embed__feedback--error">{{ adminUserPlansError }}</div>
               <div class="table-responsive">
@@ -2323,6 +5125,142 @@ watch(
       @add="addExerciseToWorkout"
     />
 
+    <!-- Save Workout Plan Modal -->
+    <transition name="modal-fade">
+      <div v-if="showSaveWorkoutPlanModal" class="save-workout-modal-backdrop" @click.self="closeSaveWorkoutPlanModal">
+        <div class="save-workout-modal" role="dialog" aria-modal="true" aria-labelledby="save-workout-modal-title">
+          <div class="save-workout-modal__header">
+            <h3 id="save-workout-modal-title">Save Workout Plan</h3>
+            <p>Choose how to save this Global workout plan.</p>
+          </div>
+
+          <div class="save-workout-modal__summary" aria-live="polite">
+            <div class="save-workout-modal__row"><span>Workout Plan Name</span><strong>{{ savePlanModalSummary.planName }}</strong></div>
+            <div class="save-workout-modal__row"><span>Current Publication Status</span><strong>{{ savePlanModalSummary.currentStatusLabel }}</strong></div>
+            <div class="save-workout-modal__row"><span>Selected Publication Status</span><strong>{{ savePlanModalSummary.selectedStatusLabel }}</strong></div>
+          </div>
+
+          <p v-if="savePlanModalSummary.selectedStatus === 'archived'" class="save-workout-modal__note">
+            Archived status is managed by the existing archive workflow and confirmation steps.
+          </p>
+
+          <div class="save-workout-modal__actions">
+            <button type="button" class="modal-btn modal-btn--draft" :disabled="saving || publishing" @click="saveGlobalPlanAsDraftFromModal">
+              {{ saving && !publishing ? 'Saving Draft...' : 'Save as Draft' }}
+            </button>
+            <button type="button" class="modal-btn modal-btn--publish-blue" :disabled="saving || publishing" @click="publishGlobalPlanFromModal">
+              {{ publishing ? 'Publishing...' : 'Publish' }}
+            </button>
+            <button type="button" class="modal-btn modal-btn--cancel" :disabled="saving || publishing" @click="closeSaveWorkoutPlanModal">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Publish Plan Confirmation Modal -->
+    <transition name="modal-fade">
+      <div v-if="showPublishPlanModal" class="publish-confirmation-backdrop" @click.self="closePublishPlanConfirmation">
+        <div class="publish-confirmation-modal" role="dialog" aria-modal="true" aria-labelledby="publish-plan-modal-title">
+          <div class="publish-confirmation-modal__header">
+            <div class="publish-confirmation-modal__icon" aria-hidden="true">✓</div>
+            <div>
+              <h3 id="publish-plan-modal-title">Publish Workout Plan?</h3>
+              <p>This workout plan will become available to eligible WorkoutAtlas users according to its visibility settings.</p>
+            </div>
+          </div>
+
+          <div class="publish-confirmation-modal__summary" aria-live="polite">
+            <div class="publish-confirmation-modal__row"><span>Plan Name</span><strong>{{ publishPlanSummary.planName }}</strong></div>
+            <div class="publish-confirmation-modal__row"><span>Plan Type</span><strong>{{ publishPlanSummary.planType }}</strong></div>
+            <div class="publish-confirmation-modal__row"><span>Workout Type</span><strong>{{ publishPlanSummary.workoutType }}</strong></div>
+            <div class="publish-confirmation-modal__row"><span>Category</span><strong>{{ publishPlanSummary.category }}</strong></div>
+            <div class="publish-confirmation-modal__row"><span>Plan Duration (Weeks)</span><strong>{{ publishPlanSummary.planDurationWeeks }}</strong></div>
+            <div class="publish-confirmation-modal__row"><span>Estimated Session Time</span><strong>{{ publishPlanSummary.estimatedSessionTime }}</strong></div>
+            <div class="publish-confirmation-modal__row"><span>Number of Workout Days</span><strong>{{ publishPlanSummary.workoutDays }}</strong></div>
+            <div class="publish-confirmation-modal__row"><span>Number of Exercises</span><strong>{{ publishPlanSummary.exerciseCount }}</strong></div>
+            <div class="publish-confirmation-modal__row"><span>Visibility</span><strong>{{ publishPlanSummary.visibility }}</strong></div>
+          </div>
+
+          <div class="publish-confirmation-modal__actions">
+            <button type="button" class="modal-btn modal-btn--cancel" @click="closePublishPlanConfirmation" :disabled="publishing">
+              Cancel
+            </button>
+            <button type="button" class="modal-btn modal-btn--publish" :disabled="publishing" @click="confirmPublishWorkoutPlan">
+              {{ publishing ? 'Publishing Plan...' : 'Publish Plan' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Delete Global Plan Confirmation Modal -->
+    <transition name="modal-fade">
+      <div
+        v-if="showGlobalDeletePlanModal"
+        class="global-delete-modal-backdrop"
+        @click.self="closeGlobalDeletePlanModal"
+      >
+        <div
+          class="global-delete-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="global-delete-modal-title"
+        >
+          <button
+            type="button"
+            class="global-delete-modal-close"
+            aria-label="Close delete dialog"
+            :disabled="Boolean(globalPlansDeletingId)"
+            @click="closeGlobalDeletePlanModal"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+
+          <div class="global-delete-modal-icon" aria-hidden="true">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+
+          <h3 id="global-delete-modal-title" class="global-delete-modal-title">
+            Delete Global Workout Plan?
+          </h3>
+
+          <p class="global-delete-modal-name">
+            {{ selectedGlobalPlanForDelete?.name || 'Untitled Workout' }}
+          </p>
+
+          <p class="global-delete-modal-copy">
+            Are you sure you want to permanently delete this workout plan? This action cannot be undone.
+          </p>
+
+          <p class="global-delete-modal-warning">
+            This global workout plan may be available to other users.
+          </p>
+
+          <div class="global-delete-modal-actions">
+            <button
+              type="button"
+              class="btn btn-secondary global-delete-modal-cancel"
+              :disabled="Boolean(globalPlansDeletingId)"
+              @click="closeGlobalDeletePlanModal"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="btn btn-danger global-delete-modal-confirm"
+              :disabled="globalPlansDeletingId === selectedGlobalPlanForDelete?.planId"
+              @click="confirmDeleteGlobalPlan"
+            >
+              <span v-if="globalPlansDeletingId === selectedGlobalPlanForDelete?.planId">Deleting...</span>
+              <span v-else>Delete Global Plan</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
     <!-- Delete Day Confirmation Modal -->
     <transition name="modal-fade">
       <div v-if="showDeleteModal" class="delete-modal-backdrop" @click.self="cancelDeleteDay">
@@ -2359,6 +5297,13 @@ watch(
   gap: 16px;
   width: 100%;
   min-width: 0;
+}
+
+/* Stage 1: remove inherited right gutter that shows as a stray strip on Workout Builder */
+.workout-builder-page .app-page-canvas.app-inner-shell.workout-builder-canvas {
+  margin-right: 0;
+  padding-right: 0;
+  background: var(--wa-shell-surface, #121923);
 }
 
 /* ── Tab Bar ──────────────────────────────────────────────────── */
@@ -2583,6 +5528,106 @@ watch(
   padding: 16px;
 }
 
+.publication-status-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin: 10px 0 0;
+}
+
+.publication-status-wrap--create {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 4px 0 0;
+}
+
+.publication-status-wrap--create .publication-status-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  max-width: 320px;
+  width: 100%;
+}
+
+.publication-status-wrap--create .publication-status-field__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #cbd5e1 !important;
+  opacity: 1;
+}
+
+.publication-status-wrap--create .publication-status-field select {
+  min-height: 36px;
+  width: 100%;
+  border: 1px solid #2e4a88;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.86rem;
+  color: #f8fafc;
+  background: #1e3a8a;
+}
+
+.publication-status-wrap--create .publication-status-field select:focus-visible {
+  outline: 2px solid rgba(148, 163, 184, 0.55);
+  outline-offset: 1px;
+}
+
+.publication-status-help {
+  margin: 8px 4px 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.publication-status-help--warn {
+  color: #92400e;
+}
+
+.publication-status-save {
+  justify-self: end;
+  align-self: end;
+}
+
+.global-featured-toggle {
+  margin: 10px 4px 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.42);
+  display: grid;
+  gap: 5px;
+}
+
+.global-featured-toggle__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.global-featured-toggle__label input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: #2563eb;
+}
+
+.global-featured-toggle__note {
+  margin: 0;
+  color: #dbeafe;
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.global-featured-toggle__hint {
+  margin: 0;
+  color: #bfdbfe;
+  font-size: 0.74rem;
+  line-height: 1.3;
+}
+
 .schedule-hub-head__actions {
   display: flex;
   align-items: center;
@@ -2659,6 +5704,10 @@ watch(
   min-width: 0;
 }
 
+.existing-plans-panel > * {
+  min-width: 0;
+}
+
 .existing-plans-panel__head h4 {
   margin: 0;
   color: #0f172a;
@@ -2698,6 +5747,40 @@ watch(
     flex-wrap: wrap;
   }
 }
+
+@media (max-width: 768px) {
+  .publication-status-actions {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 8px;
+  }
+
+  .publication-status-wrap--create {
+    padding-right: 0;
+  }
+
+  .publication-status-wrap--create .publication-status-field {
+    max-width: none;
+  }
+
+  .publication-status-save {
+    justify-self: end;
+    width: auto;
+  }
+}
+
+@media (max-width: 360px) {
+  .publication-status-actions {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .publication-status-save {
+    justify-self: stretch;
+    width: 100%;
+  }
+}
+
 .plan-carousel {
   border: 1px solid #dce5f3;
   border-radius: 16px;
@@ -2974,6 +6057,188 @@ watch(
   margin-top: 20px;
 }
 
+.plan-cover-panel {
+  margin-top: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 8px;
+  background: rgba(11, 22, 34, 0.64);
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.plan-cover-panel__header {
+  display: grid;
+  gap: 2px;
+}
+
+.plan-cover-panel__header h4 {
+  margin: 0;
+  color: #ecf6ff;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.plan-cover-panel__header small {
+  color: #c8d8f3;
+  font-size: 0.72rem;
+}
+
+.plan-cover-panel__content {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  align-items: center;
+  width: 100%;
+  overflow: hidden;
+}
+
+.plan-cover-main-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.plan-cover-preview-wrap {
+  width: 120px;
+  flex: 0 0 120px;
+}
+
+.plan-cover-preview {
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  object-fit: cover;
+  background: rgba(15, 23, 42, 0.72);
+  display: block;
+}
+
+.plan-cover-preview--placeholder {
+  color: #c8d8f3;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 10px;
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.plan-cover-actions {
+  display: grid;
+  gap: 8px;
+  align-content: center;
+  justify-items: stretch;
+  width: min(156px, 100%);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.plan-cover-actions-desktop {
+  display: grid;
+  gap: 8px;
+  justify-content: start;
+  width: 100%;
+}
+
+.plan-cover-action-row {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+
+.plan-cover-upload-input {
+  display: none;
+}
+
+.plan-cover-action,
+.plan-cover-replace-btn,
+.plan-cover-delete-btn {
+  min-height: 34px;
+  width: 100%;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.plan-cover-replace-btn {
+  border: 1px solid rgba(148, 163, 184, 0.62);
+  background: rgba(71, 85, 105, 0.55);
+  color: #ffffff;
+}
+
+.plan-cover-replace-btn:hover:not(:disabled) {
+  border-color: rgba(148, 163, 184, 0.8);
+  background: rgba(71, 85, 105, 0.72);
+}
+
+.plan-cover-delete-btn {
+  border: 1px solid var(--wa-btn-danger-border, #dc2626);
+  background: var(--wa-btn-danger, #3b1d2b);
+  color: #ffffff;
+}
+
+.plan-cover-delete-btn:hover:not(:disabled) {
+  border-color: var(--wa-btn-danger-border, #dc2626);
+  background: var(--wa-btn-danger-hover, #512334);
+}
+
+.plan-cover-action:disabled,
+.plan-cover-replace-btn:disabled,
+.plan-cover-delete-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.plan-cover-icon-btn {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  justify-content: center;
+}
+
+.plan-cover-progress {
+  margin: 0;
+  color: #dbeafe;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.plan-cover-feedback {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  font-weight: 700;
+  text-align: center;
+}
+
+.plan-cover-feedback--success {
+  color: #86efac;
+}
+
+.plan-cover-feedback--error {
+  color: #fecaca;
+}
+
+.plan-cover-feedback--warn {
+  color: #fcd34d;
+}
+
+.plan-cover-feedback--info {
+  color: #dbeafe;
+}
+
 .panel-collapse-enter-active,
 .panel-collapse-leave-active {
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -2990,6 +6255,10 @@ watch(
   border-radius: 18px;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055);
   padding: 16px;
+}
+
+.planner-shell--publication {
+  margin-top: 14px;
 }
 
 .planner-panel-head {
@@ -3019,69 +6288,129 @@ watch(
 
 .planner-heading-group h3 {
   margin: 0;
-  color: #0f172a;
-  font-size: 1rem;
+  color: #b7cde8;
+  font-size: 0.72rem;
   font-weight: 800;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.25;
 }
 
 .planner-heading-group p {
-  margin: 4px 0 0;
-  color: #64748b;
-  font-size: 0.85rem;
+  margin: 2px 0 0;
+  color: #dfeaf9;
+  font-size: 0.76rem;
+  line-height: 1.3;
 }
 
 .planner-shell {
-  border: 1px solid #dbe4ef;
-  border-radius: 12px;
-  background: #f8fafc;
-  padding: 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  padding: 8px 0 0;
   display: grid;
-  gap: 10px;
-  margin-top: 12px;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .planner-tools {
   display: grid;
-  gap: 10px;
-  margin-bottom: 8px;
+  gap: 6px;
+  margin-bottom: 4px;
   min-width: 0;
 }
 
-.planner-mode-toggle {
-  width: 100%;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  border: 1px solid #dbe4ef;
-  border-radius: 12px;
-  background: #f8fafc;
-  padding: 4px;
+.planner-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
   gap: 6px;
+  min-width: 0;
+}
+
+.planner-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.planner-mode-pill-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.planner-save-top {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.planner-mode-toggle {
+  width: min(260px, 100%);
+  max-width: 100%;
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.28);
+  padding: 4px;
+  gap: 4px;
   min-width: 0;
   box-sizing: border-box;
 }
 
 .planner-mode-btn {
-  border: none;
-  background: transparent;
-  color: #334155;
-  border-radius: 9px;
-  min-height: 40px;
-  padding: 8px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  background: rgba(30, 41, 59, 0.74);
+  color: #ffffff;
+  border-radius: 5px;
+  min-height: 36px;
+  width: 100%;
+  min-width: 0;
+  padding: 0 12px;
   font-weight: 700;
-  font-size: 0.88rem;
+  font-size: 0.78rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease;
 }
 
 .planner-mode-btn.active {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #1d4ed8;
+}
+
+.planner-mode-btn:hover {
+  background: rgba(51, 65, 85, 0.86);
+}
+
+.planner-mode-btn.active:hover {
+  background: #1d4ed8;
 }
 
 .planner-group-editor {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
+  grid-template-columns: max-content minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 6px;
   min-width: 0;
+}
+
+.planner-group-editor__label {
+  color: #ecf6ff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .planner-feedback {
@@ -3095,25 +6424,32 @@ watch(
 }
 
 .planner-group-editor input {
-  border: 1px solid #d6dee9;
-  border-radius: 12px;
-  min-height: 46px;
-  padding: 11px 12px;
-  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  border-radius: 6px;
+  min-height: 36px;
+  padding: 6px 10px;
+  background: linear-gradient(180deg, rgba(15, 28, 46, 0.9), rgba(11, 22, 34, 0.92));
   width: 100%;
-  max-width: 100%;
+  max-width: none;
   min-width: 0;
+  flex: initial;
   box-sizing: border-box;
+  color: #ecf6ff;
+  font-size: 0.82rem;
 }
 
 .planner-group-add {
   border: 1px solid #1d4ed8;
-  border-radius: 12px;
-  min-height: 46px;
-  padding: 0 14px;
+  border-radius: 6px;
+  min-height: 36px;
+  padding: 0 12px;
   background: #2563eb;
   color: #fff;
   font-weight: 700;
+  font-size: 0.78rem;
+  line-height: 1;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .planner-group-save {
@@ -3129,15 +6465,15 @@ watch(
 .planner-helper-text {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
-  border-radius: 10px;
-  background: #f0f9ff;
-  border: 1px solid #bfdbfe;
-  color: #1e40af;
-  font-size: 0.88rem;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(11, 22, 34, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.36);
+  color: #dfeaf9;
+  font-size: 0.78rem;
   font-weight: 600;
-  margin-top: 12px;
+  margin-top: 6px;
 }
 
 .planner-helper-text i {
@@ -3156,9 +6492,9 @@ watch(
 }
 
 .workout-day-card {
-  border: 1px solid #dbe4f0;
+  border: 1px solid #38517C;
   border-radius: 10px;
-  background: #ffffff;
+  background: transparent;
   overflow: visible;
   transition: all 0.2s ease;
   min-width: 0;
@@ -3168,9 +6504,9 @@ watch(
 }
 
 .workout-day-card.active {
-  border-color: #2563eb;
-  background: #f8fbff;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.10);
+  border-color: #4772BA;
+  background: transparent;
+  box-shadow: none;
 }
 
 .workout-day-card.is-menu-open {
@@ -3180,7 +6516,8 @@ watch(
 .workout-day-header {
   width: 100%;
   border: none;
-  background: transparent;
+  background: linear-gradient(90deg, #172D68 0%, #202F58 50%, #2D3957 100%);
+  border-radius: 12px 12px 0 0;
   padding: 10px;
   display: flex;
   align-items: center;
@@ -3194,11 +6531,11 @@ watch(
 }
 
 .workout-day-header:hover {
-  background: rgba(0, 0, 0, 0.02);
+  background: linear-gradient(90deg, #172D68 0%, #202F58 50%, #2D3957 100%);
 }
 
 .workout-day-card.active .workout-day-header {
-  background: transparent;
+  background: linear-gradient(90deg, #172D68 0%, #202F58 50%, #2D3957 100%);
 }
 
 .day-title-group {
@@ -3213,7 +6550,7 @@ watch(
 .day-title-group strong {
   font-size: 0.96rem;
   font-weight: 700;
-  color: #0f172a;
+  color: #ffffff;
 }
 
 .day-title-editable {
@@ -3221,30 +6558,110 @@ watch(
   border-radius: 7px;
   padding: 2px 6px;
   margin-left: -6px;
+  color: #ffffff;
+  background: transparent;
   transition: background-color 0.15s ease;
 }
 
 .day-title-editable:hover {
-  background: #eef2ff;
+  background: transparent;
 }
 
+.day-title-editable:active,
+.day-title-editable:focus,
+.day-title-editable:focus-visible {
+  background: transparent;
+  color: #ffffff;
+  outline: none;
+}
+
+.workout-builder-page .day-title-inline-input,
 .day-title-inline-input {
   min-width: 132px;
   max-width: 220px;
-  border: 1px solid #93c5fd;
+  border: 1px solid #60a5fa !important;
   border-radius: 8px;
   min-height: 30px;
   padding: 4px 8px;
   font-size: 0.9rem;
   font-weight: 700;
-  color: #0f172a;
-  background: #ffffff;
+  color: #ffffff !important;
+  background: #1b2444 !important;
 }
 
-.day-title-inline-input:focus {
+.workout-builder-page .day-title-inline-input:focus,
+.workout-builder-page .day-title-inline-input:focus-visible,
+.day-title-inline-input:focus,
+.day-title-inline-input:focus-visible {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+  border-color: #60a5fa !important;
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.28) !important;
+}
+
+.day-title-inline-error {
+  flex-basis: 100%;
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.3;
+  color: #F87171;
+}
+
+.day-rename-btn {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.42);
+  border-radius: 6px;
+  background: rgba(248, 250, 252, 0.92);
+  color: #475569;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease;
+}
+
+.day-rename-btn:hover,
+.day-rename-btn:focus-visible {
+  border-color: #60a5fa;
+  color: #1d4ed8;
+  background: #eff6ff;
+  outline: none;
+}
+
+.day-rename-btn i {
+  font-size: 0.72rem;
+}
+
+.day-title-inline-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.day-title-inline-btn {
+  min-height: 26px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.42);
+  background: #f8fafc;
+  color: #1f2937;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.day-title-inline-btn--save {
+  border-color: #16a34a;
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.day-title-inline-btn--cancel {
+  border-color: #475569;
+  background: #475569;
+  color: #ffffff;
 }
 
 .selected-badge {
@@ -3263,10 +6680,21 @@ watch(
   font-weight: 600;
 }
 
-.day-header-actions {
-  display: flex;
+.day-header-controls {
+  display: inline-flex;
   align-items: center;
+  gap: 10px;
   margin-left: auto;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.day-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .day-actions {
@@ -3367,26 +6795,71 @@ watch(
 }
 
 .chevron-btn {
-  width: 32px;
-  height: 32px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  background: #f8fafc;
-  color: #475569;
-  display: grid;
-  place-items: center;
-  transition: all 0.2s ease;
+  all: unset;
+  width: 28px;
+  height: 28px;
+  min-width: 0;
+  min-height: 0;
+  border: none;
+  border-radius: 4px !important;
+  background: transparent;
+  color: #ffffff;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .chevron-btn:hover {
-  background: #e2e8f0;
-  border-color: #94a3b8;
+  background: transparent;
 }
 
-.workout-day-card.active .chevron-btn {
-  background: #dbeafe;
-  border-color: #93c5fd;
-  color: #1d4ed8;
+.chevron-btn:focus,
+.chevron-btn:focus-visible,
+.chevron-btn:active {
+  outline: none;
+  box-shadow: none;
+}
+
+.chevron-btn:focus-visible {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.55);
+}
+
+.accordion-chevron {
+  color: #ffffff;
+  transition: transform 0.18s ease;
+}
+
+.accordion-chevron--expanded {
+  transform: rotate(180deg);
+}
+
+/* Week view header polish (kept isolated from day view) */
+.workout-builder-page .workout-day-accordion--week .workout-day-header {
+  align-items: center;
+  min-height: 44px;
+}
+
+.workout-builder-page .workout-day-accordion--week .day-title-group {
+  align-items: center;
+}
+
+.workout-builder-page .workout-day-accordion--week .day-title-editable {
+  background: transparent;
+  color: #ffffff;
+  padding: 2px 8px;
+  border-radius: 7px;
+  margin-left: 0;
+  line-height: 1.2;
+}
+
+.workout-builder-page .workout-day-accordion--week .day-title-editable:hover {
+  background: transparent;
 }
 
 /* ── Kebab menu (mobile only) ── */
@@ -3443,10 +6916,11 @@ watch(
   display: flex;
   align-items: center;
   gap: 10px;
+  border-radius: 0 !important;
   border: none;
   border-bottom: 1px solid #f1f5f9;
   background: transparent;
-  color: #334155;
+  color: #ffffff;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -3465,13 +6939,14 @@ watch(
   color: #64748b;
 }
 .day-kebab-item--delete {
-  color: #dc2626;
+  color: #ffffff;
 }
 .day-kebab-item--delete i {
   color: #dc2626;
 }
 .day-kebab-item:disabled {
-  opacity: 0.4;
+  background: rgba(148, 163, 184, 0.12);
+  color: #ffffff;
   cursor: not-allowed;
 }
 
@@ -3645,6 +7120,210 @@ watch(
   justify-content: flex-end;
 }
 
+.publish-confirmation-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.68);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 16px;
+}
+
+.save-workout-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.74);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2100;
+  padding: 16px;
+}
+
+.save-workout-modal {
+  width: min(520px, 100%);
+  background: #152238;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.45);
+  overflow: hidden;
+  animation: modalSlideIn 0.25s ease;
+}
+
+.save-workout-modal__header {
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.save-workout-modal__header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.save-workout-modal__header p {
+  margin: 6px 0 0;
+  font-size: 0.84rem;
+  color: #cbd5e1;
+}
+
+.save-workout-modal__summary {
+  padding: 10px 18px 0;
+  display: grid;
+  gap: 0;
+}
+
+.save-workout-modal__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  color: #dbeafe;
+  font-size: 0.86rem;
+}
+
+.save-workout-modal__row:last-child {
+  border-bottom: none;
+}
+
+.save-workout-modal__row span {
+  color: #bfd2ef;
+}
+
+.save-workout-modal__row strong {
+  color: #f8fafc;
+  font-weight: 700;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.save-workout-modal__note {
+  margin: 8px 18px 0;
+  color: #fde68a;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.save-workout-modal__actions {
+  padding: 14px 18px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.modal-btn--draft {
+  border: 1px solid #16a34a;
+  background: #16a34a;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.24);
+}
+
+.modal-btn--draft:hover {
+  background: #15803d;
+}
+
+.modal-btn--publish-blue {
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.24);
+}
+
+.modal-btn--publish-blue:hover {
+  background: #1d4ed8;
+}
+
+.publish-confirmation-modal {
+  width: min(540px, 100%);
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+  overflow: hidden;
+  animation: modalSlideIn 0.3s ease;
+}
+
+.publish-confirmation-modal__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 22px 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.publish-confirmation-modal__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+  font-size: 1.25rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.publish-confirmation-modal__header h3 {
+  margin: 0 0 6px;
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.publish-confirmation-modal__header p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.publish-confirmation-modal__summary {
+  padding: 12px 22px 0;
+  display: grid;
+  gap: 0;
+}
+
+.publish-confirmation-modal__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 0.92rem;
+}
+
+.publish-confirmation-modal__row:last-child {
+  border-bottom: none;
+}
+
+.publish-confirmation-modal__row span {
+  color: #475569;
+}
+
+.publish-confirmation-modal__row strong {
+  color: #0f172a;
+  font-weight: 700;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.publish-confirmation-modal__actions {
+  padding: 16px 22px 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .modal-btn {
   border-radius: 10px;
   min-height: 42px;
@@ -3665,6 +7344,18 @@ watch(
   border-color: #94a3b8;
 }
 
+.modal-btn--publish {
+  border: 1px solid #16a34a;
+  background: #16a34a;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
+}
+
+.modal-btn--publish:hover {
+  background: #15803d;
+  box-shadow: 0 6px 16px rgba(22, 163, 74, 0.3);
+}
+
 .modal-btn--delete {
   border: 1px solid #dc2626;
   background: #dc2626;
@@ -3675,6 +7366,141 @@ watch(
 .modal-btn--delete:hover {
   background: #b91c1c;
   box-shadow: 0 6px 16px rgba(220, 38, 38, 0.3);
+}
+
+@media (max-width: 560px) {
+  .save-workout-modal {
+    width: min(100%, 420px);
+  }
+
+  .save-workout-modal__actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .save-workout-modal__actions .modal-btn {
+    width: 100%;
+  }
+}
+
+.global-delete-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2100;
+  padding: 16px;
+}
+
+.global-delete-modal {
+  position: relative;
+  width: min(100%, 430px);
+  background: #101d35;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 18px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.42);
+  padding: 28px 24px 20px;
+  color: #edf4ff;
+  box-sizing: border-box;
+  animation: modalSlideIn 0.24s ease;
+}
+
+.global-delete-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 28px !important;
+  min-width: 28px !important;
+  max-width: 28px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  flex: 0 0 28px;
+  border: 1px solid rgba(248, 113, 113, 0.62);
+  border-radius: 5px;
+  background: rgba(127, 29, 29, 0.88);
+  color: #ffe4e9;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-sizing: border-box;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.global-delete-modal-close:hover:not(:disabled) {
+  background: rgba(127, 29, 29, 0.96);
+  color: #ffffff;
+}
+
+.global-delete-modal-close i {
+  font-size: 0.82rem;
+}
+
+.global-delete-modal-icon {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  background: rgba(220, 53, 69, 0.14);
+  color: #ff6b7d;
+  font-size: 1.7rem;
+}
+
+.global-delete-modal-title {
+  margin: 0;
+  text-align: center;
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.global-delete-modal-name {
+  margin: 12px 0 10px;
+  text-align: center;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: #f8fbff;
+  word-break: break-word;
+}
+
+.global-delete-modal-copy,
+.global-delete-modal-warning {
+  margin: 0;
+  text-align: center;
+  color: #ffffff;
+  line-height: 1.55;
+  font-size: 0.97rem;
+}
+
+.global-delete-modal-warning {
+  margin-top: 10px;
+  color: #ffd9a8;
+  font-weight: 600;
+}
+
+.global-delete-modal-actions {
+  margin-top: 18px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.global-delete-modal-cancel {
+  min-width: 98px;
+  background: rgba(148, 163, 184, 0.18) !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: #f6f9ff !important;
+}
+
+.global-delete-modal-confirm {
+  min-width: 172px;
 }
 
 /* Responsive adjustments */
@@ -3877,14 +7703,16 @@ watch(
 }
 
 .btn-save {
-  width: 100%;
-  border: none;
-  border-radius: 12px;
-  background: #2563eb;
+  width: auto;
+  justify-self: end;
+  border: 1px solid #15803d;
+  border-radius: 6px;
+  background: #16A34A;
   color: #fff;
   font-weight: 700;
-  padding: 12px 18px;
-  min-height: 48px;
+  font-size: 0.82rem;
+  padding: 0 14px;
+  min-height: 36px;
 }
 
 .btn-save:disabled {
@@ -4017,16 +7845,27 @@ watch(
 }
 
 .select-source-tabs {
-  width: min(560px, 100%);
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
   margin-bottom: 10px;
 }
 
+.marketplace-tab-label-short {
+  display: none;
+}
+
 .select-source-tabs .select-source-tab {
+  width: 100%;
   min-height: 30px;
   padding: 5px 8px;
   font-size: 0.74rem;
   gap: 6px;
   border-radius: 3px !important;
+  justify-content: center;
+  text-align: center;
+  color: #ffffff;
 }
 
 .select-source-tabs .select-source-tab i {
@@ -4034,20 +7873,386 @@ watch(
   color: #ffffff;
 }
 
-.select-source-tabs .select-source-tab--my:not(.wa-h-tab--active):not(.active):not([aria-selected="true"]) {
+.select-source-tabs .select-source-tab--my {
   background: #1d4f9f !important;
+  border: 1px solid rgba(147, 197, 253, 0.55);
 }
 
-.select-source-tabs .select-source-tab--global:not(.wa-h-tab--active):not(.active):not([aria-selected="true"]) {
-  background: #0d5b55 !important;
+.select-source-tabs .select-source-tab--marketplace {
+  background: #ea7a1f !important;
+  border: 1px solid rgba(254, 215, 170, 0.65);
 }
 
-.select-source-tabs .select-source-tab--paid:not(.wa-h-tab--active):not(.active):not([aria-selected="true"]) {
-  background: #475569 !important;
+.select-source-tabs .select-source-tab[aria-selected="false"] {
+  filter: saturate(0.88) brightness(0.84);
+}
+
+.select-source-tabs .select-source-tab[aria-selected="true"] {
+  filter: saturate(1) brightness(1);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
 }
 
 .plan-source-panel {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   text-align: left;
+}
+
+.marketplace-admin-tools {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin-bottom: 10px;
+  padding: 7px 9px;
+  border: 1px solid rgba(88, 124, 186, 0.42);
+  border-radius: 5px;
+  background: linear-gradient(180deg, rgba(15, 33, 62, 0.92), rgba(12, 25, 46, 0.96));
+}
+
+.marketplace-admin-tools__title {
+  margin: 0 0 6px;
+  color: #9fc0f7;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.marketplace-admin-tools__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+
+.marketplace-admin-tools__label-wrap {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.marketplace-admin-tools__label {
+  color: #e7eefc;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.marketplace-admin-tools__helper {
+  color: #a9bddf;
+  font-size: 0.68rem;
+  line-height: 1.2;
+}
+
+.marketplace-admin-tools__toggle {
+  border: 1px solid rgba(117, 146, 198, 0.42);
+  background: #152038;
+  border-radius: 5px;
+  min-height: 28px;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #c6d5ee;
+  font-size: 0.72rem;
+  font-weight: 800;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.marketplace-admin-tools__toggle:hover,
+.marketplace-admin-tools__toggle:focus-visible {
+  border-color: rgba(144, 186, 255, 0.72);
+  background: #162648;
+  outline: none;
+}
+
+.marketplace-admin-tools__toggle--off {
+  border-color: rgba(129, 145, 174, 0.46);
+  background: #1a2338;
+  color: #b9c8e2;
+}
+
+.marketplace-admin-tools__toggle--on {
+  border-color: #14b8a6;
+  background: #0f766e;
+  color: #ffffff;
+}
+
+.marketplace-admin-tools__toggle-track {
+  width: 32px;
+  height: 18px;
+  border-radius: 999px;
+  background: #3b4d73;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  position: relative;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.marketplace-admin-tools__toggle-track--on {
+  background: #0f766e;
+  border-color: #14b8a6;
+}
+
+.marketplace-admin-tools__toggle-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #f8fafc;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.18s ease;
+}
+
+.marketplace-admin-tools__toggle-track--on .marketplace-admin-tools__toggle-thumb {
+  transform: translateX(14px);
+}
+
+.marketplace-admin-tools__toggle-value {
+  min-width: 24px;
+  text-align: right;
+}
+
+.marketplace-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin-bottom: 10px;
+}
+
+.marketplace-search-field {
+  position: relative;
+  flex: 1 1 auto;
+  max-width: none;
+  min-width: 0;
+  margin: 0;
+}
+.marketplace-results-count {
+  margin: -2px 0 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #d2e2fb;
+}
+
+.marketplace-search-field__icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #95a8c8;
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+
+.marketplace-search-field__input {
+  width: 100%;
+  min-height: 38px;
+  border-radius: 5px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: #17213a;
+  color: #ffffff;
+  padding: 8px 38px 8px 40px;
+  font-size: 0.84rem;
+  line-height: 1.2;
+}
+
+.marketplace-search-field__input::placeholder {
+  color: #9eb1cf;
+}
+
+.marketplace-search-field__input:focus {
+  outline: none;
+  border-color: rgba(96, 165, 250, 0.75);
+  box-shadow: 0 0 0 0.18rem rgba(37, 99, 235, 0.2);
+}
+
+.marketplace-search-field__clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.18);
+  color: #f8fafc;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.marketplace-search-field__clear:hover,
+.marketplace-search-field__clear:focus-visible {
+  background: rgba(96, 165, 250, 0.3);
+  outline: none;
+}
+
+.marketplace-search-empty__clear {
+  background: #17213a;
+  color: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 5px;
+  min-height: 30px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.marketplace-search-empty__clear:hover,
+.marketplace-search-empty__clear:focus-visible {
+  background: #1d2b4f;
+  border-color: rgba(96, 165, 250, 0.6);
+  color: #ffffff;
+}
+
+.marketplace-search-empty__actions {
+  margin-top: 8px;
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.marketplace-filters-toggle {
+  min-height: 38px;
+  min-width: 98px;
+  border-radius: 8px;
+  border: 1px solid rgba(145, 160, 200, 0.28);
+  background: #17213a;
+  color: #dbe8ff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: none;
+  flex: 0 0 auto;
+}
+
+.marketplace-filters-toggle:hover,
+.marketplace-filters-toggle:focus-visible {
+  background: #1d2b4f;
+  border-color: rgba(145, 160, 200, 0.4);
+  color: #ffffff;
+  outline: none;
+}
+
+.marketplace-filters-toggle[aria-expanded='true'] {
+  background: #1d4f9f;
+  border-color: rgba(160, 197, 255, 0.75);
+  color: #ffffff;
+}
+
+.marketplace-filters-toggle__icon {
+  font-size: 0.9rem;
+}
+
+.marketplace-filters-toggle__count {
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+}
+
+.marketplace-filters-panel {
+  margin-bottom: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: #0f1b32;
+}
+
+.marketplace-filters-panel__header {
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.marketplace-filters-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.marketplace-filter-field {
+  display: grid;
+  gap: 4px;
+}
+
+.marketplace-filter-field > span {
+  color: #e7eefc;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.marketplace-filter-field select {
+  min-height: 32px;
+  border-radius: 5px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: #17213a;
+  color: #f8fafc;
+  font-size: 0.76rem;
+  padding: 5px 9px;
+}
+
+.marketplace-filter-field select:focus {
+  outline: none;
+  border-color: rgba(96, 165, 250, 0.7);
+  box-shadow: 0 0 0 0.16rem rgba(37, 99, 235, 0.18);
+}
+
+.marketplace-filter-field select:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.marketplace-filters-panel__summary {
+  margin: 0;
+  color: #c7d8f2;
+  font-size: 0.72rem;
+}
+
+.marketplace-filters-panel__clear {
+  min-height: 28px;
+  border-radius: 5px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: #17213a;
+  color: #f8fafc;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 9px;
+}
+
+.marketplace-filters-panel__clear:hover,
+.marketplace-filters-panel__clear:focus-visible {
+  background: #1d2b4f;
+  border-color: rgba(96, 165, 250, 0.6);
+  color: #ffffff;
+  outline: none;
+}
+
+.marketplace-filters-panel__clear:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .global-subtabs .builder-subtab {
@@ -4134,6 +8339,38 @@ watch(
 .global-plans-table__actions {
   display: inline-flex;
   gap: 6px;
+  max-width: 100%;
+}
+
+.global-library-table .global-plans-table__actions {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
+.global-library-table__actions-col,
+.global-library-table__actions-cell {
+  width: 130px;
+}
+
+.global-library-table .global-plans-table__actions--icon-only {
+  gap: 5px;
+  align-items: center;
+}
+
+.global-library-table .global-plans-table__actions--icon-only .global-plans-table__btn {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: 4px !important;
+  justify-content: center;
+  align-items: center;
+  gap: 0;
+}
+
+.global-library-table .global-plans-table__actions--icon-only .global-plans-table__btn i {
+  font-size: 0.8rem;
 }
 
 .global-plans-table__btn {
@@ -4162,6 +8399,722 @@ watch(
   border-color: #b91c1c;
 }
 
+.global-library-table-wrap {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  background: #0f1b32;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 5px;
+  padding: 10px;
+}
+
+.global-library-table-scroll {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.global-library-table {
+  --bs-table-bg: transparent;
+  --bs-table-color: #e7eefc;
+  --bs-table-border-color: rgba(148, 163, 184, 0.24);
+  margin: 0;
+  min-width: 720px;
+}
+
+.global-library-table thead th {
+  color: #ffffff;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.32);
+  font-size: 0.79rem;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 8px 10px;
+}
+
+.global-library-table tbody td {
+  color: #e7eefc;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  padding: 8px 10px;
+}
+
+.marketplace-status-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.marketplace-status-badges--table {
+  justify-content: center;
+}
+
+.marketplace-status-badges--mobile {
+  margin-top: -2px;
+}
+
+.marketplace-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 7px;
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.marketplace-status-badge--draft {
+  background: #c97716;
+}
+
+.marketplace-status-badge--published {
+  background: #0f766e;
+}
+
+.marketplace-status-badge--featured {
+  background: #2563eb;
+}
+
+.marketplace-status-empty {
+  color: #a9bddf;
+  font-size: 0.74rem;
+}
+
+.marketplace-plan-name-cell {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.marketplace-plan-name-content {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.marketplace-plan-inline-status {
+  color: #a9bddf;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.marketplace-plan-thumb {
+  width: 52px;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.36);
+  object-fit: cover;
+  background: #1f2937;
+  flex: 0 0 auto;
+}
+
+.global-library-mobile-list {
+  display: none;
+  gap: 8px;
+}
+
+.global-library-mobile-card {
+  background: #0f1b32;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 5px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.global-library-mobile-card__cover {
+  width: 100%;
+  height: 142px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  object-fit: cover;
+  background: #1f2937;
+}
+
+.global-library-mobile-card__name {
+  margin: 0;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.9rem;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.global-library-mobile-card__meta {
+  display: grid;
+  gap: 3px;
+  color: #e7eefc;
+  font-size: 0.76rem;
+}
+
+.global-library-mobile-card__meta strong {
+  color: #ffffff;
+}
+
+.global-library-mobile-card__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+}
+.global-library-mobile-card__actions--manage {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.global-library-mobile-card__actions .global-plans-table__btn {
+  justify-content: center;
+}
+
+.global-library-inline-preview {
+  width: 100%;
+  background: #0f1b32;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 6px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.global-library-inline-preview__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.global-library-inline-preview__title {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.04rem;
+  font-weight: 800;
+}
+
+.global-library-inline-preview__error {
+  margin: 0;
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.34);
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 0.84rem;
+}
+
+.global-library-inline-preview__loading {
+  margin: 0;
+}
+
+.global-library-inline-preview__body {
+  display: grid;
+  gap: 12px;
+}
+
+.global-library-inline-preview__overview {
+  display: grid;
+  grid-template-columns: minmax(0, 230px) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.global-library-inline-preview__cover {
+  width: 100%;
+  height: 168px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  object-fit: cover;
+  background: #1f2937;
+}
+
+.global-library-inline-preview__summary {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.global-library-inline-preview__name {
+  margin: 0;
+  color: #f8fbff;
+  font-size: 1.02rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.global-library-inline-preview__description {
+  margin: 0;
+  color: rgba(225, 234, 247, 0.9);
+  line-height: 1.45;
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+
+.global-library-inline-preview__meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.global-library-inline-preview__meta-grid > div {
+  background: rgba(15, 23, 42, 0.42);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 5px;
+  padding: 7px 8px;
+  display: grid;
+  gap: 3px;
+}
+
+.global-library-inline-preview__meta-grid span {
+  color: rgba(225, 234, 247, 0.74);
+  font-size: 0.7rem;
+  line-height: 1.2;
+}
+
+.global-library-inline-preview__meta-grid strong {
+  color: #f8fbff;
+  font-size: 0.83rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.global-library-inline-preview__focus-block {
+  margin-top: 2px;
+  display: grid;
+  gap: 8px;
+}
+
+.global-library-inline-preview__focus-item {
+  background: rgba(15, 23, 42, 0.42);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 5px;
+  padding: 7px 8px;
+  display: grid;
+  gap: 4px;
+}
+
+.global-library-inline-preview__focus-item h5 {
+  margin: 0;
+  color: #d8e7ff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.global-library-inline-preview__focus-item p {
+  margin: 0;
+  color: #f8fbff;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.global-library-inline-preview__schedule {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid rgba(148, 163, 184, 0.24);
+  padding-top: 10px;
+}
+
+.global-library-inline-preview__schedule-title {
+  margin: 0;
+  color: #e8f0ff;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.global-library-inline-preview__day {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 5px;
+  background: #101f3a;
+  padding: 9px;
+  display: grid;
+  gap: 8px;
+}
+
+.global-library-inline-preview__day-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.global-library-inline-preview__day-head h5 {
+  margin: 0;
+  color: #f8fbff;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.global-library-inline-preview__day-head span {
+  color: #cbd9f4;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.global-library-inline-preview__day-table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 5px;
+}
+
+.global-library-inline-preview__day-table {
+  --bs-table-bg: transparent;
+  --bs-table-color: #e7eefc;
+  --bs-table-border-color: rgba(148, 163, 184, 0.2);
+  margin: 0;
+  min-width: 660px;
+}
+
+.global-library-inline-preview__day-table thead th {
+  background: rgba(30, 58, 138, 0.22);
+  color: #f8fbff;
+  font-size: 0.74rem;
+  white-space: nowrap;
+  padding: 7px 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.24);
+}
+
+.global-library-inline-preview__day-table tbody td {
+  color: #e7eefc;
+  font-size: 0.74rem;
+  padding: 7px 8px;
+  white-space: nowrap;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.global-library-inline-preview__image-col {
+  width: 52px;
+}
+
+.global-library-inline-preview__image-cell {
+  width: 52px;
+  min-width: 52px;
+  max-width: 52px;
+}
+
+.global-library-inline-preview__exercise-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  object-fit: cover;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: #1f2937;
+  display: block;
+}
+
+.global-library-inline-preview__exercise-cell {
+  min-width: 190px;
+}
+
+.global-library-inline-preview__exercise-name {
+  display: inline-block;
+  overflow-wrap: anywhere;
+}
+
+.global-library-inline-preview__empty-day {
+  margin: 0;
+  color: #c9d8f2;
+  font-size: 0.78rem;
+}
+
+.global-library-inline-preview__day-cards {
+  display: none;
+}
+
+.global-library-inline-preview__exercise-card {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 5px;
+  background: rgba(15, 23, 42, 0.4);
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.global-library-inline-preview__exercise-card h6 {
+  margin: 0;
+  color: #f8fbff;
+  font-size: 0.79rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.global-library-inline-preview__exercise-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.global-library-inline-preview__exercise-card-head h6 {
+  min-width: 0;
+}
+
+.global-library-inline-preview__exercise-card-grid {
+  display: grid;
+  gap: 3px;
+  color: #d7e4fb;
+  font-size: 0.73rem;
+}
+
+.global-library-inline-preview__exercise-card-grid strong {
+  color: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .existing-plans-panel {
+    gap: 8px;
+  }
+
+  .existing-plans-panel__head {
+    margin-bottom: 0;
+  }
+
+  .existing-plans-panel__source-line {
+    font-size: 0.76rem;
+    gap: 4px;
+  }
+
+  .select-source-tabs {
+    width: 100%;
+    margin-bottom: 6px;
+    gap: 6px;
+  }
+
+  .select-source-tabs .select-source-tab {
+    min-height: 28px;
+    padding: 4px 6px;
+    font-size: 0.7rem;
+    min-width: 0;
+  }
+
+  .select-source-tabs .select-source-tab span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .marketplace-tab-label-full {
+    display: none;
+  }
+
+  .marketplace-tab-label-short {
+    display: inline;
+  }
+
+  .plan-source-panel {
+    min-width: 0;
+    overflow-x: clip;
+  }
+
+  .existing-plans-panel:has(.select-source-tab--marketplace[aria-selected="true"]) .existing-plans-panel__head {
+    display: none;
+  }
+
+  .marketplace-toolbar {
+    align-items: center;
+    row-gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .marketplace-search-field {
+    order: 1;
+    flex: 1 1 calc(100% - 108px);
+    max-width: none;
+    min-width: 0;
+  }
+
+  .marketplace-filters-toggle {
+    order: 2;
+    width: auto;
+    min-width: 92px;
+    min-height: 36px;
+    margin-left: 0;
+    padding: 7px 10px;
+    flex: 0 0 auto;
+  }
+
+  .marketplace-admin-tools__row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .marketplace-admin-tools__label-wrap {
+    width: 100%;
+  }
+
+  .marketplace-admin-tools__label {
+    min-width: 0;
+    font-size: 0.75rem;
+    line-height: 1.25;
+  }
+
+  .marketplace-admin-tools__helper {
+    font-size: 0.66rem;
+  }
+
+  .marketplace-admin-tools__toggle {
+    flex: 0 0 auto;
+  }
+
+  .marketplace-search-field__input {
+    min-height: 36px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+
+  .marketplace-results-count {
+    margin: -2px 0 6px;
+    font-size: 0.72rem;
+  }
+
+  .marketplace-filters-panel__header {
+    align-items: center;
+  }
+
+  .marketplace-filters-panel__clear {
+    width: auto;
+  }
+
+  .global-library-table-wrap {
+    display: none;
+  }
+
+  .global-library-mobile-list {
+    display: grid;
+  }
+
+  .global-library-mobile-card {
+    gap: 7px;
+    padding: 9px;
+  }
+
+  .plan-cover-panel__content {
+    gap: 8px;
+  }
+
+  .plan-cover-main-row {
+    gap: 10px;
+  }
+
+  .plan-cover-preview {
+    height: 120px;
+  }
+
+  .plan-cover-preview-wrap {
+    width: 120px;
+  }
+
+  .plan-cover-actions {
+    justify-items: stretch;
+    width: min(156px, 100%);
+  }
+
+  .plan-cover-actions-desktop {
+    display: grid;
+  }
+
+  .global-library-mobile-card__name {
+    overflow-wrap: anywhere;
+  }
+
+  .global-library-mobile-card__actions .global-plans-table__btn {
+    min-height: 30px;
+    padding: 4px 6px;
+    font-size: 0.72rem;
+    gap: 4px;
+  }
+
+  .global-library-mobile-card__actions .global-plans-table__btn span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .global-library-inline-preview {
+    padding: 9px;
+    gap: 8px;
+  }
+
+  .global-library-inline-preview__actions {
+    width: 100%;
+  }
+
+  .global-library-inline-preview__actions .global-plans-table__btn {
+    flex: 1 1 calc(50% - 4px);
+    justify-content: center;
+    min-height: 32px;
+  }
+
+  .global-library-inline-preview__overview {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .global-library-inline-preview__cover {
+    height: 158px;
+  }
+
+  .global-library-inline-preview__meta-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  .global-library-inline-preview__day-table-wrap {
+    display: none;
+  }
+
+  .global-library-inline-preview__day-cards {
+    display: grid;
+    gap: 7px;
+  }
+
+  .global-library-inline-preview__exercise-card-head {
+    align-items: flex-start;
+  }
+
+  .global-library-inline-preview__exercise-thumb {
+    flex: 0 0 auto;
+  }
+}
+
+@media (min-width: 560px) and (max-width: 768px) {
+  .marketplace-filters-panel__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 992px) {
+  .marketplace-filters-panel__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1200px) {
+  .main-builder-accordion__body {
+    overflow-x: clip;
+  }
+
+  .marketplace-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .marketplace-search-field {
+    flex: 1 1 260px;
+  }
+
+  .marketplace-filters-toggle {
+    flex: 0 0 auto;
+  }
+}
+
+
 .workout-builder-page .builder-tab:disabled {
   opacity: 0.5;
 }
@@ -4183,7 +9136,6 @@ watch(
 .workout-builder-page .planner-empty,
 .workout-builder-page .builder-empty,
 .workout-builder-page .schedule-hub-empty,
-.workout-builder-page .workout-day-card,
 .workout-builder-page .workout-day-panel,
 .workout-builder-page .collapsible-header,
 .workout-builder-page .planner-mode-toggle,
@@ -4197,11 +9149,19 @@ watch(
 
 .workout-builder-page .collapsible-header,
 .workout-builder-page .planner-mode-toggle,
-.workout-builder-page .workout-day-card.active,
 .workout-builder-page .workout-day-header:hover,
 .workout-builder-page .planner-helper-text,
 .workout-builder-page .builder-footer {
   background: var(--wb-surface-2);
+}
+
+.workout-builder-page .workout-day-card {
+  border-color: #38517C;
+}
+
+.workout-builder-page .workout-day-card.active {
+  border-color: #4772BA;
+  box-shadow: none;
 }
 
 .workout-builder-page .main-builder-accordion__header:hover {
@@ -4209,8 +9169,7 @@ watch(
 }
 
 .workout-builder-page .planner-empty__icon,
-.workout-builder-page .collapsible-header__icon,
-.workout-builder-page .chevron-btn {
+.workout-builder-page .collapsible-header__icon {
   background: var(--wb-surface-3);
   border-color: var(--wb-border);
   color: var(--wb-text-secondary);
@@ -4238,7 +9197,15 @@ watch(
 }
 
 .workout-builder-page .plan-carousel__header h4,
-.workout-builder-page .plan-carousel__selected strong,
+.workout-builder-page .plan-carousel__selected strong {
+  color: var(--wb-text);
+}
+
+.workout-builder-page .workout-day-header,
+.workout-builder-page .workout-day-header:hover,
+.workout-builder-page .workout-day-card.active .workout-day-header {
+  background: linear-gradient(90deg, #172D68 0%, #202F58 50%, #2D3957 100%);
+}
 .workout-builder-page .existing-plans-panel__head h4 {
   color: var(--wb-text);
 }
@@ -4259,15 +9226,26 @@ watch(
 }
 
 .workout-builder-page .btn-create-plan,
-.workout-builder-page .btn-save {
+.workout-builder-page .btn-create-plan {
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
   border-color: #1d4ed8;
   color: #ffffff;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+  box-shadow: 0 6px 12px rgba(37, 99, 235, 0.2);
+}
+
+.workout-builder-page .btn-save {
+  background: linear-gradient(135deg, #16A34A, #15803D);
+  border-color: #15803d;
+  color: #ffffff;
+  box-shadow: 0 6px 12px rgba(22, 163, 74, 0.24);
 }
 
 .workout-builder-page .btn-create-plan:hover,
 .workout-builder-page .btn-save:hover:not(:disabled) {
+  background: linear-gradient(135deg, #15803D, #166534);
+}
+
+.workout-builder-page .btn-create-plan:hover {
   background: linear-gradient(135deg, #1d4ed8, #1e40af);
 }
 
@@ -4301,8 +9279,7 @@ watch(
 .workout-builder-page .modal-btn--cancel,
 .workout-builder-page .day-kebab-btn,
 .workout-builder-page .day-kebab-menu,
-.workout-builder-page .day-kebab-item,
-.workout-builder-page .chevron-btn {
+.workout-builder-page .day-kebab-item {
   background: var(--wb-surface-2);
   border-color: var(--wb-border);
   color: var(--wb-text-secondary);
@@ -4313,8 +9290,7 @@ watch(
 .workout-builder-page .day-action-btn--select:hover,
 .workout-builder-page .modal-btn--cancel:hover,
 .workout-builder-page .day-kebab-btn:hover,
-.workout-builder-page .day-kebab-item:hover,
-.workout-builder-page .chevron-btn:hover {
+.workout-builder-page .day-kebab-item:hover {
   background: var(--wb-surface-3);
   color: var(--wb-text);
 }
@@ -4359,6 +9335,15 @@ watch(
   color: #fecaca;
 }
 
+.workout-builder-page .day-kebab-item,
+.workout-builder-page .day-kebab-item:hover,
+.workout-builder-page .day-kebab-item--delete,
+.workout-builder-page .day-kebab-item--delete:hover,
+.workout-builder-page .day-kebab-item:disabled {
+  border-radius: 0 !important;
+  color: #ffffff;
+}
+
 .workout-builder-page .delete-modal__header,
 .workout-builder-page .delete-modal__actions,
 .workout-builder-page .workout-day-panel,
@@ -4369,11 +9354,6 @@ watch(
 .workout-builder-page .empty-day-state {
   background: var(--wb-surface-2);
   border-color: var(--wb-border-strong);
-}
-
-.workout-builder-page .workout-day-card.active {
-  border-color: rgba(74, 222, 128, 0.45);
-  box-shadow: 0 8px 18px rgba(34, 197, 94, 0.12);
 }
 
 .workout-builder-page :deep(.schedule-card),
@@ -4475,6 +9455,42 @@ watch(
   .workout-builder-page .planner-group-editor input {
     font-size: 16px;
   }
+
+  .planner-header-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .planner-header-actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .planner-mode-pill-wrap {
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
+  .planner-group-editor {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 6px;
+  }
+
+  .planner-group-editor__label {
+    grid-column: 1 / -1;
+  }
+
+  .planner-group-editor input {
+    grid-column: 1;
+  }
+
+  .planner-group-add {
+    grid-column: 2;
+    width: auto;
+  }
 }
 
 @media (min-width: 640px) {
@@ -4491,7 +9507,9 @@ watch(
   }
 
   .planner-group-editor {
-    grid-template-columns: 1fr auto;
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
   }
 
   .schedule-hub-head__actions {
@@ -4518,7 +9536,7 @@ watch(
 
   .btn-save {
     width: auto;
-    min-width: 180px;
+    min-width: 160px;
   }
 }
 
@@ -4788,6 +9806,14 @@ watch(
 }
 
 @media (max-width: 768px) {
+  .workout-builder-page--create .main-builder-accordion,
+  .workout-builder-page--create .main-builder-accordion__item,
+  .workout-builder-page--create .main-builder-accordion__body,
+  .workout-builder-page--create .planner-shell,
+  .workout-builder-page--create .collapsible-panel {
+    overflow: visible !important;
+  }
+
   .workout-builder-page {
     padding-bottom: calc(128px + env(safe-area-inset-bottom));
     overflow-x: clip;
@@ -4952,38 +9978,61 @@ watch(
 
   .planner-mode-toggle,
   .planner-group-editor {
-    width: 100%;
     max-width: 100%;
     min-width: 0;
   }
 
+  .planner-header-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .planner-mode-pill-wrap {
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
   .planner-group-editor {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .planner-mode-btn {
-    min-height: 34px;
+    min-height: 36px;
     font-size: 0.82rem;
     padding: 4px 8px;
     min-width: 0;
   }
 
   .planner-group-editor input {
-    min-height: 36px;
+    min-height: 38px;
     padding: 7px 10px;
     font-size: 0.82rem;
-    border-radius: 10px;
+    border-radius: 6px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    flex: initial;
+  }
+
+  .planner-group-editor__label {
+    font-size: 0.72rem;
+    grid-column: 1 / -1;
   }
 
   .planner-group-add,
   .planner-group-save {
-    min-height: 36px;
+    min-height: 38px;
     font-size: 0.82rem;
     padding: 0 12px;
-    border-radius: 10px;
-    width: 100%;
+    border-radius: 6px;
     max-width: 100%;
     min-width: 0;
+  }
+
+  .planner-group-add {
+    width: auto;
+    grid-column: 2;
   }
 
   /* ── Schedule list ── */
@@ -5054,9 +10103,79 @@ watch(
     min-height: 42px;
     font-size: 13px;
     padding: 0 14px;
+    width: 100%;
+    justify-self: stretch;
   }
 
   /* ── Heading groups ── */
+  .planner-header-row {
+    display: grid;
+    gap: 8px;
+  }
+
+  .planner-header-actions {
+    display: grid;
+    gap: 6px;
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .planner-mode-pill-wrap {
+    display: grid;
+    gap: 5px;
+    justify-items: start;
+  }
+
+  .planner-save-top {
+    width: 100%;
+  }
+
+  .planner-mode-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #dfeaf9;
+  }
+
+  .planner-mode-toggle {
+    display: inline-flex;
+    padding: 4px;
+    background: rgba(11, 22, 34, 0.8);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: 6px;
+    gap: 4px;
+    width: 100%;
+  }
+
+  .planner-mode-btn {
+    border: 1px solid rgba(148, 163, 184, 0.34);
+    border-radius: 5px;
+    background: transparent;
+    color: #ffffff;
+    min-height: 34px;
+    padding: 0 12px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s ease;
+  }
+
+  .planner-mode-btn.active {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #1d4ed8;
+    box-shadow: none;
+  }
+
+  .planner-mode-btn:hover {
+    color: #ffffff;
+  }
+
+  .planner-mode-btn.active:hover {
+    color: #ffffff;
+  }
+
   .planner-heading-group h3 {
     font-size: 0.9rem;
   }
@@ -5094,6 +10213,16 @@ watch(
   .empty-day-state p {
     font-size: 0.82rem;
   }
+}
+
+.workout-builder-page--create .planner-shell {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.workout-builder-page--create .main-builder-accordion__body {
+  overflow: visible;
 }
 
 @media (max-width: 600px) {
@@ -5195,5 +10324,161 @@ watch(
   .workout-day-header {
     padding: 6px 8px;
   }
+}
+
+/* 0.85.162-F final footer override: defeat legacy pill styles */
+.workout-builder-page section[v-show="builderTab === 'create'"] + .builder-footer,
+.workout-builder-page .builder-footer {
+  border-radius: 0 !important;
+}
+
+.workout-builder-page .builder-footer .btn-save,
+.workout-builder-page .btn-save {
+  border-radius: 6px !important;
+}
+
+@media (max-width: 390px) {
+  .workout-builder-page .builder-footer .btn-save,
+  .workout-builder-page .btn-save {
+    border-radius: 6px !important;
+  }
+}
+
+/* 0.85.162-F Stage 1: compact segmented Day/Week toggle (Create tab only) */
+.workout-builder-page .planner-mode-pill-wrap {
+  gap: 3px;
+}
+
+.workout-builder-page .planner-mode-toggle {
+  width: 220px;
+  max-width: 100%;
+  min-height: 36px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 5px;
+  background: #0f172a;
+}
+
+.workout-builder-page .planner-mode-btn {
+  width: 100%;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: none;
+}
+
+.workout-builder-page .planner-mode-btn.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+  box-shadow: none;
+  outline: none;
+}
+
+.workout-builder-page .planner-mode-btn:focus,
+.workout-builder-page .planner-mode-btn.active:focus {
+  outline: none;
+}
+
+.workout-builder-page .planner-mode-btn:focus-visible,
+.workout-builder-page .planner-mode-btn.active:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.65);
+  outline-offset: 1px;
+}
+
+@media (max-width: 390px) {
+  .workout-builder-page .planner-mode-toggle {
+    width: min(220px, 100%);
+  }
+
+  .workout-builder-page .planner-mode-btn {
+    min-height: 32px;
+    font-size: 0.72rem;
+  }
+}
+
+/* 0.85.162-F Stage 2: compact save footer layout (Create tab only) */
+.workout-builder-page .builder-footer {
+  width: 100%;
+  margin-top: 4px;
+  padding: 4px 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 3fr);
+  align-items: start;
+  gap: 10px;
+}
+
+.workout-builder-page .builder-footer__status {
+  min-width: 0;
+}
+
+.workout-builder-page .builder-footer__action {
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.workout-builder-page .save-message {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.workout-builder-page .btn-save {
+  min-height: 36px;
+  border-radius: 6px;
+  padding: 0 14px;
+  width: auto;
+  justify-self: end;
+}
+
+@media (max-width: 390px) {
+  .workout-builder-page .builder-footer {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 6px 0;
+    margin-bottom: calc(68px + env(safe-area-inset-bottom));
+  }
+
+  .workout-builder-page .builder-footer__action {
+    justify-content: stretch;
+  }
+
+  .workout-builder-page .btn-save {
+    width: 100%;
+    min-height: 38px;
+  }
+}
+
+/* 0.85.162-G: shared Select Goal blue standard for Workout Builder actions */
+.workout-builder-page .wa-blue-action-btn {
+  background: var(--wa-btn-primary);
+  border-color: var(--wa-btn-primary-border);
+  color: #ffffff;
+}
+
+.workout-builder-page .wa-blue-action-btn:hover:not(:disabled),
+.workout-builder-page .wa-blue-action-btn:focus:not(:disabled),
+.workout-builder-page .wa-blue-action-btn:active:not(:disabled) {
+  background: var(--wa-btn-primary-hover);
+  border-color: var(--wa-btn-primary-border);
+  color: #ffffff;
+}
+
+.workout-builder-page .wa-blue-action-btn:focus-visible {
+  box-shadow: var(--wa-btn-primary-focus);
 }
 </style>

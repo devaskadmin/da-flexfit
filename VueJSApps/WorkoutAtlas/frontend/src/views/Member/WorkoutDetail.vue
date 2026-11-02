@@ -834,11 +834,18 @@ onUnmounted(() => {
   color: var(--text-color-secondary, #6b7280);
 }
 .wd-btn-primary {
-  background: #2563eb; border: none; color: #fff;
-  border-radius: 10px; padding: 10px 18px;
+  background: var(--wa-btn-primary, rgba(30, 64, 175, 0.3));
+  border: 1px solid var(--wa-btn-primary-border, rgba(59, 130, 246, 0.55));
+  color: #fff;
+  border-radius: var(--wa-btn-primary-radius, 999px);
+  padding: 10px 18px;
   font-size: 0.88rem; font-weight: 700; cursor: pointer; transition: background 0.15s;
 }
-.wd-btn-primary:hover { background: #1d4ed8; }
+.wd-btn-primary:hover { background: var(--wa-btn-primary-hover, rgba(37, 99, 235, 0.42)); }
+.wd-btn-primary:focus-visible {
+  outline: none;
+  box-shadow: var(--wa-btn-primary-focus, 0 0 0 4px rgba(164, 255, 79, 0.18));
+}
 
 /* Sticky bottom bar */
 .wd-bottom-bar {

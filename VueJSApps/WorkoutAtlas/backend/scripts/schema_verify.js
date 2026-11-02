@@ -40,6 +40,9 @@ const EXPECTED = [
   // Column existence checks (table, column)
   { type: 'column', table: 'exercises',  column: 'CreatedByUserID' },
   { type: 'column', table: 'exercises',  column: 'IsGlobalExercise' },
+  { type: 'column', table: 'exercises',  column: 'ExerciseScope' },
+  { type: 'column', table: 'exercises',  column: 'OwnerTrainerID' },
+  { type: 'column', table: 'exercises',  column: 'SourceExerciseID' },
   { type: 'column', table: 'users',      column: 'avatarName' },
   { type: 'column', table: 'users',      column: 'avatarPath' },
   { type: 'column', table: 'users',      column: 'external_auth' },

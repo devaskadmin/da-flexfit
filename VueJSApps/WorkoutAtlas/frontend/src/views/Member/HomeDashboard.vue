@@ -221,7 +221,7 @@ const nutritionActivityItems = computed(() => nutritionHistory.value.map((item, 
 const allMenuLinks = [
   { label: 'Dashboard', shortLabel: 'Home', route: '/dashboard', icon: 'fa-solid fa-house', section: 'General', roles: ['member', 'trainer', 'admin'] },
   { label: 'Workout Log', shortLabel: 'Log', route: '/workout-log', icon: 'fa-solid fa-dumbbell', section: 'General', roles: ['member', 'trainer', 'admin'] },
-  { label: 'Workout Builder', shortLabel: 'Build', route: '/workout-builder', icon: 'fa-solid fa-clipboard-list', section: 'General', roles: ['member', 'trainer', 'admin'] },
+  { label: 'Workout Planner', shortLabel: 'Build', route: '/workout-builder', icon: 'fa-solid fa-clipboard-list', section: 'General', roles: ['member', 'trainer', 'admin'] },
   { label: 'Exercise Database', shortLabel: 'Moves', route: '/exercises', icon: 'fa-solid fa-book-open', section: 'General', roles: ['member', 'trainer', 'admin'] },
   { label: 'Nutrition', shortLabel: 'Fuel', route: '/Nutrition', icon: 'fa-solid fa-apple-whole', section: 'General', roles: ['member', 'trainer', 'admin'] },
   { label: 'Progress', shortLabel: 'Track', route: '/progress', icon: 'fa-solid fa-chart-line', section: 'General', roles: ['member', 'trainer', 'admin'] },
@@ -260,7 +260,7 @@ const quickActions = [
     roles: ['member', 'trainer', 'admin'],
   },
   {
-    title: 'Workout Builder',
+    title: 'Workout Planner',
     subtitle: 'Build your next session',
     route: '/workout-builder',
     icon: 'fa-solid fa-clipboard-list',
@@ -346,7 +346,7 @@ onMounted(async () => {
       <section class="wa-greeting-row">
         <div class="wa-greeting">
           <p class="wa-greeting-line">Good {{ currentPeriod }},</p>
-          <h1>{{ greetingName }} 👋</h1>
+          <h1><span class="wa-greeting-name">{{ greetingName }}</span><span class="wa-greeting-wave" aria-hidden="true">👋</span></h1>
           <p class="wa-streak">🔥 {{ loadingMetrics ? '—' : statsSummary.streak }} Day Streak</p>
         </div>
         <div class="wa-date-picker-wrap" aria-label="Date range selector">
@@ -590,6 +590,14 @@ onMounted(async () => {
   color: var(--wa-text-primary, #F7F9FF);
   font-size: 30px;
   line-height: 1.1;
+}
+
+.wa-greeting-name {
+  min-width: 0;
+}
+
+.wa-greeting-wave {
+  flex-shrink: 0;
 }
 
 .wa-streak {
@@ -1089,7 +1097,39 @@ onMounted(async () => {
   }
 
   .wa-greeting h1 {
-    font-size: 28px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 24px;
+    line-height: 1.15;
+    min-width: 0;
+  }
+
+  .wa-greeting {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: baseline;
+    column-gap: 6px;
+    row-gap: 2px;
+  }
+
+  .wa-greeting-line {
+    white-space: nowrap;
+    font-size: 11px;
+  }
+
+  .wa-greeting-name {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+  }
+
+  .wa-greeting .wa-streak {
+    grid-column: 1 / -1;
   }
 
   .wa-date-picker-wrap {
@@ -1143,8 +1183,12 @@ onMounted(async () => {
 }
 
 @media (max-width: 430px) {
+  .wa-greeting {
+    column-gap: 5px;
+  }
+
   .wa-greeting h1 {
-    font-size: 24px;
+    font-size: 22px;
   }
 }
 
