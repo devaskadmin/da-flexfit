@@ -170,14 +170,14 @@ const updateField = (field, value, isNumeric = false) => {
 
       <!-- Strength fields -->
       <template v-if="showStrengthFields">
-        <label class="field-half exercise-config-field strength-field-group strength-field--sets">
-          <span>Sets</span>
+        <label class="field-full exercise-config-field strength-field-group strength-field--weight">
+          <span>Weight (lbs)</span>
           <input
-            :value="exercise.sets"
+            :value="exercise.weight"
             type="number"
             min="0"
             placeholder="0"
-            @input="updateField('sets', $event.target.value, true)"
+            @input="updateField('weight', $event.target.value, true)"
           />
         </label>
 
@@ -192,17 +192,16 @@ const updateField = (field, value, isNumeric = false) => {
           />
         </label>
 
-        <label class="field-full exercise-config-field strength-field-group strength-field--weight">
-          <span>Weight (lbs)</span>
+        <label class="field-half exercise-config-field strength-field-group strength-field--sets">
+          <span>Sets</span>
           <input
-            :value="exercise.weight"
+            :value="exercise.sets"
             type="number"
             min="0"
             placeholder="0"
-            @input="updateField('weight', $event.target.value, true)"
+            @input="updateField('sets', $event.target.value, true)"
           />
         </label>
-
       </template>
 
       <!-- Cardio fields -->
@@ -218,17 +217,6 @@ const updateField = (field, value, isNumeric = false) => {
           />
         </label>
 
-        <label class="field-full exercise-config-field cardio-field-group cardio-field--distance">
-          <span>Distance (mi)</span>
-          <input
-            :value="exercise.distance"
-            type="number"
-            min="0"
-            placeholder="0"
-            @input="updateField('distance', $event.target.value, true)"
-          />
-        </label>
-
         <label v-if="supportsTargetedCalories" class="field-full exercise-config-field cardio-field-group cardio-field--calories">
           <span>Target Calories</span>
           <input
@@ -237,6 +225,17 @@ const updateField = (field, value, isNumeric = false) => {
             min="0"
             placeholder="0"
             @input="updateField('calories', $event.target.value, true)"
+          />
+        </label>
+
+        <label class="field-full exercise-config-field cardio-field-group cardio-field--distance">
+          <span>Distance (mi)</span>
+          <input
+            :value="exercise.distance"
+            type="number"
+            min="0"
+            placeholder="0"
+            @input="updateField('distance', $event.target.value, true)"
           />
         </label>
       </template>
@@ -567,15 +566,15 @@ const updateField = (field, value, isNumeric = false) => {
     min-width: 0;
   }
 
-  .exercise-block__fields.exercise-block__fields--cardio-desktop .cardio-field--distance {
+  .exercise-block__fields.exercise-block__fields--cardio-desktop .cardio-field--duration {
     order: 1;
   }
 
-  .exercise-block__fields.exercise-block__fields--cardio-desktop .cardio-field--duration {
+  .exercise-block__fields.exercise-block__fields--cardio-desktop .cardio-field--calories {
     order: 2;
   }
 
-  .exercise-block__fields.exercise-block__fields--cardio-desktop .cardio-field--calories {
+  .exercise-block__fields.exercise-block__fields--cardio-desktop .cardio-field--distance {
     order: 3;
   }
 

@@ -1,6 +1,7 @@
 <script setup>
 import {onMounted, ref} from "vue";
 import {onBeforeRouteLeave} from "vue-router";
+import { showAlertDialog } from '@/utils/browserDialogs';
 
 const endDate = new Date('07/27/2035 17:00:00');
 const days = ref(0);
@@ -14,7 +15,10 @@ const updateCountdown = () => {
 
   if (diff < 0) {
     clearInterval(interval);
-    alert('Done!');
+    showAlertDialog('Done!', {
+        title: 'Countdown',
+        icon: 'success',
+    });
   } else {
     days.value = Math.floor(diff / (1000 * 60 * 60 * 24));
     hours.value = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));

@@ -18,6 +18,9 @@ const {
   deleteObjectViaGateway,
 } = require('../services/aiGatewayService');
 
+const MAX_EXERCISE_IMAGE_BYTES = 20 * 1024 * 1024;
+const MAX_EXERCISE_IMAGES = 2;
+
 // ✅ DB Connect
 const pool = require('../db');
 
@@ -295,8 +298,9 @@ const normalizeExerciseAllowedValue = ({
   if (!normalizedField.valid) return normalizedField;
   if (!normalizedField.value) return normalizedField;
 
-  const normalizedKey = normalizedField.value.toLocaleLowerCase();
-  const matchingValue = allowedValues.find((entry) => String(entry).trim().toLocaleLowerCase() === normalizedKey);
+  const normalizeAllowedComparisonKey = (input) => String(input ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+  const normalizedKey = normalizeAllowedComparisonKey(normalizedField.value);
+  const matchingValue = allowedValues.find((entry) => normalizeAllowedComparisonKey(entry) === normalizedKey);
   if (!matchingValue) {
     return { valid: false, error: `Please choose a valid ${fieldLabel.toLowerCase()}.` };
   }
@@ -595,6 +599,314 @@ const canManageExercise = ({ req, exercise }) => {
 
 const canDeleteExercise = ({ req, exercise }) => canManageExercise({ req, exercise });
 
+const isSystemExerciseRecord = (exercise = {}) => {
+  const profile = getExerciseAccessProfile(exercise);
+  return profile.explicitScope === EXERCISE_SCOPE.SYSTEM || profile.isSystemExercise;
+};
+
+const isRetiredSystemExercise = (exercise = {}) => {
+  const scope = String(exercise?.ExerciseScope || '').trim().toUpperCase();
+  const publicationState = String(exercise?.ExercisePublicationState || '').trim().toUpperCase() || EXERCISE_PUBLICATION_STATE.DISCOVERABLE;
+  return Number(exercise?.IsSystemExercise || 0) === 1
+    && scope === EXERCISE_SCOPE.CUSTOM
+    && Number(exercise?.IsGlobalExercise || 0) === 0
+    && publicationState === EXERCISE_PUBLICATION_STATE.RESTRICTED;
+};
+
+const buildRetiredSystemExerciseExclusionClause = (alias = 'e') => `NOT (
+  COALESCE(${alias}.IsSystemExercise, 0) = 1
+  AND COALESCE(${alias}.ExerciseScope, '') = '${EXERCISE_SCOPE.CUSTOM}'
+  AND COALESCE(${alias}.IsGlobalExercise, 0) = 0
+  AND COALESCE(${alias}.ExercisePublicationState, '${EXERCISE_PUBLICATION_STATE.DISCOVERABLE}') = '${EXERCISE_PUBLICATION_STATE.RESTRICTED}'
+)`;
+
+const normalizeOptionalExerciseId = (value) => {
+  const numeric = Number(value || 0);
+  return Number.isInteger(numeric) && numeric > 0 ? numeric : 0;
+};
+
+const normalizeRecordingTypeForMatch = (value) => String(value || '').trim().toLowerCase();
+
+const validateRecordingTypeCompatibility = ({ sourceExercise, destinationExercise }) => {
+  const sourceRecordingType = String(sourceExercise?.RecordingType || '').trim();
+  const destinationRecordingType = String(destinationExercise?.RecordingType || '').trim();
+  const sourceNormalized = normalizeRecordingTypeForMatch(sourceRecordingType);
+  const destinationNormalized = normalizeRecordingTypeForMatch(destinationRecordingType);
+
+  if (!sourceNormalized || !destinationNormalized) {
+    return {
+      compatible: false,
+      message: 'Recording type compatibility could not be verified because one of the exercises is missing a recording type.',
+      sourceRecordingType,
+      destinationRecordingType,
+    };
+  }
+
+  if (sourceNormalized !== destinationNormalized) {
+    return {
+      compatible: false,
+      message: `Cannot merge because recording types are incompatible (${sourceRecordingType} vs ${destinationRecordingType}).`,
+      sourceRecordingType,
+      destinationRecordingType,
+    };
+  }
+
+  return {
+    compatible: true,
+    message: 'Recording types are compatible.',
+    sourceRecordingType,
+    destinationRecordingType,
+  };
+};
+
+const validateSystemExerciseMetadata = (exercise = {}) => {
+  const scope = String(exercise?.ExerciseScope || '').trim().toUpperCase();
+  const isSystemFlag = Number(exercise?.IsSystemExercise || 0) === 1;
+
+  if (scope === EXERCISE_SCOPE.SYSTEM && !isSystemFlag) {
+    return {
+      consistent: false,
+      message: 'SYSTEM exercise metadata is inconsistent (ExerciseScope=SYSTEM but IsSystemExercise=0).',
+    };
+  }
+
+  if (isSystemFlag && scope !== EXERCISE_SCOPE.SYSTEM) {
+    return {
+      consistent: false,
+      message: `SYSTEM exercise metadata is inconsistent (IsSystemExercise=1 but ExerciseScope=${scope || 'NULL'}).`,
+    };
+  }
+
+  return {
+    consistent: true,
+    message: 'SYSTEM exercise metadata is consistent.',
+  };
+};
+
+const toSanitizedDbError = (err) => {
+  if (!err || typeof err !== 'object') return null;
+  return {
+    code: err.code || null,
+    errno: Number.isFinite(Number(err.errno)) ? Number(err.errno) : null,
+    sqlState: err.sqlState || err.sqlstate || null,
+    sqlMessage: err.sqlMessage || err.message || null,
+  };
+};
+
+const escapeSqlIdentifier = (value) => `\`${String(value || '').replace(/`/g, '``')}\``;
+
+const getExerciseDeleteImpact = async ({ exerciseId, conn = pool }) => {
+  const safeExerciseId = normalizeOptionalExerciseId(exerciseId);
+  if (!safeExerciseId) {
+    return {
+      distinctPlansAffected: 0,
+      scheduledAssignmentsAffected: 0,
+      workoutHistoryAffected: 0,
+      favoritesAffected: 0,
+      otherDependentAffected: 0,
+      otherDependencyBreakdown: [],
+      totalAffectedReferences: 0,
+    };
+  }
+
+  const [[planRows], [assignmentRows], [historyRows], [favoriteRows]] = await Promise.all([
+    conn.query(
+      `SELECT COUNT(DISTINCT workout_schedule_id) AS total
+       FROM workout_schedule_exercises
+       WHERE exercise_id = ?`,
+      [safeExerciseId]
+    ),
+    conn.query(
+      `SELECT COUNT(*) AS total
+       FROM workout_schedule_exercises
+       WHERE exercise_id = ?`,
+      [safeExerciseId]
+    ),
+    conn.query(
+      `SELECT COUNT(*) AS total
+       FROM workout_log
+       WHERE ExerciseID = ?`,
+      [safeExerciseId]
+    ),
+    conn.query(
+      `SELECT COUNT(*) AS total
+       FROM user_favorite_exercises
+       WHERE exercise_id = ?`,
+      [safeExerciseId]
+    ),
+  ]);
+
+  const distinctPlansAffected = Number(planRows?.[0]?.total || 0);
+  const scheduledAssignmentsAffected = Number(assignmentRows?.[0]?.total || 0);
+  const workoutHistoryAffected = Number(historyRows?.[0]?.total || 0);
+  const favoritesAffected = Number(favoriteRows?.[0]?.total || 0);
+
+  const [referenceColumnRows] = await conn.query(
+    `SELECT TABLE_NAME, COLUMN_NAME
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND LOWER(COLUMN_NAME) IN ('exerciseid', 'exercise_id')
+       AND TABLE_NAME NOT IN ('exercises', 'workout_schedule_exercises', 'workout_log', 'user_favorite_exercises')`
+  );
+
+  const otherDependencyBreakdown = [];
+  let otherDependentAffected = 0;
+
+  for (const referenceColumn of Array.isArray(referenceColumnRows) ? referenceColumnRows : []) {
+    const tableName = String(referenceColumn?.TABLE_NAME || '').trim();
+    const columnName = String(referenceColumn?.COLUMN_NAME || '').trim();
+    if (!tableName || !columnName) continue;
+
+    const [rows] = await conn.query(
+      `SELECT COUNT(*) AS total
+       FROM ${escapeSqlIdentifier(tableName)}
+       WHERE ${escapeSqlIdentifier(columnName)} = ?`,
+      [safeExerciseId]
+    );
+
+    const total = Number(rows?.[0]?.total || 0);
+    if (total > 0) {
+      otherDependencyBreakdown.push({ tableName, columnName, count: total });
+      otherDependentAffected += total;
+    }
+  }
+
+  return {
+    distinctPlansAffected,
+    scheduledAssignmentsAffected,
+    workoutHistoryAffected,
+    favoritesAffected,
+    otherDependentAffected,
+    otherDependencyBreakdown,
+    totalAffectedReferences: distinctPlansAffected
+      + scheduledAssignmentsAffected
+      + workoutHistoryAffected
+      + favoritesAffected
+      + otherDependentAffected,
+  };
+};
+
+const getSystemExerciseMergeCandidates = async ({ sourceExerciseId, search = '', limit = 30 }) => {
+  const safeSourceExerciseId = normalizeOptionalExerciseId(sourceExerciseId);
+  const normalizedSearch = normalizeExerciseSearchTerm(search);
+  const safeLimit = Math.max(1, Math.min(100, Number(limit || 30) || 30));
+  const where = [
+    'e.ExerciseID <> ?',
+    'COALESCE(e.IsSystemExercise, 0) = 1',
+    `COALESCE(e.ExerciseScope, '${EXERCISE_SCOPE.SYSTEM}') = '${EXERCISE_SCOPE.SYSTEM}'`,
+    `COALESCE(e.ExercisePublicationState, '${EXERCISE_PUBLICATION_STATE.DISCOVERABLE}') = '${EXERCISE_PUBLICATION_STATE.DISCOVERABLE}'`,
+    buildRetiredSystemExerciseExclusionClause('e'),
+  ];
+  const params = [safeSourceExerciseId];
+
+  if (normalizedSearch) {
+    const searchTokens = buildLiteralSubstringLikeParams(normalizedSearch);
+    for (const token of searchTokens) {
+      where.push(`LOWER(COALESCE(e.ExerciseTitle, '')) LIKE ? ESCAPE '${EXERCISE_SEARCH_ESCAPE_CHAR}'`);
+      params.push(token);
+    }
+  }
+
+  const [rows] = await pool.query(
+    `SELECT e.ExerciseID, e.ExerciseTitle, e.RecordingType, e.WorkoutType,
+            e.MuscleGroup, e.Equipment, e.ExerciseScope, e.ExercisePublicationState,
+            COALESCE(e.IsSystemExercise, 0) AS IsSystemExercise,
+            e.PrimaryImage, e.ImageURL, e.ImageGallery
+     FROM exercises e
+     WHERE ${where.join(' AND ')}
+     ORDER BY e.ExerciseTitle ASC
+     LIMIT ?`,
+    [...params, safeLimit]
+  );
+
+  return mapExerciseRowsWithUserFlags(rows, 0, true).map((row) => ({
+    ExerciseID: Number(row.ExerciseID || 0),
+    ExerciseTitle: row.ExerciseTitle || '',
+    RecordingType: row.RecordingType || '',
+    WorkoutType: row.WorkoutType || '',
+    MuscleGroup: row.MuscleGroup || '',
+    Equipment: row.Equipment || '',
+    PrimaryImage: row.PrimaryImage || '',
+    ImageURL: row.ImageURL || '',
+  }));
+};
+
+const retireSystemExercise = async ({ conn, sourceExerciseId, destinationExerciseId = null }) => {
+  const safeSourceExerciseId = normalizeOptionalExerciseId(sourceExerciseId);
+  const safeDestinationExerciseId = normalizeOptionalExerciseId(destinationExerciseId);
+  const retiredSourcePointer = safeDestinationExerciseId || safeSourceExerciseId;
+
+  const [result] = await conn.query(
+    `UPDATE exercises
+     SET ExerciseScope = ?,
+         ExercisePublicationState = ?,
+         IsGlobalExercise = 0,
+         OwnerTrainerID = NULL,
+         SourceExerciseID = ?
+     WHERE ExerciseID = ?
+     LIMIT 1`,
+    [
+      EXERCISE_SCOPE.CUSTOM,
+      EXERCISE_PUBLICATION_STATE.RESTRICTED,
+      retiredSourcePointer,
+      safeSourceExerciseId,
+    ]
+  );
+
+  return Number(result?.affectedRows || 0) > 0;
+};
+
+const reassignScheduledExerciseReferences = async ({ conn, sourceExerciseId, destinationExerciseId }) => {
+  const safeSourceExerciseId = normalizeOptionalExerciseId(sourceExerciseId);
+  const safeDestinationExerciseId = normalizeOptionalExerciseId(destinationExerciseId);
+  if (!safeSourceExerciseId || !safeDestinationExerciseId) return 0;
+
+  const [result] = await conn.query(
+    `UPDATE workout_schedule_exercises wse
+     JOIN exercises dest ON dest.ExerciseID = ?
+     SET wse.exercise_id = ?,
+         wse.exercise_name = COALESCE(NULLIF(dest.ExerciseTitle, ''), wse.exercise_name),
+         wse.exercise_image_url = COALESCE(NULLIF(dest.ImageURL, ''), wse.exercise_image_url),
+         wse.workout_type = COALESCE(NULLIF(dest.WorkoutType, ''), wse.workout_type),
+         wse.muscle_group = COALESCE(NULLIF(dest.MuscleGroup, ''), wse.muscle_group),
+         wse.equipment = COALESCE(NULLIF(dest.Equipment, ''), wse.equipment)
+     WHERE wse.exercise_id = ?`,
+    [safeDestinationExerciseId, safeDestinationExerciseId, safeSourceExerciseId]
+  );
+
+  return Number(result?.affectedRows || 0);
+};
+
+const consolidateFavoriteExerciseReferences = async ({ conn, sourceExerciseId, destinationExerciseId }) => {
+  const safeSourceExerciseId = normalizeOptionalExerciseId(sourceExerciseId);
+  const safeDestinationExerciseId = normalizeOptionalExerciseId(destinationExerciseId);
+  if (!safeSourceExerciseId || !safeDestinationExerciseId) return;
+
+  await conn.query(
+    `INSERT IGNORE INTO user_favorite_exercises (user_id, exercise_id, created_at)
+     SELECT ufe_source.user_id, ?, ufe_source.created_at
+     FROM user_favorite_exercises AS ufe_source
+     WHERE ufe_source.exercise_id = ?`,
+    [safeDestinationExerciseId, safeSourceExerciseId]
+  );
+
+  await conn.query(
+    `UPDATE user_favorite_exercises AS ufe_target
+     JOIN user_favorite_exercises AS ufe_source
+       ON ufe_source.user_id = ufe_target.user_id
+      AND ufe_source.exercise_id = ?
+     SET ufe_target.created_at = IF(ufe_target.created_at <= ufe_source.created_at, ufe_target.created_at, ufe_source.created_at)
+     WHERE ufe_target.exercise_id = ?`,
+    [safeSourceExerciseId, safeDestinationExerciseId]
+  );
+
+  await conn.query(
+    `DELETE FROM user_favorite_exercises
+     WHERE exercise_id = ?`,
+    [safeSourceExerciseId]
+  );
+};
+
 const buildUserRoleExistsClause = (userIdSql, roleValues = []) => {
   const normalizedRoleValues = Array.isArray(roleValues)
     ? roleValues.map((value) => String(value || '').trim().toLowerCase()).filter(Boolean)
@@ -769,6 +1081,7 @@ const normalizeExerciseCreatePayload = ({
     Instructions: String(Instructions ?? '').trim(),
     YouTubeVideoURL: String(YouTubeVideoURL ?? '').trim(),
     ExerciseScope: exerciseScope,
+    IsSystemExercise: exerciseScope === EXERCISE_SCOPE.SYSTEM ? 1 : 0,
     ExercisePublicationState: publicationState,
     OwnerTrainerID: ownerTrainerId,
     CreateAsGlobalExercise: createAsGlobalExercise,
@@ -1146,7 +1459,7 @@ const deleteExerciseStoredMedia = async ({ exerciseId, exercise, requestId = nul
 
 const memoryUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 1024 * 1024 * 1024 },
+  limits: { fileSize: MAX_EXERCISE_IMAGE_BYTES },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif|webp/;
     const ext = path.extname(file.originalname || '').toLowerCase();
@@ -1156,7 +1469,34 @@ const memoryUpload = multer({
     }
     cb(new Error('Only image files are allowed (jpeg, jpg, png, gif, webp)'));
   },
-}).array('images', 2);
+}).array('images', MAX_EXERCISE_IMAGES);
+
+const exerciseImageUploadMiddleware = (req, res, next) => {
+  memoryUpload(req, res, (err) => {
+    if (!err) {
+      return next();
+    }
+
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({
+        success: false,
+        error: 'Each exercise image must be 20MB or less.',
+      });
+    }
+
+    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({
+        success: false,
+        error: 'You can only upload up to 2 images per exercise.',
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      error: err?.message || 'Invalid image upload payload.',
+    });
+  });
+};
 
 const CANONICAL_IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
 
@@ -1350,6 +1690,10 @@ async function uploadImageToGatewayStorage({ exerciseId, file, slotIndex = 0, is
     throw new Error('The uploaded image content is empty.');
   }
 
+  if (fileBuffer.length > MAX_EXERCISE_IMAGE_BYTES) {
+    throw new Error('Each exercise image must be 20MB or less.');
+  }
+
   await putObjectViaGateway({
     storageKey,
     contentType: gatewayContentTypeForFilename(safeFileName),
@@ -1362,7 +1706,8 @@ async function uploadImageToGatewayStorage({ exerciseId, file, slotIndex = 0, is
 
 const getExerciseOwnership = async (exerciseId) => {
   const [rows] = await pool.query(
-    `SELECT ExerciseID, ExerciseTitle, ImageURL, ImageGallery, CreatedByUserID,
+    `SELECT ExerciseID, ExerciseTitle, WorkoutType, RecordingType, MuscleGroup, Equipment,
+            PrimaryImage, ImageURL, ImageGallery, CreatedByUserID,
             OwnerTrainerID, SourceExerciseID, ExerciseScope, ExercisePublicationState,
             YouTubeVideoURL,
             ${buildExerciseGlobalFlagSelect('')},
@@ -1624,6 +1969,7 @@ const fetchExercisesForView = async ({
   if (normalizedView === 'mine' || normalizedView === 'my') {
     const mineWhere = [];
     const mineParams = [userId];
+    mineWhere.push(buildRetiredSystemExerciseExclusionClause('e'));
 
     if (isAdmin) {
       mineWhere.push('e.CreatedByUserID = ?');
@@ -1688,6 +2034,7 @@ const fetchExercisesForView = async ({
   if (isAdmin) {
     [rows] = await pool.query(
       `${baseSelect}
+       WHERE ${buildRetiredSystemExerciseExclusionClause('e')}
        ORDER BY e.ExerciseTitle ASC`,
       [userId]
     );
@@ -1736,6 +2083,7 @@ const fetchExercisePage = async ({
   const includeDiscoverableUserCustom = includeDiscoverableCustom || Boolean(includeUserCustom);
   const baseWhere = [];
   const baseParams = [userId];
+  baseWhere.push(buildRetiredSystemExerciseExclusionClause('e'));
 
   appendExerciseVisibilityFilter({
     where: baseWhere,
@@ -1883,7 +2231,7 @@ const resolveExerciseDiscoveryFiltersFromQuery = (query = {}) => {
 };
 
 // PUT update exercise with image support
-router.put('/get-exercise/:id', memoryUpload, async (req, res) => {
+router.put('/get-exercise/:id', exerciseImageUploadMiddleware, async (req, res) => {
   try {
     const currentUserId = requireAuthUserId(req, res);
     if (!currentUserId) return;
@@ -2007,6 +2355,7 @@ router.put('/get-exercise/:id', memoryUpload, async (req, res) => {
     const adminEditing = isAdminUser(req);
     const trainerEditing = isTrainerUser(req);
     const hasExplicitScopeField = Object.prototype.hasOwnProperty.call(req.body || {}, 'ExerciseScope');
+    const hasExplicitOwnerTrainerField = Object.prototype.hasOwnProperty.call(req.body || {}, 'OwnerTrainerID');
     const hasExplicitPublicationField = Object.prototype.hasOwnProperty.call(req.body || {}, 'ExercisePublicationState');
     const requestedScope = normalizeRequestedCreateScope(req.body?.ExerciseScope);
     const requestedPublicationState = normalizeExercisePublicationStateValue(req.body?.ExercisePublicationState);
@@ -2051,12 +2400,16 @@ router.put('/get-exercise/:id', memoryUpload, async (req, res) => {
       if (requestedScope === EXERCISE_SCOPE.SYSTEM) {
         scopeColumns = {
           ExerciseScope: EXERCISE_SCOPE.SYSTEM,
+          IsSystemExercise: 1,
           OwnerTrainerID: null,
           IsGlobalExercise: 1,
           ExercisePublicationState: EXERCISE_PUBLICATION_STATE.DISCOVERABLE,
         };
       } else if (requestedScope === EXERCISE_SCOPE.SHARED) {
-        const requestedOwnerTrainerId = Number(req.body?.OwnerTrainerID || existingExercise.OwnerTrainerID || existingExercise.CreatedByUserID || 0);
+        const existingOwnerTrainerId = Number(existingExercise?.OwnerTrainerID || 0);
+        const requestedOwnerTrainerId = hasExplicitOwnerTrainerField
+          ? Number(req.body?.OwnerTrainerID || 0)
+          : existingOwnerTrainerId;
         if (adminEditing && requestedOwnerTrainerId > 0) {
           const ownerIsTrainer = await hasTrainerRoleInDb(requestedOwnerTrainerId);
           if (!ownerIsTrainer) {
@@ -2066,6 +2419,7 @@ router.put('/get-exercise/:id', memoryUpload, async (req, res) => {
 
         scopeColumns = {
           ExerciseScope: EXERCISE_SCOPE.SHARED,
+          IsSystemExercise: 0,
           OwnerTrainerID: adminEditing ? (requestedOwnerTrainerId > 0 ? requestedOwnerTrainerId : null) : currentUserId,
           IsGlobalExercise: 1,
           ExercisePublicationState: EXERCISE_PUBLICATION_STATE.DISCOVERABLE,
@@ -2073,6 +2427,7 @@ router.put('/get-exercise/:id', memoryUpload, async (req, res) => {
       } else if (requestedScope === EXERCISE_SCOPE.CUSTOM) {
         scopeColumns = {
           ExerciseScope: EXERCISE_SCOPE.CUSTOM,
+          IsSystemExercise: 0,
           OwnerTrainerID: null,
           IsGlobalExercise: 0,
           ExercisePublicationState: requestedPublicationState || existingPublicationState || EXERCISE_PUBLICATION_STATE.DISCOVERABLE,
@@ -2080,6 +2435,7 @@ router.put('/get-exercise/:id', memoryUpload, async (req, res) => {
       } else if (existingScope && isLegacyExerciseScope(existingScope)) {
         scopeColumns = {
           ExerciseScope: existingScope,
+          IsSystemExercise: existingScope === EXERCISE_SCOPE.SYSTEM ? 1 : 0,
           OwnerTrainerID: existingExercise.OwnerTrainerID || null,
           IsGlobalExercise: existingScope === EXERCISE_SCOPE.TRAINER_SHARED ? 1 : 0,
           ExercisePublicationState: existingScope === EXERCISE_SCOPE.PRIVATE
@@ -2092,10 +2448,10 @@ router.put('/get-exercise/:id', memoryUpload, async (req, res) => {
     let updateResult;
     if (adminEditing) {
       const scopeSql = scopeColumns
-        ? `, ExerciseScope = ?, OwnerTrainerID = ?, IsGlobalExercise = ?, ExercisePublicationState = ?`
+        ? `, ExerciseScope = ?, IsSystemExercise = ?, OwnerTrainerID = ?, IsGlobalExercise = ?, ExercisePublicationState = ?`
         : '';
       const scopeParams = scopeColumns
-        ? [scopeColumns.ExerciseScope, scopeColumns.OwnerTrainerID, scopeColumns.IsGlobalExercise, scopeColumns.ExercisePublicationState]
+        ? [scopeColumns.ExerciseScope, scopeColumns.IsSystemExercise, scopeColumns.OwnerTrainerID, scopeColumns.IsGlobalExercise, scopeColumns.ExercisePublicationState]
         : [];
 
       [updateResult] = await pool.query(
@@ -2142,10 +2498,10 @@ router.put('/get-exercise/:id', memoryUpload, async (req, res) => {
       );
     } else {
       const scopeSql = scopeColumns
-        ? `, ExerciseScope = ?, OwnerTrainerID = ?, IsGlobalExercise = ?, ExercisePublicationState = ?`
+        ? `, ExerciseScope = ?, IsSystemExercise = ?, OwnerTrainerID = ?, IsGlobalExercise = ?, ExercisePublicationState = ?`
         : '';
       const scopeParams = scopeColumns
-        ? [scopeColumns.ExerciseScope, scopeColumns.OwnerTrainerID, scopeColumns.IsGlobalExercise, scopeColumns.ExercisePublicationState]
+        ? [scopeColumns.ExerciseScope, scopeColumns.IsSystemExercise, scopeColumns.OwnerTrainerID, scopeColumns.IsGlobalExercise, scopeColumns.ExercisePublicationState]
         : [];
 
       [updateResult] = await pool.query(
@@ -2216,7 +2572,7 @@ router.put('/get-exercise/:id', memoryUpload, async (req, res) => {
 });
 
 // POST new exercise with image
-router.post('/save-exercises', memoryUpload, async (req, res) => {
+router.post('/save-exercises', exerciseImageUploadMiddleware, async (req, res) => {
   try {
     const currentUserId = requireAuthUserId(req, res);
     if (!currentUserId) return;
@@ -2314,6 +2670,7 @@ router.post('/save-exercises', memoryUpload, async (req, res) => {
       YouTubeVideoURL,
       CreateAsGlobalExercise,
       ExerciseScope,
+      IsSystemExercise,
       ExercisePublicationState,
       OwnerTrainerID,
       CreatedByUserID,
@@ -2331,7 +2688,7 @@ router.post('/save-exercises', memoryUpload, async (req, res) => {
       [
         CreatedByUserID,
         CreateAsGlobalExercise,
-        0,
+        IsSystemExercise,
         ExerciseScope,
         ExercisePublicationState,
         OwnerTrainerID,
@@ -2535,6 +2892,7 @@ router.get('/exercises/my', async (req, res) => {
              e.ExerciseScope = 'SYSTEM'
              OR COALESCE(e.IsSystemExercise, 0) = 1
            )
+           AND ${buildRetiredSystemExerciseExclusionClause('e')}
          ORDER BY e.ExerciseTitle ASC`,
         [currentUserId, currentUserId]
       );
@@ -2620,6 +2978,392 @@ router.delete('/exercises/:id/favorite', async (req, res) => {
   } catch (err) {
     console.error('❌ Failed to remove favorite exercise:', err?.message || err);
     return res.status(500).json({ error: 'Failed to remove favorite exercise' });
+  }
+});
+
+router.get('/admin/system-exercises/:id/replacements', async (req, res) => {
+  try {
+    const currentUserId = requireAuthUserId(req, res);
+    if (!currentUserId) return;
+    await ensureExerciseSchema();
+
+    if (!isAdminUser(req)) {
+      return res.status(403).json({ success: false, message: 'Only administrators may manage SYSTEM exercise replacements.' });
+    }
+
+    const sourceExerciseId = normalizeOptionalExerciseId(req.params.id);
+    if (!sourceExerciseId) {
+      return res.status(400).json({ success: false, message: 'Invalid source exercise id.' });
+    }
+
+    const sourceExercise = await getExerciseOwnership(sourceExerciseId);
+    if (!sourceExercise) {
+      return res.status(404).json({ success: false, message: 'Source exercise not found.' });
+    }
+
+    if (!isSystemExerciseRecord(sourceExercise)) {
+      return res.status(400).json({ success: false, message: 'Only SYSTEM exercises are supported by this workflow.' });
+    }
+
+    const replacementCandidates = await getSystemExerciseMergeCandidates({
+      sourceExerciseId,
+      search: req.query?.search || '',
+      limit: req.query?.limit || 30,
+    });
+
+    return res.status(200).json({
+      success: true,
+      sourceExerciseId,
+      candidates: replacementCandidates,
+    });
+  } catch (err) {
+    console.error('❌ Failed to fetch SYSTEM exercise replacements:', err?.message || err);
+    return res.status(500).json({ success: false, message: 'Failed to fetch replacement exercises.' });
+  }
+});
+
+router.get('/admin/system-exercises/:id/delete-impact', async (req, res) => {
+  try {
+    const currentUserId = requireAuthUserId(req, res);
+    if (!currentUserId) return;
+    await ensureExerciseSchema();
+
+    if (!isAdminUser(req)) {
+      return res.status(403).json({ success: false, message: 'Only administrators may inspect SYSTEM deletion impact.' });
+    }
+
+    const sourceExerciseId = normalizeOptionalExerciseId(req.params.id);
+    if (!sourceExerciseId) {
+      return res.status(400).json({ success: false, message: 'Invalid source exercise id.' });
+    }
+
+    const sourceExercise = await getExerciseOwnership(sourceExerciseId);
+    if (!sourceExercise) {
+      return res.status(404).json({ success: false, message: 'Source exercise not found.' });
+    }
+
+    if (!isSystemExerciseRecord(sourceExercise)) {
+      return res.status(400).json({ success: false, message: 'Only SYSTEM exercises are supported by this workflow.' });
+    }
+
+    if (isRetiredSystemExercise(sourceExercise)) {
+      return res.status(409).json({ success: false, message: 'This SYSTEM exercise has already been retired.' });
+    }
+
+    const replacementExerciseId = normalizeOptionalExerciseId(req.query?.replacementExerciseId);
+    let replacementExercise = null;
+    let compatibility = null;
+
+    if (replacementExerciseId) {
+      if (replacementExerciseId === sourceExerciseId) {
+        return res.status(400).json({ success: false, message: 'Replacement exercise must be different from the source exercise.' });
+      }
+
+      replacementExercise = await getExerciseOwnership(replacementExerciseId);
+      if (!replacementExercise) {
+        return res.status(404).json({ success: false, message: 'Replacement exercise not found.' });
+      }
+
+      if (!isSystemExerciseRecord(replacementExercise) || isRetiredSystemExercise(replacementExercise)) {
+        return res.status(400).json({ success: false, message: 'Replacement exercise must be an active SYSTEM exercise.' });
+      }
+
+      compatibility = validateRecordingTypeCompatibility({
+        sourceExercise,
+        destinationExercise: replacementExercise,
+      });
+    }
+
+    const impact = await getExerciseDeleteImpact({ exerciseId: sourceExerciseId, conn: pool });
+
+    return res.status(200).json({
+      success: true,
+      sourceExercise: {
+        ExerciseID: Number(sourceExercise.ExerciseID || 0),
+        ExerciseTitle: sourceExercise.ExerciseTitle || '',
+        RecordingType: sourceExercise.RecordingType || '',
+      },
+      replacementExercise: replacementExercise ? {
+        ExerciseID: Number(replacementExercise.ExerciseID || 0),
+        ExerciseTitle: replacementExercise.ExerciseTitle || '',
+        RecordingType: replacementExercise.RecordingType || '',
+      } : null,
+      compatibility,
+      impact,
+    });
+  } catch (err) {
+    console.error('❌ Failed to fetch SYSTEM deletion impact:', err?.message || err);
+    return res.status(500).json({ success: false, message: 'Failed to calculate deletion impact.' });
+  }
+});
+
+router.post('/admin/system-exercises/:id/delete-or-merge', async (req, res) => {
+  let conn = null;
+  let txStarted = false;
+  let rollbackResult = {
+    attempted: false,
+    succeeded: false,
+    error: null,
+  };
+  let failedOperation = 'preflight';
+  let sourceExerciseIdForLog = 0;
+  let replacementExerciseIdForLog = 0;
+  try {
+    const currentUserId = requireAuthUserId(req, res);
+    if (!currentUserId) return;
+    await ensureExerciseSchema();
+
+    if (!isAdminUser(req)) {
+      return res.status(403).json({ success: false, message: 'Only administrators may delete or merge SYSTEM exercises.' });
+    }
+
+    const sourceExerciseId = normalizeOptionalExerciseId(req.params.id);
+    sourceExerciseIdForLog = sourceExerciseId;
+    if (!sourceExerciseId) {
+      return res.status(400).json({ success: false, message: 'Invalid source exercise id.' });
+    }
+
+    if (req.body?.confirm !== true) {
+      return res.status(400).json({ success: false, message: 'Explicit administrator confirmation is required.' });
+    }
+
+    const sourceExercise = await getExerciseOwnership(sourceExerciseId);
+    if (!sourceExercise) {
+      return res.status(404).json({ success: false, message: 'Source exercise not found.' });
+    }
+
+    if (!isSystemExerciseRecord(sourceExercise)) {
+      return res.status(400).json({ success: false, message: 'Only SYSTEM exercises are supported by this workflow.' });
+    }
+
+    const sourceMetadataCheck = validateSystemExerciseMetadata(sourceExercise);
+    if (!sourceMetadataCheck.consistent) {
+      console.warn('[exercise-admin-delete] metadata-inconsistency', {
+        actorUserId: currentUserId,
+        sourceExerciseId,
+        replacementExerciseId: null,
+        detail: sourceMetadataCheck.message,
+        requestId: req?.authRequestId || req?.headers?.['x-request-id'] || null,
+      });
+      return res.status(409).json({
+        success: false,
+        message: 'The selected SYSTEM exercise has inconsistent metadata and cannot be processed safely.',
+      });
+    }
+
+    if (isRetiredSystemExercise(sourceExercise)) {
+      return res.status(409).json({ success: false, message: 'This SYSTEM exercise has already been retired.' });
+    }
+
+    const replacementExerciseId = normalizeOptionalExerciseId(req.body?.replacementExerciseId);
+    replacementExerciseIdForLog = replacementExerciseId;
+    let replacementExercise = null;
+
+    if (replacementExerciseId) {
+      if (replacementExerciseId === sourceExerciseId) {
+        return res.status(400).json({ success: false, message: 'Replacement exercise must be different from the source exercise.' });
+      }
+
+      replacementExercise = await getExerciseOwnership(replacementExerciseId);
+      if (!replacementExercise) {
+        return res.status(404).json({ success: false, message: 'Replacement exercise not found.' });
+      }
+
+      if (!isSystemExerciseRecord(replacementExercise) || isRetiredSystemExercise(replacementExercise)) {
+        return res.status(400).json({ success: false, message: 'Replacement exercise must be an active SYSTEM exercise.' });
+      }
+
+      const replacementMetadataCheck = validateSystemExerciseMetadata(replacementExercise);
+      if (!replacementMetadataCheck.consistent) {
+        console.warn('[exercise-admin-delete] metadata-inconsistency', {
+          actorUserId: currentUserId,
+          sourceExerciseId,
+          replacementExerciseId,
+          detail: replacementMetadataCheck.message,
+          requestId: req?.authRequestId || req?.headers?.['x-request-id'] || null,
+        });
+        return res.status(409).json({
+          success: false,
+          message: 'The selected replacement SYSTEM exercise has inconsistent metadata and cannot be used.',
+        });
+      }
+
+      const compatibility = validateRecordingTypeCompatibility({
+        sourceExercise,
+        destinationExercise: replacementExercise,
+      });
+      if (!compatibility.compatible) {
+        return res.status(409).json({ success: false, message: compatibility.message, compatibility });
+      }
+    }
+
+    if (!replacementExerciseId) {
+      const hasReferences = await hasExerciseHistoryReferences(sourceExerciseId);
+      if (!hasReferences) {
+        try {
+          await deleteExerciseStoredMedia({
+            exerciseId: sourceExerciseId,
+            exercise: sourceExercise,
+            requestId: req?.authRequestId || req?.headers?.['x-request-id'] || null,
+          });
+        } catch (storageError) {
+          return res.status(502).json({
+            success: false,
+            message: 'Exercise storage cleanup failed. The database record was preserved.',
+            error: storageError?.message || 'Gateway deletion failed.',
+          });
+        }
+
+        conn = await pool.getConnection();
+        failedOperation = 'transaction.begin.hard-delete';
+        await conn.beginTransaction();
+        txStarted = true;
+
+        failedOperation = 'sql.delete.user_favorite_exercises.by_source';
+        await conn.query('DELETE FROM user_favorite_exercises WHERE exercise_id = ?', [sourceExerciseId]);
+        failedOperation = 'sql.delete.exercises.by_source';
+        const [deleteResult] = await conn.query('DELETE FROM exercises WHERE ExerciseID = ? LIMIT 1', [sourceExerciseId]);
+        if (!deleteResult.affectedRows) {
+          failedOperation = 'transaction.rollback.hard-delete.source-missing';
+          await conn.rollback();
+          txStarted = false;
+          return res.status(404).json({ success: false, message: 'Source exercise no longer exists.' });
+        }
+
+        failedOperation = 'transaction.commit.hard-delete';
+        await conn.commit();
+        txStarted = false;
+
+        console.info('[exercise-admin-delete] hard-delete-success', {
+          actorUserId: currentUserId,
+          sourceExerciseId,
+          replacementExerciseId: null,
+          action: 'delete',
+          timestamp: new Date().toISOString(),
+        });
+
+        return res.status(200).json({
+          success: true,
+          action: 'delete',
+          message: 'Exercise Deleted Successfully',
+          impact: {
+            distinctPlansAffected: 0,
+            scheduledAssignmentsAffected: 0,
+            workoutHistoryAffected: 0,
+            favoritesAffected: 0,
+            otherDependentAffected: 0,
+            otherDependencyBreakdown: [],
+            totalAffectedReferences: 0,
+          },
+        });
+      }
+    }
+
+    conn = await pool.getConnection();
+    failedOperation = 'transaction.begin.delete-or-merge';
+    await conn.beginTransaction();
+    txStarted = true;
+
+    failedOperation = 'sql.select.delete-impact.snapshot';
+    const impact = await getExerciseDeleteImpact({ exerciseId: sourceExerciseId, conn });
+
+    if (replacementExerciseId) {
+      failedOperation = 'sql.update.workout_schedule_exercises.reassign';
+      await reassignScheduledExerciseReferences({
+        conn,
+        sourceExerciseId,
+        destinationExerciseId: replacementExerciseId,
+      });
+
+      failedOperation = 'sql.upsert.user_favorite_exercises.consolidate';
+      await consolidateFavoriteExerciseReferences({
+        conn,
+        sourceExerciseId,
+        destinationExerciseId: replacementExerciseId,
+      });
+
+      failedOperation = 'sql.update.exercises.retire-source-merge';
+      await retireSystemExercise({
+        conn,
+        sourceExerciseId,
+        destinationExerciseId: replacementExerciseId,
+      });
+
+      failedOperation = 'transaction.commit.merge';
+      await conn.commit();
+      txStarted = false;
+
+      console.info('[exercise-admin-delete] merge-success', {
+        actorUserId: currentUserId,
+        sourceExerciseId,
+        replacementExerciseId,
+        action: 'merge',
+        timestamp: new Date().toISOString(),
+      });
+
+      return res.status(200).json({
+        success: true,
+        action: 'merge',
+        message: 'Exercises Merged Successfully',
+        impact,
+      });
+    }
+
+    failedOperation = 'sql.update.exercises.retire-source-delete';
+    await retireSystemExercise({
+      conn,
+      sourceExerciseId,
+      destinationExerciseId: null,
+    });
+
+    failedOperation = 'transaction.commit.retire';
+    await conn.commit();
+    txStarted = false;
+
+    console.info('[exercise-admin-delete] retire-success', {
+      actorUserId: currentUserId,
+      sourceExerciseId,
+      replacementExerciseId: null,
+      action: 'retire',
+      timestamp: new Date().toISOString(),
+    });
+
+    return res.status(200).json({
+      success: true,
+      action: 'delete',
+      message: 'Exercise Deleted Successfully',
+      impact,
+    });
+  } catch (err) {
+    if (conn && txStarted) {
+      rollbackResult.attempted = true;
+      try {
+        await conn.rollback();
+        rollbackResult.succeeded = true;
+      } catch (rollbackErr) {
+        rollbackResult.succeeded = false;
+        rollbackResult.error = toSanitizedDbError(rollbackErr);
+      }
+    }
+
+    console.error('[exercise-admin-delete] transaction-failure', {
+      requestId: req?.authRequestId || req?.headers?.['x-request-id'] || null,
+      actorUserId: Number(req?.session?.user?.id || 0) || null,
+      sourceExerciseId: sourceExerciseIdForLog || null,
+      replacementExerciseId: replacementExerciseIdForLog || null,
+      failedOperation,
+      rollback: rollbackResult,
+      dbError: toSanitizedDbError(err),
+    });
+
+    return res.status(500).json({
+      success: false,
+      message: 'Unable to complete the requested delete/merge operation. No data was changed.',
+    });
+  } finally {
+    if (conn) {
+      conn.release();
+    }
   }
 });
 
@@ -2756,6 +3500,11 @@ module.exports.getEffectiveExerciseGlobalFlag = getEffectiveExerciseGlobalFlag;
 module.exports.canReadExerciseForUser = canReadExerciseForUser;
 module.exports.canManageExercise = canManageExercise;
 module.exports.canDeleteExercise = canDeleteExercise;
+module.exports.isSystemExerciseRecord = isSystemExerciseRecord;
+module.exports.isRetiredSystemExercise = isRetiredSystemExercise;
+module.exports.validateRecordingTypeCompatibility = validateRecordingTypeCompatibility;
+module.exports.getExerciseDeleteImpact = getExerciseDeleteImpact;
+module.exports.getSystemExerciseMergeCandidates = getSystemExerciseMergeCandidates;
 module.exports.normalizeExerciseSearchTerm = normalizeExerciseSearchTerm;
 module.exports.escapeSqlLikePattern = escapeSqlLikePattern;
 module.exports.buildLiteralSubstringLikeParam = buildLiteralSubstringLikeParam;

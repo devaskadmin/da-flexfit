@@ -264,12 +264,15 @@ function createConversionPreview({
   };
 }
 
-function normalizeTemplateForTargetType(sourceTemplate, targetPlanType) {
+function normalizeTemplateForTargetType(sourceTemplate, targetPlanType, destinationTitle = null) {
   const cloned = JSON.parse(JSON.stringify(sourceTemplate || {}));
   const metadata = cloned.template && cloned.template.metadata ? cloned.template.metadata : {};
   const publication = cloned.template && cloned.template.publication ? cloned.template.publication : {};
 
   metadata.planType = targetPlanType;
+  if (destinationTitle) {
+    metadata.name = String(destinationTitle).trim();
+  }
 
   publication.status = 'draft';
   publication.featured = false;
@@ -330,6 +333,7 @@ async function buildWorkoutPlanConversionPreview({
   const normalizedTargetType = permission.value;
   const destinationUserId = Number(authContext && authContext.userId ? authContext.userId : 0);
   const destinationReq = buildMockReqFromAuthContext(authContext);
+  const destinationTitle = String(options?.destinationTitle || '').trim();
 
   const sourceTemplate = toCanonicalWorkoutPlanTemplate(sourcePlan);
   const sourceTemplateValidation = validateWorkoutPlanTemplate(sourceTemplate);
@@ -414,7 +418,11 @@ async function buildWorkoutPlanConversionPreview({
     warnings.push(`${gap.path}: ${gap.reason}`);
   }
 
-  const convertedTemplate = normalizeTemplateForTargetType(sourceTemplate, normalizedTargetType);
+  const convertedTemplate = normalizeTemplateForTargetType(
+    sourceTemplate,
+    normalizedTargetType,
+    destinationTitle || null
+  );
   const convertedTemplateValidation = validateWorkoutPlanTemplate(convertedTemplate);
   if (!convertedTemplateValidation.ok) {
     return {
@@ -427,13 +435,15 @@ async function buildWorkoutPlanConversionPreview({
     };
   }
 
+  const dedupedWarnings = [...new Set(warnings.filter(Boolean))];
+
   const preview = createConversionPreview({
     sourcePlan,
     sourceTemplate: convertedTemplate,
     targetPlanType: normalizedTargetType,
     destinationUserId,
     exerciseCompatibility: compatibilityEntries,
-    warnings,
+    warnings: dedupedWarnings,
     blockers,
   });
 

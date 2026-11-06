@@ -32,6 +32,14 @@ const coverImageSrc = computed(() => {
 const onCoverError = (event) => {
   applyWorkoutPlanImageFallback(event);
 };
+
+const formatPlanTypeLabel = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!normalized) return '—';
+  if (normalized === 'community_shared') return 'Community Shared';
+  if (normalized === 'trainer_shared') return 'Trainer Shared';
+  return normalized.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+};
 </script>
 
 <template>
@@ -53,6 +61,11 @@ const onCoverError = (event) => {
           <h4>{{ schedule.name || 'Untitled Workout' }}</h4>
           <span v-if="selected" class="schedule-card__badge">Selected</span>
         </div>
+
+        <p class="schedule-card__plan-type">
+          <strong>Plan Type:</strong>
+          {{ formatPlanTypeLabel(schedule.planType) }}
+        </p>
 
         <div class="schedule-card__meta">
           <span>
@@ -166,6 +179,16 @@ const onCoverError = (event) => {
   color: #1d4ed8;
   font-size: 0.74rem;
   font-weight: 700;
+}
+
+.schedule-card__plan-type {
+  margin: 6px 0 0;
+  font-size: 0.84rem;
+  color: rgba(248, 250, 252, 0.94);
+}
+
+.schedule-card__plan-type strong {
+  color: rgba(248, 250, 252, 0.99);
 }
 
 .schedule-card__meta {

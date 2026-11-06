@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { API_BASE } from '@/config/env'
 import { buildWorkoutPlanCoverImageUrl, applyWorkoutPlanImageFallback } from '@/utils/workoutPlanImage'
+import { countUniqueWorkoutPlanExercises } from '@/utils/workoutPlanExerciseCount'
+import { showConfirmDialog } from '@/utils/browserDialogs'
 
 const router = useRouter()
 
@@ -134,9 +136,15 @@ const useSelectedPlan = async () => {
   if (!planId) return
 
   const dayCount = Number(selectedPlan.value?.days?.length || 0)
-  const exerciseCount = Number(selectedPlan.value?.exercises?.length || 0)
-  const confirmed = window.confirm(
-    `Use this plan?\n\n${selectedPlan.value?.name || 'Plan'}\nCategory: ${selectedPlan.value?.category || '—'}\nAccess: ${selectedPlan.value?.access || '—'}\nDuration: ${selectedPlan.value?.duration || 0} min\nDays: ${dayCount}\nExercises: ${exerciseCount}`
+  const exerciseCount = countUniqueWorkoutPlanExercises(selectedPlan.value?.exercises || [])
+  const confirmed = await showConfirmDialog(
+    `Use this plan?\n\n${selectedPlan.value?.name || 'Plan'}\nCategory: ${selectedPlan.value?.category || '—'}\nAccess: ${selectedPlan.value?.access || '—'}\nDuration: ${selectedPlan.value?.duration || 0} min\nDays: ${dayCount}\nExercises: ${exerciseCount}`,
+    {
+      title: 'Use Workout Plan',
+      icon: 'question',
+      confirmButtonText: 'Use Plan',
+      cancelButtonText: 'Cancel',
+    }
   )
   if (!confirmed) return
 
@@ -285,7 +293,7 @@ onMounted(loadPlans)
 
             <div class="row g-2 mb-3">
               <div class="col-6"><strong>Days:</strong> {{ selectedPlan.days.length }}</div>
-              <div class="col-6"><strong>Exercises:</strong> {{ selectedPlan.exercises.length }}</div>
+              <div class="col-6"><strong>Exercises:</strong> {{ countUniqueWorkoutPlanExercises(selectedPlan.exercises) }}</div>
               <div class="col-6"><strong>Category:</strong> {{ selectedPlan.category }}</div>
               <div class="col-6"><strong>Duration:</strong> {{ selectedPlan.duration }} min</div>
               <div class="col-6"><strong>Access:</strong> {{ selectedPlan.access }}</div>

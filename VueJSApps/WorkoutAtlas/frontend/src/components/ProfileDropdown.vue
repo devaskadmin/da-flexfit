@@ -257,7 +257,6 @@ const toggleDropdown = (event) => {
 
   const nextOpen = !beforeState
 
-  showProfileClickDetectedMessage()
   sendProfileMenuClickDebug({ before: beforeState, after: nextOpen })
 
   if (nextOpen) {
@@ -276,12 +275,6 @@ const toggleDropdown = (event) => {
   isOpen.value = nextOpen
   if (nextOpen) {
     lastAvatarOpenAt = now
-  }
-
-  if (typeof window !== 'undefined' && typeof window.alert === 'function') {
-    window.alert(
-      `PROFILE CLICK\nbefore: ${String(beforeState)}\nafter: ${String(nextOpen)}\nwidth: ${String(window.innerWidth || 0)}`
-    )
   }
 
   emitProfileStateDebug({

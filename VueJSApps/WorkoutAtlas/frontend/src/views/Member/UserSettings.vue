@@ -5,6 +5,7 @@ import { API_BASE } from '@/config/env';
 import { useAuth } from '@/composable/useAuth';
 import AvatarModal from '@/components/AvatarModal.vue';
 import ExercisePickerModal from '@/components/workout-builder/ExercisePickerModal.vue';
+import { showConfirmDialog } from '@/utils/browserDialogs';
 
 const activeTab = ref('profile')
 const route = useRoute();
@@ -442,7 +443,12 @@ const archiveGoal = async (id) => {
 }
 
 const deleteGoal = async (id) => {
-  if (!confirm('Delete this goal permanently?')) return
+  const confirmed = await showConfirmDialog('Delete this goal permanently?', {
+    title: 'Delete Goal',
+    confirmButtonText: 'Delete',
+    cancelButtonText: 'Cancel',
+  })
+  if (!confirmed) return
   goalsError.value = ''
   try {
     const res = await fetch(`${API_BASE}/api/goals/${id}`, { method: 'DELETE', credentials: 'include' })

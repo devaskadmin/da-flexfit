@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import { API_BASE } from '@/config/env';
 import { isDemoMode } from '@/config/appConfig';
 import { useAuth } from '@/composable/useAuth';
+import { showConfirmDialog } from '@/utils/browserDialogs';
 import loginLogo from '@/assets/logo/login-logo.png';
 import apiClient from '@/services/apiClient';
 
@@ -657,7 +658,11 @@ const unlinkGoogleTestUser = async () => {
     return;
   }
 
-  const shouldProceed = window.confirm('Unlink Google from the configured local test user account?');
+  const shouldProceed = await showConfirmDialog('Unlink Google from the configured local test user account?', {
+    title: 'Unlink Google Test User',
+    confirmButtonText: 'Unlink',
+    cancelButtonText: 'Cancel',
+  });
   if (!shouldProceed) {
     return;
   }

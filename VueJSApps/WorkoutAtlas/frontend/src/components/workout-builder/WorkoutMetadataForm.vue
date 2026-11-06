@@ -25,6 +25,26 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  planTypeDisplayLabel: {
+    type: String,
+    default: '',
+  },
+  showConvertPlanTypeButton: {
+    type: Boolean,
+    default: false,
+  },
+  convertPlanTypeDisabled: {
+    type: Boolean,
+    default: false,
+  },
+  convertPlanTypeLoading: {
+    type: Boolean,
+    default: false,
+  },
+  convertPlanTypeDisabledReason: {
+    type: String,
+    default: '',
+  },
   goalOptions: {
     type: Array,
     default: () => [],
@@ -35,7 +55,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['update:metadata', 'create-goal']);
+const emit = defineEmits(['update:metadata', 'create-goal', 'convert-plan-type']);
 
 const visiblePlanTypeOptions = computed(() => {
   return (Array.isArray(props.planTypeOptions) ? props.planTypeOptions : [])
@@ -180,6 +200,10 @@ const updateMetadata = (patch) => {
 
 const updateField = (field, value) => {
   updateMetadata({ [field]: value });
+};
+
+const triggerConvertPlanType = () => {
+  emit('convert-plan-type');
 };
 
 const openGoalPicker = () => {
@@ -408,8 +432,8 @@ onUnmounted(() => {
           <label v-if="visiblePlanTypeOptions.length" class="builder-field builder-field--row">
             <span>Workout Plan Type <span class="label-required-star" aria-hidden="true">*</span></span>
             <select
+              v-if="canEditPlanType"
               :value="metadata.planType || ''"
-              :disabled="!canEditPlanType"
               @change="updateField('planType', $event.target.value)"
             >
               <option
@@ -421,6 +445,25 @@ onUnmounted(() => {
                 {{ option.label }}
               </option>
             </select>
+            <div v-else class="plan-type-readonly-row">
+              <span class="plan-type-readonly-row__label">{{ planTypeDisplayLabel || 'Unknown' }}</span>
+              <button
+                v-if="showConvertPlanTypeButton"
+                type="button"
+                class="goal-selector-inline__btn goal-selector-inline__btn--select wa-btn--blue plan-type-readonly-row__button"
+                :disabled="convertPlanTypeDisabled || convertPlanTypeLoading"
+                :title="convertPlanTypeDisabled && convertPlanTypeDisabledReason ? convertPlanTypeDisabledReason : ''"
+                @click="triggerConvertPlanType"
+              >
+                {{ convertPlanTypeLoading ? 'Loading...' : 'Convert to Another Plan Type' }}
+              </button>
+              <small
+                v-if="showConvertPlanTypeButton && convertPlanTypeDisabled && convertPlanTypeDisabledReason"
+                class="plan-type-readonly-row__help"
+              >
+                {{ convertPlanTypeDisabledReason }}
+              </small>
+            </div>
           </label>
 
           <div class="plan-info-two-col" role="group" aria-label="Plan Information detail fields">
@@ -966,6 +1009,43 @@ onUnmounted(() => {
   outline: none;
 }
 
+.plan-type-readonly-row {
+  grid-column: 1;
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.plan-type-readonly-row__label {
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(15, 28, 46, 0.9), rgba(11, 22, 34, 0.92));
+  color: #ecf6ff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+}
+
+.plan-type-readonly-row__button {
+  min-height: 34px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.plan-type-readonly-row__help {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #bfdbfe;
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
 .goal-picker-modal {
   position: fixed;
   inset: 0;
@@ -1431,8 +1511,14 @@ onUnmounted(() => {
     gap: 6px;
   }
 
+  .plan-type-readonly-row {
+    grid-template-columns: 1fr;
+  }
+
   .goal-selector-inline__selected,
-  .goal-selector-inline__btn {
+  .goal-selector-inline__btn,
+  .plan-type-readonly-row__label,
+  .plan-type-readonly-row__button {
     min-height: 38px;
     font-size: 0.78rem;
   }

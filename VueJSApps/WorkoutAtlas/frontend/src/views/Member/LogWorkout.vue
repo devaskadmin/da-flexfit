@@ -5,6 +5,13 @@ import ExerciseSessionCard from '@/components/workout-session/ExerciseSessionCar
 import ExercisePickerModal from '@/components/workout-builder/ExercisePickerModal.vue';
 import { API_BASE } from '@/config/env';
 import { useWorkoutSessionDraft } from '@/composable/useWorkoutSessionDraft';
+import {
+  buildDiagnosticsPayload,
+  buildFriendlyMessage,
+  canViewTechnicalDiagnostics,
+  normalizeRoleSlug,
+} from '@/utils/userFriendlyErrors';
+import { showConfirmDialog } from '@/utils/browserDialogs';
 
 const router = useRouter();
 const route = useRoute();
@@ -48,6 +55,7 @@ const expandedPlanData  = ref(null);   // full plan detail (with exercises/days)
 const expandedLoading   = ref(false);
 const dayOrderStateByPlanId = ref({});
 const reorderPanelOpenByPlanId = ref({});
+const mobilePlanActionMenuOpenByPlanId = ref({});
 const latestHistoryByExerciseId = ref({});
 
 /* ─── Session state (Day Details) ───────────────────────────────────────── */
@@ -60,6 +68,21 @@ const saving           = ref(false);
 const saveMessage      = ref('');
 const saveError        = ref('');
 const conflictMessage  = ref('');
+const currentRoleSlug = ref('user');
+const errorDiagnosticsByArea = ref({
+  plansLoad: null,
+  save: null,
+  history: null,
+  historySave: null,
+  deleteHistory: null,
+});
+const diagnosticsExpandedByArea = ref({
+  plansLoad: false,
+  save: false,
+  history: false,
+  historySave: false,
+  deleteHistory: false,
+});
 const workoutTimerNowMs = ref(Date.now());
 const addExercisePickerOpen = ref(false);
 const exerciseLibraryLoading = ref(false);
@@ -77,6 +100,81 @@ const {
   persistWorkoutDraft,
   queueWorkoutDraftSave,
 } = useWorkoutSessionDraft({ activeSession, sessionExercises });
+
+const canShowTechnicalDiagnostics = computed(() =>
+  canViewTechnicalDiagnostics({ roleSlug: currentRoleSlug.value })
+);
+
+const parseResponseError = async (response, fallbackMessage) => {
+  const payload = await response.json().catch(() => ({}));
+  const rawMessage = payload?.error || payload?.detail || payload?.message || fallbackMessage;
+  const parsedStatus = Number(response?.status || 0) || null;
+  const code = payload?.code || payload?.errorCode || '';
+  const requestId = payload?.requestId || response.headers?.get('x-request-id') || '';
+  const service = payload?.service || '';
+  return {
+    status: parsedStatus,
+    code,
+    requestId,
+    service,
+    rawMessage,
+  };
+};
+
+const setFriendlyError = (area, {
+  status = null,
+  code = '',
+  requestId = '',
+  service = '',
+  rawMessage = '',
+  category = 'generic',
+  fallback = 'Unable to complete your request. Please try again.',
+  preserveValidation = true,
+} = {}) => {
+  const friendlyMessage = buildFriendlyMessage({
+    status,
+    code,
+    rawMessage,
+    category,
+    fallback,
+    preserveValidation,
+  });
+
+  if (area === 'plansLoad') plansLoadError.value = friendlyMessage;
+  if (area === 'save') saveError.value = friendlyMessage;
+  if (area === 'history') historyError.value = friendlyMessage;
+  if (area === 'historySave') historySaveError.value = friendlyMessage;
+  if (area === 'deleteHistory') deleteHistoryError.value = friendlyMessage;
+
+  errorDiagnosticsByArea.value = {
+    ...errorDiagnosticsByArea.value,
+    [area]: buildDiagnosticsPayload({ status, code, requestId, service, rawMessage }),
+  };
+};
+
+const clearFriendlyError = (area) => {
+  if (area === 'plansLoad') plansLoadError.value = '';
+  if (area === 'save') saveError.value = '';
+  if (area === 'history') historyError.value = '';
+  if (area === 'historySave') historySaveError.value = '';
+  if (area === 'deleteHistory') deleteHistoryError.value = '';
+
+  errorDiagnosticsByArea.value = {
+    ...errorDiagnosticsByArea.value,
+    [area]: null,
+  };
+  diagnosticsExpandedByArea.value = {
+    ...diagnosticsExpandedByArea.value,
+    [area]: false,
+  };
+};
+
+const toggleDiagnostics = (area) => {
+  diagnosticsExpandedByArea.value = {
+    ...diagnosticsExpandedByArea.value,
+    [area]: !diagnosticsExpandedByArea.value?.[area],
+  };
+};
 
 // Helper: open the first incomplete exercise in a list, or null if all done
 function openFirstIncomplete(exercises) {
@@ -408,6 +506,74 @@ const toggleReorderPanel = (planId) => {
     ...reorderPanelOpenByPlanId.value,
     [pid]: !current,
   };
+};
+
+const isPlanActionMenuOpen = (planId) => Boolean(mobilePlanActionMenuOpenByPlanId.value[String(planId || '')]);
+
+const closePlanActionMenu = (planId) => {
+  const pid = String(planId || '').trim();
+  if (!pid) return;
+
+  if (!mobilePlanActionMenuOpenByPlanId.value[pid]) {
+    return;
+  }
+
+  mobilePlanActionMenuOpenByPlanId.value = {
+    ...mobilePlanActionMenuOpenByPlanId.value,
+    [pid]: false,
+  };
+};
+
+const closeAllPlanActionMenus = () => {
+  if (!Object.keys(mobilePlanActionMenuOpenByPlanId.value).length) {
+    return;
+  }
+
+  mobilePlanActionMenuOpenByPlanId.value = {};
+};
+
+const togglePlanActionMenu = (planId) => {
+  const pid = String(planId || '').trim();
+  if (!pid) return;
+
+  const current = Boolean(mobilePlanActionMenuOpenByPlanId.value[pid]);
+  mobilePlanActionMenuOpenByPlanId.value = current ? {} : { [pid]: true };
+};
+
+const onDocumentPointerDownForPlanActionMenu = (event) => {
+  const target = event?.target;
+  if (!target || typeof target.closest !== 'function') {
+    return;
+  }
+
+  if (!target.closest('.wl-plan-mobile-actions')) {
+    closeAllPlanActionMenus();
+  }
+};
+
+const handlePlanMenuReorder = async (plan) => {
+  const pid = String(plan?.planId || '').trim();
+  if (!pid) {
+    closeAllPlanActionMenus();
+    return;
+  }
+
+  if (expandedPlanId.value !== pid) {
+    await togglePlan(pid);
+  }
+
+  toggleReorderPanel(pid);
+  closePlanActionMenu(pid);
+};
+
+const handlePlanMenuEdit = (plan) => {
+  closePlanActionMenu(plan?.planId);
+  openInBuilder(plan?.planId);
+};
+
+const handlePlanMenuDelete = async (plan) => {
+  closePlanActionMenu(plan?.planId);
+  await deleteWorkoutPlan(plan);
 };
 
 const ensureLocalCustomOrder = (planId) => {
@@ -855,11 +1021,13 @@ const updateSet = (exerciseId, setIndex, field, value) => {
 const loadWorkoutLists = async () => {
   loading.value = true;
   plansLoadRequested.value = true;
-  plansLoadError.value = '';
+  clearFriendlyError('plansLoad');
   plansLoaded.value = false;
   try {
     const res  = await fetch(`${API_BASE}/api/workout-planner`, { credentials: 'include' });
-    if (!res.ok) throw new Error('Failed to load workout plans.');
+    if (!res.ok) {
+      throw await parseResponseError(res, 'Failed to load workout plans.');
+    }
     const data = await res.json();
     workoutLists.value = (Array.isArray(data?.workoutLists) ? data.workoutLists : [])
       .filter((plan) => isPersonalWorkoutPlan(plan))
@@ -871,7 +1039,14 @@ const loadWorkoutLists = async () => {
 
     plansLoaded.value = true;
   } catch (err) {
-    plansLoadError.value = err?.message || 'Failed to load workout plans.';
+    setFriendlyError('plansLoad', {
+      status: err?.status,
+      code: err?.code,
+      requestId: err?.requestId,
+      service: err?.service,
+      rawMessage: err?.rawMessage || err?.message,
+      fallback: 'Unable to load workout plans right now. Please try again.',
+    });
     workoutLists.value = [];
     plansLoaded.value = true;
   } finally {
@@ -1013,7 +1188,7 @@ const previewDay = (dayName) => {
 /* ─── Start workout for a day ────────────────────────────────────────────── */
 const startDayWorkout = async (dayName) => {
   conflictMessage.value = '';
-  saveError.value       = '';
+  clearFriendlyError('save');
   const planId = expandedPlanId.value;
 
   if (hasLiveWorkoutSession.value && activeSession.value) {
@@ -1052,7 +1227,15 @@ const startDayWorkout = async (dayName) => {
       }
       return;
     }
-    if (!res.ok) throw new Error(data?.error || 'Failed to start workout session.');
+    if (!res.ok) {
+      throw {
+        status: Number(res?.status || 0) || null,
+        rawMessage: data?.error || 'Failed to start workout session.',
+        code: data?.code || data?.errorCode || '',
+        requestId: data?.requestId || res.headers?.get('x-request-id') || '',
+        service: data?.service || '',
+      };
+    }
 
     activeSession.value    = data.session;
     hasActiveWorkout.value = true;
@@ -1067,7 +1250,15 @@ const startDayWorkout = async (dayName) => {
 
     activeTab.value = 'dayDetails';
   } catch (err) {
-    saveError.value = err?.message || 'Failed to start workout.';
+    setFriendlyError('save', {
+      status: err?.status,
+      code: err?.code,
+      requestId: err?.requestId,
+      service: err?.service,
+      rawMessage: err?.rawMessage || err?.message,
+      category: 'save',
+      fallback: 'Unable to start this workout right now. Please try again.',
+    });
   }
 };
 
@@ -1075,7 +1266,7 @@ const startDayWorkout = async (dayName) => {
 const completeWorkout = async () => {
   saving.value      = true;
   saveMessage.value = '';
-  saveError.value   = '';
+  clearFriendlyError('save');
   clearWorkoutDraftSave();
 
   try {
@@ -1096,8 +1287,7 @@ const completeWorkout = async () => {
       body: JSON.stringify(sessionPayload), credentials: 'include',
     });
     if (!logRes.ok) {
-      const errBody = await logRes.json().catch(() => ({}));
-      throw new Error(errBody?.error || 'Failed to save session log.');
+      throw await parseResponseError(logRes, 'Failed to save session log.');
     }
 
     let completedDurationSeconds = 0;
@@ -1107,7 +1297,13 @@ const completeWorkout = async () => {
       });
       const completeData = await completeRes.json().catch(() => ({}));
       if (!completeRes.ok) {
-        throw new Error(completeData?.error || 'Failed to complete workout session.');
+        throw {
+          status: Number(completeRes?.status || 0) || null,
+          rawMessage: completeData?.error || 'Failed to complete workout session.',
+          code: completeData?.code || completeData?.errorCode || '',
+          requestId: completeData?.requestId || completeRes.headers?.get('x-request-id') || '',
+          service: completeData?.service || '',
+        };
       }
       completedDurationSeconds = Number(completeData?.session?.durationSeconds || 0);
     }
@@ -1124,7 +1320,15 @@ const completeWorkout = async () => {
       selectedDay.value = '';
     }, 2000);
   } catch (err) {
-    saveError.value = err?.message || 'Failed to complete workout.';
+    setFriendlyError('save', {
+      status: err?.status,
+      code: err?.code,
+      requestId: err?.requestId,
+      service: err?.service,
+      rawMessage: err?.rawMessage || err?.message,
+      category: 'save',
+      fallback: 'Unable to complete this workout right now. Please try again.',
+    });
   } finally {
     saving.value = false;
   }
@@ -1172,12 +1376,15 @@ const loadSessionUserId = async () => {
     const response = await fetch(`${API_BASE}/api/session`, { credentials: 'include' });
     if (!response.ok) {
       sessionUserId.value = null;
+      currentRoleSlug.value = 'user';
       return;
     }
     const data = await response.json().catch(() => ({}));
     sessionUserId.value = Number(data?.user?.id || 0) || null;
+    currentRoleSlug.value = normalizeRoleSlug(data?.user?.role || data?.user?.roleSlug || 'user');
   } catch (_) {
     sessionUserId.value = null;
+    currentRoleSlug.value = 'user';
   }
 };
 
@@ -1200,18 +1407,22 @@ const openAddExercisePicker = async () => {
   }
 
   if (!activeSession.value?.id) {
+    clearFriendlyError('save');
     saveError.value = 'No active in-progress workout found.';
     return;
   }
 
-  saveError.value = '';
+  clearFriendlyError('save');
 
   if (!exerciseLibrary.value.length && !exerciseLibraryLoading.value) {
     await loadExerciseLibrary();
   }
 
   if (!exerciseLibrary.value.length) {
-    saveError.value = 'Unable to load Exercise Database right now.';
+    setFriendlyError('save', {
+      rawMessage: 'Unable to load Exercise Database right now.',
+      fallback: 'Unable to load Exercise Database right now.',
+    });
     return;
   }
 
@@ -1234,12 +1445,13 @@ const addExerciseToActiveWorkout = async (pickedExercises) => {
   }
 
   if (!hasActiveWorkout.value || !activeSession.value?.id) {
+    clearFriendlyError('save');
     saveError.value = 'No active in-progress workout found.';
     return;
   }
 
   exerciseAddLoading.value = true;
-  saveError.value = '';
+  clearFriendlyError('save');
   saveMessage.value = '';
 
   let addedCount = 0;
@@ -1255,7 +1467,13 @@ const addExerciseToActiveWorkout = async (pickedExercises) => {
 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to add exercise to active workout.');
+        throw {
+          status: Number(response?.status || 0) || null,
+          rawMessage: payload?.error || 'Failed to add exercise to active workout.',
+          code: payload?.code || payload?.errorCode || '',
+          requestId: payload?.requestId || response.headers?.get('x-request-id') || '',
+          service: payload?.service || '',
+        };
       }
 
       const addedExercise = payload?.exercise;
@@ -1284,7 +1502,15 @@ const addExerciseToActiveWorkout = async (pickedExercises) => {
       queueWorkoutDraftSave(true);
     }
   } catch (err) {
-    saveError.value = err?.message || 'Failed to add exercise to active workout.';
+    setFriendlyError('save', {
+      status: err?.status,
+      code: err?.code,
+      requestId: err?.requestId,
+      service: err?.service,
+      rawMessage: err?.rawMessage || err?.message,
+      category: 'save',
+      fallback: 'Unable to add exercise to this workout right now.',
+    });
   } finally {
     exerciseAddLoading.value = false;
   }
@@ -1313,6 +1539,10 @@ const removePlanFromUi = (planId) => {
   delete nextReorderPanelOpenByPlanId[pid];
   reorderPanelOpenByPlanId.value = nextReorderPanelOpenByPlanId;
 
+  const nextMobilePlanActionMenuOpenByPlanId = { ...mobilePlanActionMenuOpenByPlanId.value };
+  delete nextMobilePlanActionMenuOpenByPlanId[pid];
+  mobilePlanActionMenuOpenByPlanId.value = nextMobilePlanActionMenuOpenByPlanId;
+
   if (workoutLists.value.length !== 1) {
     didAutoExpandSinglePlan.value = false;
   }
@@ -1325,12 +1555,16 @@ const deleteWorkoutPlan = async (plan) => {
   }
 
   const planName = String(plan?.name || plan?.planName || 'this workout plan').trim();
-  const confirmed = window.confirm(`Delete ${planName}? This will permanently remove this workout plan.`);
+  const confirmed = await showConfirmDialog(`Delete ${planName}? This will permanently remove this workout plan.`, {
+    title: 'Delete Workout Plan',
+    confirmButtonText: 'Delete',
+    cancelButtonText: 'Cancel',
+  });
   if (!confirmed) {
     return;
   }
 
-  saveError.value = '';
+  clearFriendlyError('save');
   saveMessage.value = '';
 
   try {
@@ -1341,21 +1575,34 @@ const deleteWorkoutPlan = async (plan) => {
 
     const body = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(body?.error || 'Failed to delete workout plan.');
+      throw {
+        status: Number(res?.status || 0) || null,
+        rawMessage: body?.error || 'Failed to delete workout plan.',
+        code: body?.code || body?.errorCode || '',
+        requestId: body?.requestId || res.headers?.get('x-request-id') || '',
+        service: body?.service || '',
+      };
     }
 
     removePlanFromUi(planId);
     saveMessage.value = 'Workout plan deleted.';
     await autoExpandSinglePlanIfNeeded();
   } catch (err) {
-    saveError.value = err?.message || 'Failed to delete workout plan.';
+    setFriendlyError('save', {
+      status: err?.status,
+      code: err?.code,
+      requestId: err?.requestId,
+      service: err?.service,
+      rawMessage: err?.rawMessage || err?.message,
+      fallback: 'Unable to delete this workout plan right now. Please try again.',
+    });
   }
 };
 
 /* ─── Workout History loader ───────────────────────────────────────────── */
 const loadWorkoutHistory = async () => {
   historyLoading.value  = true;
-  historyError.value    = '';
+  clearFriendlyError('history');
   historyWorkouts.value = [];
   try {
     const res = await fetch(
@@ -1363,16 +1610,21 @@ const loadWorkoutHistory = async () => {
       { credentials: 'include' },
     );
     if (!res.ok) {
-      let serverMsg = '';
-      try { const e = await res.json(); serverMsg = e?.error || ''; } catch (_) {}
-      throw new Error(serverMsg || `Server error ${res.status}`);
+      throw await parseResponseError(res, `Server error ${res.status}`);
     }
     const data = await res.json();
     historyWorkouts.value        = Array.isArray(data.sessions) ? data.sessions : [];
     workoutHistoryUsername.value = data.username || '';
   } catch (err) {
     console.error('[WorkoutHistory] load failed:', err);
-    historyError.value    = err.message || 'Unable to load workout history.';
+    setFriendlyError('history', {
+      status: err?.status,
+      code: err?.code,
+      requestId: err?.requestId,
+      service: err?.service,
+      rawMessage: err?.rawMessage || err?.message,
+      fallback: 'Unable to load workout history right now. Please try again.',
+    });
     historyWorkouts.value = [];
   } finally {
     historyLoading.value = false;
@@ -1406,44 +1658,55 @@ const openDeleteHistoryModal = (session) => {
     planName:    session.planName || 'Workout',
     workoutDate: session.workoutDate || selectedWorkoutDate.value,
   };
-  deleteHistoryError.value  = '';
+  clearFriendlyError('deleteHistory');
   showDeleteHistoryModal.value = true;
 };
 
 const closeDeleteHistoryModal = () => {
   showDeleteHistoryModal.value = false;
   workoutHistoryToDelete.value = null;
-  deleteHistoryError.value     = '';
+  clearFriendlyError('deleteHistory');
 };
 
 const confirmDeleteHistoryWorkout = async () => {
   if (!workoutHistoryToDelete.value) return;
   deleteHistoryLoading.value = true;
-  deleteHistoryError.value   = '';
+  clearFriendlyError('deleteHistory');
   try {
     const { sessionId } = workoutHistoryToDelete.value;
     const endpoint = sessionId != null
       ? `${API_BASE}/api/workout-log/history/session/${sessionId}`
       : null;
-    if (!endpoint) throw new Error('Cannot identify session to delete.');
+    if (!endpoint) {
+      setFriendlyError('deleteHistory', {
+        rawMessage: 'Cannot identify session to delete.',
+        fallback: 'Cannot identify session to delete.',
+      });
+      return;
+    }
     const res = await fetch(endpoint, { method: 'DELETE', credentials: 'include' });
     if (!res.ok) {
-      let msg = '';
-      try { const e = await res.json(); msg = e?.error || ''; } catch (_) {}
-      throw new Error(msg || `Server error ${res.status}`);
+      throw await parseResponseError(res, `Server error ${res.status}`);
     }
     closeDeleteHistoryModal();
     await loadWorkoutHistory();
   } catch (err) {
     console.error('[DeleteHistory]', err);
-    deleteHistoryError.value = err.message || 'Failed to delete workout.';
+    setFriendlyError('deleteHistory', {
+      status: err?.status,
+      code: err?.code,
+      requestId: err?.requestId,
+      service: err?.service,
+      rawMessage: err?.rawMessage || err?.message,
+      fallback: 'Unable to delete this workout record right now. Please try again.',
+    });
   } finally {
     deleteHistoryLoading.value = false;
   }
 };
 /* ─── Edit history session ──────────────────────────────────────────────── */
 const startEditHistoryWorkout = (session) => {
-  historySaveError.value        = '';
+  clearFriendlyError('historySave');
   editingHistorySessionId.value = session.sessionId;
   const draft = {};
   for (const ex of session.exercises) {
@@ -1455,7 +1718,7 @@ const startEditHistoryWorkout = (session) => {
 const cancelEditHistoryWorkout = () => {
   editingHistorySessionId.value = null;
   historyEditDraft.value        = {};
-  historySaveError.value        = '';
+  clearFriendlyError('historySave');
 };
 
 const updateHistoryDraft = (workoutLogId, setIdx, field, value) => {
@@ -1466,7 +1729,7 @@ const updateHistoryDraft = (workoutLogId, setIdx, field, value) => {
 
 const saveHistoryWorkout = async (session) => {
   savingHistoryWorkout.value = true;
-  historySaveError.value     = '';
+  clearFriendlyError('historySave');
   try {
     const exercises = session.exercises.map((ex) => ({
       workoutLogId: ex.workoutLogId,
@@ -1490,15 +1753,21 @@ const saveHistoryWorkout = async (session) => {
       }
     );
     if (!res.ok) {
-      let msg = '';
-      try { const e = await res.json(); msg = e?.error || ''; } catch (_) {}
-      throw new Error(msg || `Server error ${res.status}`);
+      throw await parseResponseError(res, `Server error ${res.status}`);
     }
     cancelEditHistoryWorkout();
     await loadWorkoutHistory();
   } catch (err) {
     console.error('[SaveHistory]', err);
-    historySaveError.value = err.message || 'Failed to save changes.';
+    setFriendlyError('historySave', {
+      status: err?.status,
+      code: err?.code,
+      requestId: err?.requestId,
+      service: err?.service,
+      rawMessage: err?.rawMessage || err?.message,
+      category: 'save',
+      fallback: 'Unable to save changes right now. Please try again.',
+    });
   } finally {
     savingHistoryWorkout.value = false;
   }
@@ -1506,6 +1775,7 @@ const saveHistoryWorkout = async (session) => {
 
 /* ─── Lifecycle ──────────────────────────────────────────────────────────── */
 onMounted(async () => {
+  document.addEventListener('pointerdown', onDocumentPointerDownForPlanActionMenu);
   document.body.classList.add(WORKOUT_LOG_ACTIVE_BODY_CLASS);
   await loadSessionUserId();
   await loadWorkoutLists();
@@ -1521,6 +1791,7 @@ onActivated(async () => {
 });
 
 onUnmounted(() => {
+  document.removeEventListener('pointerdown', onDocumentPointerDownForPlanActionMenu);
   document.body.classList.remove(WORKOUT_LOG_ACTIVE_BODY_CLASS);
   void persistWorkoutDraft();
   setWorkoutTimerRunning(false);
@@ -1584,7 +1855,22 @@ onUnmounted(() => {
       </div>
       <div v-if="saveError" class="wl-banner wl-banner--error">
         <i class="fa-solid fa-circle-xmark"></i> {{ saveError }}
-        <button type="button" class="wl-banner-dismiss" @click="saveError = ''">✕</button>
+        <button type="button" class="wl-banner-dismiss" @click="clearFriendlyError('save')">✕</button>
+        <div
+          v-if="canShowTechnicalDiagnostics && errorDiagnosticsByArea.save"
+          class="wl-error-diag"
+        >
+          <button type="button" class="wl-error-diag__toggle" @click="toggleDiagnostics('save')">
+            {{ diagnosticsExpandedByArea.save ? 'Hide details' : 'Show details' }}
+          </button>
+          <dl v-if="diagnosticsExpandedByArea.save" class="wl-error-diag__list">
+            <div><dt>Status</dt><dd>{{ errorDiagnosticsByArea.save.status }}</dd></div>
+            <div><dt>Code</dt><dd>{{ errorDiagnosticsByArea.save.code }}</dd></div>
+            <div><dt>Request ID</dt><dd>{{ errorDiagnosticsByArea.save.requestId }}</dd></div>
+            <div><dt>Service</dt><dd>{{ errorDiagnosticsByArea.save.service }}</dd></div>
+            <div><dt>Time</dt><dd>{{ errorDiagnosticsByArea.save.timestamp }}</dd></div>
+          </dl>
+        </div>
       </div>
       <div v-if="saveMessage" class="wl-banner wl-banner--success">
         <i class="fa-solid fa-circle-check"></i> {{ saveMessage }}
@@ -1665,6 +1951,21 @@ onUnmounted(() => {
         <!-- Error -->
         <div v-else-if="shouldShowPlanLoadError" class="wl-empty">
           <p>{{ plansLoadError }}</p>
+          <div
+            v-if="canShowTechnicalDiagnostics && errorDiagnosticsByArea.plansLoad"
+            class="wl-error-diag wl-error-diag--inline"
+          >
+            <button type="button" class="wl-error-diag__toggle" @click="toggleDiagnostics('plansLoad')">
+              {{ diagnosticsExpandedByArea.plansLoad ? 'Hide details' : 'Show details' }}
+            </button>
+            <dl v-if="diagnosticsExpandedByArea.plansLoad" class="wl-error-diag__list">
+              <div><dt>Status</dt><dd>{{ errorDiagnosticsByArea.plansLoad.status }}</dd></div>
+              <div><dt>Code</dt><dd>{{ errorDiagnosticsByArea.plansLoad.code }}</dd></div>
+              <div><dt>Request ID</dt><dd>{{ errorDiagnosticsByArea.plansLoad.requestId }}</dd></div>
+              <div><dt>Service</dt><dd>{{ errorDiagnosticsByArea.plansLoad.service }}</dd></div>
+              <div><dt>Time</dt><dd>{{ errorDiagnosticsByArea.plansLoad.timestamp }}</dd></div>
+            </dl>
+          </div>
           <button type="button" class="wl-btn" @click="loadWorkoutLists">Retry</button>
         </div>
 
@@ -1739,6 +2040,57 @@ onUnmounted(() => {
                 >
                   <i class="fa-solid fa-trash" aria-hidden="true"></i>
                 </button>
+
+                <div class="wl-plan-mobile-actions" :class="{ 'wl-plan-mobile-actions--open': isPlanActionMenuOpen(plan.planId) }">
+                  <button
+                    type="button"
+                    class="wl-plan-mobile-actions__trigger"
+                    aria-label="Open plan actions"
+                    :aria-expanded="isPlanActionMenuOpen(plan.planId) ? 'true' : 'false'"
+                    @click.stop="togglePlanActionMenu(plan.planId)"
+                  >
+                    <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                  </button>
+
+                  <div
+                    v-if="isPlanActionMenuOpen(plan.planId)"
+                    class="wl-plan-mobile-actions__menu"
+                    role="menu"
+                    aria-label="Workout plan actions"
+                    @click.stop
+                  >
+                    <button
+                      type="button"
+                      class="wl-plan-mobile-actions__item"
+                      role="menuitem"
+                      @click="handlePlanMenuReorder(plan)"
+                    >
+                      <i class="fa-solid fa-arrows-up-down" aria-hidden="true"></i>
+                      <span>Reorder</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      class="wl-plan-mobile-actions__item"
+                      role="menuitem"
+                      @click="handlePlanMenuEdit(plan)"
+                    >
+                      <i class="fa-solid fa-pencil" aria-hidden="true"></i>
+                      <span>Edit Plan</span>
+                    </button>
+
+                    <button
+                      v-if="canDeleteWorkoutPlan(plan)"
+                      type="button"
+                      class="wl-plan-mobile-actions__item wl-plan-mobile-actions__item--danger"
+                      role="menuitem"
+                      @click="handlePlanMenuDelete(plan)"
+                    >
+                      <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1746,8 +2098,15 @@ onUnmounted(() => {
             <div v-if="expandedPlanId === String(plan.planId)" class="wl-plan__body">
               <div v-if="expandedLoading" class="wl-plan__loading">Loading days…</div>
 
-              <div v-else-if="!expandedPlanData || exercisesByGroup.length === 0" class="wl-plan__loading">
-                No scheduled days found. <button type="button" class="wl-link" @click="openInBuilder(plan.planId)">Open in Builder</button>
+              <div v-else-if="!expandedPlanData || exercisesByGroup.length === 0" class="wl-plan__loading wl-plan__loading--empty-state">
+                <p class="wl-plan__empty-message">No scheduled days found.</p>
+                <button
+                  type="button"
+                  class="wl-plan__empty-open-builder-btn"
+                  @click="openInBuilder(plan.planId)"
+                >
+                  Open in Builder
+                </button>
               </div>
 
               <div
@@ -1962,6 +2321,21 @@ onUnmounted(() => {
         <!-- Error -->
         <div v-if="historyError" class="wl-banner wl-banner--error" style="margin-bottom:12px">
           <i class="fa-solid fa-circle-xmark"></i> {{ historyError }}
+          <div
+            v-if="canShowTechnicalDiagnostics && errorDiagnosticsByArea.history"
+            class="wl-error-diag"
+          >
+            <button type="button" class="wl-error-diag__toggle" @click="toggleDiagnostics('history')">
+              {{ diagnosticsExpandedByArea.history ? 'Hide details' : 'Show details' }}
+            </button>
+            <dl v-if="diagnosticsExpandedByArea.history" class="wl-error-diag__list">
+              <div><dt>Status</dt><dd>{{ errorDiagnosticsByArea.history.status }}</dd></div>
+              <div><dt>Code</dt><dd>{{ errorDiagnosticsByArea.history.code }}</dd></div>
+              <div><dt>Request ID</dt><dd>{{ errorDiagnosticsByArea.history.requestId }}</dd></div>
+              <div><dt>Service</dt><dd>{{ errorDiagnosticsByArea.history.service }}</dd></div>
+              <div><dt>Time</dt><dd>{{ errorDiagnosticsByArea.history.timestamp }}</dd></div>
+            </dl>
+          </div>
         </div>
 
         <!-- Loading -->
@@ -2008,6 +2382,20 @@ onUnmounted(() => {
                 <template v-if="editingHistorySessionId === session.sessionId">
                   <span v-if="historySaveError" class="wl-hist-save-error">
                     <i class="fa-solid fa-circle-xmark"></i> {{ historySaveError }}
+                    <button
+                      v-if="canShowTechnicalDiagnostics && errorDiagnosticsByArea.historySave"
+                      type="button"
+                      class="wl-error-diag__toggle wl-error-diag__toggle--inline"
+                      @click="toggleDiagnostics('historySave')"
+                    >
+                      {{ diagnosticsExpandedByArea.historySave ? 'Hide details' : 'Show details' }}
+                    </button>
+                    <span
+                      v-if="canShowTechnicalDiagnostics && diagnosticsExpandedByArea.historySave && errorDiagnosticsByArea.historySave"
+                      class="wl-hist-save-error__details"
+                    >
+                      Status {{ errorDiagnosticsByArea.historySave.status }} | Code {{ errorDiagnosticsByArea.historySave.code }} | Request {{ errorDiagnosticsByArea.historySave.requestId }}
+                    </span>
                   </span>
                   <button
                     type="button"
@@ -2231,6 +2619,21 @@ onUnmounted(() => {
             <p class="wl-modal__sub">This will permanently remove all exercises and sets recorded in this session.</p>
             <div v-if="deleteHistoryError" class="wl-banner wl-banner--error" style="margin-top:10px">
               <i class="fa-solid fa-circle-xmark"></i> {{ deleteHistoryError }}
+              <div
+                v-if="canShowTechnicalDiagnostics && errorDiagnosticsByArea.deleteHistory"
+                class="wl-error-diag"
+              >
+                <button type="button" class="wl-error-diag__toggle" @click="toggleDiagnostics('deleteHistory')">
+                  {{ diagnosticsExpandedByArea.deleteHistory ? 'Hide details' : 'Show details' }}
+                </button>
+                <dl v-if="diagnosticsExpandedByArea.deleteHistory" class="wl-error-diag__list">
+                  <div><dt>Status</dt><dd>{{ errorDiagnosticsByArea.deleteHistory.status }}</dd></div>
+                  <div><dt>Code</dt><dd>{{ errorDiagnosticsByArea.deleteHistory.code }}</dd></div>
+                  <div><dt>Request ID</dt><dd>{{ errorDiagnosticsByArea.deleteHistory.requestId }}</dd></div>
+                  <div><dt>Service</dt><dd>{{ errorDiagnosticsByArea.deleteHistory.service }}</dd></div>
+                  <div><dt>Time</dt><dd>{{ errorDiagnosticsByArea.deleteHistory.timestamp }}</dd></div>
+                </dl>
+              </div>
             </div>
           </div>
           <div class="wl-modal__footer">
@@ -2261,6 +2664,61 @@ onUnmounted(() => {
 }
 .builder-hero__text h2 { margin: 0 0 4px; }
 .builder-hero__subtitle { margin: 0; opacity: 0.85; font-size: 0.92rem; }
+
+.wl-error-diag {
+  margin-top: 8px;
+}
+
+.wl-error-diag--inline {
+  margin: 6px 0 10px;
+}
+
+.wl-error-diag__toggle {
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(15, 23, 42, 0.28);
+  color: #e2e8f0;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.wl-error-diag__toggle--inline {
+  margin-left: 8px;
+}
+
+.wl-error-diag__list {
+  margin: 8px 0 0;
+  display: grid;
+  gap: 4px;
+  font-size: 0.76rem;
+}
+
+.wl-error-diag__list div {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.wl-error-diag__list dt {
+  min-width: 76px;
+  margin: 0;
+  color: #cbd5e1;
+  font-weight: 700;
+}
+
+.wl-error-diag__list dd {
+  margin: 0;
+  color: #f8fafc;
+  overflow-wrap: anywhere;
+}
+
+.wl-hist-save-error__details {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.74rem;
+  color: #fca5a5;
+}
 
 .wl-toolbar {
   display: flex; justify-content: flex-end; gap: 10px;
@@ -2915,6 +3373,84 @@ onUnmounted(() => {
   border-color: #93c5fd;
 }
 
+.wl-plan-mobile-actions {
+  position: relative;
+  display: none;
+  flex-shrink: 0;
+}
+
+.wl-plan-mobile-actions__trigger {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid #31435f;
+  background: #142033;
+  color: #f8fafc;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.wl-plan-mobile-actions__trigger i {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.wl-plan-mobile-actions__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 168px;
+  max-width: min(220px, calc(100vw - 24px));
+  z-index: 20;
+  border: 1px solid #2f4261;
+  border-radius: 10px;
+  background: #0f1f38;
+  box-shadow: 0 12px 20px rgba(2, 6, 23, 0.35);
+  overflow: hidden;
+}
+
+.wl-plan-mobile-actions__item {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid rgba(100, 116, 139, 0.25);
+  background: #0f1f38;
+  color: #f8fafc;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  font-size: 0.83rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wl-plan-mobile-actions__item:last-child {
+  border-bottom: 0;
+}
+
+.wl-plan-mobile-actions__item i {
+  width: 18px;
+  text-align: center;
+  color: #93c5fd;
+}
+
+.wl-plan-mobile-actions__item--danger i,
+.wl-plan-mobile-actions__item--danger {
+  color: #fecaca;
+}
+
+.wl-plan-mobile-actions__item:hover,
+.wl-plan-mobile-actions__item:focus-visible {
+  background: #1b2d4c;
+  outline: none;
+}
+
 .wl-day-order-collapsible {
   grid-column: 1 / -1;
 }
@@ -2932,6 +3468,43 @@ onUnmounted(() => {
 
 .wl-plan__body { border-top: 1px solid var(--border-color, #e5e7eb); padding: 16px 18px; }
 .wl-plan__loading { color: var(--text-color-secondary, #6b7280); font-size: 0.88rem; padding: 8px 0; }
+
+.wl-plan__loading--empty-state {
+  display: grid;
+  justify-items: center;
+  align-items: start;
+}
+
+.wl-plan__empty-message {
+  margin: 0;
+}
+
+.wl-plan__empty-open-builder-btn {
+  margin-top: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  border: 0;
+  border-radius: 4px !important;
+  padding: 8px 12px;
+  width: auto !important;
+  height: auto !important;
+  min-height: 44px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.83rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: normal;
+  text-align: center;
+}
+
+.wl-plan__empty-open-builder-btn:hover,
+.wl-plan__empty-open-builder-btn:focus-visible {
+  background: #1d4ed8;
+}
 
 /* ── Day cards grid ─────────────────────────────────────────────────────── */
 .wl-day-grid { display: grid; gap: 14px; }
@@ -4476,6 +5049,22 @@ onUnmounted(() => {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+}
+
+@media (max-width: 800px) {
+  .wl-plan {
+    overflow: visible;
+  }
+
+  .wl-plan__right .wl-btn-reorder,
+  .wl-plan__right .wl-btn-edit,
+  .wl-plan__right .wl-btn-plan-delete {
+    display: none;
+  }
+
+  .wl-plan-mobile-actions {
+    display: inline-flex;
   }
 }
 

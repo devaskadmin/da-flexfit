@@ -17,6 +17,8 @@ const {
   fetchExercisePage,
   canReadExerciseForUser,
   canDeleteExercise,
+  isRetiredSystemExercise,
+  validateRecordingTypeCompatibility,
   EXERCISE_ALLOWED_WORKOUT_TYPES,
   EXERCISE_ALLOWED_RECORDING_TYPES,
   EXERCISE_FIELD_LIMITS,
@@ -32,6 +34,31 @@ test('canonicalImageNameForSlot uses exercise and exercise-2 names with validate
   assert.equal(exerciseApi.canonicalImageNameForSlot(0, '.jpg'), 'exercise.jpg');
   assert.equal(exerciseApi.canonicalImageNameForSlot(1, '.png'), 'exercise-2.png');
   assert.equal(exerciseApi.canonicalImageNameForSlot(0, '.webp'), 'exercise.webp');
+});
+
+test('validateRecordingTypeCompatibility blocks merges across incompatible recording types', () => {
+  const compatibility = validateRecordingTypeCompatibility({
+    sourceExercise: { RecordingType: 'Sets & Reps' },
+    destinationExercise: { RecordingType: 'Time & Distance' },
+  });
+
+  assert.equal(compatibility.compatible, false);
+  assert.match(compatibility.message, /Cannot merge because recording types are incompatible/i);
+});
+
+test('isRetiredSystemExercise identifies custom restricted system rows retired from active library', () => {
+  assert.equal(isRetiredSystemExercise({
+    IsSystemExercise: 1,
+    IsGlobalExercise: 0,
+    ExerciseScope: 'CUSTOM',
+    ExercisePublicationState: 'RESTRICTED',
+  }), true);
+
+  assert.equal(isRetiredSystemExercise({
+    IsSystemExercise: 1,
+    ExerciseScope: 'SYSTEM',
+    ExercisePublicationState: 'DISCOVERABLE',
+  }), false);
 });
 
 test('resolveValidatedImageExtension accepts supported extension and mime type', () => {
@@ -656,6 +683,28 @@ test('trainer legacy TRAINER_SHARED create payload normalizes to SHARED for thei
   assert.equal(result.ExerciseScope, 'SHARED');
   assert.equal(result.OwnerTrainerID, 55);
   assert.equal(result.CreatedByUserID, 55);
+  assert.equal(result.IsGlobalExercise, 1);
+  assert.equal(result.ExercisePublicationState, 'DISCOVERABLE');
+});
+
+test('admin SHARED create payload without explicit owner does not assign an unrelated trainer owner', () => {
+  const result = normalizeExerciseCreatePayload({
+    ExerciseTitle: 'ADMIN_TEST_shared_no_owner',
+    WorkoutType: 'Strength',
+    RecordingType: 'Sets & Reps',
+    Equipment: 'Cable',
+    MuscleGroup: 'Back',
+    Instructions: 'TEST',
+    ExerciseScope: 'SHARED',
+  }, {
+    userId: 7,
+    isAdmin: true,
+    role: 'admin',
+  });
+
+  assert.equal(result.ExerciseScope, 'SHARED');
+  assert.equal(result.OwnerTrainerID, null);
+  assert.equal(result.CreatedByUserID, 7);
   assert.equal(result.IsGlobalExercise, 1);
   assert.equal(result.ExercisePublicationState, 'DISCOVERABLE');
 });

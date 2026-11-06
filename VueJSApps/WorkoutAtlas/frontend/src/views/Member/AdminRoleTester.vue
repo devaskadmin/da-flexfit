@@ -65,7 +65,7 @@ onMounted(async () => {
   <div>
     <div class="mb-20">
       <h2 class="mb-0">Test Roles</h2>
-      <small class="text-muted">Quickly test and switch roles for existing users.</small>
+      <small class="role-tester-subtitle">Quickly test and switch roles for existing users.</small>
     </div>
 
     <div class="panel-bg role-tester-toolbar mb-15">
@@ -81,25 +81,25 @@ onMounted(async () => {
     <div class="panel-bg role-tester-table">
       <div v-if="loading" class="p-3 text-muted">Loading users...</div>
       <div v-else class="table-responsive">
-        <table class="table align-middle mb-0">
+        <table class="table align-middle mb-0 role-tester-grid">
           <thead>
             <tr>
-              <th>User</th>
-              <th>Current Role</th>
-              <th>Test Role</th>
-              <th class="text-end">Apply</th>
+              <th class="role-tester-head">User</th>
+              <th class="role-tester-head">Current Role</th>
+              <th class="role-tester-head">Test Role</th>
+              <th class="role-tester-head text-end role-tester-action-head">Apply</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="member in members" :key="member.id">
-              <td>
-                <div class="fw-semibold">{{ member.FirstName }} {{ member.LastName }}</div>
-                <small class="text-muted">@{{ member.username }}</small>
+              <td data-label="User">
+                <div class="fw-semibold role-tester-username">{{ member.FirstName }} {{ member.LastName }}</div>
+                <small class="role-tester-email">@{{ member.username }}</small>
               </td>
-              <td>
-                <span class="badge bg-info-subtle text-info-emphasis">{{ member.user_role || 'member' }}</span>
+              <td data-label="Current Role">
+                <span class="role-tester-badge">{{ member.user_role || 'member' }}</span>
               </td>
-              <td>
+              <td data-label="Test Role">
                 <div class="admin-role-tester-select-wrap">
                   <select v-model="member.selectedRole" class="form-select form-select-sm admin-role-tester-form-select">
                     <option v-for="r in roles" :key="r.id" :value="r.slug">{{ r.name }}</option>
@@ -107,8 +107,8 @@ onMounted(async () => {
                   <span class="admin-role-tester-select-arrow" aria-hidden="true">▼</span>
                 </div>
               </td>
-              <td class="text-end">
-                <button class="btn btn-sm btn-primary" @click="applyRole(member)">Apply</button>
+              <td data-label="Apply" class="text-end role-tester-action-cell">
+                <button class="btn btn-sm role-tester-apply-btn" @click="applyRole(member)">Apply</button>
               </td>
             </tr>
             <tr v-if="!members.length">
@@ -127,11 +127,55 @@ onMounted(async () => {
   border: 1px solid rgba(15, 23, 42, 0.14);
   border-radius: 12px;
   padding: 14px;
+  overflow: hidden;
+}
+
+.role-tester-subtitle {
+  color: #cbd5e1;
+}
+
+.role-tester-grid {
+  table-layout: auto;
+}
+
+.role-tester-grid td,
+.role-tester-grid th {
+  vertical-align: middle;
+}
+
+.role-tester-head {
+  color: #ffffff;
+  font-weight: 700;
+  border-bottom-color: rgba(255, 255, 255, 0.2);
+}
+
+.role-tester-username {
+  color: #ffffff;
+}
+
+.role-tester-email {
+  color: #cbd5e1;
+}
+
+.role-tester-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #000000;
+  color: #ffffff;
+  border: 1px solid #ffffff;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.78rem;
+  line-height: 1;
+  padding: 0.35rem 0.55rem;
+  text-transform: lowercase;
 }
 
 .admin-role-tester-select-wrap {
   position: relative;
   width: 100%;
+  min-width: 130px;
 }
 
 .admin-role-tester-form-select {
@@ -141,6 +185,8 @@ onMounted(async () => {
   background-image: none !important;
   background-color: rgba(8, 14, 11, 0.9) !important;
   padding-right: 2.2rem;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 .admin-role-tester-select-arrow {
@@ -153,6 +199,79 @@ onMounted(async () => {
   line-height: 1;
   pointer-events: none;
   z-index: 1;
+}
+
+.role-tester-action-head,
+.role-tester-action-cell {
+  min-width: 108px;
+  white-space: nowrap;
+}
+
+.role-tester-apply-btn {
+  background: #111827;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  font-weight: 600;
+  min-width: 78px;
+}
+
+.role-tester-apply-btn:hover,
+.role-tester-apply-btn:focus {
+  background: #1f2937;
+  color: #ffffff;
+}
+
+.role-tester-table .table-responsive {
+  overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+  .role-tester-table {
+    padding: 10px;
+  }
+
+  .role-tester-grid thead {
+    display: none;
+  }
+
+  .role-tester-grid,
+  .role-tester-grid tbody,
+  .role-tester-grid tr,
+  .role-tester-grid td {
+    display: block;
+    width: 100%;
+  }
+
+  .role-tester-grid tr {
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+
+  .role-tester-grid td {
+    border: 0;
+    padding: 8px 0;
+    text-align: left !important;
+  }
+
+  .role-tester-grid td::before {
+    content: attr(data-label);
+    display: block;
+    color: #ffffff;
+    font-weight: 700;
+    margin-bottom: 4px;
+    font-size: 0.76rem;
+    letter-spacing: 0.02em;
+  }
+
+  .role-tester-action-cell {
+    white-space: normal;
+  }
+
+  .role-tester-apply-btn {
+    width: 100%;
+  }
 }
 
 :global(body.dark-theme) .role-tester-toolbar,

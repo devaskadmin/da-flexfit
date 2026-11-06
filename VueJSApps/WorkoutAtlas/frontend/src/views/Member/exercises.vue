@@ -6,6 +6,8 @@
   import { API_BASE } from '@/config/env';
   import { DEFAULT_EXERCISE_IMAGE, getExerciseImage, isDefaultExerciseImageReference } from '@/utils/exerciseImage';
   import { useExerciseFiltering } from '@/composable/exerciseFilters';
+  import { showAlertDialog, showConfirmDialog } from '@/utils/browserDialogs';
+  import Swal from 'sweetalert2';
    import '@fortawesome/fontawesome-free/css/all.min.css';
 
   const route = useRoute();
@@ -36,9 +38,6 @@
   const myCustomExercises = ref([]);
   const customExercisesLoadError = ref('');
   const showAdminGlobalExercises = ref(false);
-  const trainerOwnerOptions = ref([]);
-  const trainerOwnerOptionsLoading = ref(false);
-  const trainerOwnerOptionsError = ref('');
   const currentUserRole = ref('');
   const logSearchExercise = ref('');
   const logWorkoutTypeFilter = ref('All');
@@ -99,17 +98,56 @@
    const isSaving = ref(false);
    const editExerciseSnapshot = ref(null);
   const editExerciseWasLegacyPrivate = ref(false);
+  const SYSTEM_DELETE_MERGE_PAGE_SIZE = 30;
+  const REPLACE_EXERCISE_PICKER_PAGE_SIZE = 8;
+  const REPLACE_EXERCISE_PICKER_FETCH_STEP = 60;
+  const buildDeleteConfirmInitialState = () => ({
+    visible: false,
+    exercise: null,
+    isSubmitting: false,
+    error: '',
+    impactError: '',
+    replacementError: '',
+    isSystemAdminFlow: false,
+    impactLoading: false,
+    impact: null,
+    replacementOptions: [],
+    replacementLoading: false,
+    replacementExerciseId: '',
+    replacementSelectionDetails: null,
+    compatibilityError: '',
+    impactRequestDiagnostics: null,
+  });
+  const buildReplaceExercisePickerInitialState = () => ({
+    visible: false,
+    search: '',
+    category: 'All',
+    equipment: 'All',
+    loading: false,
+    error: '',
+    exercises: [],
+    visibleCount: REPLACE_EXERCISE_PICKER_PAGE_SIZE,
+    fetchLimit: REPLACE_EXERCISE_PICKER_FETCH_STEP,
+    hasPotentialMore: false,
+    selectedExerciseId: '',
+  });
    const deleteConfirmState = ref({
-     visible: false,
-     exercise: null,
-     isSubmitting: false,
-     error: '',
+    ...buildDeleteConfirmInitialState(),
+   });
+   const replaceExercisePickerState = ref({
+    ...buildReplaceExercisePickerInitialState(),
    });
    const deleteSuccessState = ref({
      visible: false,
      title: 'Exercise Deleted',
      message: 'The exercise was deleted successfully.',
       isGlobal: false,
+   });
+   const deleteFinalConfirmState = ref({
+     visible: false,
+   });
+   const deleteImpactDetailsState = ref({
+     visible: false,
    });
   const isAdminUser = computed(() => {
     const normalized = String(currentUserRole.value || '').trim().toLowerCase();
@@ -209,7 +247,7 @@
         newExercise.OwnerTrainerID = '';
       } else if (newExercise.ExerciseScope === EXERCISE_SCOPE.SHARED) {
         newExercise.CreateAsGlobalExercise = true;
-        newExercise.OwnerTrainerID = isAdminUser.value ? (trainerOwnerOptions.value[0]?.id || '') : Number(userId.value || 0) || '';
+        newExercise.OwnerTrainerID = isTrainerUser.value ? (Number(userId.value || 0) || '') : '';
       } else {
         newExercise.CreateAsGlobalExercise = false;
       }
@@ -226,8 +264,8 @@
         editExercise.OwnerTrainerID = '';
       } else if (editExercise.ExerciseScope === EXERCISE_SCOPE.SHARED) {
         editExercise.CreateAsGlobalExercise = true;
-        if (!editExercise.OwnerTrainerID) {
-          editExercise.OwnerTrainerID = isAdminUser.value ? (trainerOwnerOptions.value[0]?.id || '') : Number(userId.value || 0) || '';
+        if (!editExercise.OwnerTrainerID && isTrainerUser.value) {
+          editExercise.OwnerTrainerID = Number(userId.value || 0) || '';
         }
       } else {
         editExercise.CreateAsGlobalExercise = false;
@@ -245,6 +283,10 @@
     if (isAdminUser.value) return true;
     if (Number(exercise?.IsSystemExercise ?? 0) === 1) return false;
     return Number(exercise?.CanDelete ?? 0) === 1;
+  };
+  const isSystemExerciseRecord = (exercise = {}) => {
+    const scope = String(exercise?.ExerciseScope || '').trim().toUpperCase();
+    return Number(exercise?.IsSystemExercise || 0) === 1 || scope === EXERCISE_SCOPE.SYSTEM;
   };
   const isWorkoutLogView = computed(() => route.name === 'workouts' || route.path === '/workouts' || route.path === '/workout-log');
   const isExercisesView = computed(() => route.name === 'exercises' || route.path === '/exercises');
@@ -270,37 +312,6 @@
     return ownerId > 0 ? ownerId : 0;
   };
 
-  const normalizeTrainerOption = (member = {}) => ({
-    id: Number(member?.id || member?.userId || 0),
-    label: [member?.FirstName, member?.LastName].filter(Boolean).join(' ').trim() || member?.username || member?.displayName || `Trainer ${member?.id || ''}`,
-    role: String(member?.user_role || member?.roleSlug || member?.role || '').trim().toLowerCase(),
-  });
-
-  const loadTrainerOwnerOptions = async () => {
-    if (!isAdminUser.value) return;
-    trainerOwnerOptionsLoading.value = true;
-    trainerOwnerOptionsError.value = '';
-    try {
-      const res = await fetch(`${API_BASE}/api/admin/members?page=1&limit=500`, { credentials: 'include' });
-      if (!res.ok) {
-        throw new Error(`Failed to load trainer owners (${res.status})`);
-      }
-
-      const data = await res.json();
-      const rows = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-      trainerOwnerOptions.value = rows
-        .map(normalizeTrainerOption)
-        .filter((member) => member.id > 0 && member.role === 'trainer')
-        .sort((left, right) => String(left.label).localeCompare(String(right.label)));
-    } catch (err) {
-      console.error('Failed to load trainer owners:', err);
-      trainerOwnerOptions.value = [];
-      trainerOwnerOptionsError.value = 'Unable to load trainer accounts right now.';
-    } finally {
-      trainerOwnerOptionsLoading.value = false;
-    }
-  };
-   
    // ---- FILTER EXERCISES ----
    const logFilters = computed(() => ({
     search: logSearchExercise.value,
@@ -537,7 +548,12 @@ const removeWorkout = (index) => {
 //Delete excerise log
 const deleteLog = async (workoutLogId) => {
   if (!workoutLogId) return;
-  if (!confirm('Are you sure you want to delete this workout log?')) return;
+  const confirmed = await showConfirmDialog('Are you sure you want to delete this workout log?', {
+    title: 'Delete Workout Log?',
+    confirmButtonText: 'Delete',
+    cancelButtonText: 'Cancel',
+  });
+  if (!confirmed) return;
   try {
     const res = await fetch(`${API_BASE}/api/workout-log/delete-workout-log/${workoutLogId}`, {
       method: 'DELETE',
@@ -546,7 +562,10 @@ const deleteLog = async (workoutLogId) => {
     if (!res.ok) throw new Error('Failed to delete workout log');
     await loadWorkoutLogs();
   } catch (err) {
-    alert('Failed to delete workout log.');
+    await showAlertDialog('Failed to delete workout log.', {
+      title: 'Delete Failed',
+      icon: 'error',
+    });
   }
 };
 
@@ -584,7 +603,10 @@ const deleteLog = async (workoutLogId) => {
 // Save all workout logs for the current user and date
 const saveWorkout = async () => {
   if (!userId.value || !selectedDate.value || workoutList.value.length === 0) {
-    alert('Missing user, date, or no exercises to save.');
+    await showAlertDialog('Missing user, date, or no exercises to save.', {
+      title: 'Cannot Save Workout',
+      icon: 'warning',
+    });
     return;
   }
   const formattedDate = toMySQLDate(selectedDate.value);
@@ -627,9 +649,15 @@ const saveWorkout = async () => {
     }
   }
   if (errors.length > 0) {
-    alert('Some logs failed to save:\n' + errors.join('\n'));
+    await showAlertDialog('Some logs failed to save:\n' + errors.join('\n'), {
+      title: 'Workout Save Completed With Errors',
+      icon: 'warning',
+    });
   } else {
-    alert('âœ… All workout logs saved!');
+    await showAlertDialog('All workout logs saved!', {
+      title: 'Success',
+      icon: 'success',
+    });
     workoutList.value = [];
     await loadWorkoutLogs();
   }
@@ -901,7 +929,10 @@ const toggleFavoriteExercise = async (exercise) => {
     }
   } catch (err) {
     console.error('Favorite update failed:', err);
-    alert('Could not update favorite right now.');
+    await showAlertDialog('Could not update favorite right now.', {
+      title: 'Favorite Update Failed',
+      icon: 'error',
+    });
   }
 };
 
@@ -938,9 +969,6 @@ const loadFavoriteExercises = async () => {
 //Async function to pass data from front end to backend
 onMounted(async () => {
   await loadCurrentSessionRole();
-  if (isAdminUser.value) {
-    await loadTrainerOwnerOptions();
-  }
 
   await loadFavoriteExercises();
 
@@ -991,6 +1019,13 @@ watch(exerciseView, async () => {
 watch(logSearchExercise, () => {
   logSuggestionIndex.value = -1;
 });
+
+watch(
+  () => [replaceExercisePickerState.value.category, replaceExercisePickerState.value.equipment],
+  () => {
+    replaceExercisePickerState.value.visibleCount = REPLACE_EXERCISE_PICKER_PAGE_SIZE;
+  }
+);
 
 // Trigger favorites load whenever the favorites tab becomes active
 watch(activeTab, async (tab) => {
@@ -1229,7 +1264,104 @@ const selectedExerciseYouTubeWatchUrl = computed(() => {
    
    const workoutTypeOptions = ["Strength", "Cardio", "Other"];
    const recordingTypeOptions = ["Sets & Reps", "Time & Distance", "Custom"];
-   const equipmentOptions = ['Ab Roller', 'Bands', 'Barbell', 'Cable', 'Dumbbell', 'Exercise Ball', 'EZ Curl Bar', 'Foam Roller', 'Kettlebell', 'Machine', 'Mat', 'Medicine Ball', 'None', 'Other'];
+   const defaultEquipmentOptions = Object.freeze(['Ab Roller', 'Bands', 'Barbell', 'Cable', 'Dumbbell', 'Exercise Ball', 'EZ Curl Bar', 'Foam Roller', 'Kettlebell', 'Machine', 'Mat', 'Medicine Ball', 'None', 'Other']);
+   const addFieldErrors = reactive({});
+   const editFieldErrors = reactive({});
+
+  const normalizeAllowedComparisonKey = (value) => String(value ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+
+  const exerciseEquipmentOptions = computed(() => {
+    const merged = new Map();
+    [...equipmentList.value, ...defaultEquipmentOptions]
+      .filter((option) => normalizeOptionKey(option) !== 'all')
+      .forEach((option) => {
+        const label = String(option ?? '').trim();
+        if (!label) return;
+        const key = normalizeAllowedComparisonKey(label);
+        if (!merged.has(key)) {
+          merged.set(key, label);
+        }
+      });
+
+    if (!merged.has('none')) {
+      merged.set('none', 'None');
+    }
+
+    return Array.from(merged.values()).sort((left, right) => String(left).localeCompare(String(right)));
+  });
+
+  const getEquipmentOptionsForValue = (value) => {
+    const options = [...exerciseEquipmentOptions.value];
+    const normalizedValue = normalizeAllowedComparisonKey(value);
+    if (!normalizedValue) {
+      return options;
+    }
+
+    const hasMatch = options.some((option) => normalizeAllowedComparisonKey(option) === normalizedValue);
+    if (!hasMatch) {
+      options.push(String(value).trim());
+    }
+
+    return options;
+  };
+
+  const resetFormFieldErrors = (target) => {
+    Object.keys(target).forEach((key) => {
+      delete target[key];
+    });
+  };
+
+  const applyFormFieldErrors = (target, fieldErrors = {}) => {
+    resetFormFieldErrors(target);
+    Object.entries(fieldErrors || {}).forEach(([fieldName, message]) => {
+      if (message) {
+        target[fieldName] = message;
+      }
+    });
+  };
+
+  const clearFormFieldError = (target, fieldName) => {
+    if (target[fieldName]) {
+      delete target[fieldName];
+    }
+  };
+
+  const fieldIdMap = Object.freeze({
+    add: {
+      ExerciseTitle: 'new-exercise-title',
+      WorkoutType: 'new-workout-type',
+      RecordingType: 'new-recording-type',
+      Equipment: 'new-equipment',
+      MuscleGroup: 'new-muscle-group',
+      Instructions: 'new-instructions',
+      YouTubeVideoURL: 'new-youtube-url',
+    },
+    edit: {
+      ExerciseTitle: 'edit-exercise-title',
+      WorkoutType: 'edit-workout-type',
+      RecordingType: 'edit-recording-type',
+      Equipment: 'edit-equipment',
+      MuscleGroup: 'edit-muscle-group',
+      Instructions: 'edit-instructions',
+      YouTubeVideoURL: 'edit-youtube-url',
+    },
+  });
+
+  const focusFirstInvalidField = (mode, fieldErrors = {}) => {
+    const candidateFields = ['ExerciseTitle', 'WorkoutType', 'RecordingType', 'Equipment', 'MuscleGroup', 'YouTubeVideoURL', 'Instructions'];
+    const firstFieldWithError = candidateFields.find((fieldName) => Boolean(fieldErrors[fieldName]));
+    if (!firstFieldWithError) return;
+
+    const targetId = fieldIdMap[mode]?.[firstFieldWithError];
+    if (!targetId) return;
+
+    nextTick(() => {
+      const fieldEl = document.getElementById(targetId);
+      if (!fieldEl) return;
+      fieldEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      fieldEl.focus({ preventScroll: true });
+    });
+  };
 
   const normalizeUnicodeText = (value) => {
     try {
@@ -1344,27 +1476,36 @@ const selectedExerciseYouTubeWatchUrl = computed(() => {
   };
 
   const canonicalizeOptionValue = (value, options = []) => {
-    const normalized = String(value ?? '').trim().toLocaleLowerCase();
-    return options.find((option) => String(option).trim().toLocaleLowerCase() === normalized) || '';
+    const normalized = normalizeAllowedComparisonKey(value);
+    return options.find((option) => normalizeAllowedComparisonKey(option) === normalized) || '';
   };
 
-  const validateExerciseFormValues = ({ exerciseModel, requireTrainerOwner = false } = {}) => {
+  const validateExerciseFormValues = ({ exerciseModel } = {}) => {
+    const fieldErrors = {};
+    const setFieldError = (fieldName, message) => {
+      if (!fieldErrors[fieldName]) {
+        fieldErrors[fieldName] = message;
+      }
+    };
+
     const nameResult = validateExerciseTextField({
       value: exerciseModel?.ExerciseTitle,
       fieldLabel: 'Exercise Name',
       maxLength: EXERCISE_FIELD_LIMITS.ExerciseTitle,
       required: true,
     });
-    if (!nameResult.valid) return { valid: false, error: nameResult.error };
+    if (!nameResult.valid) {
+      setFieldError('ExerciseTitle', nameResult.error);
+    }
 
     const workoutTypeValue = canonicalizeOptionValue(exerciseModel?.WorkoutType, workoutTypeOptions);
     if (!workoutTypeValue) {
-      return { valid: false, error: 'Please choose a valid workout type.' };
+      setFieldError('WorkoutType', 'Please choose a valid workout type.');
     }
 
     const recordingTypeValue = canonicalizeOptionValue(exerciseModel?.RecordingType, recordingTypeOptions);
     if (!recordingTypeValue) {
-      return { valid: false, error: 'Please choose a valid recording type.' };
+      setFieldError('RecordingType', 'Please choose a valid recording type.');
     }
 
     const equipmentText = validateExerciseTextField({
@@ -1373,11 +1514,13 @@ const selectedExerciseYouTubeWatchUrl = computed(() => {
       maxLength: EXERCISE_FIELD_LIMITS.Equipment,
       required: true,
     });
-    if (!equipmentText.valid) return { valid: false, error: equipmentText.error };
+    if (!equipmentText.valid) {
+      setFieldError('Equipment', equipmentText.error);
+    }
 
-    const equipmentValue = canonicalizeOptionValue(equipmentText.value || 'None', equipmentOptions);
+    const equipmentValue = canonicalizeOptionValue(equipmentText.value || 'None', exerciseEquipmentOptions.value);
     if (!equipmentValue) {
-      return { valid: false, error: 'Please choose a valid equipment option.' };
+      setFieldError('Equipment', 'Please choose a valid equipment option.');
     }
 
     const muscleGroupResult = validateExerciseTextField({
@@ -1386,14 +1529,16 @@ const selectedExerciseYouTubeWatchUrl = computed(() => {
       maxLength: EXERCISE_FIELD_LIMITS.MuscleGroup,
       required: true,
     });
-    if (!muscleGroupResult.valid) return { valid: false, error: muscleGroupResult.error };
+    if (!muscleGroupResult.valid) {
+      setFieldError('MuscleGroup', muscleGroupResult.error);
+    }
 
     const allowedMuscleGroups = getMuscleGroupOptionsForWorkoutType(workoutTypeValue, {
       preserveValue: muscleGroupResult.value,
       allowStrengthAll: true,
     });
-    if (!isMuscleGroupValidForWorkoutType(workoutTypeValue, muscleGroupResult.value, allowedMuscleGroups)) {
-      return { valid: false, error: 'Please choose a valid muscle group for the selected workout type.' };
+    if (!fieldErrors.MuscleGroup && !isMuscleGroupValidForWorkoutType(workoutTypeValue, muscleGroupResult.value, allowedMuscleGroups)) {
+      setFieldError('MuscleGroup', 'Please choose a valid muscle group for the selected workout type.');
     }
 
     const normalizedMuscleGroup = allowedMuscleGroups.find((option) => normalizeOptionKey(option) === normalizeOptionKey(muscleGroupResult.value)) || muscleGroupResult.value;
@@ -1405,13 +1550,22 @@ const selectedExerciseYouTubeWatchUrl = computed(() => {
       allowNewlines: true,
       allowTabs: true,
     });
-    if (!instructionsResult.valid) return { valid: false, error: instructionsResult.error };
+    if (!instructionsResult.valid) {
+      setFieldError('Instructions', instructionsResult.error);
+    }
 
     const youtubeResult = parseAndNormalizeYouTubeUrl(exerciseModel?.YouTubeVideoURL);
-    if (!youtubeResult.valid) return { valid: false, error: youtubeResult.error };
+    if (!youtubeResult.valid) {
+      setFieldError('YouTubeVideoURL', youtubeResult.error);
+    }
 
-    if (requireTrainerOwner && !Number(exerciseModel?.OwnerTrainerID || 0)) {
-      return { valid: false, error: 'Please select a valid trainer owner.' };
+    if (Object.keys(fieldErrors).length > 0) {
+      const firstFieldName = Object.keys(fieldErrors)[0];
+      return {
+        valid: false,
+        error: fieldErrors[firstFieldName],
+        fieldErrors,
+      };
     }
 
     return {
@@ -1433,14 +1587,14 @@ const selectedExerciseYouTubeWatchUrl = computed(() => {
      Object.assign(editExercise, exercise);
    };
    
-   const startEditing = (exercise) => {
+   const startEditing = async (exercise) => {
        if (!canEditExercise(exercise)) {
-         alert('You are not allowed to edit this exercise.');
+         await showAlertDialog('You are not allowed to edit this exercise.', {
+           title: 'Permission Denied',
+           icon: 'warning',
+         });
          return;
        }
-      if (isAdminUser.value && trainerOwnerOptions.value.length === 0) {
-        loadTrainerOwnerOptions();
-      }
      Object.assign(editExercise, exercise);
         editExercise.YouTubeVideoURL = String(exercise?.YouTubeVideoURL || '').trim();
       editExerciseWasLegacyPrivate.value = isLegacyPrivateScope(exercise?.ExerciseScope);
@@ -1454,6 +1608,8 @@ const selectedExerciseYouTubeWatchUrl = computed(() => {
       if (editExercise.ExerciseScope === EXERCISE_SCOPE.SHARED && !isAdminUser.value) {
         editExercise.OwnerTrainerID = Number(userId.value || 0) || '';
       }
+       resetFormFieldErrors(editFieldErrors);
+       updateError.value = '';
      activeTab.value = 'search-exercises';
      showEditForm.value = true;
      scrollToEditForm(); // optional
@@ -1473,6 +1629,8 @@ const selectedExerciseYouTubeWatchUrl = computed(() => {
      selectedImages.value = [];
      imagePreviews.value = [];
      loadExistingImages();
+     resetFormFieldErrors(editFieldErrors);
+     updateError.value = '';
      showEditForm.value = false;
    };
    
@@ -1481,21 +1639,22 @@ const selectedExerciseYouTubeWatchUrl = computed(() => {
      // Clear previous messages
      updateError.value = '';
      updateSuccess.value = '';
+    resetFormFieldErrors(editFieldErrors);
 
      const normalizedScope = normalizeExerciseScope(editExercise);
      if (isAdminUser.value || isTrainerUser.value) {
        if (normalizedScope === EXERCISE_SCOPE.SYSTEM && !isAdminUser.value) {
          updateError.value = 'Only administrators may save SYSTEM exercises.';
+         await showExerciseResultModal({
+           title: 'Unable to Save Exercise',
+           message: updateError.value,
+           icon: 'error',
+         });
          return;
        }
 
        if (normalizedScope === EXERCISE_SCOPE.SHARED) {
-         if (isAdminUser.value) {
-           if (!Number(editExercise.OwnerTrainerID || 0)) {
-             updateError.value = 'Please select a valid trainer owner.';
-             return;
-           }
-         } else {
+         if (!isAdminUser.value) {
            editExercise.OwnerTrainerID = Number(userId.value || 0) || '';
          }
        }
@@ -1506,13 +1665,21 @@ const selectedExerciseYouTubeWatchUrl = computed(() => {
      editExercise.ExerciseScope = normalizedScope;
      editExercise.CreateAsGlobalExercise = normalizedScope !== EXERCISE_SCOPE.CUSTOM;
      editExercise.ExercisePublicationState = deriveEditPublicationState(normalizedScope, editExercise);
+    const exerciseTitleForFeedback = String(editExercise.ExerciseTitle || '').trim();
 
      const editValidation = validateExerciseFormValues({
        exerciseModel: editExercise,
-       requireTrainerOwner: Boolean(isAdminUser.value && normalizedScope === EXERCISE_SCOPE.SHARED),
      });
      if (!editValidation.valid) {
        updateError.value = editValidation.error;
+       applyFormFieldErrors(editFieldErrors, editValidation.fieldErrors);
+       const firstField = getFirstFieldErrorInfo(editValidation.fieldErrors);
+       await showExerciseResultModal({
+         title: 'Unable to Save Exercise',
+         message: `Please correct ${firstField.fieldLabel}. ${firstField.message}`,
+         icon: 'error',
+       });
+       focusFirstInvalidField('edit', editValidation.fieldErrors);
        return;
      }
      Object.assign(editExercise, editValidation.normalizedValues);
@@ -1520,6 +1687,11 @@ const selectedExerciseYouTubeWatchUrl = computed(() => {
      const isUpdate = !!editExercise.ExerciseID;
      if (isUpdate && !editExercise.ExerciseID) {
        updateError.value = 'Missing exercise ID. Cannot update exercise.';
+       await showExerciseResultModal({
+         title: 'Unable to Save Exercise',
+         message: updateError.value,
+         icon: 'error',
+       });
        return;
      }
 
@@ -1527,6 +1699,11 @@ const selectedExerciseYouTubeWatchUrl = computed(() => {
      const totalImages = existingImages.value.length + selectedImages.value.length;
      if (totalImages > 2) {
        updateError.value = 'You can only have up to 2 images.';
+       await showExerciseResultModal({
+         title: 'Unable to Save Exercise',
+         message: updateError.value,
+         icon: 'error',
+       });
        return;
      }
 
@@ -1567,35 +1744,59 @@ const selectedExerciseYouTubeWatchUrl = computed(() => {
 
        if (!response.ok) {
          console.error(`âŒ API Error (${response.status}):`, result);
-         throw new Error(result.error || result.message || (isUpdate ? 'Update failed' : 'Insert failed'));
+         if (result?.fieldErrors && typeof result.fieldErrors === 'object') {
+           applyFormFieldErrors(editFieldErrors, result.fieldErrors);
+           const firstField = getFirstFieldErrorInfo(result.fieldErrors);
+           await showExerciseResultModal({
+             title: 'Unable to Save Exercise',
+             message: `Please correct ${firstField.fieldLabel}. ${firstField.message}`,
+             icon: 'error',
+           });
+           focusFirstInvalidField('edit', result.fieldErrors);
+           throw new Error('__FIELD_VALIDATION_HANDLED__');
+         }
+         const rawApiMessage = result?.error || result?.message || '';
+         const fallbackMessage = isUpdate ? 'We could not update this exercise right now. Please try again.' : 'We could not add this exercise right now. Please try again.';
+         const userFacingMessage = toUserFacingExerciseError({
+           apiMessage: rawApiMessage,
+           fallbackMessage,
+           exerciseTitle: exerciseTitleForFeedback,
+         });
+         throw new Error(userFacingMessage);
        }
 
-       // Success!
-       updateSuccess.value = isUpdate ? 'Exercise updated successfully!' : 'Exercise added successfully!';
+       await showExerciseResultModal({
+         title: isUpdate ? 'Exercise Updated Successfully' : 'Exercise Added Successfully',
+         message: `${exerciseTitleForFeedback || 'Exercise'} was ${isUpdate ? 'updated' : 'added'} successfully.`,
+         icon: 'success',
+       });
+
+       showEditForm.value = false;
+       selectedImages.value = [];
+       imagePreviews.value = [];
+       existingImages.value = [];
+       imagesToDelete.value = [];
+       updateSuccess.value = '';
        
        // Refresh exercise list
        await loadExercisesLibrary();
       await loadMyCustomExercises({ includeAdminGlobal: showAdminGlobalExercises.value });
-       
-       // Clear form after short delay to show success message
-       setTimeout(() => {
-         showEditForm.value = false;
-         selectedImages.value = [];
-         imagePreviews.value = [];
-         existingImages.value = [];
-         imagesToDelete.value = [];
-         updateSuccess.value = '';
-       }, 2000);
 
      } catch (err) {
-       console.error('âŒ Error updating/inserting exercise:', err);
-       
-       // Show specific error message
-       if (err.message.includes('fetch')) {
-         updateError.value = 'Unable to connect to server. Please check your connection.';
-       } else {
-         updateError.value = err.message || 'Failed to save exercise. Please try again.';
+       if (err?.message === '__FIELD_VALIDATION_HANDLED__') {
+         return;
        }
+       console.error('âŒ Error updating/inserting exercise:', err);
+
+       updateError.value = err?.message?.includes('fetch')
+         ? 'Unable to connect to server. Please check your connection.'
+         : (err.message || 'Failed to save exercise. Please try again.');
+
+       await showExerciseResultModal({
+         title: 'Unable to Save Exercise',
+         message: updateError.value,
+         icon: 'error',
+       });
      } finally {
        isSaving.value = false;
      }
@@ -1690,7 +1891,10 @@ const updateLog = async (log, idx) => {
   } catch (err) {
     // Always disable edit mode even if update fails, so user can retry
     rowEditState[idx] = false;
-    alert('Failed to update log.');
+    await showAlertDialog('Failed to update log.', {
+      title: 'Update Failed',
+      icon: 'error',
+    });
   }
 };
 
@@ -1718,21 +1922,23 @@ const showAddForm = ref(false); // Toggle form visibility
 const creatingGlobalExercise = ref(false);
 const isSubmittingAddExercise = ref(false);
 
-const showExerciseStatusToast = ({ title, message }) => {
+const showExerciseStatusToast = ({ title, message, variant = 'success', durationMs = 4000 } = {}) => {
   const existingToast = document.getElementById('wa-exercise-created-toast');
   if (existingToast) {
     existingToast.remove();
   }
 
+  const normalizedVariant = String(variant || 'success').toLowerCase() === 'error' ? 'error' : 'success';
+
   const toast = document.createElement('div');
   toast.id = 'wa-exercise-created-toast';
-  toast.className = 'wa-exercise-toast';
-  toast.setAttribute('role', 'status');
-  toast.setAttribute('aria-live', 'polite');
+  toast.className = `wa-exercise-toast wa-exercise-toast--${normalizedVariant}`;
+  toast.setAttribute('role', normalizedVariant === 'error' ? 'alert' : 'status');
+  toast.setAttribute('aria-live', normalizedVariant === 'error' ? 'assertive' : 'polite');
   const iconWrap = document.createElement('div');
   iconWrap.className = 'wa-exercise-toast__icon';
   const icon = document.createElement('i');
-  icon.className = 'fa-solid fa-circle-check';
+  icon.className = normalizedVariant === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
   iconWrap.appendChild(icon);
 
   const content = document.createElement('div');
@@ -1765,14 +1971,140 @@ const showExerciseStatusToast = ({ title, message }) => {
   document.body.appendChild(toast);
   window.setTimeout(() => {
     toast.remove();
-  }, 3000);
+  }, Number(durationMs) > 0 ? Number(durationMs) : 4000);
+};
+
+const isLocalExerciseDebugContext = () => {
+  if (typeof window === 'undefined') return false;
+  const host = String(window.location?.hostname || '').trim().toLowerCase();
+  return host === 'localhost' || host === '127.0.0.1';
+};
+
+const isExerciseErrorTechnical = (message) => /(sql|er_|mysql|constraint|column|syntax|stack|trace|exception|referenceerror|typeerror|failed to create exercise row|server error)/i.test(String(message || ''));
+
+const EXERCISE_FIELD_LABELS = Object.freeze({
+  ExerciseTitle: 'Exercise Name',
+  WorkoutType: 'Workout Type',
+  RecordingType: 'Recording Type',
+  Equipment: 'Equipment',
+  MuscleGroup: 'Muscle Group',
+  YouTubeVideoURL: 'YouTube Video URL',
+  Instructions: 'Instructions',
+});
+
+const showExerciseResultModal = async ({ title, message, icon = 'info' } = {}) => {
+  const normalizedIcon = String(icon || 'info').toLowerCase() === 'success' ? 'success' : 'error';
+  const modalVariantClass = normalizedIcon === 'success'
+    ? 'wa-exercise-result-modal--success'
+    : 'wa-exercise-result-modal--error';
+
+  await Swal.fire({
+    title: String(title || 'Notice'),
+    text: String(message || ''),
+    icon: normalizedIcon,
+    confirmButtonText: 'OK',
+    showCloseButton: true,
+    allowOutsideClick: false,
+    allowEscapeKey: true,
+    customClass: {
+      popup: `wa-exercise-result-modal ${modalVariantClass}`,
+      confirmButton: 'wa-exercise-result-modal__ok',
+      closeButton: 'wa-exercise-result-modal__close',
+    },
+    didOpen: (popup) => {
+      // Route the red X through the same confirm/ack path as the OK button.
+      const closeButton = popup.querySelector('.swal2-close');
+      const confirmButton = popup.querySelector('.swal2-confirm');
+      const isSuccess = normalizedIcon === 'success';
+      const applyModalStyles = () => {
+        if (confirmButton) {
+          confirmButton.style.setProperty('color', '#ffffff', 'important');
+          confirmButton.style.setProperty('background-color', '#2563eb', 'important');
+          confirmButton.style.setProperty('border', '0', 'important');
+          confirmButton.style.setProperty('border-radius', '10px', 'important');
+          confirmButton.style.setProperty('font-weight', '700', 'important');
+        }
+
+        if (closeButton) {
+          closeButton.style.setProperty('color', '#dc2626', 'important');
+          closeButton.style.setProperty('font-size', '1.6rem', 'important');
+          closeButton.style.setProperty('font-weight', '800', 'important');
+          closeButton.style.setProperty('top', '8px', 'important');
+          closeButton.style.setProperty('right', '10px', 'important');
+        }
+      };
+
+      applyModalStyles();
+      requestAnimationFrame(applyModalStyles);
+      setTimeout(applyModalStyles, 0);
+      setTimeout(applyModalStyles, 120);
+
+      if (isSuccess) {
+        popup.querySelectorAll(".swal2-success [class^='swal2-success-line']").forEach((line) => {
+          line.style.backgroundColor = '#1f9d55';
+        });
+        const successRing = popup.querySelector('.swal2-success .swal2-success-ring');
+        if (successRing) {
+          successRing.style.borderColor = 'rgba(31, 157, 85, 0.36)';
+        }
+      }
+
+      if (closeButton && confirmButton) {
+        closeButton.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          confirmButton.click();
+        }, { capture: true });
+      }
+    },
+  });
+};
+
+const getFirstFieldErrorInfo = (fieldErrors = {}) => {
+  const preferredOrder = ['ExerciseTitle', 'WorkoutType', 'RecordingType', 'Equipment', 'MuscleGroup', 'YouTubeVideoURL', 'Instructions'];
+  const firstKey = preferredOrder.find((fieldName) => Boolean(fieldErrors?.[fieldName])) || Object.keys(fieldErrors || {})[0] || '';
+  if (!firstKey) {
+    return { fieldName: '', fieldLabel: 'the highlighted field', message: '' };
+  }
+
+  return {
+    fieldName: firstKey,
+    fieldLabel: EXERCISE_FIELD_LABELS[firstKey] || firstKey,
+    message: String(fieldErrors[firstKey] || '').trim(),
+  };
+};
+
+const toUserFacingExerciseError = ({ apiMessage, fallbackMessage, exerciseTitle } = {}) => {
+  const cleanApiMessage = String(apiMessage || '').trim();
+  const fallback = String(fallbackMessage || 'We could not save this exercise. Please try again.').trim();
+  const shouldShowDiagnostics = Boolean(isAdminUser.value || isLocalExerciseDebugContext());
+
+  if (/not allowed|permission denied|forbidden|unauthorized/i.test(cleanApiMessage)) {
+    return 'You are not authorized to perform this action.';
+  }
+
+  if (/already exists|duplicate/i.test(cleanApiMessage)) {
+    const title = String(exerciseTitle || 'This exercise').trim() || 'This exercise';
+    return `${title} already exists. Please use a different exercise name.`;
+  }
+
+  if (!cleanApiMessage) {
+    return fallback;
+  }
+
+  if (!isExerciseErrorTechnical(cleanApiMessage)) {
+    return cleanApiMessage;
+  }
+
+  if (shouldShowDiagnostics) {
+    return `${fallback} (${cleanApiMessage})`;
+  }
+
+  return fallback;
 };
 
 const openAddExercise = ({ global = false } = {}) => {
   creatingGlobalExercise.value = Boolean(global && isAdminUser.value);
-  if (isAdminUser.value && trainerOwnerOptions.value.length === 0) {
-    loadTrainerOwnerOptions();
-  }
   newExercise.ExerciseScope = EXERCISE_SCOPE.CUSTOM;
   newExercise.ExercisePublicationState = EXERCISE_PUBLICATION.DISCOVERABLE;
   newExercise.OwnerTrainerID = '';
@@ -1781,6 +2113,8 @@ const openAddExercise = ({ global = false } = {}) => {
   newExercise.WorkoutType = 'Strength';
   newExercise.YouTubeVideoURL = '';
   newExercise.MuscleGroup = '';
+  resetFormFieldErrors(addFieldErrors);
+  addFormError.value = '';
   applyMuscleGroupSelectionForWorkoutType(newExercise);
   activeTab.value = 'search-exercises';
   showAddForm.value = true;
@@ -1800,6 +2134,8 @@ const closeAddExercise = ({ nextTab = 'custom-exercises' } = {}) => {
   newExercise.WorkoutType = 'Strength';
   newExercise.YouTubeVideoURL = '';
   newExercise.MuscleGroup = supportsMuscleGroupAll.value ? 'All' : '';
+  resetFormFieldErrors(addFieldErrors);
+  addFormError.value = '';
   activeTab.value = nextTab;
 };
 
@@ -1807,6 +2143,7 @@ const closeAddExercise = ({ nextTab = 'custom-exercises' } = {}) => {
 const addFormError = ref("");
 const AddWorkout = async () => {
   addFormError.value = "";
+  resetFormFieldErrors(addFieldErrors);
 
   if (isSubmittingAddExercise.value) {
     return;
@@ -1823,14 +2160,19 @@ const AddWorkout = async () => {
   }
 
   if (newExercise.ExerciseScope === EXERCISE_SCOPE.SHARED) {
-    if (isAdminUser.value) {
-      newExercise.OwnerTrainerID = Number(newExercise.OwnerTrainerID || 0) || '';
-    } else if (isTrainerUser.value) {
+    if (isTrainerUser.value) {
       newExercise.OwnerTrainerID = Number(userId.value || 0) || '';
+    } else {
+      newExercise.OwnerTrainerID = '';
     }
   }
   if (newExercise.ExerciseScope === EXERCISE_SCOPE.SYSTEM && !isAdminUser.value) {
     addFormError.value = 'Only administrators may create SYSTEM exercises.';
+    await showExerciseResultModal({
+      title: 'Unable to Save Exercise',
+      message: addFormError.value,
+      icon: 'error',
+    });
     isSubmittingAddExercise.value = false;
     return;
   }
@@ -1840,14 +2182,22 @@ const AddWorkout = async () => {
 
   const addValidation = validateExerciseFormValues({
     exerciseModel: newExercise,
-    requireTrainerOwner: Boolean(isAdminUser.value && newExercise.ExerciseScope === EXERCISE_SCOPE.SHARED),
   });
   if (!addValidation.valid) {
     addFormError.value = addValidation.error;
+    applyFormFieldErrors(addFieldErrors, addValidation.fieldErrors);
+    const firstField = getFirstFieldErrorInfo(addValidation.fieldErrors);
+    await showExerciseResultModal({
+      title: 'Unable to Save Exercise',
+      message: `Please correct ${firstField.fieldLabel}. ${firstField.message}`,
+      icon: 'error',
+    });
+    focusFirstInvalidField('add', addValidation.fieldErrors);
     isSubmittingAddExercise.value = false;
     return;
   }
   Object.assign(newExercise, addValidation.normalizedValues);
+  const exerciseTitleForFeedback = String(newExercise.ExerciseTitle || '').trim();
 
   const formData = new FormData();
   for (const [key, value] of Object.entries(newExercise)) {
@@ -1864,19 +2214,37 @@ const AddWorkout = async () => {
       credentials: 'include'
     });
     const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Failed to add exercise');
+    if (!res.ok) {
+      if (result?.fieldErrors && typeof result.fieldErrors === 'object') {
+        applyFormFieldErrors(addFieldErrors, result.fieldErrors);
+        const firstField = getFirstFieldErrorInfo(result.fieldErrors);
+        await showExerciseResultModal({
+          title: 'Unable to Save Exercise',
+          message: `Please correct ${firstField.fieldLabel}. ${firstField.message}`,
+          icon: 'error',
+        });
+        focusFirstInvalidField('add', result.fieldErrors);
+        throw new Error('__FIELD_VALIDATION_HANDLED__');
+      }
+      const userFacingMessage = toUserFacingExerciseError({
+        apiMessage: result?.error || result?.message || '',
+        fallbackMessage: 'We could not add this exercise right now. Please try again.',
+        exerciseTitle: exerciseTitleForFeedback,
+      });
+      throw new Error(userFacingMessage);
+    }
+
+    await showExerciseResultModal({
+      title: 'Exercise Added Successfully',
+      message: `${exerciseTitleForFeedback || 'Exercise'} was added successfully.`,
+      icon: 'success',
+    });
+
     const createdAsGlobal = newExercise.ExerciseScope !== EXERCISE_SCOPE.CUSTOM;
     const nextTab = createdAsGlobal ? 'search-exercises' : 'custom-exercises';
 
-    if (createdAsGlobal) {
-      await loadExercisesLibrary();
-    } else {
-      await loadMyCustomExercises({ includeAdminGlobal: showAdminGlobalExercises.value });
-    }
-
     closeAddExercise({ nextTab });
-    showCreationSuccessBanner({ target: createdAsGlobal ? 'global' : 'personal' });
-    // Reset form and images
+    // Reset form and images after explicit user acknowledgement.
     Object.assign(newExercise, {
       ExerciseTitle: '',
       WorkoutType: 'Strength',
@@ -1895,9 +2263,23 @@ const AddWorkout = async () => {
     imagePreviews.value = [];
     existingImages.value = [];
     imagesToDelete.value = [];
+
+    if (createdAsGlobal) {
+      await loadExercisesLibrary();
+    } else {
+      await loadMyCustomExercises({ includeAdminGlobal: showAdminGlobalExercises.value });
+    }
   } catch (err) {
+    if (err?.message === '__FIELD_VALIDATION_HANDLED__') {
+      return;
+    }
     console.error('Add failed:', err);
     addFormError.value = err.message || 'Error adding exercise.';
+    await showExerciseResultModal({
+      title: 'Unable to Save Exercise',
+      message: addFormError.value,
+      icon: 'error',
+    });
   } finally {
     isSubmittingAddExercise.value = false;
   }
@@ -1914,6 +2296,8 @@ const existingImages = ref([]); // Filenames retained for save payloads
 const existingImagePreviewEntries = ref([]); // Real uploaded media preview entries for edit only
 const imagesToDelete = ref([]); // For images marked for deletion (edit only)
 const failedExistingImageNames = ref(new Set());
+const MAX_EXERCISE_IMAGE_BYTES = 20 * 1024 * 1024;
+const MAX_EXERCISE_IMAGE_MB_LABEL = '20MB';
 
 const cloneExerciseState = (value = {}) => JSON.parse(JSON.stringify(value || {}));
 
@@ -1990,15 +2374,29 @@ const editPrimaryPreviewEntry = computed(() => {
 });
 
 // For Add: handle new uploads
-const handleImageUpload = (event) => {
+const handleImageUpload = async (event) => {
   const files = Array.from(event.target.files);
   if (files.length + existingImagePreviewEntries.value.length > 2) {
-    alert('You can only upload up to 2 images.');
+    await showAlertDialog('You can only upload up to 2 images.', {
+      title: 'Image Limit Reached',
+      icon: 'warning',
+    });
     return;
   }
   for (const file of files) {
+    if (Number(file?.size || 0) > MAX_EXERCISE_IMAGE_BYTES) {
+      await showAlertDialog(`File ${file.name} exceeds the ${MAX_EXERCISE_IMAGE_MB_LABEL} per-image limit.`, {
+        title: 'Image Too Large',
+        icon: 'warning',
+      });
+      continue;
+    }
+
     if (!file.type.startsWith('image/')) {
-      alert(`File ${file.name} is not a valid image`);
+      await showAlertDialog(`File ${file.name} is not a valid image`, {
+        title: 'Invalid Image File',
+        icon: 'warning',
+      });
       continue;
     }
     selectedImages.value.push(file);
@@ -2134,12 +2532,10 @@ onUnmounted(() => {
 
 
 const closeDeleteConfirmModal = () => {
-  deleteConfirmState.value = {
-    visible: false,
-    exercise: null,
-    isSubmitting: false,
-    error: '',
-  };
+  deleteFinalConfirmState.value.visible = false;
+  deleteImpactDetailsState.value.visible = false;
+  replaceExercisePickerState.value = buildReplaceExercisePickerInitialState();
+  deleteConfirmState.value = buildDeleteConfirmInitialState();
 };
 
 const closeDeleteSuccessModal = () => {
@@ -2169,38 +2565,584 @@ const openDeleteExerciseModal = (exercise) => {
   if (!exercise?.ExerciseID) return;
   if (Number(exercise?.CanDelete || 0) !== 1 && !isAdminUser.value) return;
 
+  const useSystemAdminFlow = isAdminUser.value && isSystemExerciseRecord(exercise);
+
   deleteConfirmState.value = {
+    ...buildDeleteConfirmInitialState(),
     visible: true,
     exercise,
-    isSubmitting: false,
-    error: '',
+    isSystemAdminFlow: useSystemAdminFlow,
+  };
+
+  if (useSystemAdminFlow) {
+    refreshSystemDeleteImpact();
+    loadSystemReplacementOptions();
+  }
+};
+
+const selectedSystemReplacementOption = computed(() => {
+  const replacementId = Number(deleteConfirmState.value?.replacementExerciseId || 0);
+  if (!replacementId) return null;
+  const matchingOption = (deleteConfirmState.value?.replacementOptions || []).find((option) => Number(option?.ExerciseID || 0) === replacementId);
+  if (matchingOption) {
+    return matchingOption;
+  }
+
+  const cachedSelectionId = Number(deleteConfirmState.value?.replacementSelectionDetails?.ExerciseID || 0);
+  if (cachedSelectionId === replacementId) {
+    return deleteConfirmState.value.replacementSelectionDetails;
+  }
+
+  return null;
+});
+
+const replacePickerCategoryOptions = computed(() => {
+  const values = new Set(
+    (replaceExercisePickerState.value?.exercises || [])
+      .map((exercise) => String(exercise?.WorkoutType || '').trim())
+      .filter(Boolean)
+  );
+  return ['All', ...Array.from(values).sort((left, right) => left.localeCompare(right))];
+});
+
+const replacePickerEquipmentOptions = computed(() => {
+  const values = new Set(
+    (replaceExercisePickerState.value?.exercises || [])
+      .map((exercise) => String(exercise?.Equipment || '').trim())
+      .filter(Boolean)
+  );
+  return ['All', ...Array.from(values).sort((left, right) => left.localeCompare(right))];
+});
+
+const replacePickerFilteredExercises = computed(() => {
+  const searchText = String(replaceExercisePickerState.value?.search || '').trim().toLowerCase();
+  const selectedCategory = String(replaceExercisePickerState.value?.category || 'All');
+  const selectedEquipment = String(replaceExercisePickerState.value?.equipment || 'All');
+
+  return (replaceExercisePickerState.value?.exercises || []).filter((exercise) => {
+    const exerciseTitle = String(exercise?.ExerciseTitle || '');
+    const exerciseCategory = String(exercise?.WorkoutType || '');
+    const exerciseEquipment = String(exercise?.Equipment || '');
+    const matchesSearch = !searchText || exerciseTitle.toLowerCase().includes(searchText);
+    const matchesCategory = selectedCategory === 'All' || exerciseCategory === selectedCategory;
+    const matchesEquipment = selectedEquipment === 'All' || exerciseEquipment === selectedEquipment;
+    return matchesSearch && matchesCategory && matchesEquipment;
+  });
+});
+
+const visibleReplacePickerExercises = computed(() => {
+  const visibleCount = Number(replaceExercisePickerState.value?.visibleCount || REPLACE_EXERCISE_PICKER_PAGE_SIZE);
+  return replacePickerFilteredExercises.value.slice(0, visibleCount);
+});
+
+const selectedReplacePickerExercise = computed(() => {
+  const selectedId = Number(replaceExercisePickerState.value?.selectedExerciseId || 0);
+  if (!selectedId) return null;
+  return (replaceExercisePickerState.value?.exercises || []).find((exercise) => Number(exercise?.ExerciseID || 0) === selectedId) || null;
+});
+
+const canMergeWithReplaceSelection = computed(() => Boolean(selectedReplacePickerExercise.value));
+
+const replacePickerVisibleCountLabel = computed(() => {
+  const visibleCount = Math.min(visibleReplacePickerExercises.value.length, replacePickerFilteredExercises.value.length);
+  return `${visibleCount} of ${replacePickerFilteredExercises.value.length}`;
+});
+
+const finalConfirmHasReplacement = computed(() => {
+  if (!deleteConfirmState.value?.isSystemAdminFlow) return false;
+  return Number(deleteConfirmState.value?.replacementExerciseId || 0) > 0;
+});
+
+const finalConfirmTitle = computed(() => {
+  if (!deleteConfirmState.value?.isSystemAdminFlow) return 'Confirm Exercise Deletion';
+  return finalConfirmHasReplacement.value ? 'Confirm Delete & Merge' : 'Confirm Exercise Deletion';
+});
+
+const finalConfirmPrimaryButtonLabel = computed(() => {
+  if (!deleteConfirmState.value?.isSystemAdminFlow) return 'Yes, Delete Exercise';
+  return finalConfirmHasReplacement.value ? 'Yes, Delete & Merge' : 'Yes, Delete Exercise';
+});
+
+const finalConfirmMessagePrimary = computed(() => {
+  const sourceName = deleteConfirmState.value?.exercise?.ExerciseTitle || 'this exercise';
+  const replacementName = selectedSystemReplacementOption.value?.ExerciseTitle || 'the selected exercise';
+
+  if (!deleteConfirmState.value?.isSystemAdminFlow) {
+    return `Are you sure you want to delete ${sourceName}?`;
+  }
+
+  if (finalConfirmHasReplacement.value) {
+    return `Are you sure you want to delete ${sourceName} and replace it with ${replacementName}?`;
+  }
+
+  return `Are you sure you want to delete ${sourceName}?`;
+});
+
+const finalConfirmMessageSecondary = computed(() => {
+  const replacementName = selectedSystemReplacementOption.value?.ExerciseTitle || 'the selected exercise';
+
+  if (!deleteConfirmState.value?.isSystemAdminFlow) {
+    return 'This exercise will be removed from the active Exercise Library. Existing workout history will be preserved.';
+  }
+
+  if (finalConfirmHasReplacement.value) {
+    return `Compatible active workout assignments will be reassigned to ${replacementName}. Existing workout history will be preserved.`;
+  }
+
+  return 'This exercise will be removed from the active Exercise Library. Existing workout history will be preserved.';
+});
+
+const normalizeBaseUrl = (value) => String(value || '').trim().replace(/\/$/, '');
+
+const buildSystemExerciseEndpointCandidates = ({ exerciseId, actionPath, query = null }) => {
+  const safeExerciseId = Number(exerciseId || 0);
+  if (!safeExerciseId) return [];
+
+  const trimmedActionPath = String(actionPath || '').trim().replace(/^\/+/, '');
+  if (!trimmedActionPath) return [];
+
+  const pathSuffix = `system-exercises/${safeExerciseId}/${trimmedActionPath}`;
+  const includeQuery = (url) => {
+    if (!query) return url;
+    const serialized = query.toString();
+    return serialized ? `${url}?${serialized}` : url;
+  };
+
+  const base = normalizeBaseUrl(API_BASE);
+  const candidates = [];
+  const pushCandidate = (value) => {
+    const normalized = String(value || '').trim();
+    if (!normalized) return;
+    if (!candidates.includes(normalized)) {
+      candidates.push(normalized);
+    }
+  };
+
+  const apiLikeSuffix = /\/api$/i;
+  if (base) {
+    if (apiLikeSuffix.test(base)) {
+      pushCandidate(includeQuery(`${base}/admin/${pathSuffix}`));
+      pushCandidate(includeQuery(`${base}/${pathSuffix}`));
+    } else {
+      pushCandidate(includeQuery(`${base}/api/admin/${pathSuffix}`));
+      pushCandidate(includeQuery(`${base}/api/${pathSuffix}`));
+    }
+  }
+
+  pushCandidate(includeQuery(`/api/admin/${pathSuffix}`));
+  pushCandidate(includeQuery(`/api/${pathSuffix}`));
+  return candidates;
+};
+
+const trySystemExerciseRequest = async ({ exerciseId, actionPath, method = 'GET', body = null, query = null }) => {
+  const urls = buildSystemExerciseEndpointCandidates({ exerciseId, actionPath, query });
+  const diagnostics = [];
+
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, {
+        method,
+        credentials: 'include',
+        headers: body ? { 'Content-Type': 'application/json' } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+
+      const rawText = await response.text();
+      let payload = {};
+      let parsedJson = false;
+      try {
+        payload = rawText ? JSON.parse(rawText) : {};
+        parsedJson = true;
+      } catch (_jsonErr) {
+        payload = {};
+        parsedJson = false;
+      }
+
+      const sample = String(rawText || '').slice(0, 200);
+      diagnostics.push({
+        url,
+        method,
+        status: response.status,
+        ok: response.ok,
+        parsedJson,
+        bodySample: sample,
+      });
+
+      if (!response.ok || !parsedJson || payload?.success !== true) {
+        continue;
+      }
+
+      return {
+        ok: true,
+        payload,
+        diagnostics,
+      };
+    } catch (err) {
+      diagnostics.push({
+        url,
+        method,
+        networkError: err?.message || String(err),
+      });
+    }
+  }
+
+  return {
+    ok: false,
+    payload: null,
+    diagnostics,
   };
 };
 
-const confirmDeleteExercise = async () => {
+const hasLoadedSystemImpact = computed(() => {
+  if (!deleteConfirmState.value?.isSystemAdminFlow) return true;
+  const impact = deleteConfirmState.value?.impact;
+  return Boolean(impact && typeof impact === 'object');
+});
+
+const hasSystemImpactLoadError = computed(() => {
+  if (!deleteConfirmState.value?.isSystemAdminFlow) return false;
+  return Boolean(String(deleteConfirmState.value?.impactError || '').trim());
+});
+
+const canSubmitDeleteAction = computed(() => {
+  if (deleteConfirmState.value?.isSubmitting) return false;
+  if (!deleteConfirmState.value?.isSystemAdminFlow) return true;
+  if (deleteConfirmState.value?.impactLoading) return false;
+  if (hasSystemImpactLoadError.value) return false;
+  if (!hasLoadedSystemImpact.value) return false;
+  if (deleteConfirmState.value?.compatibilityError) return false;
+  return true;
+});
+
+const canOpenFinalDeleteConfirm = computed(() => {
+  if (deleteConfirmState.value?.isSubmitting) return false;
+  if (!deleteConfirmState.value?.isSystemAdminFlow) return true;
+  return canSubmitDeleteAction.value;
+});
+
+const refreshSystemDeleteImpact = async () => {
+  const exercise = deleteConfirmState.value?.exercise;
+  if (!exercise?.ExerciseID) return;
+
+  deleteConfirmState.value.impactLoading = true;
+  deleteConfirmState.value.impactError = '';
+  deleteConfirmState.value.compatibilityError = '';
+
+  try {
+    const replacementExerciseId = Number(deleteConfirmState.value?.replacementExerciseId || 0);
+    const query = new URLSearchParams();
+    if (replacementExerciseId > 0) {
+      query.set('replacementExerciseId', String(replacementExerciseId));
+    }
+
+    const response = await trySystemExerciseRequest({
+      exerciseId: exercise.ExerciseID,
+      actionPath: 'delete-impact',
+      method: 'GET',
+      query,
+    });
+
+    if (!response.ok) {
+      deleteConfirmState.value.impactRequestDiagnostics = response.diagnostics;
+      const firstFailure = response.diagnostics?.[0] || null;
+      const statusText = firstFailure?.status ? `HTTP ${firstFailure.status}` : 'Request failed';
+      const detailText = firstFailure?.bodySample ? ` (${firstFailure.bodySample})` : '';
+      throw new Error(`Failed to load dependency impact. ${statusText}${detailText}`.trim());
+    }
+
+    const payload = response.payload || {};
+    deleteConfirmState.value.impact = payload?.impact || null;
+    deleteConfirmState.value.impactRequestDiagnostics = response.diagnostics;
+    const compatibility = payload?.compatibility || null;
+    deleteConfirmState.value.compatibilityError = compatibility && compatibility.compatible === false
+      ? (compatibility?.message || 'Selected replacement is not compatible.')
+      : '';
+
+    if (!deleteConfirmState.value.impact) {
+      throw new Error('Failed to load dependency impact. Response did not include impact data.');
+    }
+  } catch (err) {
+    deleteConfirmState.value.impact = null;
+    deleteConfirmState.value.impactError = err?.message || 'Failed to load dependency impact.';
+  } finally {
+    deleteConfirmState.value.impactLoading = false;
+  }
+};
+
+const loadSystemReplacementOptions = async ({ searchText = '', limit = SYSTEM_DELETE_MERGE_PAGE_SIZE, syncMainState = true } = {}) => {
+  const exercise = deleteConfirmState.value?.exercise;
+  if (!exercise?.ExerciseID) return [];
+
+  if (syncMainState) {
+    deleteConfirmState.value.replacementLoading = true;
+    deleteConfirmState.value.replacementError = '';
+  }
+
+  try {
+    const queryText = String(searchText || '').trim();
+    const query = new URLSearchParams();
+    query.set('limit', String(Math.max(1, Number(limit || SYSTEM_DELETE_MERGE_PAGE_SIZE))));
+    if (queryText) {
+      query.set('search', queryText);
+    }
+
+    const response = await trySystemExerciseRequest({
+      exerciseId: exercise.ExerciseID,
+      actionPath: 'replacements',
+      method: 'GET',
+      query,
+    });
+
+    if (!response.ok) {
+      const firstFailure = response.diagnostics?.[0] || null;
+      const statusText = firstFailure?.status ? `HTTP ${firstFailure.status}` : 'Request failed';
+      throw new Error(`Failed to load replacement options. ${statusText}`);
+    }
+
+    const payload = response.payload || {};
+    const options = Array.isArray(payload?.candidates) ? payload.candidates : [];
+    if (syncMainState) {
+      deleteConfirmState.value.replacementOptions = options;
+    }
+
+    const selectedReplacementId = Number(deleteConfirmState.value?.replacementExerciseId || 0);
+    const selectionStillValid = selectedReplacementId > 0 && options.some((option) => Number(option?.ExerciseID || 0) === selectedReplacementId);
+    if (!selectionStillValid) {
+      deleteConfirmState.value.replacementExerciseId = '';
+      deleteConfirmState.value.replacementSelectionDetails = null;
+      deleteConfirmState.value.compatibilityError = '';
+    }
+
+    if (selectedReplacementId > 0) {
+      const selectedOption = options.find((option) => Number(option?.ExerciseID || 0) === selectedReplacementId) || null;
+      if (selectedOption) {
+        deleteConfirmState.value.replacementSelectionDetails = selectedOption;
+      }
+    }
+
+    return options;
+  } catch (err) {
+    if (syncMainState) {
+      deleteConfirmState.value.replacementOptions = [];
+      deleteConfirmState.value.replacementError = err?.message || 'Failed to load replacement options.';
+    }
+    return [];
+  } finally {
+    if (syncMainState) {
+      deleteConfirmState.value.replacementLoading = false;
+    }
+  }
+};
+
+const handleSystemReplacementSelectionChange = async () => {
+  await refreshSystemDeleteImpact();
+};
+
+const loadReplaceExercisePickerOptions = async () => {
+  const exercise = deleteConfirmState.value?.exercise;
+  if (!exercise?.ExerciseID) return;
+
+  replaceExercisePickerState.value.loading = true;
+  replaceExercisePickerState.value.error = '';
+  deleteConfirmState.value.replacementError = '';
+
+  try {
+    const options = await loadSystemReplacementOptions({
+      searchText: replaceExercisePickerState.value.search,
+      limit: replaceExercisePickerState.value.fetchLimit,
+      syncMainState: false,
+    });
+
+    const deletingExerciseId = Number(exercise?.ExerciseID || 0);
+    const sanitized = options.filter((option) => {
+      const candidateId = Number(option?.ExerciseID || 0);
+      return candidateId > 0 && candidateId !== deletingExerciseId;
+    });
+
+    replaceExercisePickerState.value.exercises = sanitized;
+    replaceExercisePickerState.value.hasPotentialMore = sanitized.length >= Number(replaceExercisePickerState.value.fetchLimit || REPLACE_EXERCISE_PICKER_FETCH_STEP);
+
+    const selectedId = Number(replaceExercisePickerState.value.selectedExerciseId || 0);
+    if (selectedId > 0 && !sanitized.some((option) => Number(option?.ExerciseID || 0) === selectedId)) {
+      replaceExercisePickerState.value.selectedExerciseId = '';
+    }
+  } catch (err) {
+    const message = err?.message || 'Failed to load replacement options.';
+    replaceExercisePickerState.value.exercises = [];
+    replaceExercisePickerState.value.error = message;
+    deleteConfirmState.value.replacementError = message;
+  } finally {
+    replaceExercisePickerState.value.loading = false;
+  }
+};
+
+const openReplaceExerciseModal = async () => {
+  if (!deleteConfirmState.value?.isSystemAdminFlow) return;
+
+  replaceExercisePickerState.value = {
+    ...buildReplaceExercisePickerInitialState(),
+    visible: true,
+    selectedExerciseId: deleteConfirmState.value.replacementExerciseId || '',
+  };
+
+  await loadReplaceExercisePickerOptions();
+};
+
+const closeReplaceExerciseModal = () => {
+  replaceExercisePickerState.value.visible = false;
+};
+
+const handleReplacePickerSearchInput = async () => {
+  replaceExercisePickerState.value.visibleCount = REPLACE_EXERCISE_PICKER_PAGE_SIZE;
+  replaceExercisePickerState.value.fetchLimit = REPLACE_EXERCISE_PICKER_FETCH_STEP;
+  await loadReplaceExercisePickerOptions();
+};
+
+const toggleReplacePickerSelection = (exercise = {}) => {
+  const exerciseId = Number(exercise?.ExerciseID || 0);
+  if (!exerciseId) return;
+
+  const selectedId = Number(replaceExercisePickerState.value.selectedExerciseId || 0);
+  replaceExercisePickerState.value.selectedExerciseId = selectedId === exerciseId ? '' : String(exerciseId);
+};
+
+const loadMoreReplacePickerResults = async () => {
+  const visibleCount = Number(replaceExercisePickerState.value.visibleCount || REPLACE_EXERCISE_PICKER_PAGE_SIZE);
+  if (visibleCount < replacePickerFilteredExercises.value.length) {
+    replaceExercisePickerState.value.visibleCount = visibleCount + REPLACE_EXERCISE_PICKER_PAGE_SIZE;
+    return;
+  }
+
+  if (!replaceExercisePickerState.value.hasPotentialMore || replaceExercisePickerState.value.loading) {
+    return;
+  }
+
+  replaceExercisePickerState.value.fetchLimit = Number(replaceExercisePickerState.value.fetchLimit || REPLACE_EXERCISE_PICKER_FETCH_STEP) + REPLACE_EXERCISE_PICKER_FETCH_STEP;
+  await loadReplaceExercisePickerOptions();
+};
+
+const mergeWithSelectedReplacement = async () => {
+  const selectedExercise = selectedReplacePickerExercise.value;
+  if (!selectedExercise) return;
+
+  deleteConfirmState.value.replacementExerciseId = String(selectedExercise.ExerciseID);
+  deleteConfirmState.value.replacementSelectionDetails = selectedExercise;
+  deleteConfirmState.value.compatibilityError = '';
+  deleteConfirmState.value.replacementError = '';
+
+  await handleSystemReplacementSelectionChange();
+  closeReplaceExerciseModal();
+};
+
+const clearSystemReplacementSelection = async () => {
+  deleteConfirmState.value.replacementExerciseId = '';
+  deleteConfirmState.value.replacementSelectionDetails = null;
+  deleteConfirmState.value.compatibilityError = '';
+  await handleSystemReplacementSelectionChange();
+};
+
+const impactMetrics = computed(() => {
+  const impact = deleteConfirmState.value?.impact || {};
+  return [
+    { key: 'distinctPlansAffected', label: 'Distinct Workout Plans Affected', value: Number(impact?.distinctPlansAffected || 0) },
+    { key: 'scheduledAssignmentsAffected', label: 'Scheduled Exercise Assignments Affected', value: Number(impact?.scheduledAssignmentsAffected || 0) },
+    { key: 'workoutHistoryAffected', label: 'Workout History Entries Affected', value: Number(impact?.workoutHistoryAffected || 0) },
+    { key: 'favoritesAffected', label: 'Favorites Affected', value: Number(impact?.favoritesAffected || 0) },
+    { key: 'otherDependentAffected', label: 'Other Dependent Records Affected', value: Number(impact?.otherDependentAffected || 0) },
+    { key: 'totalAffectedReferences', label: 'Total Affected References', value: Number(impact?.totalAffectedReferences || 0) },
+  ];
+});
+
+const canOpenImpactDetails = computed(() => {
+  if (!deleteConfirmState.value?.isSystemAdminFlow) return false;
+  if (deleteConfirmState.value?.impactLoading) return false;
+  return hasLoadedSystemImpact.value;
+});
+
+const openImpactDetailsModal = () => {
+  if (!canOpenImpactDetails.value) return;
+  deleteImpactDetailsState.value.visible = true;
+};
+
+const closeImpactDetailsModal = () => {
+  deleteImpactDetailsState.value.visible = false;
+};
+
+const requestDeleteExerciseConfirmation = () => {
+  if (!canOpenFinalDeleteConfirm.value) {
+    if (deleteConfirmState.value?.isSystemAdminFlow && !hasLoadedSystemImpact.value) {
+      deleteConfirmState.value.error = 'Dependency impact must load successfully before deletion or merge can continue.';
+    }
+    return;
+  }
+
+  deleteConfirmState.value.error = '';
+  deleteFinalConfirmState.value.visible = true;
+};
+
+const closeDeleteFinalConfirmModal = () => {
+  if (deleteConfirmState.value?.isSubmitting) return;
+  deleteFinalConfirmState.value.visible = false;
+};
+
+const executeDeleteExercise = async () => {
   const exercise = deleteConfirmState.value.exercise;
   if (!exercise?.ExerciseID) return;
   if (deleteConfirmState.value.isSubmitting) return;
 
+  deleteFinalConfirmState.value.visible = false;
   deleteConfirmState.value.isSubmitting = true;
   deleteConfirmState.value.error = '';
 
   try {
-    const res = await fetch(`${API_BASE}/api/delete-exercise/${exercise.ExerciseID}`, {
-      method: 'DELETE',
-      credentials: 'include'
-    });
+    const isSystemAdminFlow = Boolean(deleteConfirmState.value?.isSystemAdminFlow);
+    let payload = {};
 
-    const payload = await res.json().catch(() => ({}));
+    if (isSystemAdminFlow) {
+      await refreshSystemDeleteImpact();
+      if (!hasLoadedSystemImpact.value) {
+        throw new Error('Dependency impact must load successfully before deletion or merge can continue.');
+      }
+      if (deleteConfirmState.value.compatibilityError) {
+        throw new Error(deleteConfirmState.value.compatibilityError);
+      }
 
-    if (!res.ok || payload?.success === false) {
-      const errorData = payload;
-      throw new Error(errorData?.message || errorData?.error || 'Failed to delete exercise.');
+      const replacementExerciseId = Number(deleteConfirmState.value?.replacementExerciseId || 0);
+      const response = await trySystemExerciseRequest({
+        exerciseId: exercise.ExerciseID,
+        actionPath: 'delete-or-merge',
+        method: 'POST',
+        body: {
+          confirm: true,
+          replacementExerciseId: replacementExerciseId > 0 ? replacementExerciseId : null,
+        },
+      });
+
+      if (!response.ok) {
+        const firstFailure = response.diagnostics?.[0] || null;
+        const statusText = firstFailure?.status ? `HTTP ${firstFailure.status}` : 'Request failed';
+        const bodyText = firstFailure?.bodySample ? ` (${firstFailure.bodySample})` : '';
+        throw new Error(`Failed to delete or merge system exercise. ${statusText}${bodyText}`.trim());
+      }
+      payload = response.payload || {};
+    } else {
+      const res = await fetch(`${API_BASE}/api/delete-exercise/${exercise.ExerciseID}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      payload = await res.json().catch(() => ({}));
+
+      if (!res.ok || payload?.success === false) {
+        throw new Error(payload?.message || payload?.error || 'Failed to delete exercise.');
+      }
     }
 
-    const isGlobal = Number(exercise?.IsGlobalExercise || 0) === 1;
-    const successTitle = isGlobal ? 'Global Exercise Deleted' : 'Exercise Deleted';
-    const successMessage = 'Exercise deleted successfully!';
+    const isGlobal = Number(exercise?.IsGlobalExercise || 0) === 1 || isSystemAdminFlow;
+    const successTitle = payload?.action === 'merge' ? 'Exercises Merged' : (isGlobal ? 'Global Exercise Deleted' : 'Exercise Deleted');
+    const successMessage = String(payload?.message || '').trim() || (payload?.action === 'merge'
+      ? 'Exercises Merged Successfully'
+      : 'Exercise Deleted Successfully');
 
     deleteSuccessState.value = {
       visible: true,
@@ -2259,7 +3201,6 @@ const toggleAdminGlobalExercises = async () => {
     <div
       v-if="deleteConfirmState.visible"
       class="exercise-delete-modal-backdrop"
-      @click.self="closeDeleteConfirmModal()"
     >
       <div class="exercise-delete-modal" role="dialog" aria-modal="true" aria-labelledby="exercise-delete-title">
         <button
@@ -2276,42 +3217,332 @@ const toggleAdminGlobalExercises = async () => {
         </div>
 
         <h3 id="exercise-delete-title" class="exercise-delete-modal-title">
-          {{ Number(deleteConfirmState.exercise?.IsGlobalExercise || 0) === 1 ? 'Delete Global Exercise?' : 'Delete Exercise?' }}
+          {{ deleteConfirmState.isSystemAdminFlow ? 'Delete & Merge Exercise' : (Number(deleteConfirmState.exercise?.IsGlobalExercise || 0) === 1 ? 'Delete Global Exercise?' : 'Delete Exercise?') }}
         </h3>
 
         <p class="exercise-delete-modal-name">
           {{ deleteConfirmState.exercise?.ExerciseTitle || 'This exercise' }}
         </p>
 
-        <p class="exercise-delete-modal-copy">
+        <p v-if="!deleteConfirmState.isSystemAdminFlow" class="exercise-delete-modal-copy">
           Are you sure you want to delete this exercise? This action cannot be undone.
         </p>
 
-        <p v-if="Number(deleteConfirmState.exercise?.IsGlobalExercise || 0) === 1" class="exercise-delete-modal-warning">
+        <p v-if="!deleteConfirmState.isSystemAdminFlow && Number(deleteConfirmState.exercise?.IsGlobalExercise || 0) === 1" class="exercise-delete-modal-warning">
           This global exercise is available to all users.
         </p>
+
+        <div v-if="deleteConfirmState.isSystemAdminFlow" class="exercise-delete-system-flow">
+          <p class="exercise-delete-system-warning-compact">
+            Removing this exercise preserves workout history.
+          </p>
+
+          <div class="exercise-delete-system-field">
+            <label class="exercise-delete-system-label">Replace With Another Exercise (Optional)</label>
+            <button
+              type="button"
+              class="btn btn-primary exercise-delete-replace-launcher"
+              :disabled="deleteConfirmState.replacementLoading || deleteConfirmState.isSubmitting"
+              @click="openReplaceExerciseModal"
+            >
+              Replace With Exercise
+            </button>
+          </div>
+
+          <p v-if="deleteConfirmState.replacementLoading" class="exercise-delete-modal-copy exercise-delete-system-meta">
+            Loading replacement exercises...
+          </p>
+
+          <div v-if="selectedSystemReplacementOption" class="exercise-delete-system-selected">
+            <span class="exercise-delete-system-selected-label">Selected Replacement:</span>
+            <div class="exercise-delete-system-selected-card">
+              <img
+                :src="getExerciseImage(selectedSystemReplacementOption)"
+                :alt="selectedSystemReplacementOption.ExerciseTitle || 'Replacement exercise'"
+                class="exercise-delete-system-selected-image"
+                @error="$event.target.src = DEFAULT_EXERCISE_IMAGE"
+              />
+              <div class="exercise-delete-system-selected-meta">
+                <span class="exercise-delete-system-selected-value">{{ selectedSystemReplacementOption.ExerciseTitle }}</span>
+              </div>
+              <div class="exercise-delete-system-selected-actions">
+                <button
+                  type="button"
+                  class="btn btn-outline-primary btn-sm exercise-delete-replacement-change-btn"
+                  :disabled="deleteConfirmState.replacementLoading || deleteConfirmState.isSubmitting"
+                  @click="openReplaceExerciseModal"
+                >
+                  Change
+                </button>
+                <button
+                  type="button"
+                  class="exercise-delete-replacement-clear-btn"
+                  aria-label="Clear selected replacement exercise"
+                  @click="clearSystemReplacementSelection"
+                >
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="deleteConfirmState.compatibilityError" class="exercise-delete-modal-error exercise-delete-modal-error--inline">
+            {{ deleteConfirmState.compatibilityError }}
+          </div>
+
+          <div class="exercise-delete-impact-link-wrap">
+            <button
+              type="button"
+              class="exercise-delete-impact-link"
+              :disabled="!canOpenImpactDetails"
+              @click="openImpactDetailsModal"
+            >
+              View affected records
+            </button>
+          </div>
+
+          <div class="exercise-delete-confirm-summary">
+            <p><strong>Exercise to Delete:</strong> {{ deleteConfirmState.exercise?.ExerciseTitle || 'Unknown' }}</p>
+            <p v-if="!selectedSystemReplacementOption"><strong>Replacement:</strong> None</p>
+          </div>
+        </div>
+
+        <div v-if="deleteConfirmState.impactError" class="exercise-delete-modal-error">
+          {{ deleteConfirmState.impactError }}
+        </div>
+
+        <div v-if="deleteConfirmState.replacementError" class="exercise-delete-modal-error exercise-delete-modal-error--replacement">
+          {{ deleteConfirmState.replacementError }}
+        </div>
 
         <div v-if="deleteConfirmState.error" class="exercise-delete-modal-error">
           {{ deleteConfirmState.error }}
         </div>
 
-        <div class="exercise-delete-modal-actions">
+        <div class="exercise-delete-modal-actions exercise-delete-modal-actions--primary">
           <button type="button" class="btn btn-secondary exercise-delete-modal-cancel" @click="closeDeleteConfirmModal()">
             Cancel
           </button>
           <button
             type="button"
             class="btn btn-danger exercise-delete-modal-confirm"
-            :disabled="deleteConfirmState.isSubmitting"
-            @click="confirmDeleteExercise()"
+            :disabled="!canOpenFinalDeleteConfirm"
+            @click="requestDeleteExerciseConfirmation()"
           >
             <span v-if="deleteConfirmState.isSubmitting">
               <i class="fa-solid fa-spinner fa-spin me-2"></i>
-              Deleting...
+              Processing...
             </span>
-            <span v-else>
-              {{ Number(deleteConfirmState.exercise?.IsGlobalExercise || 0) === 1 ? 'Delete Global Exercise' : 'Delete Exercise' }}
+            <span v-else>Delete Exercise</span>
+          </button>
+        </div>
+
+        <div
+          v-if="deleteConfirmState.isSystemAdminFlow && hasSystemImpactLoadError"
+          class="exercise-delete-modal-actions exercise-delete-modal-actions--retry"
+        >
+          <button
+            type="button"
+            class="btn btn-primary exercise-delete-modal-retry"
+            :disabled="deleteConfirmState.impactLoading"
+            @click="refreshSystemDeleteImpact()"
+          >
+            <span v-if="deleteConfirmState.impactLoading">
+              <i class="fa-solid fa-spinner fa-spin me-2"></i>
+              Retrying...
             </span>
+            <span v-else>Retry Impact Summary</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="deleteConfirmState.visible && replaceExercisePickerState.visible"
+      class="exercise-delete-modal-backdrop exercise-delete-modal-backdrop--nested"
+    >
+      <div class="exercise-replace-picker-modal" role="dialog" aria-modal="true" aria-labelledby="exercise-replace-picker-title">
+        <div class="exercise-replace-picker-head">
+          <div>
+            <h3 id="exercise-replace-picker-title">Replace Exercise</h3>
+            <p>Select a replacement exercise without leaving Delete & Merge.</p>
+          </div>
+          <button
+            type="button"
+            class="exercise-replace-picker-close"
+            aria-label="Close replace exercise picker"
+            @click="closeReplaceExerciseModal"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div class="exercise-replace-picker-filters">
+          <div class="exercise-replace-picker-filter-field exercise-replace-picker-filter-field--search">
+            <label for="replace-picker-search">Search</label>
+            <input
+              id="replace-picker-search"
+              v-model="replaceExercisePickerState.search"
+              type="text"
+              class="form-control"
+              placeholder="Search by exercise name"
+              @input="handleReplacePickerSearchInput"
+            />
+          </div>
+
+          <div class="exercise-replace-picker-filter-field">
+            <label for="replace-picker-category">Category</label>
+            <select id="replace-picker-category" v-model="replaceExercisePickerState.category" class="form-select">
+              <option v-for="option in replacePickerCategoryOptions" :key="`replace-category-${option}`" :value="option">{{ option }}</option>
+            </select>
+          </div>
+
+          <div class="exercise-replace-picker-filter-field">
+            <label for="replace-picker-equipment">Equipment</label>
+            <select id="replace-picker-equipment" v-model="replaceExercisePickerState.equipment" class="form-select">
+              <option v-for="option in replacePickerEquipmentOptions" :key="`replace-equipment-${option}`" :value="option">{{ option }}</option>
+            </select>
+          </div>
+        </div>
+
+        <p class="exercise-replace-picker-count">Showing {{ replacePickerVisibleCountLabel }} exercises</p>
+
+        <div class="exercise-replace-picker-results">
+          <div v-if="replaceExercisePickerState.loading" class="exercise-replace-picker-empty">
+            Loading replacement exercises...
+          </div>
+          <div v-else-if="replaceExercisePickerState.error" class="exercise-replace-picker-empty exercise-replace-picker-empty--error">
+            {{ replaceExercisePickerState.error }}
+          </div>
+          <div v-else-if="!replacePickerFilteredExercises.length" class="exercise-replace-picker-empty">
+            No eligible system exercises match your filters.
+          </div>
+
+          <article
+            v-for="exercise in visibleReplacePickerExercises"
+            :key="exercise.ExerciseID"
+            class="exercise-replace-picker-card"
+            :class="{ 'exercise-replace-picker-card--selected': Number(replaceExercisePickerState.selectedExerciseId || 0) === Number(exercise.ExerciseID || 0) }"
+          >
+            <img
+              :src="getExerciseImage(exercise)"
+              :alt="exercise.ExerciseTitle || 'Exercise image'"
+              class="exercise-replace-picker-image"
+              loading="lazy"
+              @error="$event.target.src = DEFAULT_EXERCISE_IMAGE"
+            />
+
+            <div class="exercise-replace-picker-meta">
+              <h4>{{ exercise.ExerciseTitle || 'Untitled Exercise' }}</h4>
+              <div class="exercise-replace-picker-chip-row">
+                <span class="exercise-replace-picker-chip">{{ exercise.WorkoutType || 'General' }}</span>
+                <span class="exercise-replace-picker-chip">{{ exercise.MuscleGroup || 'N/A' }}</span>
+                <span class="exercise-replace-picker-chip">{{ exercise.Equipment || 'Bodyweight' }}</span>
+                <span class="exercise-replace-picker-chip">{{ exercise.RecordingType || 'Unknown Recording Type' }}</span>
+                <span class="exercise-replace-picker-chip">ID {{ exercise.ExerciseID || '-' }}</span>
+              </div>
+            </div>
+
+            <label class="exercise-replace-picker-select" :for="`replace-picker-check-${exercise.ExerciseID}`">
+              <input
+                :id="`replace-picker-check-${exercise.ExerciseID}`"
+                type="checkbox"
+                :checked="Number(replaceExercisePickerState.selectedExerciseId || 0) === Number(exercise.ExerciseID || 0)"
+                @change="toggleReplacePickerSelection(exercise)"
+              />
+              <span>Select</span>
+            </label>
+          </article>
+
+          <div v-if="visibleReplacePickerExercises.length < replacePickerFilteredExercises.length || replaceExercisePickerState.hasPotentialMore" class="exercise-replace-picker-load-more">
+            <button type="button" class="btn btn-outline-primary" :disabled="replaceExercisePickerState.loading" @click="loadMoreReplacePickerResults">
+              Load More
+            </button>
+          </div>
+        </div>
+
+        <div class="exercise-replace-picker-footer">
+          <span>{{ canMergeWithReplaceSelection ? '1 selected' : '0 selected' }}</span>
+          <div class="exercise-replace-picker-footer-actions">
+            <button type="button" class="btn btn-secondary" @click="closeReplaceExerciseModal">Cancel</button>
+            <button type="button" class="btn btn-primary" :disabled="!canMergeWithReplaceSelection || replaceExercisePickerState.loading" @click="mergeWithSelectedReplacement">
+              Merge With
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="deleteConfirmState.visible && deleteImpactDetailsState.visible"
+      class="exercise-delete-modal-backdrop exercise-delete-modal-backdrop--nested"
+    >
+      <div class="exercise-delete-modal exercise-impact-details-modal" role="dialog" aria-modal="true" aria-labelledby="exercise-impact-details-title">
+        <h3 id="exercise-impact-details-title" class="exercise-delete-modal-title exercise-impact-details-title">
+          Exercise Impact Details
+        </h3>
+
+        <ul class="exercise-impact-details-list">
+          <li v-for="metric in impactMetrics" :key="metric.key">
+            <span>{{ metric.label }}</span>
+            <strong>{{ metric.value }}</strong>
+          </li>
+        </ul>
+
+        <div class="exercise-delete-modal-actions exercise-delete-modal-actions--impact">
+          <button type="button" class="btn btn-primary exercise-impact-details-ok" @click="closeImpactDetailsModal">
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="deleteConfirmState.visible && deleteFinalConfirmState.visible"
+      class="exercise-delete-modal-backdrop exercise-delete-modal-backdrop--nested"
+    >
+      <div class="exercise-delete-modal exercise-delete-final-modal" role="dialog" aria-modal="true" aria-labelledby="exercise-delete-final-title">
+        <button
+          type="button"
+          class="exercise-delete-modal-close"
+          aria-label="Close final delete confirmation"
+          :disabled="deleteConfirmState.isSubmitting"
+          @click="closeDeleteFinalConfirmModal"
+        >
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        <h3 id="exercise-delete-final-title" class="exercise-delete-modal-title exercise-delete-final-title">
+          {{ finalConfirmTitle }}
+        </h3>
+
+        <p class="exercise-delete-modal-copy exercise-delete-final-message-primary">
+          {{ finalConfirmMessagePrimary }}
+        </p>
+        <p class="exercise-delete-modal-copy exercise-delete-final-message-secondary">
+          {{ finalConfirmMessageSecondary }}
+        </p>
+
+        <div class="exercise-delete-modal-actions">
+          <button
+            type="button"
+            class="btn btn-secondary exercise-delete-modal-cancel"
+            :disabled="deleteConfirmState.isSubmitting"
+            @click="closeDeleteFinalConfirmModal"
+          >
+            No, Go Back
+          </button>
+          <button
+            type="button"
+            class="btn btn-danger exercise-delete-modal-confirm"
+            :disabled="deleteConfirmState.isSubmitting"
+            @click="executeDeleteExercise"
+          >
+            <span v-if="deleteConfirmState.isSubmitting">
+              <i class="fa-solid fa-spinner fa-spin me-2"></i>
+              Processing...
+            </span>
+            <span v-else>{{ finalConfirmPrimaryButtonLabel }}</span>
           </button>
         </div>
       </div>
@@ -2478,36 +3709,6 @@ const toggleAdminGlobalExercises = async () => {
                   </div>
                 </div>
 
-                <div class="search-custom-toggle-block">
-                  <div class="search-custom-toggle-list">
-                    <div class="search-filter-toggle-row search-filter-toggle-row--custom">
-                      <input
-                        id="show-trainer-custom-exercises-toggle"
-                        v-model="showTrainerCustomExercises"
-                        class="wa-global-toggle search-filter-toggle-checkbox"
-                        type="checkbox"
-                      />
-                      <label for="show-trainer-custom-exercises-toggle" class="search-filter-toggle-label">
-                        Show Custom Exercises from Trainers (Not Verified)
-                      </label>
-                    </div>
-                    <div class="search-filter-toggle-row search-filter-toggle-row--custom">
-                      <input
-                        id="show-user-custom-exercises-toggle"
-                        v-model="showUserCustomExercises"
-                        class="wa-global-toggle search-filter-toggle-checkbox"
-                        type="checkbox"
-                      />
-                      <label for="show-user-custom-exercises-toggle" class="search-filter-toggle-label">
-                        Show Custom Exercises from Users (Not Verified)
-                      </label>
-                    </div>
-                  </div>
-                  <div v-if="showTrainerCustomExercises || showUserCustomExercises" class="search-custom-warning" role="alert">
-                    Community-created exercises are not verified by WorkoutAtlas. Review details before use.
-                  </div>
-                </div>
-
                 <div v-if="filtersOpen" id="exercise-filters-panel" class="panel search-filter-card exercise-database-toolbar filters-toolbar">
                   <div class="panel-body search-filter-body">
                       <div class="filter-body-animated">
@@ -2525,7 +3726,7 @@ const toggleAdminGlobalExercises = async () => {
                         </div>
 
                         <div class="search-filter-field search-filter-field--select">
-                          <label class="form-label">Exercise Type / Category</label>
+                          <label class="form-label">Workout Type / Category</label>
                           <div class="search-filter-select-wrap">
                             <select v-model="workoutType" class="form-select">
                               <option value="All">All</option>
@@ -2562,8 +3763,8 @@ const toggleAdminGlobalExercises = async () => {
                         </div>
                       </div>
 
-                        <div class="search-filter-actions">
-                          <div class="search-filter-toggle-row">
+                        <div class="search-filter-actions search-filter-actions--row-two">
+                            <div class="search-filter-toggle-row search-filter-toggle-row--inline">
                             <input
                               id="show-my-exercises-toggle"
                               v-model="showMyExercisesOnly"
@@ -2572,10 +3773,36 @@ const toggleAdminGlobalExercises = async () => {
                             />
                             <label for="show-my-exercises-toggle" class="search-filter-toggle-label">Show My Exercises</label>
                           </div>
+                            <div class="search-filter-toggle-row search-filter-toggle-row--inline">
+                              <input
+                                id="show-trainer-custom-exercises-toggle"
+                                v-model="showTrainerCustomExercises"
+                                class="wa-global-toggle search-filter-toggle-checkbox"
+                                type="checkbox"
+                              />
+                              <label for="show-trainer-custom-exercises-toggle" class="search-filter-toggle-label">
+                                Show Custom Exercises from Trainers (Not Verified)
+                              </label>
+                            </div>
+                            <div class="search-filter-toggle-row search-filter-toggle-row--inline">
+                              <input
+                                id="show-user-custom-exercises-toggle"
+                                v-model="showUserCustomExercises"
+                                class="wa-global-toggle search-filter-toggle-checkbox"
+                                type="checkbox"
+                              />
+                              <label for="show-user-custom-exercises-toggle" class="search-filter-toggle-label">
+                                Show Custom Exercises from Users (Not Verified)
+                              </label>
+                            </div>
                           <button class="btn btn-outline-secondary clear-filters-btn" @click="clearFilters" title="Reset filters">
                             <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
                             <span>Clear Filters</span>
                           </button>
+                        </div>
+                        <div v-if="showTrainerCustomExercises || showUserCustomExercises" class="search-custom-warning" role="alert">
+                          <i class="fa-solid fa-triangle-exclamation search-custom-warning__icon" aria-hidden="true"></i>
+                          <span>Community-created exercises are not verified by WorkoutAtlas. Review details before use.</span>
                         </div>
                       <div class="search-filter-divider"></div>
                       </div>
@@ -2616,29 +3843,79 @@ const toggleAdminGlobalExercises = async () => {
                               </div>
                               <div class="col-md-12">
                                   <label class="form-label">Exercise Name: <span style="color:red">*</span></label>
-                                  <input v-model="editExercise.ExerciseTitle" class="form-control" required />
+                                  <input
+                                    id="edit-exercise-title"
+                                    v-model="editExercise.ExerciseTitle"
+                                    class="form-control"
+                                    :class="{ 'exercise-field-invalid': editFieldErrors.ExerciseTitle }"
+                                    :aria-invalid="Boolean(editFieldErrors.ExerciseTitle)"
+                                    :aria-describedby="editFieldErrors.ExerciseTitle ? 'edit-exercise-title-error' : null"
+                                    required
+                                    @input="clearFormFieldError(editFieldErrors, 'ExerciseTitle')"
+                                  />
+                                  <p v-if="editFieldErrors.ExerciseTitle" id="edit-exercise-title-error" class="exercise-field-error">{{ editFieldErrors.ExerciseTitle }}</p>
                               </div>
                               <div class="col-md-6">
                                   <label class="form-label">Workout Type: <span style="color:red">*</span></label>
-                                  <select v-model="editExercise.WorkoutType" class="form-select" required>
+                                  <select
+                                    id="edit-workout-type"
+                                    v-model="editExercise.WorkoutType"
+                                    class="form-select"
+                                    :class="{ 'exercise-field-invalid': editFieldErrors.WorkoutType }"
+                                    :aria-invalid="Boolean(editFieldErrors.WorkoutType)"
+                                    :aria-describedby="editFieldErrors.WorkoutType ? 'edit-workout-type-error' : null"
+                                    required
+                                    @change="clearFormFieldError(editFieldErrors, 'WorkoutType')"
+                                  >
                                     <option v-for="type in workoutTypeOptions" :key="type" :value="type">{{ type }}</option>
                                   </select>
+                                  <p v-if="editFieldErrors.WorkoutType" id="edit-workout-type-error" class="exercise-field-error">{{ editFieldErrors.WorkoutType }}</p>
                               </div>
                               <div class="col-md-6">
                                   <label class="form-label">Recording Type:</label>
-                                  <select v-model="editExercise.RecordingType" class="form-select">
+                                  <select
+                                    id="edit-recording-type"
+                                    v-model="editExercise.RecordingType"
+                                    class="form-select"
+                                    :class="{ 'exercise-field-invalid': editFieldErrors.RecordingType }"
+                                    :aria-invalid="Boolean(editFieldErrors.RecordingType)"
+                                    :aria-describedby="editFieldErrors.RecordingType ? 'edit-recording-type-error' : null"
+                                    @change="clearFormFieldError(editFieldErrors, 'RecordingType')"
+                                  >
                                     <option v-for="type in recordingTypeOptions" :key="type" :value="type">{{ type }}</option>
                                   </select>
+                                  <p v-if="editFieldErrors.RecordingType" id="edit-recording-type-error" class="exercise-field-error">{{ editFieldErrors.RecordingType }}</p>
                               </div>
                               <div class="col-md-6">
                                   <label class="form-label">Equipment:</label>
-                                  <input v-model="editExercise.Equipment" class="form-control" />
+                                  <select
+                                    id="edit-equipment"
+                                    v-model="editExercise.Equipment"
+                                    class="form-select"
+                                    :class="{ 'exercise-field-invalid': editFieldErrors.Equipment }"
+                                    :aria-invalid="Boolean(editFieldErrors.Equipment)"
+                                    :aria-describedby="editFieldErrors.Equipment ? 'edit-equipment-error' : null"
+                                    @change="clearFormFieldError(editFieldErrors, 'Equipment')"
+                                  >
+                                    <option v-for="option in getEquipmentOptionsForValue(editExercise.Equipment)" :key="option" :value="option">{{ option }}</option>
+                                  </select>
+                                  <p v-if="editFieldErrors.Equipment" id="edit-equipment-error" class="exercise-field-error">{{ editFieldErrors.Equipment }}</p>
                               </div>
                               <div class="col-md-6">
                                   <label class="form-label">Muscle Group:<span style="color:red">*</span></label>
-                                  <select v-model="editExercise.MuscleGroup" class="form-select" required>
+                                  <select
+                                    id="edit-muscle-group"
+                                    v-model="editExercise.MuscleGroup"
+                                    class="form-select"
+                                    :class="{ 'exercise-field-invalid': editFieldErrors.MuscleGroup }"
+                                    :aria-invalid="Boolean(editFieldErrors.MuscleGroup)"
+                                    :aria-describedby="editFieldErrors.MuscleGroup ? 'edit-muscle-group-error' : null"
+                                    required
+                                    @change="clearFormFieldError(editFieldErrors, 'MuscleGroup')"
+                                  >
                                     <option v-for="group in getMuscleGroupOptionsForWorkoutType(editExercise.WorkoutType, { preserveValue: editExercise.MuscleGroup, allowStrengthAll: true })" :key="group" :value="group">{{ group }}</option>
                                   </select>
+                                  <p v-if="editFieldErrors.MuscleGroup" id="edit-muscle-group-error" class="exercise-field-error">{{ editFieldErrors.MuscleGroup }}</p>
                               </div>
                               <div class="col-md-12">
                                   <label class="form-label">Upload Images (max 2):</label>
@@ -2679,16 +3956,32 @@ const toggleAdminGlobalExercises = async () => {
                               <div class="col-md-12">
                                   <label class="form-label">YouTube Video URL (Optional)</label>
                                   <input
+                                    id="edit-youtube-url"
                                     v-model="editExercise.YouTubeVideoURL"
                                     type="url"
                                     class="form-control"
+                                    :class="{ 'exercise-field-invalid': editFieldErrors.YouTubeVideoURL }"
+                                    :aria-invalid="Boolean(editFieldErrors.YouTubeVideoURL)"
+                                    :aria-describedby="editFieldErrors.YouTubeVideoURL ? 'edit-youtube-url-error' : null"
                                     placeholder="https://www.youtube.com/watch?v=VIDEO_ID"
+                                    @input="clearFormFieldError(editFieldErrors, 'YouTubeVideoURL')"
                                   />
+                                  <p v-if="editFieldErrors.YouTubeVideoURL" id="edit-youtube-url-error" class="exercise-field-error">{{ editFieldErrors.YouTubeVideoURL }}</p>
                                   <p class="form-text mt-1 mb-0 youtube-url-helper-text">Supported links: youtube.com/watch, youtu.be, youtube.com/shorts, and youtube.com/embed.</p>
                               </div>
                               <div class="col-md-12">
                                   <label class="form-label">Instructions</label>
-                                  <textarea v-model="editExercise.Instructions" class="form-control instructions" rows="=3" />
+                                  <textarea
+                                    id="edit-instructions"
+                                    v-model="editExercise.Instructions"
+                                    class="form-control instructions"
+                                    :class="{ 'exercise-field-invalid': editFieldErrors.Instructions }"
+                                    :aria-invalid="Boolean(editFieldErrors.Instructions)"
+                                    :aria-describedby="editFieldErrors.Instructions ? 'edit-instructions-error' : null"
+                                    rows="=3"
+                                    @input="clearFormFieldError(editFieldErrors, 'Instructions')"
+                                  />
+                                  <p v-if="editFieldErrors.Instructions" id="edit-instructions-error" class="exercise-field-error">{{ editFieldErrors.Instructions }}</p>
                               </div>
                               <div v-if="canChooseScope" class="col-md-12 custom-exercise-field-row">
                                 <label class="form-label">Exercise Scope</label>
@@ -2700,22 +3993,9 @@ const toggleAdminGlobalExercises = async () => {
                                 </div>
                                 <p class="form-text mt-1 mb-0 exercise-scope-helper-text">
                                   <span v-if="selectedEditExerciseScope === 'SYSTEM'">System exercises are visible to all authenticated users.</span>
-                                  <span v-else-if="selectedEditExerciseScope === 'SHARED' && isAdminUser">Choose a valid trainer owner before saving.</span>
-                                  <span v-else-if="selectedEditExerciseScope === 'SHARED'">Your trainer account will own this shared exercise.</span>
+                                  <span v-else-if="selectedEditExerciseScope === 'SHARED'">Shared exercises are linked to the authenticated creator when supported by role policy.</span>
                                   <span v-else>Custom exercises are discoverable unless restricted by supported privacy controls.</span>
                                 </p>
-                              </div>
-                              <div v-if="isAdminUser && selectedEditExerciseScope === 'SHARED'" class="col-md-12 custom-exercise-field-row">
-                                <label class="form-label">Trainer Owner <span style="color:red">*</span></label>
-                                <div class="custom-exercise-select-wrap">
-                                  <select v-model.number="editExercise.OwnerTrainerID" class="form-select custom-exercise-form-select" :disabled="trainerOwnerOptionsLoading">
-                                    <option value="" disabled>Select a trainer</option>
-                                    <option v-for="trainer in trainerOwnerOptions" :key="trainer.id" :value="trainer.id">{{ trainer.label }}</option>
-                                  </select>
-                                  <span class="custom-exercise-select-arrow" aria-hidden="true">▼</span>
-                                </div>
-                                <p v-if="trainerOwnerOptionsLoading" class="form-text mt-1 mb-0">Loading trainer accounts...</p>
-                                <p v-else-if="trainerOwnerOptionsError" class="form-text mt-1 mb-0 text-danger">{{ trainerOwnerOptionsError }}</p>
                               </div>
                               <!-- Cardio Fields 
                                   <div class="col-md-12">
@@ -2758,32 +4038,28 @@ const toggleAdminGlobalExercises = async () => {
                                 </div>
                               </div>
 
-                              <div class="col-12 mt-3 d-flex align-items-center" style="gap: 8px;">
-                                  <div>
-                                    <button class="btn btn-success" @click="saveEditedExercise" :disabled="isSaving">
-                                      <span v-if="isSaving">
-                                        <i class="fa-solid fa-spinner fa-spin me-1"></i> Saving...
-                                      </span>
-                                      <span v-else>Save Changes</span>
-                                    </button>
-                                    <button class="btn btn-outline-secondary ms-2" @click="cancelEditingExercise" :disabled="isSaving">Cancel</button>
-                                  </div>
-                                  <div class="ms-auto">
-                                    <button
-                                      v-if="isAdminUser && Number(editExercise.IsGlobalExercise || 0) === 1 && Number(editExercise.IsSystemExercise || 0) !== 1"
-                                      class="btn btn-danger exercise-delete-btn"
-                                      @click="deleteExercise(editExercise)"
-                                    >
-                                      Delete Global Exercise
-                                    </button>
-                                    <button
-                                      v-else-if="Number(editExercise.CanDelete || 0) === 1 && Number(editExercise.IsSystemExercise || 0) !== 1"
-                                      class="btn btn-danger exercise-delete-btn"
-                                      @click="deleteExercise(editExercise)"
-                                    >
-                                      Delete Exercise
-                                    </button>
-                                  </div>
+                              <div class="col-12 mt-3 d-flex align-items-center justify-content-end flex-wrap edit-exercise-action-row">
+                                  <button class="btn btn-outline-secondary" @click="cancelEditingExercise" :disabled="isSaving">Cancel</button>
+                                  <button
+                                    v-if="isAdminUser && (Number(editExercise.IsGlobalExercise || 0) === 1 || Number(editExercise.IsSystemExercise || 0) === 1)"
+                                    class="btn btn-danger exercise-delete-btn"
+                                    @click="deleteExercise(editExercise)"
+                                  >
+                                    {{ Number(editExercise.IsSystemExercise || 0) === 1 ? 'Delete System Exercise' : 'Delete Global Exercise' }}
+                                  </button>
+                                  <button
+                                    v-else-if="Number(editExercise.CanDelete || 0) === 1 && Number(editExercise.IsSystemExercise || 0) !== 1"
+                                    class="btn btn-danger exercise-delete-btn"
+                                    @click="deleteExercise(editExercise)"
+                                  >
+                                    Delete Exercise
+                                  </button>
+                                  <button class="btn btn-success edit-exercise-action-row__save" @click="saveEditedExercise" :disabled="isSaving">
+                                    <span v-if="isSaving">
+                                      <i class="fa-solid fa-spinner fa-spin me-1"></i> Saving...
+                                    </span>
+                                    <span v-else>Save Changes</span>
+                                  </button>
                               </div>
 
                             </div>
@@ -2802,42 +4078,97 @@ const toggleAdminGlobalExercises = async () => {
     <div class="col-md-12 custom-exercise-field-row">
       <div v-if="addFormError" class="alert alert-danger mb-2">{{ addFormError }}</div>
       <label class="form-label">Exercise Name <span style="color:red">*</span></label>
-      <input v-model="newExercise.ExerciseTitle" class="form-control" required />
+      <div>
+        <input
+          id="new-exercise-title"
+          v-model="newExercise.ExerciseTitle"
+          class="form-control"
+          :class="{ 'exercise-field-invalid': addFieldErrors.ExerciseTitle }"
+          :aria-invalid="Boolean(addFieldErrors.ExerciseTitle)"
+          :aria-describedby="addFieldErrors.ExerciseTitle ? 'new-exercise-title-error' : null"
+          required
+          @input="clearFormFieldError(addFieldErrors, 'ExerciseTitle')"
+        />
+        <p v-if="addFieldErrors.ExerciseTitle" id="new-exercise-title-error" class="exercise-field-error">{{ addFieldErrors.ExerciseTitle }}</p>
+      </div>
     </div>
 
     <div class="col-md-12 custom-exercise-field-row">
       <label class="form-label">Workout Type <span style="color:red">*</span></label>
       <div class="custom-exercise-select-wrap">
-        <select v-model="newExercise.WorkoutType" class="form-select custom-exercise-form-select" required>
+        <select
+          id="new-workout-type"
+          v-model="newExercise.WorkoutType"
+          class="form-select custom-exercise-form-select"
+          :class="{ 'exercise-field-invalid': addFieldErrors.WorkoutType }"
+          :aria-invalid="Boolean(addFieldErrors.WorkoutType)"
+          :aria-describedby="addFieldErrors.WorkoutType ? 'new-workout-type-error' : null"
+          required
+          @change="clearFormFieldError(addFieldErrors, 'WorkoutType')"
+        >
           <option v-for="type in workoutTypeOptions" :key="type" :value="type">{{ type }}</option>
         </select>
         <span class="custom-exercise-select-arrow" aria-hidden="true">▼</span>
       </div>
+      <p v-if="addFieldErrors.WorkoutType" id="new-workout-type-error" class="exercise-field-error">{{ addFieldErrors.WorkoutType }}</p>
     </div>
 
     <div class="col-md-12 custom-exercise-field-row">
       <label class="form-label">Muscle Group <span style="color:red">*</span></label>
       <div class="custom-exercise-select-wrap">
-        <select v-model="newExercise.MuscleGroup" class="form-select custom-exercise-form-select" required>
+        <select
+          id="new-muscle-group"
+          v-model="newExercise.MuscleGroup"
+          class="form-select custom-exercise-form-select"
+          :class="{ 'exercise-field-invalid': addFieldErrors.MuscleGroup }"
+          :aria-invalid="Boolean(addFieldErrors.MuscleGroup)"
+          :aria-describedby="addFieldErrors.MuscleGroup ? 'new-muscle-group-error' : null"
+          required
+          @change="clearFormFieldError(addFieldErrors, 'MuscleGroup')"
+        >
           <option v-for="group in getMuscleGroupOptionsForWorkoutType(newExercise.WorkoutType, { allowStrengthAll: true })" :key="group" :value="group">{{ group }}</option>
         </select>
         <span class="custom-exercise-select-arrow" aria-hidden="true">▼</span>
       </div>
+      <p v-if="addFieldErrors.MuscleGroup" id="new-muscle-group-error" class="exercise-field-error">{{ addFieldErrors.MuscleGroup }}</p>
     </div>
 
     <div class="col-md-12 custom-exercise-field-row">
       <label class="form-label">Recording Type</label>
       <div class="custom-exercise-select-wrap">
-        <select v-model="newExercise.RecordingType" class="form-select custom-exercise-form-select">
+        <select
+          id="new-recording-type"
+          v-model="newExercise.RecordingType"
+          class="form-select custom-exercise-form-select"
+          :class="{ 'exercise-field-invalid': addFieldErrors.RecordingType }"
+          :aria-invalid="Boolean(addFieldErrors.RecordingType)"
+          :aria-describedby="addFieldErrors.RecordingType ? 'new-recording-type-error' : null"
+          @change="clearFormFieldError(addFieldErrors, 'RecordingType')"
+        >
           <option v-for="type in recordingTypeOptions" :key="type" :value="type">{{ type }}</option>
         </select>
         <span class="custom-exercise-select-arrow" aria-hidden="true">▼</span>
       </div>
+      <p v-if="addFieldErrors.RecordingType" id="new-recording-type-error" class="exercise-field-error">{{ addFieldErrors.RecordingType }}</p>
     </div>
 
     <div class="col-md-12 custom-exercise-field-row">
       <label class="form-label">Equipment</label>
-      <input v-model="newExercise.Equipment" class="form-control" />
+      <div class="custom-exercise-select-wrap">
+        <select
+          id="new-equipment"
+          v-model="newExercise.Equipment"
+          class="form-select custom-exercise-form-select"
+          :class="{ 'exercise-field-invalid': addFieldErrors.Equipment }"
+          :aria-invalid="Boolean(addFieldErrors.Equipment)"
+          :aria-describedby="addFieldErrors.Equipment ? 'new-equipment-error' : null"
+          @change="clearFormFieldError(addFieldErrors, 'Equipment')"
+        >
+          <option v-for="option in exerciseEquipmentOptions" :key="option" :value="option">{{ option }}</option>
+        </select>
+        <span class="custom-exercise-select-arrow" aria-hidden="true">▼</span>
+      </div>
+      <p v-if="addFieldErrors.Equipment" id="new-equipment-error" class="exercise-field-error">{{ addFieldErrors.Equipment }}</p>
     </div>
 
     <div v-if="canChooseScope" class="col-md-12 custom-exercise-field-row">
@@ -2850,23 +4181,9 @@ const toggleAdminGlobalExercises = async () => {
       </div>
       <p class="form-text mt-1 mb-0 exercise-scope-helper-text">
         <span v-if="selectedExerciseScope === 'SYSTEM'">System exercises are visible to all authenticated users.</span>
-        <span v-else-if="selectedExerciseScope === 'SHARED' && isAdminUser">Choose a valid trainer owner before saving.</span>
-        <span v-else-if="selectedExerciseScope === 'SHARED'">Your trainer account will own this shared exercise.</span>
+        <span v-else-if="selectedExerciseScope === 'SHARED'">Shared exercises are linked to the authenticated creator when supported by role policy.</span>
         <span v-else>Custom exercises are discoverable unless restricted by supported privacy controls.</span>
       </p>
-    </div>
-
-    <div v-if="isAdminUser && selectedExerciseScope === 'SHARED'" class="col-md-12 custom-exercise-field-row">
-      <label class="form-label">Trainer Owner <span style="color:red">*</span></label>
-      <div class="custom-exercise-select-wrap">
-        <select v-model.number="newExercise.OwnerTrainerID" class="form-select custom-exercise-form-select" :disabled="trainerOwnerOptionsLoading">
-          <option value="" disabled>Select a trainer</option>
-          <option v-for="trainer in trainerOwnerOptions" :key="trainer.id" :value="trainer.id">{{ trainer.label }}</option>
-        </select>
-        <span class="custom-exercise-select-arrow" aria-hidden="true">▼</span>
-      </div>
-      <p v-if="trainerOwnerOptionsLoading" class="form-text mt-1 mb-0">Loading trainer accounts...</p>
-      <p v-else-if="trainerOwnerOptionsError" class="form-text mt-1 mb-0 text-danger">{{ trainerOwnerOptionsError }}</p>
     </div>
 
     <div class="col-md-12 custom-exercise-upload-section">
@@ -2875,7 +4192,7 @@ const toggleAdminGlobalExercises = async () => {
           <span class="custom-exercise-upload-label">Images</span>
           <span class="custom-exercise-upload-optional">Optional</span>
         </div>
-        <span class="custom-exercise-upload-meta">JPG, PNG, GIF or WEBP — Maximum 2 images.</span>
+        <span class="custom-exercise-upload-meta">JPG, PNG, GIF or WEBP — Maximum 2 images, 20MB each.</span>
       </div>
 
       <label
@@ -2913,11 +4230,17 @@ const toggleAdminGlobalExercises = async () => {
       <label class="form-label">YouTube Video URL (Optional)</label>
       <div>
         <input
+          id="new-youtube-url"
           v-model="newExercise.YouTubeVideoURL"
           type="url"
           class="form-control"
+          :class="{ 'exercise-field-invalid': addFieldErrors.YouTubeVideoURL }"
+          :aria-invalid="Boolean(addFieldErrors.YouTubeVideoURL)"
+          :aria-describedby="addFieldErrors.YouTubeVideoURL ? 'new-youtube-url-error' : null"
           placeholder="https://www.youtube.com/watch?v=VIDEO_ID"
+          @input="clearFormFieldError(addFieldErrors, 'YouTubeVideoURL')"
         />
+        <p v-if="addFieldErrors.YouTubeVideoURL" id="new-youtube-url-error" class="exercise-field-error">{{ addFieldErrors.YouTubeVideoURL }}</p>
         <p class="form-text mt-1 mb-0 youtube-url-helper-text">Supported links: youtube.com/watch, youtu.be, youtube.com/shorts, and youtube.com/embed.</p>
       </div>
     </div>
@@ -2933,12 +4256,24 @@ const toggleAdminGlobalExercises = async () => {
 
     <div class="col-md-12 custom-exercise-field-row custom-exercise-field-row--multiline">
       <label class="form-label">Instructions</label>
-      <textarea v-model="newExercise.Instructions" class="form-control instructions" rows="3" />
+      <div>
+        <textarea
+          id="new-instructions"
+          v-model="newExercise.Instructions"
+          class="form-control instructions"
+          :class="{ 'exercise-field-invalid': addFieldErrors.Instructions }"
+          :aria-invalid="Boolean(addFieldErrors.Instructions)"
+          :aria-describedby="addFieldErrors.Instructions ? 'new-instructions-error' : null"
+          rows="3"
+          @input="clearFormFieldError(addFieldErrors, 'Instructions')"
+        />
+        <p v-if="addFieldErrors.Instructions" id="new-instructions-error" class="exercise-field-error">{{ addFieldErrors.Instructions }}</p>
+      </div>
     </div>
 
     <div class="col-12 mt-3 custom-exercise-form-actions">
-      <button class="btn btn-primary custom-exercise-create-button" @click="AddWorkout">Add Exercise</button>
-      <button class="btn btn-outline-secondary ms-2 custom-exercise-cancel-button" @click="closeAddExercise">Cancel</button>
+      <button class="btn btn-outline-secondary custom-exercise-cancel-button" @click="closeAddExercise">Cancel</button>
+      <button class="btn custom-exercise-create-button custom-exercise-create-button--add-form" @click="AddWorkout">Add Exercise</button>
     </div>
   </div>
 </div>
@@ -3005,8 +4340,7 @@ const toggleAdminGlobalExercises = async () => {
 
                                   <div class="exercise-meta" aria-label="Exercise details">
                                     <span
-                                      v-if="normalizeExerciseScope(ex) !== 'CUSTOM'"
-                                      class="exercise-badge exercise-badge--global"
+                                      :class="['exercise-badge', `exercise-badge--${normalizeExerciseScope(ex).toLowerCase()}`]"
                                     >
                                       {{ getScopeLabel(ex) }}
                                     </span>
@@ -3334,7 +4668,7 @@ const toggleAdminGlobalExercises = async () => {
                 </div>
               </div>
 
-              <div class="exercise-list mt-3" v-if="logExerciseMatches.length">
+              <div class="exercise-list exercise-list--log-search mt-3" v-if="logExerciseMatches.length">
                 <div
                   class="exercise-row"
                   v-for="(match, index) in logExerciseMatches"
@@ -3763,22 +5097,29 @@ Please Select an excerise
 .exercise-delete-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(3, 8, 17, 0.8);
+  background: rgba(3, 8, 17, 0.82);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  padding: 24px;
+  padding: 16px;
+}
+
+.exercise-delete-modal-backdrop--nested {
+  z-index: 2010;
+  background: rgba(2, 6, 14, 0.58);
 }
 
 .exercise-delete-modal {
   position: relative;
-  width: min(100%, 430px);
+  width: min(100%, 560px);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
   background: #101a2f;
   border: 1px solid rgba(148, 163, 184, 0.25);
-  border-radius: 18px;
-  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.42);
-  padding: 28px 24px 20px;
+  border-radius: 16px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.5);
+  padding: 22px 20px 18px;
   color: #edf4ff;
 }
 
@@ -3799,16 +5140,16 @@ Please Select an excerise
 }
 
 .exercise-delete-modal-icon {
-  width: 62px;
-  height: 62px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 16px;
+  margin: 0 auto 12px;
   background: rgba(220, 53, 69, 0.14);
   color: #ff6b7d;
-  font-size: 1.7rem;
+  font-size: 1.4rem;
 }
 
 .exercise-delete-success-icon {
@@ -3819,15 +5160,15 @@ Please Select an excerise
 .exercise-delete-modal-title {
   margin: 0;
   text-align: center;
-  font-size: 1.65rem;
+  font-size: 1.45rem;
   font-weight: 700;
   color: #fff;
 }
 
 .exercise-delete-modal-name {
-  margin: 12px 0 10px;
+  margin: 10px 0 12px;
   text-align: center;
-  font-size: 1.02rem;
+  font-size: 1rem;
   font-weight: 700;
   color: #f8fbff;
   word-break: break-word;
@@ -3836,10 +5177,10 @@ Please Select an excerise
 .exercise-delete-modal-copy,
 .exercise-delete-modal-warning {
   margin: 0;
-  text-align: center;
+  text-align: left;
   color: rgba(225, 234, 247, 0.8);
-  line-height: 1.55;
-  font-size: 0.97rem;
+  line-height: 1.42;
+  font-size: 0.92rem;
 }
 
 .exercise-delete-modal-warning {
@@ -3860,25 +5201,677 @@ Please Select an excerise
 }
 
 .exercise-delete-modal-actions {
-  margin-top: 18px;
+  margin-top: 14px;
   display: flex;
   justify-content: flex-end;
   gap: 10px;
 }
 
+.exercise-delete-modal-actions--primary {
+  flex-wrap: nowrap;
+}
+
+.exercise-delete-modal-actions--retry {
+  margin-top: 10px;
+  justify-content: center;
+}
+
+.exercise-delete-modal-retry {
+  min-width: 200px;
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+  font-weight: 700;
+}
+
+.exercise-delete-modal-retry:hover,
+.exercise-delete-modal-retry:focus-visible {
+  background: #1e40af !important;
+  border-color: #1e40af !important;
+  color: #ffffff !important;
+}
+
 .exercise-delete-modal-cancel {
-  min-width: 98px;
-  background: rgba(148, 163, 184, 0.18) !important;
-  border-color: rgba(148, 163, 184, 0.28) !important;
-  color: #f6f9ff !important;
+  min-width: 110px;
+  min-height: 44px;
+  background: rgba(100, 116, 139, 0.3) !important;
+  border-color: rgba(148, 163, 184, 0.34) !important;
+  color: #f7fbff !important;
+  font-weight: 700;
 }
 
 .exercise-delete-modal-confirm {
   min-width: 162px;
+  min-height: 44px;
+  font-weight: 700;
+  background: #b91c1c !important;
+  border-color: #b91c1c !important;
+}
+
+.exercise-delete-modal-confirm:hover,
+.exercise-delete-modal-confirm:focus-visible {
+  background: #991b1b !important;
+  border-color: #991b1b !important;
+}
+
+.exercise-delete-system-flow {
+  margin-top: 10px;
+  display: grid;
+  gap: 9px;
+}
+
+.exercise-delete-system-warning-compact {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 1px solid rgba(248, 113, 113, 0.32);
+  background: rgba(127, 29, 29, 0.34);
+  color: rgba(254, 226, 226, 0.96);
+  font-size: 0.84rem;
+  line-height: 1.34;
+  font-weight: 600;
+}
+
+.exercise-delete-warning-banner {
+  border-radius: 10px;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: rgba(127, 29, 29, 0.52);
+  color: #f8e8e8;
+  padding: 10px 11px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+.exercise-delete-warning-banner i {
+  color: #f87171;
+  margin-top: 2px;
+}
+
+.exercise-delete-warning-banner p {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.exercise-delete-system-field {
+  display: grid;
+  gap: 6px;
+}
+
+.exercise-delete-system-label {
+  font-size: 0.83rem;
+  color: #dbe7ff;
+  font-weight: 700;
+}
+
+.exercise-delete-replace-launcher {
+  width: fit-content;
+  min-width: 196px;
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+  font-weight: 700;
+}
+
+.exercise-delete-replace-launcher:hover,
+.exercise-delete-replace-launcher:focus-visible {
+  background: #1e40af !important;
+  border-color: #1e40af !important;
+  color: #ffffff !important;
+}
+
+.exercise-delete-system-meta {
+  text-align: left;
+  font-size: 0.84rem;
+  color: rgba(225, 234, 247, 0.9);
+}
+
+.exercise-delete-system-selected {
+  background: rgba(30, 58, 138, 0.24);
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  border-radius: 10px;
+  padding: 9px 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.exercise-delete-system-selected-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: rgba(191, 219, 254, 0.92);
+  letter-spacing: 0.04em;
+}
+
+.exercise-delete-system-selected-value {
+  color: #f8fbff;
+  font-weight: 700;
+}
+
+.exercise-delete-system-selected-card {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.exercise-delete-system-selected-image {
+  width: 54px;
+  height: 54px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.65);
+}
+
+.exercise-delete-system-selected-meta {
+  min-width: 0;
+  display: grid;
+  gap: 0;
+}
+
+.exercise-delete-system-selected-badges {
+  color: rgba(219, 231, 255, 0.9);
+  font-size: 0.77rem;
+  line-height: 1.35;
+}
+
+.exercise-delete-system-selected-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.exercise-delete-replacement-change-btn {
+  min-height: 32px;
+  padding: 4px 10px;
+  border-color: rgba(148, 163, 184, 0.5) !important;
+  color: #dbeafe !important;
+  background: rgba(15, 23, 42, 0.24) !important;
+  font-weight: 700;
+}
+
+.exercise-delete-replacement-change-btn:hover,
+.exercise-delete-replacement-change-btn:focus-visible {
+  border-color: rgba(96, 165, 250, 0.8) !important;
+  color: #ffffff !important;
+  background: rgba(30, 58, 138, 0.45) !important;
+}
+
+.exercise-delete-replacement-clear-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  border-radius: 50%;
+  background: rgba(127, 29, 29, 0.45);
+  color: #fca5a5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.exercise-delete-impact-link-wrap {
+  margin-top: 2px;
+}
+
+.exercise-delete-impact-link {
+  border: 0;
+  background: transparent;
+  color: #60a5fa;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.exercise-delete-impact-link:hover,
+.exercise-delete-impact-link:focus-visible {
+  color: #93c5fd;
+}
+
+.exercise-delete-impact-link:disabled {
+  color: rgba(148, 163, 184, 0.8);
+  text-decoration: none;
+  cursor: not-allowed;
+}
+
+.exercise-impact-details-modal {
+  width: min(100%, 460px);
+}
+
+.exercise-impact-details-title {
+  font-size: 1.18rem;
+  margin-bottom: 10px;
+}
+
+.exercise-impact-details-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.exercise-impact-details-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.45);
+  color: rgba(225, 234, 247, 0.95);
+  font-size: 0.86rem;
+}
+
+.exercise-impact-details-list strong {
+  color: #f8fbff;
+}
+
+.exercise-delete-modal-actions--impact {
+  justify-content: center;
+}
+
+.exercise-impact-details-ok {
+  min-width: 130px;
+  min-height: 44px;
+  font-weight: 700;
+}
+
+.exercise-replace-picker-modal {
+  width: min(720px, 100%);
+  max-height: 78vh;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(147, 185, 245, 0.36);
+  background: linear-gradient(180deg, #132646 0%, #172c4f 100%);
+  box-shadow: 0 24px 44px rgba(1, 7, 18, 0.6), inset 0 1px 0 rgba(228, 240, 255, 0.08);
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto;
+}
+
+.exercise-replace-picker-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(142, 180, 241, 0.32);
+  background: linear-gradient(180deg, #10213d 0%, #152a4a 100%);
+}
+
+.exercise-replace-picker-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #eef5ff;
+}
+
+.exercise-replace-picker-head p {
+  margin: 2px 0 0;
+  font-size: 0.9rem;
+  color: #c2d8f6;
+}
+
+.exercise-replace-picker-close {
+  border: 1px solid #dc2626;
+  background: #3b1d2b;
+  color: #ffffff;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.exercise-replace-picker-filters {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 8px;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid rgba(142, 180, 241, 0.26);
+  background: linear-gradient(180deg, #142946 0%, #182f52 100%);
+}
+
+.exercise-replace-picker-filter-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.exercise-replace-picker-filter-field label {
+  color: #d7e7ff;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.exercise-replace-picker-filter-field input,
+.exercise-replace-picker-filter-field select {
+  border: 1px solid rgba(168, 199, 245, 0.46);
+  border-radius: 10px;
+  background: #0f213d;
+  color: #eef5ff;
+  padding: 8px 10px;
+  font-size: 0.88rem;
+  height: 38px;
+}
+
+.exercise-replace-picker-filter-field input:focus,
+.exercise-replace-picker-filter-field select:focus,
+.exercise-delete-system-field .btn:focus,
+.exercise-delete-modal .btn:focus,
+.exercise-delete-modal-close:focus,
+.exercise-delete-replacement-clear-btn:focus,
+.exercise-delete-impact-link:focus,
+.exercise-replace-picker-close:focus {
+  outline: none;
+  border-color: #2563EB !important;
+  box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.28) !important;
+}
+
+.exercise-replace-picker-count {
+  margin: 0;
+  padding: 6px 16px;
+  font-size: 0.76rem;
+  color: #c2d8f6;
+  border-bottom: 1px solid rgba(142, 180, 241, 0.22);
+  background: #162d4f;
+}
+
+.exercise-replace-picker-results {
+  overflow: auto;
+  padding: 10px 16px;
+  display: grid;
+  gap: 10px;
+  background: #152c4d;
+}
+
+.exercise-replace-picker-card {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(147, 186, 245, 0.34);
+  border-radius: 10px;
+  padding: 9px;
+  background: linear-gradient(180deg, #182f53 0%, #1d375e 100%);
+}
+
+.exercise-replace-picker-card--selected {
+  border-color: #4f87f7;
+  box-shadow: inset 0 0 0 1px rgba(111, 160, 248, 0.48);
+}
+
+.exercise-replace-picker-image {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  border: 1px solid rgba(140, 178, 237, 0.32);
+  object-fit: cover;
+  background: #0f213b;
+}
+
+.exercise-replace-picker-meta h4 {
+  margin: 0;
+  color: #f0f7ff;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.exercise-replace-picker-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.exercise-replace-picker-chip {
+  background: rgba(71, 127, 220, 0.2);
+  color: #d9e9ff;
+  border: 1px solid rgba(145, 184, 242, 0.36);
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.exercise-replace-picker-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #e8f1ff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.exercise-replace-picker-select input {
+  width: 16px;
+  height: 16px;
+  accent-color: #2563EB;
+}
+
+.exercise-replace-picker-empty {
+  padding: 14px;
+  text-align: center;
+  border-radius: 10px;
+  border: 1px dashed rgba(153, 192, 248, 0.4);
+  color: #c8dcf8;
+  background: #122542;
+}
+
+.exercise-replace-picker-empty--error {
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.36);
+}
+
+.exercise-replace-picker-load-more {
+  display: flex;
+  justify-content: center;
+  padding-top: 2px;
+}
+
+.exercise-replace-picker-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid rgba(142, 180, 241, 0.32);
+  padding: 10px 16px 12px;
+  background: linear-gradient(180deg, #122543 0%, #172d50 100%);
+  color: #c8dcf8;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.exercise-replace-picker-footer-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.exercise-delete-confirm-summary {
+  border-top: 1px solid rgba(148, 163, 184, 0.26);
+  padding-top: 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.exercise-delete-confirm-summary p {
+  margin: 0;
+  font-size: 0.84rem;
+  color: rgba(225, 234, 247, 0.9);
+}
+
+.exercise-delete-modal-error--inline {
+  margin-top: 0;
+}
+
+.exercise-delete-modal-error--replacement {
+  margin-top: 10px;
 }
 
 .exercise-delete-success-ok {
   min-width: 108px;
+}
+
+.exercise-delete-final-modal {
+  width: min(100%, 470px);
+}
+
+.exercise-delete-final-title {
+  font-size: 1.22rem;
+  margin-bottom: 10px;
+}
+
+.exercise-delete-final-message-primary,
+.exercise-delete-final-message-secondary {
+  text-align: left;
+  margin-top: 6px;
+}
+
+@media (max-width: 576px) {
+  .exercise-delete-modal {
+    width: min(100%, 96vw);
+    padding: 12px 10px 10px;
+    max-height: calc(100vh - 20px);
+  }
+
+  .exercise-delete-modal-icon {
+    width: 44px;
+    height: 44px;
+    margin-bottom: 6px;
+  }
+
+  .exercise-delete-modal-title {
+    font-size: 1.12rem;
+  }
+
+  .exercise-delete-modal-name {
+    margin: 6px 0 8px;
+    font-size: 0.95rem;
+  }
+
+  .exercise-delete-system-flow {
+    margin-top: 6px;
+    gap: 6px;
+  }
+
+  .exercise-delete-system-label {
+    font-size: 0.78rem;
+  }
+
+  .exercise-delete-replace-launcher {
+    min-width: 0;
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .exercise-delete-system-warning-compact {
+    padding: 7px 9px;
+    font-size: 0.8rem;
+  }
+
+  .exercise-delete-system-selected {
+    padding: 7px 8px;
+    gap: 4px;
+  }
+
+  .exercise-delete-system-selected-label {
+    font-size: 0.7rem;
+  }
+
+  .exercise-delete-system-selected-card {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 7px;
+  }
+
+  .exercise-delete-system-selected-image {
+    width: 40px;
+    height: 40px;
+    border-radius: 7px;
+  }
+
+  .exercise-delete-system-selected-value {
+    font-size: 0.86rem;
+    line-height: 1.2;
+  }
+
+  .exercise-delete-system-selected-actions {
+    gap: 4px;
+  }
+
+  .exercise-delete-replacement-change-btn {
+    min-height: 30px;
+    padding: 3px 8px;
+    font-size: 0.74rem;
+  }
+
+  .exercise-delete-modal-actions {
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: space-between;
+  }
+
+  .exercise-delete-modal-actions--primary .btn {
+    min-width: 0;
+    flex: 1 1 0;
+  }
+
+  .exercise-delete-modal-actions--impact .btn {
+    width: 100%;
+  }
+
+  .exercise-delete-replacement-clear-btn {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+  }
+
+  .exercise-delete-impact-link {
+    font-size: 0.79rem;
+  }
+
+  .exercise-delete-confirm-summary {
+    padding-top: 7px;
+    gap: 3px;
+  }
+
+  .exercise-delete-confirm-summary p {
+    font-size: 0.79rem;
+  }
+
+  .exercise-replace-picker-modal {
+    max-height: 88vh;
+  }
+
+  .exercise-replace-picker-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .exercise-replace-picker-card {
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+
+  .exercise-replace-picker-select {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+
+  .exercise-replace-picker-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .exercise-replace-picker-footer-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .exercise-replace-picker-footer-actions .btn {
+    width: 100%;
+  }
 }
 
 #customExerciseForm .panel-header h4 {
@@ -3933,6 +5926,18 @@ Please Select an excerise
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
   color: #f4f8ff;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.exercise-field-invalid {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.18) !important;
+}
+
+.exercise-field-error {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #dc3545;
 }
 
 .wa-global-toggle-stack {
@@ -4017,6 +6022,16 @@ Please Select an excerise
   color: #edf3ff;
 }
 
+.wa-exercise-toast--error {
+  border: 1px solid rgba(220, 53, 69, 0.45);
+  border-left-color: #dc3545;
+}
+
+.wa-exercise-toast--error .wa-exercise-toast__icon {
+  background: rgba(220, 53, 69, 0.16);
+  color: #ff8f98;
+}
+
 .wa-exercise-toast__icon {
   display: flex;
   align-items: center;
@@ -4037,7 +6052,7 @@ Please Select an excerise
 
 .wa-exercise-toast__title {
   margin: 0 0 2px;
-  color: #f4f8ff;
+  color: #ffffff;
   font-size: 0.92rem;
   font-weight: 700;
   line-height: 1.25;
@@ -4045,7 +6060,7 @@ Please Select an excerise
 
 .wa-exercise-toast__message {
   margin: 0;
-  color: rgba(237, 243, 255, 0.8);
+  color: #ffffff;
   font-size: 0.82rem;
   line-height: 1.35;
 }
@@ -4070,6 +6085,67 @@ Please Select an excerise
   background: rgba(255, 255, 255, 0.06);
   color: #ffffff;
   outline: none;
+}
+
+:deep(.wa-exercise-result-modal.swal2-popup) {
+  border-radius: 14px;
+  padding-top: 1.6em;
+}
+
+:deep(.wa-exercise-result-modal .wa-exercise-result-modal__ok) {
+  min-width: 108px;
+  border: 0;
+  border-radius: 10px;
+  background: #2563eb !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: none !important;
+}
+
+:deep(.wa-exercise-result-modal .wa-exercise-result-modal__ok:hover),
+:deep(.wa-exercise-result-modal .wa-exercise-result-modal__ok:focus-visible) {
+  background: #1d4ed8 !important;
+}
+
+:deep(.wa-exercise-result-modal .wa-exercise-result-modal__close) {
+  top: 8px;
+  right: 10px;
+  width: 2rem;
+  height: 2rem;
+  color: #dc2626 !important;
+  font-size: 1.6rem !important;
+  font-weight: 800;
+  line-height: 1;
+  transition: transform 0.14s ease, color 0.14s ease;
+}
+
+:deep(.wa-exercise-result-modal .wa-exercise-result-modal__close:hover),
+:deep(.wa-exercise-result-modal .wa-exercise-result-modal__close:focus-visible) {
+  color: #b91c1c !important;
+  transform: scale(1.05);
+  outline: none;
+}
+
+:deep(.wa-exercise-result-modal--success .swal2-success .swal2-success-ring) {
+  border-color: rgba(31, 157, 85, 0.36) !important;
+}
+
+:deep(.wa-exercise-result-modal--success .swal2-success [class^='swal2-success-line']) {
+  background-color: #1f9d55 !important;
+}
+
+:deep(.wa-exercise-result-modal--success .swal2-success .swal2-success-fix) {
+  background-color: transparent !important;
+}
+
+@media (max-width: 575.98px) {
+  :deep(.wa-exercise-result-modal .wa-exercise-result-modal__close) {
+    top: 6px;
+    right: 8px;
+    width: 1.9rem;
+    height: 1.9rem;
+    font-size: 1.55rem !important;
+  }
 }
 
 @media (max-width: 575.98px) {
@@ -4461,6 +6537,24 @@ Please Select an excerise
   white-space: nowrap;
 }
 
+.custom-exercise-create-button--add-form {
+  background-color: #198754;
+  border-color: #198754;
+  color: #ffffff;
+}
+
+.custom-exercise-create-button--add-form:hover,
+.custom-exercise-create-button--add-form:focus,
+.custom-exercise-create-button--add-form:active {
+  background-color: #157347;
+  border-color: #157347;
+  color: #ffffff;
+}
+
+.custom-exercise-create-button--add-form:focus-visible {
+  box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.35);
+}
+
 .exercises-canvas {
   display: grid;
   gap: 14px;
@@ -4559,6 +6653,16 @@ Please Select an excerise
   border: 1px solid rgba(145, 160, 200, 0.18);
   background: rgba(17, 24, 39, 0.8);
 }
+
+.exercise-list--log-search .exercise-img,
+.exercise-list--log-search .exercise-img img {
+  width: 148px;
+  height: 148px;
+}
+
+.exercise-list--log-search .exercise-img img {
+  object-fit: contain;
+}
 .exercise-info {
   min-width: 0;
   display: grid;
@@ -4587,10 +6691,22 @@ Please Select an excerise
   white-space: normal;
   max-width: 100%;
 }
-.exercise-badge--global {
-  background: rgba(59, 130, 246, 0.14);
-  color: #dbeafe;
-  border-color: rgba(96, 165, 250, 0.35);
+.exercise-badge--system {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+.exercise-badge--shared {
+  background: #ea580c;
+  color: #ffffff;
+  border-color: #ea580c;
+}
+
+.exercise-badge--custom {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
 }
 .exercise-meta {
   display: flex;
@@ -4801,6 +6917,28 @@ Please Select an excerise
 }
 .edit-exercise-panel .panel-body {
   padding: 0;
+}
+
+.edit-exercise-action-row {
+  gap: 8px;
+}
+
+.edit-exercise-action-row__save {
+  margin-left: 12px;
+}
+
+@media (max-width: 575.98px) {
+  .edit-exercise-action-row {
+    gap: 8px;
+  }
+
+  .edit-exercise-action-row .btn {
+    max-width: 100%;
+  }
+
+  .edit-exercise-action-row__save {
+    margin-left: 0;
+  }
 }
 
 .instructions {
@@ -5440,14 +7578,24 @@ textarea {
 
 .search-custom-warning {
   margin-top: 8px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(245, 158, 11, 0.32);
-  background: rgba(120, 53, 15, 0.18);
-  color: #fde68a;
-  font-size: 0.84rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #facc15;
+  background: #1e293b;
+  color: #ffff00;
+  font-size: 13px;
   line-height: 1.45;
   font-weight: 600;
+}
+
+.search-custom-warning__icon {
+  flex: 0 0 auto;
+  color: #ffff00;
+  font-size: 0.82rem;
+  line-height: 1;
 }
 .search-filter-divider { display: none; }
 
@@ -5678,6 +7826,32 @@ textarea {
   gap: 8px;
 }
 
+.exercise-database-toolbar .search-filter-actions--row-two {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: center;
+  gap: 10px 14px;
+  margin-top: 10px;
+}
+
+.exercise-database-toolbar .search-filter-toggle-row--inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0;
+}
+
+.exercise-database-toolbar .search-filter-toggle-row--inline .search-filter-toggle-checkbox {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.exercise-database-toolbar .search-filter-toggle-row--inline .search-filter-toggle-label {
+  margin: 0;
+  line-height: 1.25;
+}
+
 .exercise-database-toolbar .search-filter-actions .btn {
   min-height: 40px;
   height: 40px;
@@ -5750,6 +7924,10 @@ textarea {
   border-color: color-mix(in srgb, var(--ex-accent, #3b82f6) 40%, var(--ex-border-strong) 60%) !important;
   background: #22325a !important;
   color: var(--ex-text, #f8fafc) !important;
+}
+
+.exercise-database-toolbar .search-filter-actions--row-two .clear-filters-btn {
+  justify-self: end;
 }
 
 .results-header-row {
@@ -6215,6 +8393,16 @@ textarea {
   .search-filter-actions {
     width: 100%;
   }
+
+  .exercise-database-toolbar .search-filter-actions--row-two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .exercise-database-toolbar .search-filter-actions--row-two .clear-filters-btn {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+  }
+
   .search-filter-actions .btn {
     flex: 1 1 calc(50% - 6px);
     min-height: 38px;
@@ -6239,6 +8427,16 @@ textarea {
     object-fit: cover;
     border-radius: 12px;
     display: block;
+  }
+
+  .exercise-list--log-search .exercise-img,
+  .exercise-list--log-search .exercise-img img {
+    width: 150px;
+    height: 150px;
+  }
+
+  .exercise-list--log-search .exercise-img img {
+    object-fit: contain;
   }
   .exercise-info {
     flex: 1;
@@ -6403,6 +8601,22 @@ textarea {
     gap: 8px;
     margin-top: 4px;
   }
+
+  .exercise-database-toolbar .search-filter-actions--row-two {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .exercise-database-toolbar .search-filter-actions--row-two .search-filter-toggle-row--inline {
+    min-height: 36px;
+    align-items: center;
+  }
+
+  .exercise-database-toolbar .search-filter-actions--row-two .clear-filters-btn {
+    grid-column: auto;
+    justify-self: stretch;
+  }
+
   .search-filter-actions .btn {
     width: 100% !important;
     min-height: 38px !important;
@@ -6992,6 +9206,21 @@ textarea {
   .exercises-page .exercise-img img {
     width: 70px;
     height: 70px;
+  }
+
+  .exercises-page .exercise-list--log-search .exercise-row {
+    grid-template-columns: 150px minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .exercises-page .exercise-list--log-search .exercise-img,
+  .exercises-page .exercise-list--log-search .exercise-img img {
+    width: 150px;
+    height: 150px;
+  }
+
+  .exercises-page .exercise-list--log-search .exercise-img img {
+    object-fit: contain;
   }
 
   .exercises-page .exercise-title {
