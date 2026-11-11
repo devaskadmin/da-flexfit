@@ -108,7 +108,7 @@
     error: '',
     impactError: '',
     replacementError: '',
-    isSystemAdminFlow: false,
+    isDeleteMergeFlow: false,
     impactLoading: false,
     impact: null,
     replacementOptions: [],
@@ -2565,16 +2565,20 @@ const openDeleteExerciseModal = (exercise) => {
   if (!exercise?.ExerciseID) return;
   if (Number(exercise?.CanDelete || 0) !== 1 && !isAdminUser.value) return;
 
-  const useSystemAdminFlow = isAdminUser.value && isSystemExerciseRecord(exercise);
+  const isSystemFlow = isAdminUser.value && isSystemExerciseRecord(exercise);
+  const isCustomOwnerFlow = !isSystemExerciseRecord(exercise)
+    && normalizeExerciseScope(exercise) === EXERCISE_SCOPE.CUSTOM
+    && Number(exercise?.CanDelete || 0) === 1;
+  const useDeleteMergeFlow = isSystemFlow || isCustomOwnerFlow;
 
   deleteConfirmState.value = {
     ...buildDeleteConfirmInitialState(),
     visible: true,
     exercise,
-    isSystemAdminFlow: useSystemAdminFlow,
+    isDeleteMergeFlow: useDeleteMergeFlow,
   };
 
-  if (useSystemAdminFlow) {
+  if (useDeleteMergeFlow) {
     refreshSystemDeleteImpact();
     loadSystemReplacementOptions();
   }
@@ -2649,17 +2653,17 @@ const replacePickerVisibleCountLabel = computed(() => {
 });
 
 const finalConfirmHasReplacement = computed(() => {
-  if (!deleteConfirmState.value?.isSystemAdminFlow) return false;
+  if (!deleteConfirmState.value?.isDeleteMergeFlow) return false;
   return Number(deleteConfirmState.value?.replacementExerciseId || 0) > 0;
 });
 
 const finalConfirmTitle = computed(() => {
-  if (!deleteConfirmState.value?.isSystemAdminFlow) return 'Confirm Exercise Deletion';
+  if (!deleteConfirmState.value?.isDeleteMergeFlow) return 'Confirm Exercise Deletion';
   return finalConfirmHasReplacement.value ? 'Confirm Delete & Merge' : 'Confirm Exercise Deletion';
 });
 
 const finalConfirmPrimaryButtonLabel = computed(() => {
-  if (!deleteConfirmState.value?.isSystemAdminFlow) return 'Yes, Delete Exercise';
+  if (!deleteConfirmState.value?.isDeleteMergeFlow) return 'Yes, Delete Exercise';
   return finalConfirmHasReplacement.value ? 'Yes, Delete & Merge' : 'Yes, Delete Exercise';
 });
 
@@ -2667,7 +2671,7 @@ const finalConfirmMessagePrimary = computed(() => {
   const sourceName = deleteConfirmState.value?.exercise?.ExerciseTitle || 'this exercise';
   const replacementName = selectedSystemReplacementOption.value?.ExerciseTitle || 'the selected exercise';
 
-  if (!deleteConfirmState.value?.isSystemAdminFlow) {
+  if (!deleteConfirmState.value?.isDeleteMergeFlow) {
     return `Are you sure you want to delete ${sourceName}?`;
   }
 
@@ -2681,7 +2685,7 @@ const finalConfirmMessagePrimary = computed(() => {
 const finalConfirmMessageSecondary = computed(() => {
   const replacementName = selectedSystemReplacementOption.value?.ExerciseTitle || 'the selected exercise';
 
-  if (!deleteConfirmState.value?.isSystemAdminFlow) {
+  if (!deleteConfirmState.value?.isDeleteMergeFlow) {
     return 'This exercise will be removed from the active Exercise Library. Existing workout history will be preserved.';
   }
 
@@ -2737,6 +2741,7 @@ const buildSystemExerciseEndpointCandidates = ({ exerciseId, actionPath, query =
 const trySystemExerciseRequest = async ({ exerciseId, actionPath, method = 'GET', body = null, query = null }) => {
   const urls = buildSystemExerciseEndpointCandidates({ exerciseId, actionPath, query });
   const diagnostics = [];
+  let failurePayload = null;
 
   for (const url of urls) {
     try {
@@ -2769,6 +2774,9 @@ const trySystemExerciseRequest = async ({ exerciseId, actionPath, method = 'GET'
       });
 
       if (!response.ok || !parsedJson || payload?.success !== true) {
+        if (!failurePayload && parsedJson && (payload?.message || payload?.error)) {
+          failurePayload = payload;
+        }
         continue;
       }
 
@@ -2788,25 +2796,25 @@ const trySystemExerciseRequest = async ({ exerciseId, actionPath, method = 'GET'
 
   return {
     ok: false,
-    payload: null,
+    payload: failurePayload,
     diagnostics,
   };
 };
 
 const hasLoadedSystemImpact = computed(() => {
-  if (!deleteConfirmState.value?.isSystemAdminFlow) return true;
+  if (!deleteConfirmState.value?.isDeleteMergeFlow) return true;
   const impact = deleteConfirmState.value?.impact;
   return Boolean(impact && typeof impact === 'object');
 });
 
 const hasSystemImpactLoadError = computed(() => {
-  if (!deleteConfirmState.value?.isSystemAdminFlow) return false;
+  if (!deleteConfirmState.value?.isDeleteMergeFlow) return false;
   return Boolean(String(deleteConfirmState.value?.impactError || '').trim());
 });
 
 const canSubmitDeleteAction = computed(() => {
   if (deleteConfirmState.value?.isSubmitting) return false;
-  if (!deleteConfirmState.value?.isSystemAdminFlow) return true;
+  if (!deleteConfirmState.value?.isDeleteMergeFlow) return true;
   if (deleteConfirmState.value?.impactLoading) return false;
   if (hasSystemImpactLoadError.value) return false;
   if (!hasLoadedSystemImpact.value) return false;
@@ -2816,7 +2824,7 @@ const canSubmitDeleteAction = computed(() => {
 
 const canOpenFinalDeleteConfirm = computed(() => {
   if (deleteConfirmState.value?.isSubmitting) return false;
-  if (!deleteConfirmState.value?.isSystemAdminFlow) return true;
+  if (!deleteConfirmState.value?.isDeleteMergeFlow) return true;
   return canSubmitDeleteAction.value;
 });
 
@@ -2847,7 +2855,7 @@ const refreshSystemDeleteImpact = async () => {
       const firstFailure = response.diagnostics?.[0] || null;
       const statusText = firstFailure?.status ? `HTTP ${firstFailure.status}` : 'Request failed';
       const detailText = firstFailure?.bodySample ? ` (${firstFailure.bodySample})` : '';
-      throw new Error(`Failed to load dependency impact. ${statusText}${detailText}`.trim());
+      throw new Error(response.payload?.message || `Failed to load dependency impact. ${statusText}${detailText}`.trim());
     }
 
     const payload = response.payload || {};
@@ -2896,7 +2904,7 @@ const loadSystemReplacementOptions = async ({ searchText = '', limit = SYSTEM_DE
     if (!response.ok) {
       const firstFailure = response.diagnostics?.[0] || null;
       const statusText = firstFailure?.status ? `HTTP ${firstFailure.status}` : 'Request failed';
-      throw new Error(`Failed to load replacement options. ${statusText}`);
+      throw new Error(response.payload?.message || `Failed to load replacement options. ${statusText}`);
     }
 
     const payload = response.payload || {};
@@ -2977,7 +2985,7 @@ const loadReplaceExercisePickerOptions = async () => {
 };
 
 const openReplaceExerciseModal = async () => {
-  if (!deleteConfirmState.value?.isSystemAdminFlow) return;
+  if (!deleteConfirmState.value?.isDeleteMergeFlow) return;
 
   replaceExercisePickerState.value = {
     ...buildReplaceExercisePickerInitialState(),
@@ -3054,7 +3062,7 @@ const impactMetrics = computed(() => {
 });
 
 const canOpenImpactDetails = computed(() => {
-  if (!deleteConfirmState.value?.isSystemAdminFlow) return false;
+  if (!deleteConfirmState.value?.isDeleteMergeFlow) return false;
   if (deleteConfirmState.value?.impactLoading) return false;
   return hasLoadedSystemImpact.value;
 });
@@ -3070,7 +3078,7 @@ const closeImpactDetailsModal = () => {
 
 const requestDeleteExerciseConfirmation = () => {
   if (!canOpenFinalDeleteConfirm.value) {
-    if (deleteConfirmState.value?.isSystemAdminFlow && !hasLoadedSystemImpact.value) {
+    if (deleteConfirmState.value?.isDeleteMergeFlow && !hasLoadedSystemImpact.value) {
       deleteConfirmState.value.error = 'Dependency impact must load successfully before deletion or merge can continue.';
     }
     return;
@@ -3095,10 +3103,10 @@ const executeDeleteExercise = async () => {
   deleteConfirmState.value.error = '';
 
   try {
-    const isSystemAdminFlow = Boolean(deleteConfirmState.value?.isSystemAdminFlow);
+    const isDeleteMergeFlow = Boolean(deleteConfirmState.value?.isDeleteMergeFlow);
     let payload = {};
 
-    if (isSystemAdminFlow) {
+    if (isDeleteMergeFlow) {
       await refreshSystemDeleteImpact();
       if (!hasLoadedSystemImpact.value) {
         throw new Error('Dependency impact must load successfully before deletion or merge can continue.');
@@ -3122,7 +3130,7 @@ const executeDeleteExercise = async () => {
         const firstFailure = response.diagnostics?.[0] || null;
         const statusText = firstFailure?.status ? `HTTP ${firstFailure.status}` : 'Request failed';
         const bodyText = firstFailure?.bodySample ? ` (${firstFailure.bodySample})` : '';
-        throw new Error(`Failed to delete or merge system exercise. ${statusText}${bodyText}`.trim());
+        throw new Error(response.payload?.message || `Failed to delete or merge exercise. ${statusText}${bodyText}`.trim());
       }
       payload = response.payload || {};
     } else {
@@ -3138,7 +3146,7 @@ const executeDeleteExercise = async () => {
       }
     }
 
-    const isGlobal = Number(exercise?.IsGlobalExercise || 0) === 1 || isSystemAdminFlow;
+    const isGlobal = Number(exercise?.IsGlobalExercise || 0) === 1 || isSystemExerciseRecord(exercise);
     const successTitle = payload?.action === 'merge' ? 'Exercises Merged' : (isGlobal ? 'Global Exercise Deleted' : 'Exercise Deleted');
     const successMessage = String(payload?.message || '').trim() || (payload?.action === 'merge'
       ? 'Exercises Merged Successfully'
@@ -3217,22 +3225,22 @@ const toggleAdminGlobalExercises = async () => {
         </div>
 
         <h3 id="exercise-delete-title" class="exercise-delete-modal-title">
-          {{ deleteConfirmState.isSystemAdminFlow ? 'Delete & Merge Exercise' : (Number(deleteConfirmState.exercise?.IsGlobalExercise || 0) === 1 ? 'Delete Global Exercise?' : 'Delete Exercise?') }}
+          {{ deleteConfirmState.isDeleteMergeFlow ? 'Delete & Merge Exercise' : (Number(deleteConfirmState.exercise?.IsGlobalExercise || 0) === 1 ? 'Delete Global Exercise?' : 'Delete Exercise?') }}
         </h3>
 
         <p class="exercise-delete-modal-name">
           {{ deleteConfirmState.exercise?.ExerciseTitle || 'This exercise' }}
         </p>
 
-        <p v-if="!deleteConfirmState.isSystemAdminFlow" class="exercise-delete-modal-copy">
+        <p v-if="!deleteConfirmState.isDeleteMergeFlow" class="exercise-delete-modal-copy">
           Are you sure you want to delete this exercise? This action cannot be undone.
         </p>
 
-        <p v-if="!deleteConfirmState.isSystemAdminFlow && Number(deleteConfirmState.exercise?.IsGlobalExercise || 0) === 1" class="exercise-delete-modal-warning">
+        <p v-if="!deleteConfirmState.isDeleteMergeFlow && Number(deleteConfirmState.exercise?.IsGlobalExercise || 0) === 1" class="exercise-delete-modal-warning">
           This global exercise is available to all users.
         </p>
 
-        <div v-if="deleteConfirmState.isSystemAdminFlow" class="exercise-delete-system-flow">
+        <div v-if="deleteConfirmState.isDeleteMergeFlow" class="exercise-delete-system-flow">
           <p class="exercise-delete-system-warning-compact">
             Removing this exercise preserves workout history.
           </p>
@@ -3338,7 +3346,7 @@ const toggleAdminGlobalExercises = async () => {
         </div>
 
         <div
-          v-if="deleteConfirmState.isSystemAdminFlow && hasSystemImpactLoadError"
+          v-if="deleteConfirmState.isDeleteMergeFlow && hasSystemImpactLoadError"
           class="exercise-delete-modal-actions exercise-delete-modal-actions--retry"
         >
           <button

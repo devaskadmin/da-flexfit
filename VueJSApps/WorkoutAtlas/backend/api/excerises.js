@@ -613,11 +613,65 @@ const isRetiredSystemExercise = (exercise = {}) => {
     && publicationState === EXERCISE_PUBLICATION_STATE.RESTRICTED;
 };
 
+const isRetiredCustomExercise = (exercise = {}) => {
+  const exerciseId = Number(exercise?.ExerciseID || 0);
+  const sourceExerciseId = Number(exercise?.SourceExerciseID || 0);
+  const profile = getExerciseAccessProfile(exercise);
+  return exerciseId > 0
+    && sourceExerciseId === exerciseId
+    && !profile.isSystemExercise
+    && profile.explicitScope === EXERCISE_SCOPE.CUSTOM
+    && profile.publicationState === EXERCISE_PUBLICATION_STATE.RESTRICTED;
+};
+
+const getDeleteMergeAccess = ({ req, exercise }) => {
+  if (!exercise || isRetiredSystemExercise(exercise) || isRetiredCustomExercise(exercise)) {
+    return { allowed: false, mode: null };
+  }
+
+  if (isSystemExerciseRecord(exercise)) {
+    return { allowed: isAdminUser(req), mode: EXERCISE_SCOPE.SYSTEM };
+  }
+
+  const profile = getExerciseAccessProfile(exercise);
+  if (profile.explicitScope !== EXERCISE_SCOPE.CUSTOM || profile.isSystemExercise) {
+    return { allowed: false, mode: null };
+  }
+
+  const currentUserId = Number(req?.session?.user?.id || 0);
+  return {
+    allowed: currentUserId > 0
+      && profile.ownerUserId === currentUserId
+      && canManageExercise({ req, exercise }),
+    mode: EXERCISE_SCOPE.CUSTOM,
+  };
+};
+
+const canUseDeleteMergeReplacement = ({ mode, exercise, ownerUserId }) => {
+  if (!exercise || isRetiredSystemExercise(exercise) || isRetiredCustomExercise(exercise)) return false;
+  if (mode === EXERCISE_SCOPE.SYSTEM) return isSystemExerciseRecord(exercise);
+  if (mode !== EXERCISE_SCOPE.CUSTOM) return false;
+  if (isSystemExerciseRecord(exercise)) return true;
+
+  const profile = getExerciseAccessProfile(exercise);
+  return !profile.isSystemExercise
+    && profile.explicitScope === EXERCISE_SCOPE.CUSTOM
+    && profile.publicationState === EXERCISE_PUBLICATION_STATE.DISCOVERABLE
+    && profile.ownerUserId === normalizeOptionalExerciseId(ownerUserId);
+};
+
 const buildRetiredSystemExerciseExclusionClause = (alias = 'e') => `NOT (
   COALESCE(${alias}.IsSystemExercise, 0) = 1
   AND COALESCE(${alias}.ExerciseScope, '') = '${EXERCISE_SCOPE.CUSTOM}'
   AND COALESCE(${alias}.IsGlobalExercise, 0) = 0
   AND COALESCE(${alias}.ExercisePublicationState, '${EXERCISE_PUBLICATION_STATE.DISCOVERABLE}') = '${EXERCISE_PUBLICATION_STATE.RESTRICTED}'
+)`;
+
+const buildRetiredCustomExerciseExclusionClause = (alias = 'e') => `NOT (
+  COALESCE(${alias}.IsSystemExercise, 0) = 0
+  AND COALESCE(${alias}.ExerciseScope, '') = '${EXERCISE_SCOPE.CUSTOM}'
+  AND COALESCE(${alias}.ExercisePublicationState, '${EXERCISE_PUBLICATION_STATE.DISCOVERABLE}') = '${EXERCISE_PUBLICATION_STATE.RESTRICTED}'
+  AND ${alias}.SourceExerciseID = ${alias}.ExerciseID
 )`;
 
 const normalizeOptionalExerciseId = (value) => {
@@ -831,6 +885,92 @@ const getSystemExerciseMergeCandidates = async ({ sourceExerciseId, search = '',
   }));
 };
 
+const getCustomExerciseMergeCandidates = async ({ sourceExerciseId, ownerUserId, search = '', limit = 30 }) => {
+  const safeSourceExerciseId = normalizeOptionalExerciseId(sourceExerciseId);
+  const safeOwnerUserId = normalizeOptionalExerciseId(ownerUserId);
+  const normalizedSearch = normalizeExerciseSearchTerm(search);
+  const safeLimit = Math.max(1, Math.min(100, Number(limit || 30) || 30));
+  const where = [
+    'e.ExerciseID <> ?',
+    `COALESCE(e.ExercisePublicationState, '${EXERCISE_PUBLICATION_STATE.DISCOVERABLE}') = '${EXERCISE_PUBLICATION_STATE.DISCOVERABLE}'`,
+    buildRetiredSystemExerciseExclusionClause('e'),
+    buildRetiredCustomExerciseExclusionClause('e'),
+    `(
+      (COALESCE(e.IsSystemExercise, 0) = 1 AND COALESCE(e.ExerciseScope, '${EXERCISE_SCOPE.SYSTEM}') = '${EXERCISE_SCOPE.SYSTEM}')
+      OR (
+        COALESCE(e.IsSystemExercise, 0) = 0
+        AND e.ExerciseScope = '${EXERCISE_SCOPE.CUSTOM}'
+        AND ${getOwnerMatchSql('e')} = ?
+      )
+    )`,
+  ];
+  const params = [safeSourceExerciseId, safeOwnerUserId];
+
+  if (normalizedSearch) {
+    for (const token of buildLiteralSubstringLikeParams(normalizedSearch)) {
+      where.push(`LOWER(COALESCE(e.ExerciseTitle, '')) LIKE ? ESCAPE '${EXERCISE_SEARCH_ESCAPE_CHAR}'`);
+      params.push(token);
+    }
+  }
+
+  const [rows] = await pool.query(
+    `SELECT e.ExerciseID, e.ExerciseTitle, e.RecordingType, e.WorkoutType,
+            e.MuscleGroup, e.Equipment, e.ExerciseScope, e.ExercisePublicationState,
+            COALESCE(e.IsSystemExercise, 0) AS IsSystemExercise,
+            e.PrimaryImage, e.ImageURL, e.ImageGallery
+     FROM exercises e
+     WHERE ${where.join(' AND ')}
+     ORDER BY e.ExerciseTitle ASC
+     LIMIT ?`,
+    [...params, safeLimit]
+  );
+
+  return mapExerciseRowsWithUserFlags(rows, safeOwnerUserId, false).map((row) => ({
+    ExerciseID: Number(row.ExerciseID || 0),
+    ExerciseTitle: row.ExerciseTitle || '',
+    RecordingType: row.RecordingType || '',
+    WorkoutType: row.WorkoutType || '',
+    MuscleGroup: row.MuscleGroup || '',
+    Equipment: row.Equipment || '',
+    PrimaryImage: row.PrimaryImage || '',
+    ImageURL: row.ImageURL || '',
+  }));
+};
+
+const getMutableDependencyOwnershipImpact = async ({ conn = pool, exerciseId, ownerUserId }) => {
+  const safeExerciseId = normalizeOptionalExerciseId(exerciseId);
+  const safeOwnerUserId = normalizeOptionalExerciseId(ownerUserId);
+  const [[scheduleRows], [favoriteRows]] = await Promise.all([
+    conn.query(
+      `SELECT COUNT(*) AS total,
+              SUM(CASE WHEN ws.user_id <> ? THEN 1 ELSE 0 END) AS foreignTotal
+       FROM workout_schedule_exercises wse
+       JOIN workout_schedules ws ON ws.id = wse.workout_schedule_id
+       WHERE wse.exercise_id = ?`,
+      [safeOwnerUserId, safeExerciseId]
+    ),
+    conn.query(
+      `SELECT COUNT(*) AS total,
+              SUM(CASE WHEN user_id <> ? THEN 1 ELSE 0 END) AS foreignTotal
+       FROM user_favorite_exercises
+       WHERE exercise_id = ?`,
+      [safeOwnerUserId, safeExerciseId]
+    ),
+  ]);
+
+  const scheduledAssignments = Number(scheduleRows?.[0]?.total || 0);
+  const foreignScheduledAssignments = Number(scheduleRows?.[0]?.foreignTotal || 0);
+  const favorites = Number(favoriteRows?.[0]?.total || 0);
+  const foreignFavorites = Number(favoriteRows?.[0]?.foreignTotal || 0);
+  return {
+    scheduledAssignments,
+    foreignScheduledAssignments,
+    favorites,
+    foreignFavorites,
+    safe: foreignScheduledAssignments === 0 && foreignFavorites === 0,
+  };
+};
+
 const retireSystemExercise = async ({ conn, sourceExerciseId, destinationExerciseId = null }) => {
   const safeSourceExerciseId = normalizeOptionalExerciseId(sourceExerciseId);
   const safeDestinationExerciseId = normalizeOptionalExerciseId(destinationExerciseId);
@@ -856,13 +996,42 @@ const retireSystemExercise = async ({ conn, sourceExerciseId, destinationExercis
   return Number(result?.affectedRows || 0) > 0;
 };
 
-const reassignScheduledExerciseReferences = async ({ conn, sourceExerciseId, destinationExerciseId }) => {
+const retireCustomExercise = async ({ conn, sourceExerciseId, ownerUserId }) => {
+  const safeSourceExerciseId = normalizeOptionalExerciseId(sourceExerciseId);
+  const safeOwnerUserId = normalizeOptionalExerciseId(ownerUserId);
+  const [result] = await conn.query(
+    `UPDATE exercises
+     SET ExercisePublicationState = ?,
+         IsGlobalExercise = 0,
+         SourceExerciseID = ExerciseID
+     WHERE ExerciseID = ?
+       AND COALESCE(IsSystemExercise, 0) = 0
+       AND ExerciseScope = ?
+       AND COALESCE(OwnerTrainerID, CreatedByUserID, 0) = ?
+     LIMIT 1`,
+    [
+      EXERCISE_PUBLICATION_STATE.RESTRICTED,
+      safeSourceExerciseId,
+      EXERCISE_SCOPE.CUSTOM,
+      safeOwnerUserId,
+    ]
+  );
+  return Number(result?.affectedRows || 0) > 0;
+};
+
+const reassignScheduledExerciseReferences = async ({ conn, sourceExerciseId, destinationExerciseId, ownerUserId = 0 }) => {
   const safeSourceExerciseId = normalizeOptionalExerciseId(sourceExerciseId);
   const safeDestinationExerciseId = normalizeOptionalExerciseId(destinationExerciseId);
   if (!safeSourceExerciseId || !safeDestinationExerciseId) return 0;
 
+  const safeOwnerUserId = normalizeOptionalExerciseId(ownerUserId);
+  const ownerJoin = safeOwnerUserId ? 'JOIN workout_schedules ws ON ws.id = wse.workout_schedule_id' : '';
+  const ownerWhere = safeOwnerUserId ? ' AND ws.user_id = ?' : '';
+  const params = [safeDestinationExerciseId, safeDestinationExerciseId, safeSourceExerciseId];
+  if (safeOwnerUserId) params.push(safeOwnerUserId);
   const [result] = await conn.query(
     `UPDATE workout_schedule_exercises wse
+     ${ownerJoin}
      JOIN exercises dest ON dest.ExerciseID = ?
      SET wse.exercise_id = ?,
          wse.exercise_name = COALESCE(NULLIF(dest.ExerciseTitle, ''), wse.exercise_name),
@@ -870,40 +1039,50 @@ const reassignScheduledExerciseReferences = async ({ conn, sourceExerciseId, des
          wse.workout_type = COALESCE(NULLIF(dest.WorkoutType, ''), wse.workout_type),
          wse.muscle_group = COALESCE(NULLIF(dest.MuscleGroup, ''), wse.muscle_group),
          wse.equipment = COALESCE(NULLIF(dest.Equipment, ''), wse.equipment)
-     WHERE wse.exercise_id = ?`,
-    [safeDestinationExerciseId, safeDestinationExerciseId, safeSourceExerciseId]
+    WHERE wse.exercise_id = ?${ownerWhere}`,
+      params
   );
 
   return Number(result?.affectedRows || 0);
 };
 
-const consolidateFavoriteExerciseReferences = async ({ conn, sourceExerciseId, destinationExerciseId }) => {
+const consolidateFavoriteExerciseReferences = async ({ conn, sourceExerciseId, destinationExerciseId, ownerUserId = 0 }) => {
   const safeSourceExerciseId = normalizeOptionalExerciseId(sourceExerciseId);
   const safeDestinationExerciseId = normalizeOptionalExerciseId(destinationExerciseId);
   if (!safeSourceExerciseId || !safeDestinationExerciseId) return;
 
+  const safeOwnerUserId = normalizeOptionalExerciseId(ownerUserId);
+  const ownerWhere = safeOwnerUserId ? ' AND ufe_source.user_id = ?' : '';
+  const sourceParams = [safeDestinationExerciseId, safeSourceExerciseId];
+  if (safeOwnerUserId) sourceParams.push(safeOwnerUserId);
   await conn.query(
     `INSERT IGNORE INTO user_favorite_exercises (user_id, exercise_id, created_at)
      SELECT ufe_source.user_id, ?, ufe_source.created_at
      FROM user_favorite_exercises AS ufe_source
-     WHERE ufe_source.exercise_id = ?`,
-    [safeDestinationExerciseId, safeSourceExerciseId]
+     WHERE ufe_source.exercise_id = ?${ownerWhere}`,
+    sourceParams
   );
 
+  const targetOwnerWhere = safeOwnerUserId ? ' AND ufe_target.user_id = ?' : '';
+  const targetParams = [safeSourceExerciseId, safeDestinationExerciseId];
+  if (safeOwnerUserId) targetParams.push(safeOwnerUserId);
   await conn.query(
     `UPDATE user_favorite_exercises AS ufe_target
      JOIN user_favorite_exercises AS ufe_source
        ON ufe_source.user_id = ufe_target.user_id
       AND ufe_source.exercise_id = ?
      SET ufe_target.created_at = IF(ufe_target.created_at <= ufe_source.created_at, ufe_target.created_at, ufe_source.created_at)
-     WHERE ufe_target.exercise_id = ?`,
-    [safeSourceExerciseId, safeDestinationExerciseId]
+     WHERE ufe_target.exercise_id = ?${targetOwnerWhere}`,
+    targetParams
   );
 
+  const deleteOwnerWhere = safeOwnerUserId ? ' AND user_id = ?' : '';
+  const deleteParams = [safeSourceExerciseId];
+  if (safeOwnerUserId) deleteParams.push(safeOwnerUserId);
   await conn.query(
     `DELETE FROM user_favorite_exercises
-     WHERE exercise_id = ?`,
-    [safeSourceExerciseId]
+     WHERE exercise_id = ?${deleteOwnerWhere}`,
+    deleteParams
   );
 };
 
@@ -970,7 +1149,8 @@ const buildExerciseVisibilityClause = (alias = 'e') => `(
       OR ${getOwnerMatchSql(alias)} = ?
     )
   )
-)`;
+)
+AND ${buildRetiredCustomExerciseExclusionClause(alias)}`;
 
 const appendExerciseVisibilityFilter = ({
   where,
@@ -1970,6 +2150,7 @@ const fetchExercisesForView = async ({
     const mineWhere = [];
     const mineParams = [userId];
     mineWhere.push(buildRetiredSystemExerciseExclusionClause('e'));
+    mineWhere.push(buildRetiredCustomExerciseExclusionClause('e'));
 
     if (isAdmin) {
       mineWhere.push('e.CreatedByUserID = ?');
@@ -2035,6 +2216,7 @@ const fetchExercisesForView = async ({
     [rows] = await pool.query(
       `${baseSelect}
        WHERE ${buildRetiredSystemExerciseExclusionClause('e')}
+         AND ${buildRetiredCustomExerciseExclusionClause('e')}
        ORDER BY e.ExerciseTitle ASC`,
       [userId]
     );
@@ -2084,6 +2266,7 @@ const fetchExercisePage = async ({
   const baseWhere = [];
   const baseParams = [userId];
   baseWhere.push(buildRetiredSystemExerciseExclusionClause('e'));
+  baseWhere.push(buildRetiredCustomExerciseExclusionClause('e'));
 
   appendExerciseVisibilityFilter({
     where: baseWhere,
@@ -2987,10 +3170,6 @@ router.get('/admin/system-exercises/:id/replacements', async (req, res) => {
     if (!currentUserId) return;
     await ensureExerciseSchema();
 
-    if (!isAdminUser(req)) {
-      return res.status(403).json({ success: false, message: 'Only administrators may manage SYSTEM exercise replacements.' });
-    }
-
     const sourceExerciseId = normalizeOptionalExerciseId(req.params.id);
     if (!sourceExerciseId) {
       return res.status(400).json({ success: false, message: 'Invalid source exercise id.' });
@@ -3001,15 +3180,26 @@ router.get('/admin/system-exercises/:id/replacements', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Source exercise not found.' });
     }
 
-    if (!isSystemExerciseRecord(sourceExercise)) {
-      return res.status(400).json({ success: false, message: 'Only SYSTEM exercises are supported by this workflow.' });
+    const access = getDeleteMergeAccess({ req, exercise: sourceExercise });
+    if (!access.allowed) {
+      const message = isSystemExerciseRecord(sourceExercise)
+        ? 'Only administrators may manage SYSTEM exercise replacements.'
+        : 'You are not authorized to manage replacements for this exercise.';
+      return res.status(403).json({ success: false, message });
     }
 
-    const replacementCandidates = await getSystemExerciseMergeCandidates({
-      sourceExerciseId,
-      search: req.query?.search || '',
-      limit: req.query?.limit || 30,
-    });
+    const replacementCandidates = access.mode === EXERCISE_SCOPE.SYSTEM
+      ? await getSystemExerciseMergeCandidates({
+        sourceExerciseId,
+        search: req.query?.search || '',
+        limit: req.query?.limit || 30,
+      })
+      : await getCustomExerciseMergeCandidates({
+        sourceExerciseId,
+        ownerUserId: getExerciseOwnerUserId(sourceExercise),
+        search: req.query?.search || '',
+        limit: req.query?.limit || 30,
+      });
 
     return res.status(200).json({
       success: true,
@@ -3028,10 +3218,6 @@ router.get('/admin/system-exercises/:id/delete-impact', async (req, res) => {
     if (!currentUserId) return;
     await ensureExerciseSchema();
 
-    if (!isAdminUser(req)) {
-      return res.status(403).json({ success: false, message: 'Only administrators may inspect SYSTEM deletion impact.' });
-    }
-
     const sourceExerciseId = normalizeOptionalExerciseId(req.params.id);
     if (!sourceExerciseId) {
       return res.status(400).json({ success: false, message: 'Invalid source exercise id.' });
@@ -3042,12 +3228,27 @@ router.get('/admin/system-exercises/:id/delete-impact', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Source exercise not found.' });
     }
 
-    if (!isSystemExerciseRecord(sourceExercise)) {
-      return res.status(400).json({ success: false, message: 'Only SYSTEM exercises are supported by this workflow.' });
+    const access = getDeleteMergeAccess({ req, exercise: sourceExercise });
+    if (!access.allowed) {
+      const message = isSystemExerciseRecord(sourceExercise)
+        ? 'Only administrators may inspect SYSTEM deletion impact.'
+        : 'You are not authorized to inspect deletion impact for this exercise.';
+      return res.status(403).json({ success: false, message });
     }
 
-    if (isRetiredSystemExercise(sourceExercise)) {
-      return res.status(409).json({ success: false, message: 'This SYSTEM exercise has already been retired.' });
+    const sourceOwnerUserId = getExerciseOwnerUserId(sourceExercise);
+    if (access.mode === EXERCISE_SCOPE.CUSTOM) {
+      const ownershipImpact = await getMutableDependencyOwnershipImpact({
+        exerciseId: sourceExerciseId,
+        ownerUserId: sourceOwnerUserId,
+      });
+      if (!ownershipImpact.safe) {
+        return res.status(409).json({
+          success: false,
+          message: 'This custom exercise is used by another user and cannot be deleted or merged safely.',
+          ownershipImpact,
+        });
+      }
     }
 
     const replacementExerciseId = normalizeOptionalExerciseId(req.query?.replacementExerciseId);
@@ -3064,8 +3265,15 @@ router.get('/admin/system-exercises/:id/delete-impact', async (req, res) => {
         return res.status(404).json({ success: false, message: 'Replacement exercise not found.' });
       }
 
-      if (!isSystemExerciseRecord(replacementExercise) || isRetiredSystemExercise(replacementExercise)) {
-        return res.status(400).json({ success: false, message: 'Replacement exercise must be an active SYSTEM exercise.' });
+      if (!canUseDeleteMergeReplacement({
+        mode: access.mode,
+        exercise: replacementExercise,
+        ownerUserId: sourceOwnerUserId,
+      })) {
+        const message = access.mode === EXERCISE_SCOPE.SYSTEM
+          ? 'Replacement exercise must be an active SYSTEM exercise.'
+          : 'Replacement exercise must be an active SYSTEM exercise or one of your active CUSTOM exercises.';
+        return res.status(400).json({ success: false, message });
       }
 
       compatibility = validateRecordingTypeCompatibility({
@@ -3113,10 +3321,6 @@ router.post('/admin/system-exercises/:id/delete-or-merge', async (req, res) => {
     if (!currentUserId) return;
     await ensureExerciseSchema();
 
-    if (!isAdminUser(req)) {
-      return res.status(403).json({ success: false, message: 'Only administrators may delete or merge SYSTEM exercises.' });
-    }
-
     const sourceExerciseId = normalizeOptionalExerciseId(req.params.id);
     sourceExerciseIdForLog = sourceExerciseId;
     if (!sourceExerciseId) {
@@ -3124,7 +3328,7 @@ router.post('/admin/system-exercises/:id/delete-or-merge', async (req, res) => {
     }
 
     if (req.body?.confirm !== true) {
-      return res.status(400).json({ success: false, message: 'Explicit administrator confirmation is required.' });
+      return res.status(400).json({ success: false, message: 'Explicit confirmation is required.' });
     }
 
     const sourceExercise = await getExerciseOwnership(sourceExerciseId);
@@ -3132,11 +3336,19 @@ router.post('/admin/system-exercises/:id/delete-or-merge', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Source exercise not found.' });
     }
 
-    if (!isSystemExerciseRecord(sourceExercise)) {
-      return res.status(400).json({ success: false, message: 'Only SYSTEM exercises are supported by this workflow.' });
+    const access = getDeleteMergeAccess({ req, exercise: sourceExercise });
+    if (!access.allowed) {
+      const message = isSystemExerciseRecord(sourceExercise)
+        ? 'Only administrators may delete or merge SYSTEM exercises.'
+        : 'You are not authorized to delete or merge this exercise.';
+      return res.status(403).json({ success: false, message });
     }
 
-    const sourceMetadataCheck = validateSystemExerciseMetadata(sourceExercise);
+    const sourceOwnerUserId = getExerciseOwnerUserId(sourceExercise);
+
+    const sourceMetadataCheck = access.mode === EXERCISE_SCOPE.SYSTEM
+      ? validateSystemExerciseMetadata(sourceExercise)
+      : { consistent: true };
     if (!sourceMetadataCheck.consistent) {
       console.warn('[exercise-admin-delete] metadata-inconsistency', {
         actorUserId: currentUserId,
@@ -3151,8 +3363,18 @@ router.post('/admin/system-exercises/:id/delete-or-merge', async (req, res) => {
       });
     }
 
-    if (isRetiredSystemExercise(sourceExercise)) {
-      return res.status(409).json({ success: false, message: 'This SYSTEM exercise has already been retired.' });
+    if (access.mode === EXERCISE_SCOPE.CUSTOM) {
+      const ownershipImpact = await getMutableDependencyOwnershipImpact({
+        exerciseId: sourceExerciseId,
+        ownerUserId: sourceOwnerUserId,
+      });
+      if (!ownershipImpact.safe) {
+        return res.status(409).json({
+          success: false,
+          message: 'This custom exercise is used by another user and cannot be deleted or merged safely.',
+          ownershipImpact,
+        });
+      }
     }
 
     const replacementExerciseId = normalizeOptionalExerciseId(req.body?.replacementExerciseId);
@@ -3169,11 +3391,20 @@ router.post('/admin/system-exercises/:id/delete-or-merge', async (req, res) => {
         return res.status(404).json({ success: false, message: 'Replacement exercise not found.' });
       }
 
-      if (!isSystemExerciseRecord(replacementExercise) || isRetiredSystemExercise(replacementExercise)) {
-        return res.status(400).json({ success: false, message: 'Replacement exercise must be an active SYSTEM exercise.' });
+      if (!canUseDeleteMergeReplacement({
+        mode: access.mode,
+        exercise: replacementExercise,
+        ownerUserId: sourceOwnerUserId,
+      })) {
+        const message = access.mode === EXERCISE_SCOPE.SYSTEM
+          ? 'Replacement exercise must be an active SYSTEM exercise.'
+          : 'Replacement exercise must be an active SYSTEM exercise or one of your active CUSTOM exercises.';
+        return res.status(400).json({ success: false, message });
       }
 
-      const replacementMetadataCheck = validateSystemExerciseMetadata(replacementExercise);
+      const replacementMetadataCheck = access.mode === EXERCISE_SCOPE.SYSTEM
+        ? validateSystemExerciseMetadata(replacementExercise)
+        : { consistent: true };
       if (!replacementMetadataCheck.consistent) {
         console.warn('[exercise-admin-delete] metadata-inconsistency', {
           actorUserId: currentUserId,
@@ -3267,12 +3498,31 @@ router.post('/admin/system-exercises/:id/delete-or-merge', async (req, res) => {
     failedOperation = 'sql.select.delete-impact.snapshot';
     const impact = await getExerciseDeleteImpact({ exerciseId: sourceExerciseId, conn });
 
+    if (access.mode === EXERCISE_SCOPE.CUSTOM) {
+      failedOperation = 'sql.select.mutable-dependency-ownership';
+      const ownershipImpact = await getMutableDependencyOwnershipImpact({
+        conn,
+        exerciseId: sourceExerciseId,
+        ownerUserId: sourceOwnerUserId,
+      });
+      if (!ownershipImpact.safe) {
+        await conn.rollback();
+        txStarted = false;
+        return res.status(409).json({
+          success: false,
+          message: 'This custom exercise is used by another user and cannot be deleted or merged safely.',
+          ownershipImpact,
+        });
+      }
+    }
+
     if (replacementExerciseId) {
       failedOperation = 'sql.update.workout_schedule_exercises.reassign';
       await reassignScheduledExerciseReferences({
         conn,
         sourceExerciseId,
         destinationExerciseId: replacementExerciseId,
+        ownerUserId: access.mode === EXERCISE_SCOPE.CUSTOM ? sourceOwnerUserId : 0,
       });
 
       failedOperation = 'sql.upsert.user_favorite_exercises.consolidate';
@@ -3280,14 +3530,15 @@ router.post('/admin/system-exercises/:id/delete-or-merge', async (req, res) => {
         conn,
         sourceExerciseId,
         destinationExerciseId: replacementExerciseId,
+        ownerUserId: access.mode === EXERCISE_SCOPE.CUSTOM ? sourceOwnerUserId : 0,
       });
 
       failedOperation = 'sql.update.exercises.retire-source-merge';
-      await retireSystemExercise({
-        conn,
-        sourceExerciseId,
-        destinationExerciseId: replacementExerciseId,
-      });
+      if (access.mode === EXERCISE_SCOPE.SYSTEM) {
+        await retireSystemExercise({ conn, sourceExerciseId, destinationExerciseId: replacementExerciseId });
+      } else {
+        await retireCustomExercise({ conn, sourceExerciseId, ownerUserId: sourceOwnerUserId });
+      }
 
       failedOperation = 'transaction.commit.merge';
       await conn.commit();
@@ -3310,11 +3561,11 @@ router.post('/admin/system-exercises/:id/delete-or-merge', async (req, res) => {
     }
 
     failedOperation = 'sql.update.exercises.retire-source-delete';
-    await retireSystemExercise({
-      conn,
-      sourceExerciseId,
-      destinationExerciseId: null,
-    });
+    if (access.mode === EXERCISE_SCOPE.SYSTEM) {
+      await retireSystemExercise({ conn, sourceExerciseId, destinationExerciseId: null });
+    } else {
+      await retireCustomExercise({ conn, sourceExerciseId, ownerUserId: sourceOwnerUserId });
+    }
 
     failedOperation = 'transaction.commit.retire';
     await conn.commit();
@@ -3502,9 +3753,12 @@ module.exports.canManageExercise = canManageExercise;
 module.exports.canDeleteExercise = canDeleteExercise;
 module.exports.isSystemExerciseRecord = isSystemExerciseRecord;
 module.exports.isRetiredSystemExercise = isRetiredSystemExercise;
+module.exports.isRetiredCustomExercise = isRetiredCustomExercise;
+module.exports.getDeleteMergeAccess = getDeleteMergeAccess;
 module.exports.validateRecordingTypeCompatibility = validateRecordingTypeCompatibility;
 module.exports.getExerciseDeleteImpact = getExerciseDeleteImpact;
 module.exports.getSystemExerciseMergeCandidates = getSystemExerciseMergeCandidates;
+module.exports.getMutableDependencyOwnershipImpact = getMutableDependencyOwnershipImpact;
 module.exports.normalizeExerciseSearchTerm = normalizeExerciseSearchTerm;
 module.exports.escapeSqlLikePattern = escapeSqlLikePattern;
 module.exports.buildLiteralSubstringLikeParam = buildLiteralSubstringLikeParam;

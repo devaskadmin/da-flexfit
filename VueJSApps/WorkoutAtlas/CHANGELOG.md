@@ -1,5 +1,395 @@
 # Changelog
 
+## Development Changelog Rule
+
+- After each completed WorkoutAtlas version, Copilot must update this existing `CHANGELOG.md` before reporting the version complete.
+- Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
+- Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
+
+## [0.85.263] - 2026-11-11 - Owner-Safe Custom Exercise Delete & Merge
+
+- **Added:** Authorized CUSTOM exercise owners now enter the existing Delete & Merge workflow. Replacement choices are limited to active SYSTEM exercises and the owner's active CUSTOM exercises; SHARED exercises remain excluded.
+- **Changed:** The existing SYSTEM endpoints and transaction now classify the source mode server-side. CUSTOM operations require `canManageExercise()`, reject foreign schedule or favorite dependencies both before and inside the transaction, scope mutable updates to the owner, and preserve completed history and all other dependent records.
+- **Fixed:** CUSTOM exercises no longer fall through to the basic delete dialog when the authenticated owner has delete permission. API safety errors now appear directly in the existing modal.
+- **Removed:** Nothing. Existing SYSTEM behavior, normal unreferenced deletion, and SHARED scope rules remain in place.
+- **Affected functionality:** Exercise Library -> My Custom Exercises -> Delete & Merge; replacement search; dependency impact; schedule/favorite reassignment; history-preserving retirement.
+- **Relevant source files:** `frontend/src/views/Member/exercises.vue`; `backend/api/excerises.js`; `backend/tests/exercise-storage-marker.test.js`.
+- **Evidence:** Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`. Read-only ownership analysis proved exercise 1024 has two schedules owned by other users, validating the rejection path. No migration, Gateway change, service restart, real delete, or merge was performed.
+- **Verification:** All 46 focused backend exercise tests pass; backend syntax check, frontend production build, Vue/JavaScript diagnostics, and `git diff --check` pass. The owner UI was checked at 390x844 and 1366x900; Cancel and X closed without any `delete-or-merge` request. The running backend was intentionally not restarted and still serves the pre-0.85.263 route module, so live end-to-end CUSTOM API success and SYSTEM regression checks require an approved reload.
+- **Known unresolved issues:** Deployment/runtime activation remains pending. Exercise 1024 must continue to be rejected after reload because it has cross-user schedules; use a disposable owner-only fixture for eventual merge success and rollback validation.
+
+## [0.85.261] - 2026-11-10 - Custom Exercise Delete & Merge Investigation
+
+- **Added:** No product functionality; this was a read-only regression investigation.
+- **Changed:** No source code, database, Gateway, or runtime configuration changes.
+- **Fixed:** None. No previously working Custom Exercise merge implementation was found to restore safely.
+- **Removed:** Nothing.
+- **Affected functionality:** Exercise Library Custom Exercise deletion and the existing PocketSmith-style Delete & Merge workflow.
+- **Relevant source files:** `frontend/src/views/Member/exercises.vue`; `backend/api/excerises.js` (inspected only).
+- **Evidence:** Git checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turns 29-31. The commit is an aggregate checkpoint and contains no Custom merge implementation.
+- **Verification:** Git history, reflog, unreachable objects, VS Code Local History, backups, and the original 0.85.220-0.85.222 Copilot implementation transcript were inspected. Live desktop/mobile modal behavior and SYSTEM endpoint authorization were checked without executing a delete or merge.
+- **Known unresolved issues:** Custom Exercise Delete & Merge remains unresolved. The current merge APIs are administrator-only and SYSTEM-only. Custom support requires verified owner authorization, replacement visibility rules, transactional reference handling, history-preserving retirement semantics, and backend tests before the existing UX can be enabled.
+
+## [0.85.260] - 2026-11-10 - Find Plans Compact Desktop Typography
+
+- **Added:** No new functionality.
+- **Changed:** Reduced Find Plans desktop-table typography by 2px for headers, names, statuses, Goal Category, Plan Type, and supported badges while preserving mobile typography, thumbnails, controls, spacing, filters, and management modes.
+- **Fixed:** Oversized desktop table text relative to the intended compact layout.
+- **Removed:** Nothing.
+- **Affected functionality:** Workout Planner -> View/Edit Plans -> Find Plans desktop table.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turn 28.
+- **Verification:** Historical completion report records focused desktop/mobile browser checks and a successful frontend build. Not rerun during this documentation-only stage.
+- **Known unresolved issues:** Featured labeling remains unavailable because a separate persisted Featured value is not present in the backend response/schema.
+
+## [0.85.259] - 2026-11-10 - Find Plans Global Identification
+
+- **Added:** A display-only ` (Global)` suffix for plans whose actual Plan Type is `global`, in desktop and mobile Find Plans views.
+- **Changed:** Global plans are easier to distinguish without changing stored names, filters, sorting, counts, statuses, thumbnails, or actions.
+- **Fixed:** Ambiguous Global plan names in Find Plans.
+- **Removed:** Nothing.
+- **Affected functionality:** Find Plans with Admin Plan Management both enabled and disabled.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turns 26-27.
+- **Verification:** Historical report records desktop/mobile checks, management-mode checks, and frontend build success.
+- **Known unresolved issues:** The requested blue Global and gold Featured badge pair was not completed. Featured cannot be represented truthfully until an independently persisted Featured designation is available.
+
+## [0.85.258] - 2026-11-10 - Save Success Modal UX
+
+- **Added:** Top-right close control, backdrop dismissal, and `Continue Editing` action for saved/published success modals.
+- **Changed:** Success actions are grouped bottom-right; `Back to Plans` is secondary and `Continue Editing` is primary. Mobile actions stack in the same order.
+- **Fixed:** Published transitions now use published wording only after the backend confirms active status; users can dismiss the success modal and remain on the loaded PlanID.
+- **Removed:** Nothing.
+- **Affected functionality:** Workout Planner save and publish success confirmation.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turns 24-25.
+- **Verification:** Saved and Published variants were historically checked at 1366px and 390px; frontend build, Vue diagnostics, and `git diff --check` passed.
+- **Known unresolved issues:** Featured persistence is separate and remained unresolved.
+
+## [0.85.257] - 2026-11-10 - Featured Global Plan Persistence Investigation
+
+- **Added:** No product functionality; Stage 1 investigation only.
+- **Changed:** No source or schema changes were made.
+- **Fixed:** None.
+- **Removed:** Nothing.
+- **Affected functionality:** Featured checkbox persistence for Published Global workout plans.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`; backend Global plan PATCH/serialization paths and `workout_schedules` schema (inspected only).
+- **Evidence:** Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turn 23.
+- **Verification:** Confirmed the frontend sends Featured state, the admin endpoint ignores it, the live table has no independent Featured column, and non-admin access to the admin endpoint returns 403.
+- **Known unresolved issues:** A database migration and backend persistence/serialization changes require approval. No implementation was performed.
+
+## [0.85.256] - 2026-11-10 - Personal Draft to Published Save
+
+- **Added:** Confirmed Published success messaging for authorized Personal plan publication.
+- **Changed:** Personal Draft -> Published now uses the existing authorized workout-planner PUT path instead of the Admin Global publication flow.
+- **Fixed:** Save as Published previously made no request because the Global-admin permission guard rejected Personal plans, leaving the editor without success feedback.
+- **Removed:** Nothing.
+- **Affected functionality:** Edit Personal Plan -> Save as Published.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turn 22.
+- **Verification:** Historical report records API-status confirmation and success-modal checks. No backend or SQL change was required.
+- **Known unresolved issues:** None recorded for this workflow.
+
+## [0.85.255] - 2026-11-10 - Personal Draft Navigation and Hydration
+
+- **Added:** Post-save navigation that opens the newly created Personal Draft in Edit mode using the PlanID returned by the API.
+- **Changed:** Successful draft saves refresh My Plans and hydrate the saved plan; failures remain in Create mode with entered data intact.
+- **Fixed:** Saving a new Personal plan as Draft previously left the user in Create mode and risked an unclear subsequent save path.
+- **Removed:** Nothing.
+- **Affected functionality:** Create Personal Plan -> Save as Draft -> Edit saved plan.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turn 21.
+- **Verification:** Historical QA created disposable PlanID 122, verified desktop/mobile hydration, then confirmed Save Changes updated the same PlanID without duplication.
+- **Known unresolved issues:** None recorded for this workflow.
+
+## [0.85.254] - 2026-11-06 - Exercise Picker Selection Workflow
+
+- **Added:** Unified selection-only picker behavior and `Show Selected (N)` / `Show All Exercises` filtering for selected exercises.
+- **Changed:** Selected exercises are retained by ID and added through the existing workout-day insertion flow.
+- **Fixed:** Selection visibility and batch-add usability across filtered exercise results.
+- **Removed:** Nothing from the exercise library or saved plans.
+- **Affected functionality:** Create/Edit Plan Add Exercise modal.
+- **Relevant source files:** `frontend/src/components/workout-builder/ExercisePickerModal.vue`; `frontend/src/views/Member/WorkoutBuilder.vue`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turns 19-20.
+- **Verification:** Historical completion report and committed source confirm the selection toggle and ID-backed selection state.
+- **Known unresolved issues:** None recorded for this picker update.
+
+## [0.85.253] - 2026-11-06 - Existing Plan Permission Investigation
+
+- **Added:** No product functionality; read-only investigation.
+- **Changed:** No source, database, or plan records.
+- **Fixed:** None.
+- **Removed:** Nothing.
+- **Affected functionality:** Edit authorization for `Stephen K - Lean Muscle`, PlanID 5.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`; `frontend/src/components/workout-builder/WorkoutScheduleListItem.vue`; existing workout-plan authorization routes (inspected only).
+- **Evidence:** Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turn 18.
+- **Verification:** Investigation found PlanID 5 belonged to UserID 10 rather than the authenticated test account; no authorization bypass was applied.
+- **Known unresolved issues:** Access requires the actual owner or an explicitly authorized admin workflow. No code defect was established from the tested session.
+
+## [0.85.252] - 2026-11-06 - Create Plan Back Navigation
+
+- **Added:** The existing `Back to Plans` action to the bottom Create Plan action row.
+- **Changed:** Create mode places Back on the left and Create on the right; mobile stacks both controls. Edit-mode placement is unchanged.
+- **Fixed:** Create Plan action placement and alignment.
+- **Removed:** The duplicate/top Create-mode Back button.
+- **Affected functionality:** Create Workout Plan navigation and unsaved-change handling.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`; QA images under `Documents/qa-085252-*`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turn 17.
+- **Verification:** Navigation, keep-editing/discard behavior, desktop/mobile layout, frontend build, Vue diagnostics, and `git diff --check` were reported passing.
+- **Known unresolved issues:** None recorded.
+
+## [0.85.251] - 2026-11-06 - Conditional Workout Day Footer
+
+- **Added:** Conditional rendering for the duplicate workout-day footer.
+- **Changed:** Empty days retain the header and empty state but show no footer; days with assignments retain the full footer.
+- **Fixed:** Redundant controls on zero-exercise days while preserving header-prepend and footer-append insertion behavior.
+- **Removed:** Empty-day footer controls only; no data or saved assignments were removed.
+- **Affected functionality:** Create, Edit, and View Plan workout-day cards.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`; QA images under `Documents/qa-085251-*`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turn 16.
+- **Verification:** Historical QA covered `0 -> 1`, `1 -> 0`, `2 -> 1`, collapse/expand, Create/Edit/View, desktop, and mobile without saving QA plan changes.
+- **Known unresolved issues:** None recorded.
+
+## [0.85.250] - 2026-11-06 - Exercise Picker Multi-selection Persistence
+
+- **Added:** ID-keyed snapshots for selected exercise payloads and ordered batch insertion.
+- **Changed:** Blue selection remains temporary; green Quick Add remains immediate and independent.
+- **Fixed:** Search, category, equipment, and source-tab changes no longer clear selected ExerciseIDs or lose filtered-out selections.
+- **Removed:** The watcher behavior that cleared selection on filter changes.
+- **Affected functionality:** Add Exercise modal in Create/Edit Plan.
+- **Relevant source files:** `frontend/src/components/workout-builder/ExercisePickerModal.vue`; `frontend/src/views/Member/WorkoutBuilder.vue`; QA images under `Documents/qa-085250-*`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turn 15.
+- **Verification:** Historical report records Quick Add, ordered batch add, filter/tab persistence, edit-mode persistence, and desktop/mobile UI checks as passing.
+- **Known unresolved issues:** None recorded.
+
+## [0.85.249] - 2026-11-06 - Edit Save Confirmation and Return Navigation
+
+- **Added:** Existing-style success modal after confirmed Edit Save and a `Back to Plans` return path.
+- **Changed:** Return navigation clears Edit mode/route PlanID, preserves the selected My Plans or Find Plans source, and refreshes the appropriate list.
+- **Fixed:** Successful saves previously rehydrated in Edit mode without clear confirmation.
+- **Removed:** Nothing.
+- **Affected functionality:** Top and bottom Save Changes actions for owned and managed plans.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`; QA images under `Documents/qa-085249-*`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turn 14.
+- **Verification:** Historical QA recorded HTTP 200 saves for disposable PlanIDs 54 and 119, no duplicates, separate Draft/Publish behavior, retained validation data, and desktop/mobile modal checks.
+- **Known unresolved issues:** None recorded for edit-save confirmation.
+
+## [0.85.248] - 2026-11-06 - Publish and Planner UI Corrections
+
+- **Added:** Additional save-modal status context needed to distinguish selected and intended publication state.
+- **Changed:** Bottom Add Workout Day visibility and desktop My Plans icon alignment were scoped to their intended states/layouts.
+- **Fixed:** Publish confirmation state, zero-day bottom control visibility, delete-confirmation modal color treatment, and desktop action alignment.
+- **Removed:** The bottom Add Workout Day control when the schedule contains zero days; no plan data was removed.
+- **Affected functionality:** Workout Planner publication flow, empty schedule actions, My Plans delete confirmation, and desktop row actions.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`; `frontend/src/components/workout-builder/WorkoutScheduleListItem.vue`; `frontend/src/utils/browserDialogs.js`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turns 10-13.
+- **Verification:** Historical reports record targeted publication and responsive UI checks. These checks were not rerun during this documentation stage.
+- **Known unresolved issues:** Featured Global persistence was not part of this fix and remained unresolved later in 0.85.257.
+
+## [0.85.247] - 2026-11-06 - Find Plans Mobile Cards
+
+- **Added:** Mobile Find Plans card presentation aligned with the approved My Plans mobile visual structure.
+- **Changed:** Find Plans mobile metadata and actions use a responsive card layout while desktop remains a table.
+- **Fixed:** Mobile readability and action layout inconsistencies between plan sources.
+- **Removed:** Mobile table presentation only; desktop table and plan data remain unchanged.
+- **Affected functionality:** Workout Planner -> Find Plans on mobile.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turn 9.
+- **Verification:** Historical completion report records responsive browser verification.
+- **Known unresolved issues:** None recorded for this layout.
+
+## [0.85.246] - 2026-11-06 - My Plans Mobile Card Refinement
+
+- **Added:** No new plan behavior.
+- **Changed:** Refined action placement and content balance in the approved My Plans mobile cards.
+- **Fixed:** Mobile card alignment and spacing issues remaining after the 0.85.245 series.
+- **Removed:** Nothing.
+- **Affected functionality:** My Plans mobile cards.
+- **Relevant source files:** `frontend/src/components/workout-builder/WorkoutScheduleListItem.vue`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turn 8.
+- **Verification:** Historical completion report records desktop preservation and mobile checks.
+- **Known unresolved issues:** None recorded.
+
+## [0.85.245d] - 2026-11-06 - Desktop My Plans Action Colors
+
+- **Added:** No new behavior.
+- **Changed:** Restored desktop View/Edit/Delete actions to their established blue/teal/red styles.
+- **Fixed:** Desktop actions had regressed to gray styling during mobile card work.
+- **Removed:** Nothing.
+- **Affected functionality:** My Plans desktop action buttons.
+- **Relevant source files:** `frontend/src/components/workout-builder/WorkoutScheduleListItem.vue`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turn 7.
+- **Verification:** Historical hotfix report records desktop inspection.
+- **Known unresolved issues:** None recorded.
+
+## [0.85.245c] - 2026-11-06 - Mobile Action Surface Sizing
+
+- **Added:** A 44x44px semantic hit area around each action.
+- **Changed:** Visible View/Edit/Delete surfaces were reduced from 44x44px to 40x40px while preserving touch targets.
+- **Fixed:** Mobile actions appeared larger than the approved card proportions.
+- **Removed:** Nothing.
+- **Affected functionality:** My Plans mobile action buttons.
+- **Relevant source files:** `frontend/src/components/workout-builder/WorkoutScheduleListItem.vue`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turn 6.
+- **Verification:** Historical completion report records exact rendered and hit-target dimensions.
+- **Known unresolved issues:** None recorded.
+
+## [0.85.245b] - 2026-11-06 - Two-row My Plans Mobile Cards
+
+- **Added:** No new behavior.
+- **Changed:** Mobile cards use exactly two content rows: identity/status, then metadata/actions.
+- **Fixed:** Extra action-button row and excessive card height.
+- **Removed:** The third mobile content row.
+- **Affected functionality:** My Plans mobile card structure.
+- **Relevant source files:** `frontend/src/components/workout-builder/WorkoutScheduleListItem.vue`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turn 5.
+- **Verification:** Historical report records two rows, no overflow, and unchanged desktop rendering at 390px, 430px, and 1366px.
+- **Known unresolved issues:** None recorded.
+
+## [0.85.245a] - 2026-11-06 - Compact Mobile My Plans Actions
+
+- **Added:** No new action behavior.
+- **Changed:** Mobile View/Edit/Delete controls became right-aligned, icon-only 44x44px buttons with established colors and accessible labels.
+- **Fixed:** Oversized full-width mobile actions.
+- **Removed:** Visible action text on mobile; tooltips and accessible names remain.
+- **Affected functionality:** My Plans mobile actions.
+- **Relevant source files:** `frontend/src/components/workout-builder/WorkoutScheduleListItem.vue`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turn 4.
+- **Verification:** Historical report records button dimensions, spacing, card size, and overflow checks.
+- **Known unresolved issues:** None recorded.
+
+## [0.85.245] - 2026-11-06 - Plan Source Header and Counts
+
+- **Added:** Dynamic visible-plan count in the source heading and matching footer count.
+- **Changed:** Replaced the prior Filter Plan Sources heading with `Choose a source to view available plans: #` while preserving source buttons.
+- **Fixed:** Plan source count clarity on desktop and mobile.
+- **Removed:** The old heading/subtitle separator treatment.
+- **Affected functionality:** My Plans / Find Plans source selector and list counts.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turn 3.
+- **Verification:** Historical report confirms counts use the existing filtered collections and do not alter filters, ownership, permissions, or actions.
+- **Known unresolved issues:** None recorded.
+
+## [0.85.244a] - 2026-11-06 - Mobile Action Color Restoration
+
+- **Added:** No new behavior.
+- **Changed:** Mobile actions use blue View, teal Edit, and red Delete icon buttons with existing hover states and 44px touch targets.
+- **Fixed:** Gray action styling introduced by the prior card redesign.
+- **Removed:** Visible action labels on mobile; accessible labels and tooltips remain.
+- **Affected functionality:** My Plans mobile actions.
+- **Relevant source files:** `frontend/src/components/workout-builder/WorkoutScheduleListItem.vue`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turn 2.
+- **Verification:** Historical report records responsive layout and accessibility checks.
+- **Known unresolved issues:** None recorded.
+
+## [0.85.244] - 2026-11-06 - My Plans Mobile Workout Library
+
+- **Added:** Isolated semantic mobile `<article>` cards for screens up to 800px.
+- **Changed:** Mobile My Plans uses cards while desktop retains the existing table and shared data normalization.
+- **Fixed:** Fragile table-to-grid mobile conversion and overflow-prone layout.
+- **Removed:** The mobile table-to-grid conversion rules; desktop table behavior remains.
+- **Affected functionality:** My Plans responsive presentation.
+- **Relevant source files:** `frontend/src/components/workout-builder/WorkoutScheduleListItem.vue`; `frontend/src/views/Member/WorkoutBuilder.vue`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turn 1.
+- **Verification:** Historical report records desktop preservation and mobile responsive checks.
+- **Known unresolved issues:** None recorded after the subsequent action-style refinements.
+
+## [0.85.243a] - 2026-11-06 - Mobile My Plans Overflow Hotfix
+
+- **Added:** No new behavior.
+- **Changed:** Strengthened mobile width handling and moved child-owned cell/card responsive styles to the owning component.
+- **Fixed:** A later `min-width: 720px` desktop rule forced 720px cards into a 318px mobile container, hiding metadata and actions and creating large empty areas.
+- **Removed:** Conflicting mobile table assumptions from the parent scoped style path.
+- **Affected functionality:** My Plans at approximately 390px mobile width.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`; `frontend/src/components/workout-builder/WorkoutScheduleListItem.vue`.
+- **Evidence:** Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`; Copilot session `2eeb8369-eb3e-4651-b193-e8b3ae7a32a6`, turn 0.
+- **Verification:** Historical report records live DOM diagnosis and 390px responsive verification.
+- **Known unresolved issues:** The layout was intentionally redesigned more robustly in 0.85.244.
+
+## [0.85.243] - 2026-11-06 - Initial Mobile My Plans Layout
+
+- **Added:** Initial mobile-specific My Plans presentation.
+- **Changed:** Desktop table was intended to remain unchanged while mobile rows were compacted around 48x48 thumbnails.
+- **Fixed:** Initial mobile table readability issues.
+- **Removed:** Nothing.
+- **Affected functionality:** My Plans responsive layout.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`; `frontend/src/components/workout-builder/WorkoutScheduleListItem.vue`.
+- **Evidence:** Copilot session `a59cfada-efdc-44f8-a8ef-fbc91e0848c2`, turn 19; later captured in Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`.
+- **Verification:** The initial report marked the layout verified, but user verification then found a serious regression.
+- **Known unresolved issues:** Superseded by the 0.85.243a overflow hotfix and 0.85.244 mobile card redesign.
+
+## [0.85.242b] - 2026-11-06 - My Plans Thumbnail Root-cause Hotfix
+
+- **Added:** No new behavior.
+- **Changed:** Applied thumbnail sizing at the component/style ownership boundary that controls the rendered image.
+- **Fixed:** The 0.85.242a CSS adjustment did not constrain the live My Plans thumbnail.
+- **Removed:** Ineffective sizing assumptions from the prior hotfix path.
+- **Affected functionality:** My Plans table thumbnails and row density.
+- **Relevant source files:** `frontend/src/components/workout-builder/WorkoutScheduleListItem.vue`; `frontend/src/views/Member/WorkoutBuilder.vue`.
+- **Evidence:** Copilot session `a59cfada-efdc-44f8-a8ef-fbc91e0848c2`, turn 18; later captured in Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`.
+- **Verification:** Historical report records live DOM/CSS root-cause inspection.
+- **Known unresolved issues:** None recorded for thumbnail sizing after this hotfix.
+
+## [0.85.242a] - 2026-11-06 - My Plans Thumbnail Hotfix Attempt
+
+- **Added:** No new behavior.
+- **Changed:** Attempted to reduce My Plans thumbnails and tighten row spacing.
+- **Fixed:** Intended to correct oversized images introduced by the unified table conversion.
+- **Removed:** Nothing.
+- **Affected functionality:** My Plans table thumbnails.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`; `frontend/src/components/workout-builder/WorkoutScheduleListItem.vue`.
+- **Evidence:** Copilot session `a59cfada-efdc-44f8-a8ef-fbc91e0848c2`, turn 17.
+- **Verification:** Failed user verification; the thumbnail remained oversized.
+- **Known unresolved issues:** Superseded by the 0.85.242b root-cause hotfix.
+
+## [0.85.242] - 2026-11-06 - Unified My Plans Table
+
+- **Added:** Compact table presentation for My Plans based on the existing Find Plans pattern.
+- **Changed:** Replaced the large My Plans card list while preserving open, edit, delete, ownership, and permission behavior.
+- **Fixed:** Inconsistent list density between My Plans and Find Plans.
+- **Removed:** The large-card My Plans presentation.
+- **Affected functionality:** Workout Planner -> View/Edit Plans -> My Plans.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`; `frontend/src/components/workout-builder/WorkoutScheduleListItem.vue`.
+- **Evidence:** Copilot session `a59cfada-efdc-44f8-a8ef-fbc91e0848c2`, turn 16; later captured in Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`.
+- **Verification:** Completion report confirms preserved actions, but thumbnail and later mobile regressions required 0.85.242a/b and 0.85.243a.
+- **Known unresolved issues:** Original layout issues are documented in the following hotfix entries.
+
+## [0.85.241] - 2026-11-06 - My Plans UX Request Without Reliable Completion Evidence
+
+- **Added:** No verified addition can be attributed to this version.
+- **Changed:** No verified change can be attributed to this version.
+- **Fixed:** No verified fix can be attributed to this version.
+- **Removed:** Nothing verified.
+- **Affected functionality:** The request targeted My Plans usability and Add to My Plans flow.
+- **Relevant source files:** Not reliably established from a completion report.
+- **Evidence:** Copilot session `a59cfada-efdc-44f8-a8ef-fbc91e0848c2`, turn 14 contains the request but no assistant completion report; there is no dedicated Git commit.
+- **Verification:** No reliable version-specific verification record found.
+- **Known unresolved issues:** Historical outcome is unknown. Later versions must not be treated as proof that all 0.85.241 requirements were completed.
+
+## [0.85.240] - 2026-11-06 - Goal Category Labels and Plan Data Mapping
+
+- **Added:** No new persisted fields.
+- **Changed:** Renamed visible Category labels to Goal Category in Create, Edit, View, and Find Plans and corrected affected plan-list binding/display paths.
+- **Fixed:** Goal Category terminology and data-mapping inconsistencies across Workout Planner views.
+- **Removed:** Obsolete visible Category wording in the targeted planner contexts.
+- **Affected functionality:** Workout metadata form, Find Plans, and Workout Builder plan displays.
+- **Relevant source files:** `frontend/src/components/workout-builder/WorkoutMetadataForm.vue`; `frontend/src/views/Member/FindPlans.vue`; `frontend/src/views/Member/WorkoutBuilder.vue`.
+- **Evidence:** Copilot session `a59cfada-efdc-44f8-a8ef-fbc91e0848c2`, turn 13; later captured in Git aggregate checkpoint `542d89fc80290842575363ca4cc2d75ccff72a43`.
+- **Verification:** Historical completion report records targeted UI/data-binding implementation. No dedicated Git commit or independent rerun exists for this version.
+- **Known unresolved issues:** None specifically recorded for the label correction.
+
+## [0.85.239] - 2026-11-06 - SYSTEM Exercise Delete & Merge and Aggregate Checkpoint
+
+- **Added:** Administrator-only replacement search, dependency-impact loading, and transactional Delete / Delete & Merge endpoints for SYSTEM exercises; PocketSmith-style replacement and impact UI; compatibility validation; rollback/error handling; and supporting exercise-storage marker tests.
+- **Changed:** SYSTEM deletion retires the source from the active Exercise Library instead of physically deleting history-bearing records. Delete & Merge reassigns compatible active `workout_schedule_exercises` references and consolidates favorites while preserving existing `workout_log` history on the source exercise.
+- **Fixed:** Administrators can safely remove referenced SYSTEM exercises without disabling foreign keys or discarding workout history. The workflow blocks destructive actions until dependency impact loads successfully.
+- **Removed:** Retired SYSTEM exercises are removed from active search/assignment results; historical rows are not physically removed.
+- **Affected functionality:** Exercise Library administrator SYSTEM exercise management, replacement selection, dependency impact, active schedule assignments, favorites, and workout history preservation.
+- **Relevant source files:** `backend/api/excerises.js`; `frontend/src/views/Member/exercises.vue`; `backend/tests/exercise-storage-marker.test.js`.
+- **Evidence:** Git commit `7183673f5bb67538db82d6ec6c2727f8a4138e67`. The commit is an aggregate release checkpoint; this entry documents only the verified Delete & Merge subset. The original implementation transcript is Copilot session `be77a0db-2f84-48be-a63a-eef2b8dc45f0`, beginning at turn 15 (versions 0.85.220-0.85.222).
+- **Verification:** Commit/source inspection confirms all three `/admin/system-exercises/:id/...` routes enforce administrator access and reject non-SYSTEM sources. Historical reports record impact, replacement, transaction, rollback-only database, authorization, and responsive modal checks. These destructive paths were not rerun during this documentation-only stage.
+- **Known unresolved issues:** This implementation does **not** support owner-authorized CUSTOM exercise merge. Referenced CUSTOM exercises continue through the ordinary delete route and may be rejected with HTTP 409. Custom Exercise Delete & Merge remains unresolved pending UX, authorization, retirement, and transactional-reference verification.
+
 ## [0.85.40.9] - 2026-08-13 - August 13, 2026 Development Log
 
 ### Global Workout Plans / Mobile UI - 0.85.39.x

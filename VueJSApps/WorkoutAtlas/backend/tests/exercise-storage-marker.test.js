@@ -18,6 +18,9 @@ const {
   canReadExerciseForUser,
   canDeleteExercise,
   isRetiredSystemExercise,
+  isRetiredCustomExercise,
+  getDeleteMergeAccess,
+  getMutableDependencyOwnershipImpact,
   validateRecordingTypeCompatibility,
   EXERCISE_ALLOWED_WORKOUT_TYPES,
   EXERCISE_ALLOWED_RECORDING_TYPES,
@@ -59,6 +62,98 @@ test('isRetiredSystemExercise identifies custom restricted system rows retired f
     ExerciseScope: 'SYSTEM',
     ExercisePublicationState: 'DISCOVERABLE',
   }), false);
+});
+
+test('getDeleteMergeAccess preserves SYSTEM admin rules and allows a CUSTOM owner', () => {
+  const adminReq = { session: { user: { id: 1, role: 'admin' } } };
+  const ownerReq = { session: { user: { id: 14, role: 'user' } } };
+  const systemExercise = { ExerciseScope: 'SYSTEM', IsSystemExercise: 1 };
+  const customExercise = {
+    ExerciseScope: 'CUSTOM',
+    IsSystemExercise: 0,
+    IsGlobalExercise: 0,
+    CreatedByUserID: 14,
+  };
+
+  assert.deepEqual(getDeleteMergeAccess({ req: adminReq, exercise: systemExercise }), {
+    allowed: true,
+    mode: 'SYSTEM',
+  });
+  assert.deepEqual(getDeleteMergeAccess({ req: ownerReq, exercise: systemExercise }), {
+    allowed: false,
+    mode: 'SYSTEM',
+  });
+  assert.deepEqual(getDeleteMergeAccess({ req: ownerReq, exercise: customExercise }), {
+    allowed: true,
+    mode: 'CUSTOM',
+  });
+});
+
+test('getDeleteMergeAccess rejects unauthorized CUSTOM, SHARED, and retired SYSTEM exercises', () => {
+  const req = { session: { user: { id: 15, role: 'user' } } };
+  const adminReq = { session: { user: { id: 1, role: 'admin' } } };
+
+  assert.equal(getDeleteMergeAccess({
+    req,
+    exercise: { ExerciseScope: 'CUSTOM', IsSystemExercise: 0, CreatedByUserID: 14 },
+  }).allowed, false);
+  assert.equal(getDeleteMergeAccess({
+    req: adminReq,
+    exercise: { ExerciseScope: 'CUSTOM', IsSystemExercise: 0, CreatedByUserID: 14 },
+  }).allowed, false);
+  assert.deepEqual(getDeleteMergeAccess({
+    req,
+    exercise: { ExerciseScope: 'SHARED', IsSystemExercise: 0, CreatedByUserID: 15 },
+  }), { allowed: false, mode: null });
+  assert.deepEqual(getDeleteMergeAccess({
+    req,
+    exercise: {
+      ExerciseScope: 'CUSTOM',
+      IsSystemExercise: 1,
+      IsGlobalExercise: 0,
+      ExercisePublicationState: 'RESTRICTED',
+      CreatedByUserID: 15,
+    },
+  }), { allowed: false, mode: null });
+});
+
+test('isRetiredCustomExercise requires a restricted non-system self-reference', () => {
+  assert.equal(isRetiredCustomExercise({
+    ExerciseID: 1200,
+    SourceExerciseID: 1200,
+    ExerciseScope: 'CUSTOM',
+    ExercisePublicationState: 'RESTRICTED',
+    IsSystemExercise: 0,
+  }), true);
+  assert.equal(isRetiredCustomExercise({
+    ExerciseID: 1200,
+    SourceExerciseID: 88,
+    ExerciseScope: 'CUSTOM',
+    ExercisePublicationState: 'RESTRICTED',
+    IsSystemExercise: 0,
+  }), false);
+});
+
+test('getMutableDependencyOwnershipImpact rejects foreign schedules or favorites', async () => {
+  const responses = [
+    [[{ total: 3, foreignTotal: 2 }]],
+    [[{ total: 1, foreignTotal: 0 }]],
+  ];
+  const conn = {
+    query: async () => responses.shift(),
+  };
+
+  assert.deepEqual(await getMutableDependencyOwnershipImpact({
+    conn,
+    exerciseId: 1024,
+    ownerUserId: 14,
+  }), {
+    scheduledAssignments: 3,
+    foreignScheduledAssignments: 2,
+    favorites: 1,
+    foreignFavorites: 0,
+    safe: false,
+  });
 });
 
 test('resolveValidatedImageExtension accepts supported extension and mime type', () => {
