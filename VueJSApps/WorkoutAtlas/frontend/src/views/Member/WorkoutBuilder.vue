@@ -79,6 +79,7 @@ const globalPlansSuccess = ref('');
 const globalPlans = ref([]);
 const showGlobalDeletePlanModal = ref(false);
 const selectedGlobalPlanForDelete = ref(null);
+const showGlobalPlanAddedModal = ref(false);
 
 const MENU_ESTIMATED_HEIGHT = 260;
 const MENU_SAFE_GAP = 12;
@@ -149,6 +150,11 @@ const selectedExerciseInsertPosition = ref('bottom');
 const showDeleteModal = ref(false);
 const showPublishPlanModal = ref(false);
 const showSaveWorkoutPlanModal = ref(false);
+const showEditSaveSuccessModal = ref(false);
+const editSaveSuccessWasPublish = ref(false);
+const editSaveReturnSource = ref('my');
+const primaryEditSavePending = ref(false);
+const saveWorkoutPlanModalTargetStatus = ref('');
 const showPlanTypeConversionModal = ref(false);
 const dayToDelete = ref(null);
 const skipNextRoutePlannerLoad = ref(false);
@@ -422,7 +428,8 @@ const conversionUnavailableReason = computed(() => {
 });
 
 const ensureDraftPlanTypeDefault = () => {
-  if (String(currentPlanId.value || '').trim()) {
+  const existingPlanId = currentPlanId.value || selectedWorkoutId.value || route.query.planId;
+  if (String(existingPlanId || '').trim()) {
     return;
   }
 
@@ -700,8 +707,8 @@ const normalizeGlobalPlan = (plan = {}) => ({
   planId: String(plan.planId || '').trim(),
   name: String(plan.name || '').trim() || 'Untitled Workout',
   description: String(plan.description || '').trim(),
-  type: normalizeGlobalCategory(plan.category ?? plan.type),
-  category: normalizeGlobalCategory(plan.category ?? plan.type),
+  type: String(plan.type || plan.workoutType || '').trim() || 'General Fitness',
+  category: String(plan.category ?? plan.goalCategory ?? '').trim() || 'Uncategorized',
   workoutType: String(plan.workoutType || '').trim(),
   source: String(plan.source || plan.planSource || '').trim(),
   pricing: String(plan.pricing || '').trim(),
@@ -1164,6 +1171,9 @@ const viewGlobalPlanSummary = async (plan = {}) => {
 
   clearGlobalPlansMessages();
   try {
+    editSaveReturnSource.value = builderTab.value === 'view' && planSourceTab.value === 'marketplace'
+      ? 'marketplace'
+      : 'my';
     await router.replace({ query: { ...route.query, planId: targetId } });
     builderTab.value = 'view';
     viewEditMode.value = true;
@@ -1443,8 +1453,14 @@ const resolveMarketplaceWorkoutType = (plan = {}) => {
   return normalizeMarketplaceText(plan?.workoutType);
 };
 
+const resolveGoalCategoryDisplayValue = (plan = {}) => {
+  const rawValue = String(plan?.category ?? plan?.goalCategory ?? '').trim();
+  return rawValue || 'Uncategorized';
+};
+
 const resolveMarketplaceCategory = (plan = {}) => {
-  return normalizeMarketplaceText(plan?.category || plan?.type);
+  const rawValue = String(plan?.category ?? plan?.goalCategory ?? '').trim();
+  return normalizeMarketplaceText(rawValue || '');
 };
 
 const resolveMarketplaceDifficulty = (plan = {}) => {
@@ -1541,14 +1557,30 @@ const formatMarketplacePlanTypeLabel = (plan = {}) => {
     : '—';
 };
 
+const formatMarketplacePlanName = (plan = {}) => {
+  const name = String(plan?.name || '').trim() || 'Untitled Workout';
+  const isGlobalPlan = normalizeMarketplaceText(plan?.planType) === 'global';
+  return isGlobalPlan && !/\(global\)$/i.test(name) ? `${name} (Global)` : name;
+};
+
+const formatMarketplaceEstimatedDuration = (plan = {}) => {
+  const duration = Number(plan?.estimatedDuration);
+  return Number.isFinite(duration) && duration > 0 ? `${duration} min` : '—';
+};
+
+const formatMarketplacePlanId = (plan = {}) => {
+  const planId = String(plan?.planId || '').trim();
+  return planId ? `#${planId}` : '—';
+};
+
 const manageableMarketplacePlans = computed(() => {
   return Array.isArray(globalPlans.value)
     ? globalPlans.value.map((plan) => ({
         planId: String(plan?.planId || '').trim(),
         name: String(plan?.name || '').trim() || 'Untitled Workout',
         description: String(plan?.description || '').trim(),
-        type: String(plan?.type || plan?.category || 'General Fitness').trim() || 'General Fitness',
-        category: String(plan?.category || plan?.type || 'General Fitness').trim() || 'General Fitness',
+        type: String(plan?.type || '').trim() || 'General Fitness',
+        category: String(plan?.category ?? plan?.goalCategory ?? '').trim() || 'Uncategorized',
         workoutType: String(plan?.workoutType || '').trim(),
         source: String(plan?.source || plan?.planSource || '').trim(),
         pricing: String(plan?.pricing || '').trim(),
@@ -1589,7 +1621,7 @@ const categoryFilterOptions = computed(() => {
   const canonicalSlugs = canonical.map((entry) => normalizeMarketplaceText(entry));
   const discovered = Array.from(new Set(
     activeMarketplacePlans.value
-      .map((plan) => String(plan?.category || plan?.type || '').trim())
+      .map((plan) => String(plan?.category ?? plan?.goalCategory ?? '').trim())
       .filter(Boolean)
   ));
   const extra = discovered
@@ -1693,6 +1725,12 @@ const marketplaceFiltersHaveNoMatches = computed(() => {
     && (Boolean(normalizedMarketplaceSearchQuery.value) || hasMarketplaceActiveFilters.value);
 });
 const marketplacePlansLoading = computed(() => showManagedMarketplacePlans.value ? globalPlansLoading.value : loadingFeaturedPlans.value);
+const displayedPlanCount = computed(() => {
+  if (planSourceTab.value === 'marketplace') {
+    return marketplacePlansLoading.value ? 0 : filteredMarketplacePlans.value.length;
+  }
+  return loadingPlanner.value ? 0 : workoutSchedules.value.length;
+});
 const hasMultipleFeaturedWorkoutPlanSlides = computed(() => featuredWorkoutPlanSlides.value.length > 1);
 
 const clearMarketplaceSearch = () => {
@@ -1758,6 +1796,19 @@ const setSelectedTemplatePlan = (plan) => {
   selectedTemplatePlanName.value = String(plan?.name || '').trim();
 };
 
+const closeGlobalPlanAddedModal = () => {
+  showGlobalPlanAddedModal.value = false;
+};
+
+const goToMyPlansAfterAddingPlan = async () => {
+  closeGlobalPlanAddedModal();
+  planSourceTab.value = 'my';
+  builderTab.value = 'view';
+  viewEditMode.value = false;
+  saveMessage.value = '';
+  await router.replace({ query: { ...route.query, planId: undefined } });
+};
+
 const selectTemplatePlan = async (plan) => {
   const templatePlanId = String(plan?.planId || '').trim();
   if (!templatePlanId) {
@@ -1797,14 +1848,12 @@ const selectTemplatePlan = async (plan) => {
 
     selectedWorkoutId.value = newPlanId;
     currentPlanId.value = newPlanId;
-    isCreatingWorkout.value = true;
-    hasSavedWorkoutDetails.value = false;
-
-    hydratePlanner(planner, { markSaved: false });
-    builderTab.value = 'create';
-    saveMessage.value = 'Global workout plan loaded. Save to keep your personal copy.';
-
-    await router.replace({ query: { ...route.query, planId: newPlanId } });
+    isCreatingWorkout.value = false;
+    hasSavedWorkoutDetails.value = true;
+    planSourceTab.value = 'my';
+    builderTab.value = 'view';
+    viewEditMode.value = false;
+    showGlobalPlanAddedModal.value = true;
   } catch (error) {
     saveMessage.value = error.message || 'Failed to copy global workout plan.';
   } finally {
@@ -1837,7 +1886,7 @@ const openGlobalLibraryViewModal = async (plan) => {
     name: String(plan?.name || 'Untitled Workout').trim() || 'Untitled Workout',
     description: String(plan?.description || '').trim(),
     type: String(plan?.type || '').trim() || 'General Fitness',
-    category: String(plan?.category || plan?.type || '').trim(),
+    category: String(plan?.category ?? plan?.goalCategory ?? '').trim() || 'Uncategorized',
     difficulty: String(plan?.difficulty || '').trim(),
     estimatedDuration: Number(plan?.estimatedDuration || 0),
     exerciseCount: Number(plan?.exerciseCount || 0),
@@ -1948,7 +1997,7 @@ const openGlobalLibraryViewModal = async (plan) => {
       planId: String(planner?.planId || templatePlanId).trim(),
       name: String(metadata?.name || plan?.name || 'Untitled Workout').trim() || 'Untitled Workout',
       description: String(metadata?.description || plan?.description || '').trim(),
-      type: String(metadata?.category || plan?.type || 'General Fitness').trim() || 'General Fitness',
+      type: String(metadata?.type || plan?.type || plan?.workoutType || 'General Fitness').trim() || 'General Fitness',
       category: resolvedCategory,
       difficulty: rawDifficulty,
       estimatedDuration: Number(metadata?.estimatedDuration || plan?.estimatedDuration || 0),
@@ -2494,6 +2543,9 @@ const publicationStatusDisplayLabel = (statusValue) => {
 const savePlanModalSummary = computed(() => {
   const selectedStatus = normalizePlanPublicationStatus(selectedPublicationStatus.value);
   const currentStatus = normalizePlanPublicationStatus(planPublicationStatus.value);
+  const targetStatus = saveWorkoutPlanModalTargetStatus.value
+    ? normalizePlanPublicationStatus(saveWorkoutPlanModalTargetStatus.value)
+    : '';
   const planName = String(metadata.value?.name || '').trim() || 'Untitled Workout';
 
   return {
@@ -2501,6 +2553,7 @@ const savePlanModalSummary = computed(() => {
     currentStatusLabel: publicationStatusDisplayLabel(currentStatus),
     selectedStatusLabel: publicationStatusDisplayLabel(selectedStatus),
     selectedStatus,
+    targetStatusLabel: targetStatus ? publicationStatusDisplayLabel(targetStatus) : 'Choose an action',
   };
 });
 
@@ -3016,7 +3069,8 @@ const clearSelection = async ({ nextTab = 'create', preserveSaveMessage = false 
   hasSavedWorkoutDetails.value = false;
   builderTab.value = nextTab;
   resetPlannerDraft({ preserveSaveMessage });
-  await router.replace({ query: { ...route.query, planId: undefined } });
+  const { planId: _removedPlanId, ...remainingQuery } = route.query;
+  await router.replace({ query: remainingQuery });
 };
 
 const exitViewEditMode = async ({ confirmUnsaved = true } = {}) => {
@@ -3504,10 +3558,13 @@ const insertExercisesIntoGroup = ({ groupName, blocks, insertPosition = 'bottom'
   workoutExercises.value = nextExercises;
 };
 
-const addExerciseToWorkout = (incoming) => {
+const addExerciseToWorkout = (incoming, confirmAdded = null, rejectAddition = null) => {
   // Validate that a day/week is selected
   if (!selectedScheduleGroup.value) {
     plannerMessage.value = 'Select a workout day before adding exercises.';
+    if (typeof rejectAddition === 'function') {
+      rejectAddition();
+    }
     return;
   }
   
@@ -3515,6 +3572,9 @@ const addExerciseToWorkout = (incoming) => {
   if (!activeGroups.value.includes(selectedScheduleGroup.value)) {
     plannerMessage.value = `Selected workout ${scheduleModeLabelLower.value} was not found.`;
     selectedScheduleGroup.value = null;
+    if (typeof rejectAddition === 'function') {
+      rejectAddition();
+    }
     return;
   }
 
@@ -3524,6 +3584,9 @@ const addExerciseToWorkout = (incoming) => {
 
   if (!validExercises.length) {
     plannerMessage.value = 'No valid exercises were selected.';
+    if (typeof rejectAddition === 'function') {
+      rejectAddition();
+    }
     return;
   }
 
@@ -3543,6 +3606,9 @@ const addExerciseToWorkout = (incoming) => {
   saveMessage.value = '';
   plannerMessage.value = '';
   selectedExerciseInsertPosition.value = 'bottom';
+  if (typeof confirmAdded === 'function') {
+    confirmAdded();
+  }
 };
 
 const updateExerciseField = ({ id, field, value }) => {
@@ -3810,18 +3876,22 @@ const confirmDeleteDay = () => {
 };
 
 const persistWorkout = async (status = 'draft') => {
+  if (saving.value || publishing.value) {
+    return { ok: false };
+  }
+
   saveMessage.value = '';
   const previousStatus = normalizePlanPublicationStatus(planPublicationStatus.value);
   const normalizedTargetStatus = normalizePlanPublicationStatus(status);
 
   if (!metadata.value.name.trim()) {
     saveMessage.value = 'Please enter a workout name.';
-    return;
+    return { ok: false };
   }
 
   if (!userId.value) {
     saveMessage.value = 'Unable to resolve user session. Please login again.';
-    return;
+    return { ok: false };
   }
 
   const selectedPlanType = String(metadata.value?.planType || '').trim().toLowerCase();
@@ -3829,22 +3899,22 @@ const persistWorkout = async (status = 'draft') => {
 
   if (!isNewUnsavedGlobal && showGlobalFeaturedToggle.value && isGlobalPlanFeatured.value && !canToggleGlobalFeatured.value) {
     saveMessage.value = 'Featured can only be enabled when publication status is Published.';
-    return;
+    return { ok: false };
   }
 
   if (selectedPlanType === 'global' && !isAdminUser.value) {
     saveMessage.value = 'Only administrators can create Global workout plans.';
-    return;
+    return { ok: false };
   }
 
   if (selectedPlanType === 'featured' && !isAdminUser.value) {
     saveMessage.value = 'Only administrators can create Featured workout plans.';
-    return;
+    return { ok: false };
   }
 
   if (selectedPlanType === 'community_shared' && !isAdminUser.value) {
     saveMessage.value = 'Only administrators can create Community Shared workout plans.';
-    return;
+    return { ok: false };
   }
 
   const isPublishing = normalizedTargetStatus === 'active';
@@ -3860,7 +3930,7 @@ const persistWorkout = async (status = 'draft') => {
 
     if (missingRequirements.length) {
       saveMessage.value = `Publish failed. Missing required: ${missingRequirements.join(', ')}.`;
-      return;
+      return { ok: false };
     }
   }
 
@@ -3970,7 +4040,7 @@ const persistWorkout = async (status = 'draft') => {
       }
       markPlannerStateCommitted();
       await syncEditorContextAfterSuccessfulSave();
-      return;
+      return { ok: true, planId: targetPlanId, response: scheduleData };
     }
 
     const response = await fetch(`${API_BASE}/api/workout-planner`, {
@@ -4017,8 +4087,10 @@ const persistWorkout = async (status = 'draft') => {
     }
     markPlannerStateCommitted();
     await syncEditorContextAfterSuccessfulSave();
+    return { ok: true, planId: currentPlanId.value, response: data };
   } catch (error) {
     saveMessage.value = error.message || 'Failed to save workout planner.';
+    return { ok: false, error };
   } finally {
     saving.value = false;
     publishing.value = false;
@@ -4027,15 +4099,14 @@ const persistWorkout = async (status = 'draft') => {
 
 const saveWorkout = async () => {
   const shouldPersistAsPublished = isPublishedGlobalPlan.value;
-  await persistWorkout(shouldPersistAsPublished ? 'active' : 'draft');
+  return persistWorkout(shouldPersistAsPublished ? 'active' : 'draft');
 };
 
 const saveGlobalWorkoutWithSelectedStatus = async () => {
   const selectedStatus = normalizePlanPublicationStatus(selectedPublicationStatus.value);
 
   if (!hasPersistedCurrentPlan.value) {
-    await persistWorkout(selectedStatus);
-    return;
+    return persistWorkout(selectedStatus);
   }
 
   const currentStatus = normalizePlanPublicationStatus(planPublicationStatus.value);
@@ -4044,15 +4115,24 @@ const saveGlobalWorkoutWithSelectedStatus = async () => {
   if (!supportedTargets.includes(selectedStatus)) {
     const selectedOption = publicationStatusOptions.value.find((option) => option.value === selectedStatus);
     saveMessage.value = selectedOption?.reason || 'Selected publication status transition is not supported.';
-    return;
+    primaryEditSavePending.value = false;
+    return { ok: false };
   }
 
   if (currentStatus === selectedStatus) {
-    await persistWorkout(currentStatus);
-    return;
+    return persistWorkout(currentStatus);
   }
 
   if (currentStatus === 'draft' && selectedStatus === 'active') {
+    if (!isAdminGlobalPlanDraftFlow.value) {
+      const result = await persistWorkout('active');
+      const persistedStatus = normalizePlanPublicationStatus(result?.response?.planner?.status);
+      if (result?.ok && persistedStatus !== 'active') {
+        return { ...result, ok: false };
+      }
+      return result?.ok ? { ...result, publicationAction: 'published' } : result;
+    }
+
     openPublishPlanConfirmation();
     return;
   }
@@ -4064,10 +4144,10 @@ const saveGlobalWorkoutWithSelectedStatus = async () => {
       cancelButtonText: 'Cancel',
     });
     if (!confirmed) {
-      return;
+      primaryEditSavePending.value = false;
+      return { ok: false };
     }
-    await persistWorkout('draft');
-    return;
+    return persistWorkout('draft');
   }
 
   if (currentStatus === 'active' && selectedStatus === 'archived') {
@@ -4077,10 +4157,10 @@ const saveGlobalWorkoutWithSelectedStatus = async () => {
       cancelButtonText: 'Cancel',
     });
     if (!confirmed) {
-      return;
+      primaryEditSavePending.value = false;
+      return { ok: false };
     }
-    await persistWorkout('archived');
-    return;
+    return persistWorkout('archived');
   }
 
   if (currentStatus === 'archived' && selectedStatus === 'draft') {
@@ -4090,13 +4170,15 @@ const saveGlobalWorkoutWithSelectedStatus = async () => {
       cancelButtonText: 'Cancel',
     });
     if (!confirmed) {
-      return;
+      primaryEditSavePending.value = false;
+      return { ok: false };
     }
-    await persistWorkout('draft');
-    return;
+    return persistWorkout('draft');
   }
 
   saveMessage.value = 'Selected publication status transition is not supported.';
+  primaryEditSavePending.value = false;
+  return { ok: false };
 };
 
 const publishPlanSummary = computed(() => {
@@ -4135,6 +4217,7 @@ const openSaveWorkoutPlanModal = () => {
   if (saving.value || publishing.value) {
     return;
   }
+  saveWorkoutPlanModalTargetStatus.value = '';
   showSaveWorkoutPlanModal.value = true;
 };
 
@@ -4143,6 +4226,20 @@ const closeSaveWorkoutPlanModal = () => {
     return;
   }
   showSaveWorkoutPlanModal.value = false;
+  saveWorkoutPlanModalTargetStatus.value = '';
+  primaryEditSavePending.value = false;
+};
+
+const showSuccessfulEditSave = (result = {}) => {
+  editSaveSuccessWasPublish.value = result?.publicationAction === 'published';
+  showEditSaveSuccessModal.value = true;
+  primaryEditSavePending.value = false;
+};
+
+const closeEditSaveSuccessModal = () => {
+  showEditSaveSuccessModal.value = false;
+  editSaveSuccessWasPublish.value = false;
+  primaryEditSavePending.value = false;
 };
 
 const saveGlobalPlanAsDraftFromModal = async () => {
@@ -4174,8 +4271,17 @@ const saveGlobalPlanAsDraftFromModal = async () => {
     }
   }
 
-  closeSaveWorkoutPlanModal();
-  await persistWorkout('draft');
+  saveWorkoutPlanModalTargetStatus.value = 'draft';
+  const result = await persistWorkout('draft');
+  if (!result?.ok) {
+    saveWorkoutPlanModalTargetStatus.value = '';
+    return;
+  }
+  showSaveWorkoutPlanModal.value = false;
+  saveWorkoutPlanModalTargetStatus.value = '';
+  if (primaryEditSavePending.value) {
+    showSuccessfulEditSave(result);
+  }
 };
 
 const publishGlobalPlanFromModal = async () => {
@@ -4189,12 +4295,29 @@ const publishGlobalPlanFromModal = async () => {
     return;
   }
 
-  closeSaveWorkoutPlanModal();
-  await persistWorkout('active');
+  saveWorkoutPlanModalTargetStatus.value = 'active';
+  const result = await persistWorkout('active');
+  if (!result?.ok) {
+    saveWorkoutPlanModalTargetStatus.value = '';
+    return;
+  }
+  showSaveWorkoutPlanModal.value = false;
+  saveWorkoutPlanModalTargetStatus.value = '';
+  if (primaryEditSavePending.value) {
+    const persistedStatus = normalizePlanPublicationStatus(result?.response?.planner?.status);
+    showSuccessfulEditSave(
+      currentStatus !== 'active' && persistedStatus === 'active'
+        ? { ...result, publicationAction: 'published' }
+        : result
+    );
+  }
 };
 
-const closePublishPlanConfirmation = () => {
+const closePublishPlanConfirmation = ({ preservePrimaryEditSave = false } = {}) => {
   showPublishPlanModal.value = false;
+  if (!preservePrimaryEditSave) {
+    primaryEditSavePending.value = false;
+  }
 };
 
 const confirmPublishWorkoutPlan = async () => {
@@ -4202,8 +4325,17 @@ const confirmPublishWorkoutPlan = async () => {
     return;
   }
 
-  closePublishPlanConfirmation();
-  await persistWorkout('active');
+  const currentStatus = normalizePlanPublicationStatus(planPublicationStatus.value);
+  closePublishPlanConfirmation({ preservePrimaryEditSave: true });
+  const result = await persistWorkout('active');
+  if (result?.ok && primaryEditSavePending.value) {
+    const persistedStatus = normalizePlanPublicationStatus(result?.response?.planner?.status);
+    showSuccessfulEditSave(
+      currentStatus !== 'active' && persistedStatus === 'active'
+        ? { ...result, publicationAction: 'published' }
+        : result
+    );
+  }
 };
 
 const publishWorkoutPlan = async () => {
@@ -4289,22 +4421,55 @@ const restoreGlobalPlanToDraft = async () => {
 };
 
 const handlePrimarySave = async () => {
+  if (saving.value || publishing.value) {
+    return;
+  }
+
+  primaryEditSavePending.value = isViewEditMode.value;
+
   if (canManagePublicationStatus.value) {
     if (isAdminGlobalPlanDraftFlow.value) {
       const selectedStatus = normalizePlanPublicationStatus(selectedPublicationStatus.value);
       if (selectedStatus === 'archived') {
-        await saveGlobalWorkoutWithSelectedStatus();
+        const result = await saveGlobalWorkoutWithSelectedStatus();
+        if (result?.ok && primaryEditSavePending.value) {
+          showSuccessfulEditSave(result);
+        }
         return;
       }
       openSaveWorkoutPlanModal();
       return;
     }
 
-    await saveGlobalWorkoutWithSelectedStatus();
+    const result = await saveGlobalWorkoutWithSelectedStatus();
+    if (result?.ok && primaryEditSavePending.value) {
+      showSuccessfulEditSave(result);
+    }
     return;
   }
 
-  await saveWorkout();
+  const result = await saveWorkout();
+  if (result?.ok && primaryEditSavePending.value) {
+    showSuccessfulEditSave(result);
+  }
+};
+
+const returnToPlansAfterEditSave = async () => {
+  const source = editSaveReturnSource.value;
+  showEditSaveSuccessModal.value = false;
+  editSaveSuccessWasPublish.value = false;
+  primaryEditSavePending.value = false;
+  builderTab.value = 'view';
+  viewEditMode.value = false;
+  planSourceTab.value = source === 'marketplace' ? 'marketplace' : 'my';
+
+  await clearSelection({ nextTab: 'view', preserveSaveMessage: true });
+
+  if (source === 'marketplace') {
+    await loadGlobalPlans();
+  } else {
+    await loadWorkoutPlanner('', { targetTab: 'view' });
+  }
 };
 
 const quickSaveCurrentPlan = async (targetStatus) => {
@@ -4322,8 +4487,41 @@ const quickSaveCurrentPlan = async (targetStatus) => {
   await persistWorkout(normalizedStatus);
 };
 
+const resolveSavedPlanId = (payload = {}) => {
+  const candidates = [
+    payload?.planner?.planId,
+    payload?.planner?.PlanID,
+    payload?.planId,
+    payload?.PlanID,
+    payload?.scheduleId,
+    payload?.workoutScheduleId,
+    payload?.id,
+  ];
+
+  return String(candidates.find((candidate) => String(candidate ?? '').trim()) ?? '').trim();
+};
+
 const saveCurrentPlanAsDraft = async () => {
-  await quickSaveCurrentPlan('draft');
+  const isFreshPersonalPlan = !String(currentPlanId.value || selectedWorkoutId.value || '').trim()
+    && String(metadata.value?.planType || '').trim().toLowerCase() === PLAN_TYPE_PERSONAL;
+
+  if (!isFreshPersonalPlan) {
+    await quickSaveCurrentPlan('draft');
+    return;
+  }
+
+  const result = await persistWorkout('draft');
+  if (!result?.ok) {
+    return;
+  }
+
+  const savedPlanId = resolveSavedPlanId(result.response);
+  if (!savedPlanId) {
+    saveMessage.value = 'Workout plan was saved but no plan ID was returned.';
+    return;
+  }
+
+  await editWorkoutSchedule({ planId: savedPlanId });
 };
 
 const publishCurrentPlan = async () => {
@@ -4348,6 +4546,10 @@ const returnToPlansFromCreate = async () => {
 const handleGlobalSaveModalEscape = (event) => {
   if (event.key !== 'Escape') {
     return;
+  }
+
+  if (showGlobalPlanAddedModal.value) {
+    closeGlobalPlanAddedModal();
   }
 
   if (showSaveWorkoutPlanModal.value) {
@@ -4418,8 +4620,8 @@ const loadFeaturedWorkoutPlans = async () => {
             planId: String(plan?.planId || '').trim(),
             name: String(plan?.name || '').trim(),
             description: String(plan?.description || '').trim(),
-            type: String(plan?.type || plan?.category || '').trim(),
-            category: String(plan?.category || plan?.type || '').trim(),
+            type: String(plan?.type || '').trim(),
+            category: String(plan?.category ?? plan?.goalCategory ?? '').trim() || 'Uncategorized',
             workoutType: String(plan?.workoutType || '').trim(),
             source: String(plan?.source || plan?.planSource || '').trim(),
             pricing: String(plan?.pricing || '').trim(),
@@ -4549,6 +4751,7 @@ const selectWorkoutSchedule = async (schedule, { targetTab = 'view', enableViewE
 };
 
 const editWorkoutSchedule = async (schedule) => {
+  editSaveReturnSource.value = 'my';
   planSourceTab.value = 'my';
   await selectWorkoutSchedule(schedule, { targetTab: 'view', enableViewEditMode: true });
   isWorkoutDetailsOpen.value = true;
@@ -4565,6 +4768,7 @@ const deleteWorkoutSchedule = async (schedule) => {
   const confirmed = await showConfirmDialog(`Delete ${planName}? This will remove the saved workout schedule.`, {
     title: 'Delete Workout Schedule?',
     confirmButtonText: 'Delete',
+    confirmButtonColor: '#8F1F2A',
     cancelButtonText: 'Cancel',
   });
   if (!confirmed) {
@@ -4829,17 +5033,6 @@ watch(
               <strong>{{ planDetailsHeaderText }}</strong>
               <small>{{ planDetailsSubtitleText }}</small>
             </span>
-          </div>
-
-          <div v-if="builderTab === 'create' && !isViewEditMode" class="plan-info-action-row plan-info-action-row--create" role="group" aria-label="Create mode navigation">
-            <button
-              type="button"
-              class="plan-info-action-row__back"
-              @click="returnToPlansFromCreate"
-            >
-              <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-              <span>Back to Plans</span>
-            </button>
           </div>
 
           <div class="collapsible-panel__body">
@@ -5225,7 +5418,7 @@ watch(
                           <p>No exercises yet. Add an exercise to begin.</p>
                         </div>
 
-                        <div class="day-panel-actions day-panel-actions--bottom">
+                        <div v-if="day.exercises.length > 0" class="day-panel-actions day-panel-actions--bottom">
                           <div class="day-footer-summary" @click.stop>
                             <span class="day-footer-summary__name" :title="day.name">{{ formatPlannerDayNameForDisplay(day.name) }}</span>
                             <span class="exercise-count">{{ day.exerciseCount }} exercise{{ day.exerciseCount === 1 ? '' : 's' }}</span>
@@ -5315,7 +5508,7 @@ watch(
                   </div>
                 </transition-group>
 
-                <div class="planner-bottom-group-actions">
+                <div v-if="activeGroups.length > 0" class="planner-bottom-group-actions">
                   <div class="planner-bottom-group-actions__editor">
                     <label class="planner-group-editor__label" for="planner-add-day-input-bottom">{{ scheduleGroupEditorLabel }}</label>
                     <input
@@ -5428,6 +5621,16 @@ watch(
 
             <div class="planner-primary-actions__controls" :class="{ 'planner-primary-actions__controls--create': !isViewEditMode }">
               <button
+                v-if="builderTab === 'create' && !isViewEditMode"
+                type="button"
+                class="plan-info-action-row__back planner-primary-actions__back"
+                @click="returnToPlansFromCreate"
+              >
+                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                <span>Back to Plans</span>
+              </button>
+
+              <button
                 v-if="isViewEditMode"
                 type="button"
                 class="planner-primary-actions__cancel"
@@ -5454,10 +5657,9 @@ watch(
       <section v-show="builderTab === 'view' && !isViewEditMode" class="builder-section collapsible-panel">
         <div class="existing-plans-panel" aria-live="polite">
           <div class="existing-plans-panel__head">
-            <p class="existing-plans-panel__source-line">
-              <strong>Filter Plan Sources</strong>
-              <span>— Choose a source to view available plans.</span>
-            </p>
+            <h2 class="existing-plans-panel__source-line">
+              Choose a source to view available plans: {{ displayedPlanCount }}
+            </h2>
           </div>
 
           <nav class="wa-h-tabs select-source-tabs" role="tablist" aria-label="Show plans sources">
@@ -5497,18 +5699,46 @@ watch(
               <p>Create a new plan using Add New Plan, then save it to see it here.</p>
             </div>
 
-            <div v-else class="schedule-hub-list">
-              <WorkoutScheduleListItem
-                v-for="schedule in workoutSchedules"
-                :key="schedule.planId"
-                :schedule="schedule"
-                :selected="selectedWorkoutId === schedule.planId"
-                :deleting="deletingWorkoutId === schedule.planId"
-                @open="selectWorkoutSchedule"
-                @edit="editWorkoutSchedule"
-                @delete="deleteWorkoutSchedule"
-              />
+            <div v-else class="schedule-hub-list schedule-hub-table-wrap">
+              <div class="table-responsive global-library-table-scroll my-plans-desktop">
+                <table class="table align-middle mb-0 global-library-table my-plans-table">
+                  <thead>
+                    <tr>
+                      <th>Plan Name</th>
+                      <th>Goal Category</th>
+                      <th>Plan Type</th>
+                      <th class="text-end global-library-table__actions-col">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <WorkoutScheduleListItem
+                      v-for="schedule in workoutSchedules"
+                      :key="schedule.planId"
+                      :schedule="schedule"
+                      :selected="selectedWorkoutId === schedule.planId"
+                      :deleting="deletingWorkoutId === schedule.planId"
+                      @open="selectWorkoutSchedule"
+                      @edit="editWorkoutSchedule"
+                      @delete="deleteWorkoutSchedule"
+                    />
+                  </tbody>
+                </table>
+              </div>
+              <div class="my-plans-mobile" aria-label="My workout plans">
+                <WorkoutScheduleListItem
+                  v-for="schedule in workoutSchedules"
+                  :key="`mobile-${schedule.planId}`"
+                  :schedule="schedule"
+                  :selected="selectedWorkoutId === schedule.planId"
+                  :deleting="deletingWorkoutId === schedule.planId"
+                  presentation="card"
+                  @open="selectWorkoutSchedule"
+                  @edit="editWorkoutSchedule"
+                  @delete="deleteWorkoutSchedule"
+                />
+              </div>
             </div>
+            <p class="available-plans-count">Available plans: {{ displayedPlanCount }}</p>
           </div>
 
           <div v-show="planSourceTab === 'marketplace'" class="plan-source-panel" aria-live="polite">
@@ -5878,9 +6108,8 @@ watch(
                   <thead>
                     <tr>
                       <th>Plan Name</th>
-                      <th>Category</th>
+                      <th>Goal Category</th>
                       <th>Plan Type</th>
-                      <th>Unique Exercises</th>
                       <th class="text-end global-library-table__actions-col">Actions</th>
                     </tr>
                   </thead>
@@ -5897,14 +6126,13 @@ watch(
                             @error="onPlanCoverImageError"
                           />
                           <div class="marketplace-plan-name-content">
-                            <span class="fw-semibold">{{ plan.name || 'Untitled Workout' }}</span>
+                            <span class="fw-semibold">{{ formatMarketplacePlanName(plan) }}</span>
                             <span class="marketplace-plan-inline-status">[Status - {{ formatMarketplaceStatusLabel(plan) }}]</span>
                           </div>
                         </div>
                       </td>
-                      <td>{{ plan.type || 'General Fitness' }}</td>
+                      <td>{{ resolveGoalCategoryDisplayValue(plan) }}</td>
                       <td>{{ formatMarketplacePlanTypeLabel(plan) }}</td>
-                      <td>{{ Number(plan.exerciseCount || 0) }}</td>
                       <td class="text-end global-library-table__actions-cell">
                         <div class="global-plans-table__actions global-plans-table__actions--icon-only">
                           <button
@@ -5941,14 +6169,14 @@ watch(
                           <button
                             v-else
                             type="button"
-                            class="btn btn-sm global-plans-table__btn global-plans-table__btn--edit"
-                            :title="cloningFeaturedPlanId === plan.planId ? 'Using Global Workout Plan' : 'Use Global Workout Plan (Create Personal Copy)'"
-                            :aria-label="cloningFeaturedPlanId === plan.planId ? 'Using Global Workout Plan' : 'Use Global Workout Plan (Create Personal Copy)'"
+                            class="btn btn-sm global-plans-table__btn global-plans-table__btn--add"
+                            :title="cloningFeaturedPlanId === plan.planId ? 'Adding to My Plans...' : 'Add to My Plans'"
+                            :aria-label="cloningFeaturedPlanId === plan.planId ? 'Adding to My Plans...' : 'Add to My Plans'"
                             :disabled="cloningFeaturedPlanId === plan.planId"
                             @click="selectTemplatePlan(plan)"
                           >
                             <i v-if="cloningFeaturedPlanId === plan.planId" class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-                            <i v-else class="fa-solid fa-copy" aria-hidden="true"></i>
+                            <i v-else class="fa-solid fa-plus" aria-hidden="true"></i>
                           </button>
                         </div>
                       </td>
@@ -5963,97 +6191,113 @@ watch(
                 v-for="plan in filteredMarketplacePlans"
                 :key="`library-mobile-${plan.planId || plan.name}`"
                 class="global-library-mobile-card"
+                :data-plan-id="plan.planId"
               >
-                <img
-                  :src="plan.coverImageUrl || buildPlanCoverImageUrl(plan.planId)"
-                  class="global-library-mobile-card__cover"
-                  :alt="`${plan.name || 'Workout plan'} cover`"
-                  loading="lazy"
-                  decoding="async"
-                  @error="onPlanCoverImageError"
-                />
-                <h5 class="global-library-mobile-card__name">{{ plan.name || 'Untitled Workout' }}</h5>
+                <header class="global-library-mobile-card__header">
+                  <img
+                    :src="plan.coverImageUrl || buildPlanCoverImageUrl(plan.planId)"
+                    class="global-library-mobile-card__cover"
+                    :alt="`${plan.name || 'Workout plan'} cover`"
+                    loading="lazy"
+                    decoding="async"
+                    @error="onPlanCoverImageError"
+                  />
 
-                <div v-if="getMarketplaceStatusBadges(plan).length" class="marketplace-status-badges marketplace-status-badges--mobile">
-                  <span
-                    v-for="badge in getMarketplaceStatusBadges(plan)"
-                    :key="`mobile-status-${plan.planId || plan.name}-${badge.key}`"
-                    :class="['marketplace-status-badge', `marketplace-status-badge--${badge.tone}`]"
-                  >
-                    {{ badge.label }}
-                  </span>
-                </div>
+                  <div class="global-library-mobile-card__identity">
+                    <h5 class="global-library-mobile-card__name">{{ formatMarketplacePlanName(plan) }}</h5>
+                    <div v-if="getMarketplaceStatusBadges(plan).length" class="marketplace-status-badges marketplace-status-badges--mobile">
+                      <span
+                        v-for="badge in getMarketplaceStatusBadges(plan)"
+                        :key="`mobile-status-${plan.planId || plan.name}-${badge.key}`"
+                        :class="['marketplace-status-badge', `marketplace-status-badge--${badge.tone}`]"
+                      >
+                        {{ badge.label }}
+                      </span>
+                    </div>
+                  </div>
 
-                <div class="global-library-mobile-card__meta">
-                  <span>
-                    <strong>Source:</strong>
-                    {{ formatMarketplaceSourceLabel(plan) }}
-                  </span>
-                  <span v-if="plan.type || plan.category">
-                    <strong>Category:</strong>
-                    {{ plan.type || plan.category }}
-                  </span>
-                  <span>
-                    <strong>Plan Type:</strong>
-                    {{ formatMarketplacePlanTypeLabel(plan) }}
-                  </span>
-                  <span>
-                    <strong>Unique Exercises:</strong>
-                    {{ Number(plan.exerciseCount || 0) }}
-                  </span>
-                </div>
-
-                <div :class="['global-library-mobile-card__actions', { 'global-library-mobile-card__actions--manage': showManagedMarketplacePlans }]">
-                  <button
-                    type="button"
-                    class="btn btn-sm global-plans-table__btn global-plans-table__btn--open"
-                    title="View Global Workout Plan (Read-Only)"
-                    aria-label="View Global Workout Plan (Read-Only)"
-                    @click="openGlobalLibraryViewModal(plan)"
-                  >
-                    <i class="fa-solid fa-eye" aria-hidden="true"></i>
-                    <span>View</span>
-                  </button>
-
-                  <template v-if="showManagedMarketplacePlans">
+                  <div :class="['global-library-mobile-card__actions', { 'global-library-mobile-card__actions--manage': showManagedMarketplacePlans }]">
                     <button
                       type="button"
-                      class="btn btn-sm global-plans-table__btn global-plans-table__btn--edit"
-                      title="Edit Global Workout Plan"
-                      aria-label="Edit Global Workout Plan"
-                      @click="viewGlobalPlanSummary(plan)"
+                      class="btn btn-sm global-plans-table__btn global-plans-table__btn--open"
+                      title="View Global Workout Plan (Read-Only)"
+                      aria-label="View Global Workout Plan (Read-Only)"
+                      :data-plan-id="plan.planId"
+                      data-plan-action="view"
+                      @click="openGlobalLibraryViewModal(plan)"
                     >
-                      <i class="fa-solid fa-pen" aria-hidden="true"></i>
-                      <span>Edit</span>
+                      <i class="fa-solid fa-eye" aria-hidden="true"></i>
                     </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm global-plans-table__btn global-plans-table__btn--delete"
-                      :disabled="globalPlansDeletingId === plan.planId"
-                      @click="requestDeleteGlobalPlan(plan)"
-                    >
-                      <i v-if="globalPlansDeletingId === plan.planId" class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-                      <i v-else class="fa-solid fa-trash" aria-hidden="true"></i>
-                      <span>{{ globalPlansDeletingId === plan.planId ? 'Deleting...' : 'Delete' }}</span>
-                    </button>
-                  </template>
 
-                  <button
-                    v-else
-                    type="button"
-                    class="btn btn-sm global-plans-table__btn global-plans-table__btn--edit"
-                    :title="cloningFeaturedPlanId === plan.planId ? 'Using Global Workout Plan' : 'Use Global Workout Plan (Create Personal Copy)'"
-                    :aria-label="cloningFeaturedPlanId === plan.planId ? 'Using Global Workout Plan' : 'Use Global Workout Plan (Create Personal Copy)'"
-                    :disabled="cloningFeaturedPlanId === plan.planId"
-                    @click="selectTemplatePlan(plan)"
-                  >
-                    <i v-if="cloningFeaturedPlanId === plan.planId" class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-                    <i v-else class="fa-solid fa-copy" aria-hidden="true"></i>
-                    <span>{{ cloningFeaturedPlanId === plan.planId ? 'Using...' : 'Use Plan' }}</span>
-                  </button>
-                </div>
+                    <template v-if="showManagedMarketplacePlans">
+                      <button
+                        type="button"
+                        class="btn btn-sm global-plans-table__btn global-plans-table__btn--edit"
+                        title="Edit Global Workout Plan"
+                        aria-label="Edit Global Workout Plan"
+                        :data-plan-id="plan.planId"
+                        data-plan-action="edit"
+                        @click="viewGlobalPlanSummary(plan)"
+                      >
+                        <i class="fa-solid fa-pen" aria-hidden="true"></i>
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-sm global-plans-table__btn global-plans-table__btn--delete"
+                        :title="globalPlansDeletingId === plan.planId ? 'Deleting Global Workout Plan' : 'Delete Global Workout Plan'"
+                        :aria-label="globalPlansDeletingId === plan.planId ? 'Deleting Global Workout Plan' : 'Delete Global Workout Plan'"
+                        :data-plan-id="plan.planId"
+                        data-plan-action="delete"
+                        :disabled="globalPlansDeletingId === plan.planId"
+                        @click="requestDeleteGlobalPlan(plan)"
+                      >
+                        <i v-if="globalPlansDeletingId === plan.planId" class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                        <i v-else class="fa-solid fa-trash" aria-hidden="true"></i>
+                      </button>
+                    </template>
+
+                    <button
+                      v-else
+                      type="button"
+                      class="btn btn-sm global-plans-table__btn global-plans-table__btn--add"
+                      :title="cloningFeaturedPlanId === plan.planId ? 'Adding to My Plans...' : 'Add to My Plans'"
+                      :aria-label="cloningFeaturedPlanId === plan.planId ? 'Adding to My Plans...' : 'Add to My Plans'"
+                      :data-plan-id="plan.planId"
+                      data-plan-action="add"
+                      :disabled="cloningFeaturedPlanId === plan.planId"
+                      @click="selectTemplatePlan(plan)"
+                    >
+                      <i v-if="cloningFeaturedPlanId === plan.planId" class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                      <i v-else class="fa-solid fa-plus" aria-hidden="true"></i>
+                    </button>
+                  </div>
+                </header>
+
+                <dl class="global-library-mobile-card__meta">
+                  <div>
+                    <dt>Goal Category</dt>
+                    <dd>{{ resolveGoalCategoryDisplayValue(plan) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Plan Type</dt>
+                    <dd>{{ formatMarketplacePlanTypeLabel(plan) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Duration</dt>
+                    <dd>{{ formatMarketplaceEstimatedDuration(plan) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Plan ID</dt>
+                    <dd>{{ formatMarketplacePlanId(plan) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Source</dt>
+                    <dd>{{ formatMarketplaceSourceLabel(plan) }}</dd>
+                  </div>
+                </dl>
               </article>
             </div>
+            <p class="available-plans-count">Available plans: {{ displayedPlanCount }}</p>
             </template>
           </div>
 
@@ -6163,7 +6407,7 @@ watch(
                   <thead>
                     <tr>
                       <th><i class="fa-solid fa-clipboard-list global-plans-table__th-icon" aria-hidden="true"></i>Plan Name</th>
-                      <th>Category</th>
+                      <th>Goal Category</th>
                       <th>Goal Type</th>
                       <th>Days</th>
                       <th>Exercises</th>
@@ -6178,7 +6422,7 @@ watch(
                     </tr>
                     <tr v-for="plan in globalPlans" :key="plan.planId">
                       <td class="fw-semibold">{{ plan.name }}</td>
-                      <td>{{ plan.category }}</td>
+                      <td>{{ plan.category || 'Uncategorized' }}</td>
                       <td>{{ formatGlobalGoalTypeLabel(plan.goalType) }}</td>
                       <td>{{ plan.dayCount }}</td>
                       <td>{{ plan.exerciseCount }}</td>
@@ -6271,6 +6515,8 @@ watch(
       :is-open="pickerOpen"
       :exercises="allExercises"
       :user-id="userId"
+      wait-for-add-confirmation
+      selection-only-workflow
       @close="closePicker"
       @add="addExerciseToWorkout"
     />
@@ -6443,7 +6689,8 @@ watch(
           <div class="save-workout-modal__summary" aria-live="polite">
             <div class="save-workout-modal__row"><span>Workout Plan Name</span><strong>{{ savePlanModalSummary.planName }}</strong></div>
             <div class="save-workout-modal__row"><span>Current Publication Status</span><strong>{{ savePlanModalSummary.currentStatusLabel }}</strong></div>
-            <div class="save-workout-modal__row"><span>Selected Publication Status</span><strong>{{ savePlanModalSummary.selectedStatusLabel }}</strong></div>
+            <div class="save-workout-modal__row"><span>Dropdown Publication Status</span><strong>{{ savePlanModalSummary.selectedStatusLabel }}</strong></div>
+            <div class="save-workout-modal__row"><span>Intended Publication Status</span><strong>{{ savePlanModalSummary.targetStatusLabel }}</strong></div>
           </div>
 
           <p v-if="savePlanModalSummary.selectedStatus === 'archived'" class="save-workout-modal__note">
@@ -6467,6 +6714,71 @@ watch(
       </div>
     </transition>
 
+    <!-- Edit Save Success Modal -->
+    <transition name="modal-fade">
+      <div v-if="showEditSaveSuccessModal" class="save-workout-modal-backdrop" @click.self="closeEditSaveSuccessModal">
+        <div class="save-workout-modal save-workout-modal--confirm" role="dialog" aria-modal="true" aria-labelledby="edit-save-success-modal-title">
+          <div class="save-workout-modal__header">
+            <div class="save-workout-modal__header-top">
+              <h3 id="edit-save-success-modal-title">
+                {{ editSaveSuccessWasPublish ? 'Workout Plan Published!' : 'Workout Plan Saved!' }}
+              </h3>
+              <button
+                type="button"
+                class="save-workout-modal__close"
+                aria-label="Close workout plan success modal"
+                @click="closeEditSaveSuccessModal"
+              >
+                ×
+              </button>
+            </div>
+            <p>
+              {{ editSaveSuccessWasPublish
+                ? 'Your workout plan has been published successfully.'
+                : 'Your workout plan changes have been saved successfully.' }}
+            </p>
+          </div>
+
+          <div class="save-workout-modal__actions save-workout-modal__actions--confirm save-workout-modal__actions--success">
+            <button type="button" class="modal-btn modal-btn--cancel" @click="returnToPlansAfterEditSave">
+              Back to Plans
+            </button>
+            <button type="button" class="modal-btn modal-btn--publish-blue" @click="closeEditSaveSuccessModal">
+              Continue Editing
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Workout Plan Added Confirmation Modal -->
+    <transition name="modal-fade">
+      <div v-if="showGlobalPlanAddedModal" class="save-workout-modal-backdrop" @click.self="closeGlobalPlanAddedModal">
+        <div class="save-workout-modal save-workout-modal--confirm" role="dialog" aria-modal="true" aria-labelledby="global-plan-added-modal-title">
+          <div class="save-workout-modal__header">
+            <div class="save-workout-modal__header-top">
+              <h3 id="global-plan-added-modal-title">Workout Plan Added!</h3>
+              <button
+                type="button"
+                class="save-workout-modal__close"
+                aria-label="Close workout plan added modal"
+                @click="closeGlobalPlanAddedModal"
+              >
+                ×
+              </button>
+            </div>
+            <p>This workout plan has been added to My Plans.</p>
+          </div>
+
+          <div class="save-workout-modal__actions save-workout-modal__actions--confirm">
+            <button type="button" class="modal-btn modal-btn--publish-blue" @click="goToMyPlansAfterAddingPlan">
+              Go to My Plans
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
     <!-- Publish Plan Confirmation Modal -->
     <transition name="modal-fade">
       <div v-if="showPublishPlanModal" class="publish-confirmation-backdrop" @click.self="closePublishPlanConfirmation">
@@ -6483,7 +6795,7 @@ watch(
             <div class="publish-confirmation-modal__row"><span>Plan Name</span><strong>{{ publishPlanSummary.planName }}</strong></div>
             <div class="publish-confirmation-modal__row"><span>Plan Type</span><strong>{{ publishPlanSummary.planType }}</strong></div>
             <div class="publish-confirmation-modal__row"><span>Workout Type</span><strong>{{ publishPlanSummary.workoutType }}</strong></div>
-            <div class="publish-confirmation-modal__row"><span>Category</span><strong>{{ publishPlanSummary.category }}</strong></div>
+            <div class="publish-confirmation-modal__row"><span>Goal Category</span><strong>{{ publishPlanSummary.category }}</strong></div>
             <div class="publish-confirmation-modal__row"><span>Plan Duration (Weeks)</span><strong>{{ publishPlanSummary.planDurationWeeks }}</strong></div>
             <div class="publish-confirmation-modal__row"><span>Estimated Session Time</span><strong>{{ publishPlanSummary.estimatedSessionTime }}</strong></div>
             <div class="publish-confirmation-modal__row"><span>Number of Workout Days</span><strong>{{ publishPlanSummary.workoutDays }}</strong></div>
@@ -6949,8 +7261,116 @@ watch(
 }
 
 .schedule-hub-list {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.schedule-hub-table-wrap {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  background: #0f1b32;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 5px;
+  padding: 10px;
+}
+
+.my-plans-table {
+  min-width: 700px;
+}
+
+.my-plans-table thead th {
+  color: #ffffff;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.32);
+  font-size: 0.79rem;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 8px 10px;
+}
+
+.my-plans-table tbody td {
+  color: #e7eefc;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  padding: 8px 10px;
+  vertical-align: middle;
+}
+
+.my-plans-table .marketplace-plan-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
+
+.my-plans-table .marketplace-plan-name-content {
   display: grid;
-  gap: 12px;
+  gap: 2px;
+  min-width: 0;
+}
+
+.my-plans-table .marketplace-plan-inline-status {
+  color: #a9bddf;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.my-plans-table .marketplace-plan-thumb {
+  width: 48px;
+  height: 48px;
+  max-width: 48px;
+  max-height: 48px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.36);
+  object-fit: cover;
+  background: #1f2937;
+  display: block;
+  flex-shrink: 0;
+}
+
+.my-plans-table .global-plans-table__actions {
+  display: inline-flex;
+  gap: 5px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.my-plans-mobile {
+  display: none;
+}
+
+@media (max-width: 800px) {
+  .schedule-hub-table-wrap {
+    padding: 8px;
+  }
+
+  .my-plans-desktop {
+    display: none;
+  }
+
+  .my-plans-mobile {
+    display: grid;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.my-plans-table .global-plans-table__actions--icon-only .global-plans-table__btn {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: 4px !important;
+  justify-content: center;
+  align-items: center;
+  gap: 0;
 }
 
 .select-plan-accordion {
@@ -7036,29 +7456,18 @@ watch(
 
 .existing-plans-panel__source-line {
   margin: 0;
-  color: var(--wb-text-secondary);
-  font-size: 0.85rem;
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  flex-wrap: nowrap;
-}
-
-.existing-plans-panel__source-line strong {
   color: var(--wb-text);
   font-size: 1.02rem;
   font-weight: 800;
   line-height: 1.2;
 }
 
-.existing-plans-panel__source-line span {
+.available-plans-count {
+  margin: 0;
+  color: var(--wb-text-secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
   line-height: 1.35;
-}
-
-@media (max-width: 768px) {
-  .existing-plans-panel__source-line {
-    flex-wrap: wrap;
-  }
 }
 
 @media (max-width: 768px) {
@@ -7692,6 +8101,11 @@ watch(
 
 .planner-primary-actions__controls--create {
   justify-content: flex-end;
+}
+
+.planner-primary-actions__back {
+  min-height: 36px;
+  padding: 0 12px;
 }
 
 .planner-primary-actions__cancel {
@@ -8786,6 +9200,10 @@ watch(
   justify-content: space-between;
   align-items: center;
   flex-wrap: nowrap;
+}
+
+.save-workout-modal--confirm .save-workout-modal__actions--success {
+  justify-content: flex-end;
 }
 
 .save-workout-modal__actions-right {
@@ -10178,6 +10596,38 @@ watch(
   border-color: #b91c1c;
 }
 
+.global-plans-table__btn--add {
+  background: #16a34a;
+  border-color: #15803d;
+}
+
+.global-plans-table__btn--add:hover:not(:disabled) {
+  background: #15803d;
+  border-color: #166534;
+}
+
+.global-library-table .global-plans-table__actions--icon-only .global-plans-table__btn--add {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: 999px !important;
+  justify-content: center;
+  align-items: center;
+  gap: 0;
+}
+
+.global-library-table .global-plans-table__actions--icon-only .global-plans-table__btn--add i {
+  font-size: 0.8rem;
+}
+
+.global-library-mobile-card__actions .global-plans-table__btn--add {
+  border-radius: 999px;
+  min-width: 34px;
+  justify-content: center;
+}
+
 .global-library-table-wrap {
   width: 100%;
   min-width: 0;
@@ -10218,6 +10668,28 @@ watch(
   font-size: 0.78rem;
   white-space: nowrap;
   padding: 8px 10px;
+}
+
+@media (min-width: 801px) {
+  .global-library-table-wrap .global-library-table thead th {
+    font-size: 10.64px;
+    line-height: 18.96px;
+  }
+
+  .global-library-table-wrap .global-library-table tbody td {
+    font-size: 10.48px;
+    line-height: 18.72px;
+  }
+
+  .global-library-table-wrap .global-library-table .marketplace-plan-inline-status {
+    font-size: 9.52px;
+    line-height: 13.824px;
+  }
+
+  .global-library-table-wrap .global-library-table .marketplace-status-badge {
+    font-size: 8.56px;
+    line-height: 13.2px;
+  }
 }
 
 .marketplace-status-badges {
@@ -10304,53 +10776,161 @@ watch(
 
 .global-library-mobile-card {
   background: #0f1b32;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 5px;
-  padding: 10px;
+  border: 1px solid rgba(96, 165, 250, 0.34);
+  border-radius: 7px;
+  padding: 12px;
   display: grid;
-  gap: 8px;
+  gap: 10px;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.global-library-mobile-card__header {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  min-width: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
 }
 
 .global-library-mobile-card__cover {
-  width: 100%;
-  height: 142px;
+  display: block;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  max-width: 48px;
   border-radius: 6px;
-  border: 1px solid rgba(148, 163, 184, 0.24);
+  border: 1px solid rgba(148, 163, 184, 0.36);
   object-fit: cover;
   background: #1f2937;
 }
 
+.global-library-mobile-card__identity {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  min-width: 0;
+}
+
 .global-library-mobile-card__name {
   margin: 0;
-  color: #ffffff;
-  font-weight: 800;
-  font-size: 0.9rem;
-  line-height: 1.3;
-  word-break: break-word;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: #f8fbff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1.25;
 }
 
 .global-library-mobile-card__meta {
   display: grid;
   gap: 3px;
-  color: #e7eefc;
-  font-size: 0.76rem;
+  min-width: 0;
+  margin: 0;
 }
 
-.global-library-mobile-card__meta strong {
-  color: #ffffff;
+.global-library-mobile-card__meta div {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px;
+  min-width: 0;
+}
+
+.global-library-mobile-card__meta dt {
+  color: #a9bddf;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.global-library-mobile-card__meta dt::after {
+  content: ':';
+}
+
+.global-library-mobile-card__meta dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #f1f5f9;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .global-library-mobile-card__actions {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 6px;
-}
-.global-library-mobile-card__actions--manage {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  justify-content: flex-end;
+  align-self: center;
+  gap: 4px;
 }
 
 .global-library-mobile-card__actions .global-plans-table__btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-color: transparent !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  color: #ffffff !important;
+}
+
+.global-library-mobile-card__actions .global-plans-table__btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  transform: translate(-50%, -50%);
+}
+
+.global-library-mobile-card__actions .global-plans-table__btn i {
+  position: relative;
+  z-index: 1;
+  color: #ffffff;
+  font-size: 0.8rem;
+}
+
+.global-library-mobile-card__actions .global-plans-table__btn--open::before {
+  background: #2563eb;
+  border-color: #1d4ed8;
+}
+
+.global-library-mobile-card__actions .global-plans-table__btn--edit::before {
+  background: #0d5b55;
+  border-color: #0f766e;
+}
+
+.global-library-mobile-card__actions .global-plans-table__btn--delete::before {
+  background: #8f1f2a;
+  border-color: #b91c1c;
+}
+
+.global-library-mobile-card__actions .global-plans-table__btn--add::before {
+  background: #16a34a;
+  border-color: #15803d;
+}
+
+@media (max-width: 800px) {
+  .global-library-table-wrap {
+    display: none;
+  }
+
+  .global-library-mobile-list {
+    display: grid;
+  }
 }
 
 .global-library-inline-preview {
@@ -10693,10 +11273,6 @@ watch(
     overflow-x: clip;
   }
 
-  .existing-plans-panel:has(.select-source-tab--marketplace[aria-selected="true"]) .existing-plans-panel__head {
-    display: none;
-  }
-
   .marketplace-toolbar {
     align-items: center;
     row-gap: 6px;
@@ -10762,17 +11338,8 @@ watch(
     width: auto;
   }
 
-  .global-library-table-wrap {
-    display: none;
-  }
-
-  .global-library-mobile-list {
-    display: grid;
-  }
-
   .global-library-mobile-card {
-    gap: 7px;
-    padding: 9px;
+    gap: 10px;
   }
 
   .plan-cover-panel__content {
@@ -10798,23 +11365,6 @@ watch(
 
   .plan-cover-actions-desktop {
     display: grid;
-  }
-
-  .global-library-mobile-card__name {
-    overflow-wrap: anywhere;
-  }
-
-  .global-library-mobile-card__actions .global-plans-table__btn {
-    min-height: 30px;
-    padding: 4px 6px;
-    font-size: 0.72rem;
-    gap: 4px;
-  }
-
-  .global-library-mobile-card__actions .global-plans-table__btn span {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .global-library-inline-preview {

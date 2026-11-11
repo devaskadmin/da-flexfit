@@ -15,6 +15,14 @@ const props = defineProps({
     type: [Number, String],
     default: null,
   },
+  waitForAddConfirmation: {
+    type: Boolean,
+    default: false,
+  },
+  selectionOnlyWorkflow: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(['close', 'add']);
@@ -24,8 +32,28 @@ const muscle = ref('All');
 const equipment = ref('All');
 const viewFilter = ref('all'); // 'all' | 'mine' | 'favorites'
 const selectedExerciseIds = ref([]);
+const selectedExercisesById = ref(new Map());
+const addingSelectedExercises = ref(false);
+const showSelectedExercises = ref(false);
 const PAGE_SIZE = 5;
 const visibleCount = ref(PAGE_SIZE);
+
+const clearExerciseSelection = () => {
+  selectedExerciseIds.value = [];
+  selectedExercisesById.value = new Map();
+  addingSelectedExercises.value = false;
+};
+
+const completeExerciseAddition = () => {
+  clearExerciseSelection();
+  if (props.selectionOnlyWorkflow) {
+    emit('close');
+  }
+};
+
+const rejectExerciseAddition = () => {
+  addingSelectedExercises.value = false;
+};
 
 watch(
   () => props.isOpen,
@@ -35,8 +63,9 @@ watch(
       muscle.value = 'All';
       equipment.value = 'All';
       viewFilter.value = 'all';
+      showSelectedExercises.value = false;
       visibleCount.value = PAGE_SIZE;
-      selectedExerciseIds.value = [];
+      clearExerciseSelection();
     }
   }
 );
@@ -44,7 +73,6 @@ watch(
 // Reset pagination when any filter changes
 watch([search, muscle, equipment, viewFilter], () => {
   visibleCount.value = PAGE_SIZE;
-  selectedExerciseIds.value = [];
 });
 
 const muscleOptions = computed(() => {
@@ -86,8 +114,6 @@ const emptyMessage = computed(() => {
   if (viewFilter.value === 'favorites') return 'No favorite exercises found.';
   return 'No exercises match your filters.';
 });
-
-const visibleExercises = computed(() => filteredExercises.value.slice(0, visibleCount.value));
 
 const loadMore = () => {
   visibleCount.value += PAGE_SIZE;
@@ -137,10 +163,14 @@ const toggleExerciseSelection = (exercise) => {
   const index = selectedExerciseIds.value.indexOf(id);
   if (index >= 0) {
     selectedExerciseIds.value.splice(index, 1);
+    const nextExercisesById = new Map(selectedExercisesById.value);
+    nextExercisesById.delete(id);
+    selectedExercisesById.value = nextExercisesById;
     return;
   }
 
   selectedExerciseIds.value.push(id);
+  selectedExercisesById.value = new Map(selectedExercisesById.value).set(id, mapExerciseForEmit(exercise));
 };
 
 const isExerciseSelected = (exercise) => {
@@ -153,26 +183,33 @@ const selectedExercisesPayload = computed(() => {
     return [];
   }
 
-  const selectedSet = new Set(selectedExerciseIds.value);
-  const exerciseById = new Map(
-    props.exercises.map((exercise) => [Number(exercise?.ExerciseID || 0), exercise])
-  );
-
   // Preserve explicit click-selection order.
   return selectedExerciseIds.value
-    .filter((id) => selectedSet.has(id))
-    .map((id) => exerciseById.get(id))
-    .filter(Boolean)
-    .map(mapExerciseForEmit);
+    .map((id) => selectedExercisesById.value.get(id))
+    .filter(Boolean);
+});
+
+const visibleExercises = computed(() => {
+  if (props.selectionOnlyWorkflow && showSelectedExercises.value) {
+    return selectedExercisesPayload.value;
+  }
+
+  return filteredExercises.value.slice(0, visibleCount.value);
 });
 
 const addSelectedExercises = () => {
-  if (!selectedExercisesPayload.value.length) {
+  if (!selectedExercisesPayload.value.length || addingSelectedExercises.value) {
+    return;
+  }
+
+  addingSelectedExercises.value = true;
+  if (props.waitForAddConfirmation) {
+    emit('add', selectedExercisesPayload.value, completeExerciseAddition, rejectExerciseAddition);
     return;
   }
 
   emit('add', selectedExercisesPayload.value);
-  selectedExerciseIds.value = [];
+  clearExerciseSelection();
 };
 
 const quickAdd = (exercise) => {
@@ -244,9 +281,23 @@ const quickAdd = (exercise) => {
         </div>
       </div>
 
-      <div class="picker-count" v-if="filteredExercises.length > 0">
+      <div v-if="selectionOnlyWorkflow || filteredExercises.length > 0" class="picker-count">
         <div class="picker-count__inner picker-content-shell">
-          Showing {{ Math.min(visibleCount, filteredExercises.length) }} of {{ filteredExercises.length }} exercises
+          <span v-if="showSelectedExercises">
+            Showing {{ selectedExerciseIds.length }} selected {{ selectedExerciseIds.length === 1 ? 'exercise' : 'exercises' }}
+          </span>
+          <span v-else>
+            Showing {{ Math.min(visibleCount, filteredExercises.length) }} of {{ filteredExercises.length }} exercises
+          </span>
+          <button
+            v-if="selectionOnlyWorkflow"
+            type="button"
+            class="btn-show-selected"
+            :aria-pressed="showSelectedExercises"
+            @click="showSelectedExercises = !showSelectedExercises"
+          >
+            {{ showSelectedExercises ? 'Show All Exercises' : `Show Selected (${selectedExerciseIds.length})` }}
+          </button>
         </div>
       </div>
 
@@ -273,6 +324,7 @@ const quickAdd = (exercise) => {
             </div>
             <div class="picker-card__actions">
               <button
+                v-if="!selectionOnlyWorkflow"
                 type="button"
                 :class="['picker-icon-btn', 'picker-icon-btn--select', isExerciseSelected(exercise) && 'is-active']"
                 :aria-pressed="isExerciseSelected(exercise)"
@@ -284,21 +336,22 @@ const quickAdd = (exercise) => {
               </button>
               <button
                 type="button"
-                class="picker-icon-btn picker-icon-btn--add"
-                title="Add exercise"
-                @click="quickAdd(exercise)"
+                :class="['picker-icon-btn', 'picker-icon-btn--add', selectionOnlyWorkflow && isExerciseSelected(exercise) && 'is-active']"
+                :aria-pressed="selectionOnlyWorkflow ? isExerciseSelected(exercise) : undefined"
+                :title="selectionOnlyWorkflow ? (isExerciseSelected(exercise) ? 'Deselect exercise' : 'Select exercise') : 'Add exercise'"
+                @click="selectionOnlyWorkflow ? toggleExerciseSelection(exercise) : quickAdd(exercise)"
               >
-                <span class="icon-plus" aria-hidden="true"></span>
-                <span class="sr-only">Add exercise</span>
+                <span :class="selectionOnlyWorkflow && isExerciseSelected(exercise) ? 'icon-minus' : 'icon-plus'" aria-hidden="true"></span>
+                <span class="sr-only">{{ selectionOnlyWorkflow ? (isExerciseSelected(exercise) ? 'Deselect exercise' : 'Select exercise') : 'Add exercise' }}</span>
               </button>
             </div>
           </article>
 
-          <div v-if="filteredExercises.length === 0" class="picker-empty">
-            {{ emptyMessage }}
+          <div v-if="visibleExercises.length === 0" class="picker-empty">
+            {{ showSelectedExercises ? 'No exercises selected.' : emptyMessage }}
           </div>
 
-          <div v-if="visibleCount < filteredExercises.length" class="picker-load-more">
+          <div v-if="!showSelectedExercises && visibleCount < filteredExercises.length" class="picker-load-more">
             <button type="button" class="btn-load-more" @click="loadMore">Load More</button>
           </div>
         </div>
@@ -307,15 +360,15 @@ const quickAdd = (exercise) => {
       <div class="picker-footer">
         <div class="picker-footer__inner picker-content-shell">
           <span class="picker-footer__count">
-            {{ selectedExerciseIds.length }} selected
+            {{ selectionOnlyWorkflow ? `Add to Workout Day (${selectedExerciseIds.length})` : `${selectedExerciseIds.length} selected` }}
           </span>
           <button
             type="button"
             class="btn-add-selected"
-            :disabled="selectedExerciseIds.length === 0"
+            :disabled="selectedExerciseIds.length === 0 || addingSelectedExercises"
             @click="addSelectedExercises"
           >
-            Add Selected
+            {{ selectionOnlyWorkflow ? 'Add Selected Exercises & Close' : `Add to Workout Day (${selectedExerciseIds.length})` }}
           </button>
         </div>
       </div>
@@ -555,6 +608,30 @@ const quickAdd = (exercise) => {
 .picker-count__inner {
   width: calc(100% - (var(--picker-side-gutter) * 2));
   margin-inline: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.btn-show-selected {
+  flex: 0 0 auto;
+  border: 1px solid rgba(145, 184, 242, 0.6);
+  background: #1f4f91;
+  color: #ffffff;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.1;
+  cursor: pointer;
+}
+
+.btn-show-selected:hover,
+.btn-show-selected:focus-visible,
+.btn-show-selected[aria-pressed='true'] {
+  background: #2563a9;
+  border-color: #9fc3ff;
 }
 
 .picker-results {
@@ -740,7 +817,13 @@ const quickAdd = (exercise) => {
   background: #0d9488;
 }
 
+.picker-icon-btn--add.is-active {
+  background: #115e59;
+  box-shadow: 0 0 0 2px rgba(94, 234, 212, 0.5), inset 0 1px 0 rgba(204, 251, 241, 0.2);
+}
+
 .icon-plus,
+.icon-minus,
 .icon-check {
   position: relative;
   width: 16px;
@@ -750,6 +833,7 @@ const quickAdd = (exercise) => {
 
 .icon-plus::before,
 .icon-plus::after,
+.icon-minus::before,
 .icon-check::before,
 .icon-check::after {
   content: '';
@@ -770,6 +854,13 @@ const quickAdd = (exercise) => {
   height: 12px;
   top: 2px;
   left: 7px;
+}
+
+.icon-minus::before {
+  width: 12px;
+  height: 2px;
+  top: 7px;
+  left: 2px;
 }
 
 .icon-check::before {

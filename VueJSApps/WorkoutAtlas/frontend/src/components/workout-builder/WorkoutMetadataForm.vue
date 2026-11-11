@@ -478,7 +478,7 @@ onUnmounted(() => {
             </label>
 
             <label class="builder-field builder-field--row">
-              <span>Category <span class="label-required-star" aria-hidden="true">*</span></span>
+              <span>Goal Category <span class="label-required-star" aria-hidden="true">*</span></span>
               <select :value="String(metadata.category || '')" @change="updateField('category', $event.target.value)">
                 <option value="">Select a category</option>
                 <option v-for="option in categoryOptionList" :key="`category-${option}`" :value="option">

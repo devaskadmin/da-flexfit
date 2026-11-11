@@ -6,6 +6,7 @@ const buildConfirmOptions = (message, options = {}) => ({
   icon: options.icon || 'warning',
   showCancelButton: true,
   confirmButtonText: options.confirmButtonText || 'Confirm',
+  ...(options.confirmButtonColor ? { confirmButtonColor: options.confirmButtonColor } : {}),
   cancelButtonText: options.cancelButtonText || 'Cancel',
   reverseButtons: options.reverseButtons !== false,
   focusCancel: options.focusCancel !== false,

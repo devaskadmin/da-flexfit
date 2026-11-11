@@ -50,7 +50,7 @@ const formatDifficulty = (plan = {}) => {
 const categoriesFromPlans = computed(() => {
   const categorySet = new Set(CATEGORY_OPTIONS.filter((item) => item !== 'all'))
   for (const plan of plans.value) {
-    const value = String(plan?.type || '').trim()
+    const value = String(plan?.category ?? plan?.goalCategory ?? '').trim()
     if (value) {
       categorySet.add(value)
     }
@@ -114,7 +114,7 @@ const viewPlan = async (planId) => {
     selectedPlan.value = {
       id: targetId,
       name: String(planner?.metadata?.name || '').trim() || 'Untitled Workout',
-      category: String(planner?.metadata?.type || '').trim() || '—',
+      category: String(planner?.metadata?.category || planner?.metadata?.goalCategory || '').trim() || 'Uncategorized',
       duration: Number(planner?.metadata?.estimatedDuration || 0),
       access: String(response.data?.accessLevel || normalizeAccess(planner?.visibility)).trim(),
       difficulty: String(planner?.metadata?.difficulty || '').trim(),
@@ -138,7 +138,7 @@ const useSelectedPlan = async () => {
   const dayCount = Number(selectedPlan.value?.days?.length || 0)
   const exerciseCount = countUniqueWorkoutPlanExercises(selectedPlan.value?.exercises || [])
   const confirmed = await showConfirmDialog(
-    `Use this plan?\n\n${selectedPlan.value?.name || 'Plan'}\nCategory: ${selectedPlan.value?.category || '—'}\nAccess: ${selectedPlan.value?.access || '—'}\nDuration: ${selectedPlan.value?.duration || 0} min\nDays: ${dayCount}\nExercises: ${exerciseCount}`,
+    `Use this plan?\n\n${selectedPlan.value?.name || 'Plan'}\nGoal Category: ${selectedPlan.value?.category || 'Uncategorized'}\nAccess: ${selectedPlan.value?.access || '—'}\nDuration: ${selectedPlan.value?.duration || 0} min\nDays: ${dayCount}\nExercises: ${exerciseCount}`,
     {
       title: 'Use Workout Plan',
       icon: 'question',
@@ -205,7 +205,7 @@ onMounted(loadPlans)
             <input v-model="query" class="form-control" placeholder="Search by name, category, or description" @keyup.enter="loadPlans" />
           </div>
           <div class="col-md-3">
-            <label class="form-label">Category</label>
+            <label class="form-label">Goal Category</label>
             <select v-model="category" class="form-select">
               <option v-for="option in categoriesFromPlans" :key="option" :value="option">{{ option === 'all' ? 'All Categories' : option }}</option>
             </select>
@@ -232,7 +232,7 @@ onMounted(loadPlans)
               <thead>
                 <tr>
                   <th>Plan Name</th>
-                  <th>Category</th>
+                  <th>Goal Category</th>
                   <th>Days</th>
                   <th>Difficulty</th>
                   <th>Access</th>
@@ -254,7 +254,7 @@ onMounted(loadPlans)
                       <span class="fw-semibold">{{ plan.name }}</span>
                     </div>
                   </td>
-                  <td>{{ plan.type || '—' }}</td>
+                  <td>{{ String(plan.category || plan.goalCategory || '').trim() || 'Uncategorized' }}</td>
                   <td>{{ Number(plan.dayCount || 0) }}</td>
                   <td>{{ formatDifficulty(plan) }}</td>
                   <td>
@@ -294,7 +294,7 @@ onMounted(loadPlans)
             <div class="row g-2 mb-3">
               <div class="col-6"><strong>Days:</strong> {{ selectedPlan.days.length }}</div>
               <div class="col-6"><strong>Exercises:</strong> {{ countUniqueWorkoutPlanExercises(selectedPlan.exercises) }}</div>
-              <div class="col-6"><strong>Category:</strong> {{ selectedPlan.category }}</div>
+              <div class="col-6"><strong>Goal Category:</strong> {{ selectedPlan.category }}</div>
               <div class="col-6"><strong>Duration:</strong> {{ selectedPlan.duration }} min</div>
               <div class="col-6"><strong>Access:</strong> {{ selectedPlan.access }}</div>
               <div class="col-6"><strong>Difficulty:</strong> {{ selectedPlan.difficulty || '—' }}</div>
