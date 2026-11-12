@@ -29,6 +29,12 @@
 - **Verification:** Focused backend tests passed (`node --test tests/workout-session-recovery.test.js tests/workout-session-recovery.integration.test.js`) including: repeated/concurrent multi-start creation, in-progress list returning multiple sessions, and ending one session without altering sibling in-progress sessions. Frontend production build passed (`vite build`, 696 modules transformed).
 - **Known unresolved issues:** No schema migration or destructive DB updates were required or performed. Runtime/live-environment verification without restart remains environment-dependent; this release is code-complete and test-verified for deployment handoff.
 
+### 0.85.265 Sidebar Navigation Font Color - 2026-11-12
+
+- **Changed:** Left-sidebar section labels and all nested navigation link labels now remain `#FFFFFF` in default, hover, focus, active, selected, and expanded states. Disabled sidebar links retain reduced opacity for distinction.
+- **Scope:** Text color only in `frontend/src/components/MainSidebarComponent.vue`; existing backgrounds, icons, active indicators, spacing, layout, and responsive behavior are unchanged.
+- **Verification:** Desktop and mobile browser checks covered expanded/collapsed groups plus default, hover, and active states. Frontend production build passed.
+
 ## [0.85.264] - 2026-11-12 - Active Workout Session Lock / Orphaned Plan Recovery (P0)
 
 - **Added:** Structured active-session conflict metadata and recovery actions in `GET /api/workout-sessions/active` and `POST /api/workout-sessions/start`, plus explicit `POST /api/workout-sessions/:sessionId/end` to safely end an in-progress session without deleting history.

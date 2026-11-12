@@ -2218,11 +2218,14 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
     [schedule.id]
   );
 
-  const scheduleMode = String(schedule.schedule_mode || 'day').trim() === 'week' ? 'week' : 'day';
+  const scheduleMode = String(schedule.schedule_mode || 'day').trim().toLowerCase() === 'week' ? 'week' : 'day';
 
   const normalizedGroupRows = Array.isArray(groupRows) ? groupRows : [];
-  const dayGroupRows = normalizedGroupRows.filter((g) => ['day', 'any', 'section'].includes(String(g?.group_type || '').trim()));
-  const weekGroupRows = normalizedGroupRows.filter((g) => String(g?.group_type || '').trim() === 'week');
+  const dayGroupRows = normalizedGroupRows.filter((g) => {
+    const groupType = String(g?.group_type || '').trim().toLowerCase();
+    return ['day', 'any', 'section'].includes(groupType);
+  });
+  const weekGroupRows = normalizedGroupRows.filter((g) => String(g?.group_type || '').trim().toLowerCase() === 'week');
 
   const dayGroups = dayGroupRows
     .map((g) => String(g.label || '').trim())

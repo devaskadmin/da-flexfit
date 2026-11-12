@@ -631,6 +631,26 @@ onMounted(() => {
   color: var(--wa-sidebar-text-muted) !important;
 }
 
+/* Navigation labels stay white across theme and interaction states. */
+.main-sidebar .sidebar-menu :deep(.sidebar-item .sidebar-link-group-title),
+.main-sidebar .sidebar-menu :deep(.sidebar-item .sidebar-link-group-title:hover),
+.main-sidebar .sidebar-menu :deep(.sidebar-item .sidebar-link-group-title:focus),
+.main-sidebar .sidebar-menu :deep(.sidebar-item .sidebar-link-group-title[aria-expanded="true"]),
+.main-sidebar .sidebar-menu :deep(.sidebar-dropdown-item .sidebar-link),
+.main-sidebar .sidebar-menu :deep(.sidebar-dropdown-item .sidebar-link:hover),
+.main-sidebar .sidebar-menu :deep(.sidebar-dropdown-item .sidebar-link:focus),
+.main-sidebar .sidebar-menu :deep(.sidebar-dropdown-item .sidebar-link.active),
+.main-sidebar .sidebar-menu :deep(.sidebar-dropdown-item .sidebar-link.router-link-active),
+.main-sidebar .sidebar-menu :deep(.sidebar-dropdown-item .sidebar-link.show),
+.main-sidebar .sidebar-menu :deep(.sidebar-dropdown-item .sidebar-link .sidebar-txt) {
+  color: #ffffff !important;
+}
+
+.main-sidebar .sidebar-menu :deep(.sidebar-dropdown-item .sidebar-link.disabled),
+.main-sidebar .sidebar-menu :deep(.sidebar-dropdown-item .sidebar-link[aria-disabled="true"]) {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
 /* Inactive nav links */
 .sidebar-link {
   background: transparent !important;
