@@ -3,6 +3,122 @@ const router  = express.Router();
 const pool    = require('../db.js');
 const { sanitizeText } = require('../utils/sanitize.js');
 
+const ACTIVE_CONFLICT_ACTION_END_AND_START = 'end_and_start_new';
+
+const parseDraftPayload = (notes) => {
+  if (!notes) return null;
+  if (typeof notes === 'object') return notes;
+  if (typeof notes !== 'string') return null;
+
+  try {
+    return JSON.parse(notes);
+  } catch (_) {
+    return null;
+  }
+};
+
+const getDraftExerciseCount = (notes) => {
+  const draft = parseDraftPayload(notes);
+  return Array.isArray(draft?.exercises) ? draft.exercises.length : 0;
+};
+
+const normalizeSessionStatus = (session) => String(session?.sessionStatus || session?.status || '').trim().toLowerCase();
+
+const isLiveSessionStatus = (status) =>
+  status === 'in_progress' || status === 'in-progress' || status === 'active' || status === 'paused';
+
+const enrichSessionForConflict = async ({ connection, userId, session }) => {
+  const normalized = {
+    ...session,
+    workoutPlanId: Number(session?.workoutPlanId || 0) || null,
+    workoutDayId: session?.workoutDayId != null ? Number(session.workoutDayId) : null,
+    workoutDayName: String(session?.workoutDayName || '').trim(),
+  };
+
+  const status = normalizeSessionStatus(normalized);
+  const draftExerciseCount = getDraftExerciseCount(normalized.notes);
+  const canResumeFromDraft = draftExerciseCount > 0;
+
+  let orphanReason = null;
+  let planAccessible = false;
+  let planExists = false;
+  let dayReferenceValid = true;
+
+  if (!normalized.workoutPlanId) {
+    orphanReason = 'missing_plan_reference';
+  } else {
+    const [planRows] = await connection.query(
+      `SELECT id, user_id
+       FROM workout_schedules
+       WHERE id = ?
+       LIMIT 1`,
+      [normalized.workoutPlanId]
+    );
+
+    if (!planRows.length) {
+      orphanReason = 'missing_plan';
+    } else {
+      planExists = true;
+      const ownerId = Number(planRows[0]?.user_id || 0);
+      if (ownerId !== Number(userId || 0)) {
+        orphanReason = 'inaccessible_plan';
+      } else {
+        planAccessible = true;
+      }
+    }
+
+    if (planAccessible) {
+      if (normalized.workoutDayId) {
+        const [groupByIdRows] = await connection.query(
+          `SELECT id, label
+           FROM workout_schedule_groups
+           WHERE id = ? AND workout_schedule_id = ?
+           LIMIT 1`,
+          [normalized.workoutDayId, normalized.workoutPlanId]
+        );
+
+        if (!groupByIdRows.length) {
+          dayReferenceValid = false;
+        }
+      }
+
+      if (!dayReferenceValid && normalized.workoutDayName) {
+        const [groupByLabelRows] = await connection.query(
+          `SELECT id, label
+           FROM workout_schedule_groups
+           WHERE workout_schedule_id = ?
+             AND LOWER(label) = LOWER(?)
+           LIMIT 1`,
+          [normalized.workoutPlanId, normalized.workoutDayName]
+        );
+
+        if (groupByLabelRows.length) {
+          dayReferenceValid = true;
+        }
+      }
+
+      if (!dayReferenceValid) {
+        orphanReason = orphanReason || 'missing_day_reference';
+      }
+    }
+  }
+
+  const isOrphaned = Boolean(orphanReason);
+
+  return {
+    ...normalized,
+    planExists,
+    planAccessible,
+    dayReferenceValid,
+    isOrphaned,
+    orphanReason,
+    draftExerciseCount,
+    canResumeFromDraft,
+    continuationPossible: !isOrphaned || canResumeFromDraft,
+    isLive: isLiveSessionStatus(status),
+  };
+};
+
 // ─── Auth guard helper ──────────────────────────────────────────────────────
 const requireAuth = (req, res, next) => {
   if (!req.session?.user?.id) {
@@ -20,10 +136,11 @@ const requireAuth = (req, res, next) => {
 // ─── GET /api/workout-sessions/active ──────────────────────────────────────
 // Returns the single in_progress session for the current user, if any.
 router.get('/workout-sessions/active', requireAuth, async (req, res) => {
+  const connection = await pool.getConnection();
   try {
     const userId = req.session.user.id;
 
-    const [rows] = await pool.query(
+    const [rows] = await connection.query(
       `SELECT
          id,
          user_id                    AS userId,
@@ -48,10 +165,14 @@ router.get('/workout-sessions/active', requireAuth, async (req, res) => {
       return res.status(200).json({ session: null });
     }
 
-    return res.status(200).json({ session: rows[0] });
+    const session = await enrichSessionForConflict({ connection, userId, session: rows[0] });
+
+    return res.status(200).json({ session });
   } catch (err) {
     console.error('❌ GET /workout-sessions/active:', err);
     return res.status(500).json({ error: 'Failed to check active session.' });
+  } finally {
+    connection.release();
   }
 });
 
@@ -59,9 +180,17 @@ router.get('/workout-sessions/active', requireAuth, async (req, res) => {
 // Creates a new in_progress session.
 // Returns 409 if user already has an in_progress session.
 router.post('/workout-sessions/start', requireAuth, async (req, res) => {
+  const connection = await pool.getConnection();
   try {
     const userId = req.session.user.id;
-    const { workoutPlanId, workoutDayId, workoutDayName, workoutDate } = req.body;
+    const {
+      workoutPlanId,
+      workoutDayId,
+      workoutDayName,
+      workoutDate,
+      conflictResolutionAction,
+      activeSessionId,
+    } = req.body;
 
     if (!workoutPlanId || !workoutDayName || !workoutDate) {
       return res.status(400).json({
@@ -69,10 +198,25 @@ router.post('/workout-sessions/start', requireAuth, async (req, res) => {
       });
     }
 
-    // Check for existing in_progress session
-    const [existing] = await pool.query(
+    const shouldEndExistingAndStart = conflictResolutionAction === ACTIVE_CONFLICT_ACTION_END_AND_START;
+    const expectedActiveSessionId = Number(activeSessionId || 0) || null;
+
+    await connection.beginTransaction();
+
+    // Serialize start attempts per user to prevent duplicate active sessions during rapid clicks.
+    await connection.query(
+      `SELECT id
+       FROM users
+       WHERE id = ?
+       FOR UPDATE`,
+      [userId]
+    );
+
+    const [existing] = await connection.query(
       `SELECT id,
+              user_id                    AS userId,
               source_workout_schedule_id AS workoutPlanId,
+              workout_day_id             AS workoutDayId,
               workout_day_name           AS workoutDayName,
               workout_date               AS workoutDate,
               status                     AS sessionStatus,
@@ -83,19 +227,50 @@ router.post('/workout-sessions/start', requireAuth, async (req, res) => {
               notes                      AS notes
        FROM workout_log_sessions
        WHERE user_id = ? AND status = 'in_progress'
-       LIMIT 1`,
+       ORDER BY started_at DESC
+       LIMIT 1
+       FOR UPDATE`,
       [userId]
     );
 
     if (existing.length > 0) {
-      return res.status(409).json({
-        error: 'You already have a workout in progress. Please finish or end the current workout before starting another.',
-        activeSession: existing[0],
-      });
+      const activeSession = await enrichSessionForConflict({ connection, userId, session: existing[0] });
+
+      if (!shouldEndExistingAndStart) {
+        await connection.rollback();
+        return res.status(409).json({
+          code: 'ACTIVE_SESSION_EXISTS',
+          title: 'You Have a Workout in Progress',
+          error: 'You already have a workout in progress. Would you like to continue your existing workout or end it and start a new one?',
+          activeSession,
+        });
+      }
+
+      if (expectedActiveSessionId && Number(activeSession.id || 0) !== expectedActiveSessionId) {
+        await connection.rollback();
+        return res.status(409).json({
+          code: 'ACTIVE_SESSION_CHANGED',
+          error: 'Your active workout changed. Please review and try again.',
+          activeSession,
+        });
+      }
+
+      await connection.query(
+        `UPDATE workout_log_sessions
+         SET status = 'ended',
+             ended_at = NOW(),
+             completed_at = COALESCE(completed_at, NOW()),
+             duration_seconds = CASE
+               WHEN started_at IS NULL THEN COALESCE(duration_seconds, 0)
+               ELSE GREATEST(TIMESTAMPDIFF(SECOND, started_at, NOW()), 0)
+             END
+         WHERE id = ? AND user_id = ? AND status = 'in_progress'`,
+        [activeSession.id, userId]
+      );
     }
 
     // Create new session
-    const [result] = await pool.query(
+    const [result] = await connection.query(
       `INSERT INTO workout_log_sessions
          (user_id, source_workout_schedule_id, workout_day_id, workout_day_name, workout_date, status, started_at, notes)
        VALUES (?, ?, ?, ?, ?, 'in_progress', NOW(), '')`,
@@ -107,6 +282,8 @@ router.post('/workout-sessions/start', requireAuth, async (req, res) => {
         workoutDate,
       ]
     );
+
+    await connection.commit();
 
     const sessionId = result.insertId;
 
@@ -128,8 +305,86 @@ router.post('/workout-sessions/start', requireAuth, async (req, res) => {
       },
     });
   } catch (err) {
+    try {
+      await connection.rollback();
+    } catch (_) {
+      // ignore rollback errors
+    }
     console.error('❌ POST /workout-sessions/start:', err);
     return res.status(500).json({ error: 'Failed to start workout session.' });
+  } finally {
+    connection.release();
+  }
+});
+
+// ─── POST /api/workout-sessions/:sessionId/end ───────────────────────────
+// Ends a user's active session without deleting history so a new workout can start.
+router.post('/workout-sessions/:sessionId/end', requireAuth, async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    const userId = req.session.user.id;
+    const sessionId = Number(req.params.sessionId || 0);
+
+    if (!sessionId) {
+      return res.status(400).json({ error: 'Invalid sessionId.' });
+    }
+
+    await connection.beginTransaction();
+
+    await connection.query(
+      `SELECT id FROM users WHERE id = ? FOR UPDATE`,
+      [userId]
+    );
+
+    const [rows] = await connection.query(
+      `SELECT id, status
+       FROM workout_log_sessions
+       WHERE id = ? AND user_id = ?
+       LIMIT 1
+       FOR UPDATE`,
+      [sessionId, userId]
+    );
+
+    if (!rows.length) {
+      await connection.rollback();
+      return res.status(404).json({ error: 'Session not found.' });
+    }
+
+    const status = normalizeSessionStatus(rows[0]);
+    if (status !== 'in_progress' && status !== 'in-progress' && status !== 'active' && status !== 'paused') {
+      await connection.rollback();
+      return res.status(409).json({ error: 'Session is not active.' });
+    }
+
+    await connection.query(
+      `UPDATE workout_log_sessions
+       SET status = 'ended',
+           ended_at = NOW(),
+           completed_at = COALESCE(completed_at, NOW()),
+           duration_seconds = CASE
+             WHEN started_at IS NULL THEN 0
+             ELSE GREATEST(TIMESTAMPDIFF(SECOND, started_at, NOW()), 0)
+           END
+       WHERE id = ? AND user_id = ? AND status = 'in_progress'`,
+      [sessionId, userId]
+    );
+
+    await connection.commit();
+
+    return res.status(200).json({
+      message: 'Workout session ended.',
+      endedSessionId: sessionId,
+    });
+  } catch (err) {
+    try {
+      await connection.rollback();
+    } catch (_) {
+      // ignore rollback errors
+    }
+    console.error('❌ POST /workout-sessions/:sessionId/end:', err);
+    return res.status(500).json({ error: 'Failed to end workout session.' });
+  } finally {
+    connection.release();
   }
 });
 
@@ -559,3 +814,7 @@ router.get('/workouts/history/latest/:exerciseId', requireAuth, async (req, res)
 });
 
 module.exports = router;
+module.exports._private = {
+  parseDraftPayload,
+  getDraftExerciseCount,
+};

@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { API_BASE } from '@/config/env';
 import ExerciseSessionCard from '@/components/workout-session/ExerciseSessionCard.vue';
 import { useWorkoutSessionDraft } from '@/composable/useWorkoutSessionDraft';
+import { showWorkoutSessionConflictDialog } from '@/utils/browserDialogs';
 
 const route  = useRoute();
 const router = useRouter();
@@ -243,9 +244,50 @@ const startDayWorkout = async (dayName) => {
       activeTab.value   = 'dayDetails';
       return;
     }
-    conflictMessage.value =
-      `You already have a workout in progress (${activeSession.value.workoutDayName}). ` +
-      'Please finish or end the current workout before starting another.';
+    const choice = await showWorkoutSessionConflictDialog({
+      title: 'You Have a Workout in Progress',
+      message: 'You already have a workout started. Would you like to continue your existing workout or end it and start a new one?',
+    });
+
+    if (choice === 'continue') {
+      if (String(activeSession.value.workoutPlanId || '') === planId.value) {
+        selectedDay.value = String(activeSession.value.workoutDayName || '').trim();
+        activeTab.value = 'dayDetails';
+      } else {
+        router.push({ name: 'workouts' });
+      }
+    }
+
+    if (choice === 'end_and_start_new') {
+      try {
+        const retry = await fetch(`${API_BASE}/api/workout-sessions/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            workoutPlanId: planId.value,
+            workoutDayName: dayName,
+            workoutDate: today(),
+            conflictResolutionAction: 'end_and_start_new',
+            activeSessionId: Number(activeSession.value?.id || 0) || null,
+          }),
+        });
+
+        const retryData = await retry.json().catch(() => ({}));
+        if (!retry.ok) {
+          throw new Error(retryData?.error || 'Failed to start workout session.');
+        }
+
+        activeSession.value = retryData.session;
+        selectedDay.value = dayName;
+        activeTab.value = 'dayDetails';
+        applyWorkoutDraft(retryData.session?.notes);
+        queueWorkoutDraftSave(true);
+      } catch (err) {
+        saveError.value = err?.message || 'Failed to start workout.';
+      }
+    }
+
     return;
   }
 
@@ -267,6 +309,46 @@ const startDayWorkout = async (dayName) => {
       if (data.activeSession) {
         activeSession.value = data.activeSession;
         applyWorkoutDraft(data.activeSession.notes);
+
+        const choice = await showWorkoutSessionConflictDialog({
+          title: 'You Have a Workout in Progress',
+          message: 'You already have a workout started. Would you like to continue your existing workout or end it and start a new one?',
+        });
+
+        if (choice === 'continue') {
+          if (String(data.activeSession.workoutPlanId || '') === planId.value) {
+            selectedDay.value = String(data.activeSession.workoutDayName || '').trim();
+            activeTab.value = 'dayDetails';
+          } else {
+            router.push({ name: 'workouts' });
+          }
+        }
+
+        if (choice === 'end_and_start_new') {
+          const retry = await fetch(`${API_BASE}/api/workout-sessions/start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              workoutPlanId: planId.value,
+              workoutDayName: dayName,
+              workoutDate: today(),
+              conflictResolutionAction: 'end_and_start_new',
+              activeSessionId: Number(data.activeSession?.id || 0) || null,
+            }),
+          });
+
+          const retryData = await retry.json().catch(() => ({}));
+          if (!retry.ok) {
+            throw new Error(retryData?.error || 'Failed to start workout session.');
+          }
+
+          activeSession.value = retryData.session;
+          selectedDay.value = dayName;
+          activeTab.value = 'dayDetails';
+          applyWorkoutDraft(retryData.session?.notes);
+          queueWorkoutDraftSave(true);
+        }
       }
       return;
     }

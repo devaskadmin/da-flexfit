@@ -6,6 +6,28 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.264] - 2026-11-12 - Active Workout Session Lock / Orphaned Plan Recovery (P0)
+
+- **Added:** Structured active-session conflict metadata and recovery actions in `GET /api/workout-sessions/active` and `POST /api/workout-sessions/start`, plus explicit `POST /api/workout-sessions/:sessionId/end` to safely end an in-progress session without deleting history.
+- **Changed:** Start-session handling now runs inside a per-user transaction lock (`SELECT ... FOR UPDATE`) and supports atomic conflict resolution via `conflictResolutionAction=end_and_start_new` guarded by `activeSessionId` ownership.
+- **Fixed:** Users blocked by an orphaned `in_progress` session (e.g., source plan removed and `source_workout_schedule_id` set `NULL`) can now continue from draft-backed notes when resumable, or end the existing session and start a new workout from the UI conflict flow.
+- **Removed:** No schema, migration, or destructive data cleanup changes. Existing workout history retention behavior remains intact.
+- **Affected functionality:** Workout start/resume conflict handling, orphan detection, draft recovery, and active-session ownership-safe replacement flow.
+- **Relevant source files:** `backend/api/workout-sessions.js`; `backend/tests/workout-session-recovery.test.js`; `frontend/src/views/Member/LogWorkout.vue`; `frontend/src/views/Member/WorkoutDetail.vue`; `frontend/src/utils/browserDialogs.js`.
+- **Evidence:** Copilot session `a59cfada-efdc-44f8-a8ef-fbc91e0848c2`. Read-only DB diagnostics confirmed a real orphan lock (`workout_log_sessions.id=119`, `user_id=10`, `status=in_progress`, `source_workout_schedule_id=NULL`) with draft notes payload. SQL schema review confirmed FK behavior `ON DELETE SET NULL`.
+- **Verification:** Backend helper tests pass (`backend/tests/workout-session-recovery.test.js`, 4/4). Frontend production build passes (`vite build`, 696 modules transformed). VS Code diagnostics reported no new errors in changed files. Live API checks verified `409 ACTIVE_SESSION_EXISTS`, atomic `end_and_start_new` start (`201`), active retrieval after replacement, explicit end (`200`), and cross-user end rejection (`404`). UI fixture replay (desktop and mobile) verified all three conflict actions (`Continue Existing Workout`, `End Existing & Start New Workout`, `Cancel`) with the required title/message/buttons, and rapid double-click start protection recorded a single start request (`startCalls=1`). Cross-day continuation fixture loaded Monday session draft values (weight/reps) into Day Details while retaining the original workout-day context.
+- **Known unresolved issues:** Final pre-deployment verification remains blocked for two backend-only safety checks in this environment: (1) deleted-plan recovery using a disposable real database plan/session lifecycle and (2) stale `activeSessionId` mismatch verification against isolated backend records. Current `.env` points to a shared remote database and no isolated test-database workflow is configured, so destructive verification was intentionally not executed against live shared data.
+
+### Stage 2 Verification Update - 2026-11-12 (Read-Only + Isolated)
+
+- **Scope:** Final hotfix verification only. No deployment, no service restart, no SQL migration, and no real workout data modifications.
+- **Route/Test alignment confirmed:** Recovery integration tests invoke the real Express route handlers from `backend/api/workout-sessions.js` via router stack extraction (not mocked response snapshots), while isolating persistence behavior in a mock pool.
+- **Backend checks:** Syntax validation passed for backend JavaScript files (`SYNTAX_OK=60`). Focused recovery suite passed (orphan recovery, stale/invalid `activeSessionId`, rollback safety, duplicate/concurrent session prevention, draft/history preservation). Full backend suite completed with no fail markers in TAP log output.
+- **Frontend checks:** Production build passed (`vite build`, exit code `0`). Conflict dialog behavior remains wired for `Continue Existing Workout`, `End Existing & Start New Workout`, and `Cancel` in `LogWorkout.vue` / `WorkoutDetail.vue` through `frontend/src/utils/browserDialogs.js`.
+- **Session 119 safety:** Verified by code path review only (read-only). A live in-progress row with `source_workout_schedule_id = NULL` is classified as `missing_plan_reference` and surfaced through active-session conflict metadata for recovery options; session data was not ended, reset, or modified.
+- **Files reviewed for Stage 2:** `backend/api/workout-sessions.js`; `backend/tests/workout-session-recovery.test.js`; `backend/tests/workout-session-recovery.integration.test.js`; `frontend/src/views/Member/LogWorkout.vue`; `frontend/src/views/Member/WorkoutDetail.vue`; `frontend/src/utils/browserDialogs.js`.
+- **Known residual risk:** No dedicated automated frontend test files exist for these workout-session conflict flows in this repository; validation depends on backend tests plus UI code-path inspection.
+
 ## [0.85.263] - 2026-11-11 - Owner-Safe Custom Exercise Delete & Merge
 
 - **Added:** Authorized CUSTOM exercise owners now enter the existing Delete & Merge workflow. Replacement choices are limited to active SYSTEM exercises and the owner's active CUSTOM exercises; SHARED exercises remain excluded.

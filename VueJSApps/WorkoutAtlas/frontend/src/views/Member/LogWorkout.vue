@@ -11,7 +11,7 @@ import {
   canViewTechnicalDiagnostics,
   normalizeRoleSlug,
 } from '@/utils/userFriendlyErrors';
-import { showConfirmDialog } from '@/utils/browserDialogs';
+import { showConfirmDialog, showWorkoutSessionConflictDialog } from '@/utils/browserDialogs';
 
 const router = useRouter();
 const route = useRoute();
@@ -119,6 +119,57 @@ const parseResponseError = async (response, fallbackMessage) => {
     service,
     rawMessage,
   };
+};
+
+const parseDraftNotesPayload = (notes) => {
+  if (!notes) return null;
+  if (typeof notes === 'object') return notes;
+  if (typeof notes !== 'string') return null;
+
+  try {
+    return JSON.parse(notes);
+  } catch (_) {
+    return null;
+  }
+};
+
+const buildSessionExercisesFromDraft = (notes, fallbackDayName = 'Any Day') => {
+  const draft = parseDraftNotesPayload(notes);
+  const draftExercises = Array.isArray(draft?.exercises) ? draft.exercises : [];
+  if (!draftExercises.length) {
+    return [];
+  }
+
+  const safeDayName = String(fallbackDayName || 'Any Day').trim() || 'Any Day';
+
+  return draftExercises.map((exercise, index) => {
+    const sessionSets = Array.isArray(exercise?.sessionSets) ? exercise.sessionSets : [];
+    const firstSet = sessionSets[0] || {};
+    const inferredWorkoutType = Number(firstSet?.duration || 0) > 0 && Number(firstSet?.reps || 0) === 0
+      ? 'Cardio'
+      : 'Strength';
+
+    return {
+      id: String(exercise?.id || `draft-${index + 1}`),
+      exerciseId: Number(exercise?.exerciseId || 0) || null,
+      name: String(exercise?.name || `Exercise ${index + 1}`).trim() || `Exercise ${index + 1}`,
+      workoutType: String(exercise?.workoutType || inferredWorkoutType).trim() || inferredWorkoutType,
+      scheduleGroup: String(exercise?.scheduleGroup || safeDayName).trim() || safeDayName,
+      sessionSets: sessionSets.map((set, setIndex) => ({
+        setNum: Number(set?.setNum || setIndex + 1),
+        weight: Number(set?.weight || 0),
+        reps: Number(set?.reps || 0),
+        duration: Number(set?.duration || 0),
+        caloriesBurned: Number(set?.caloriesBurned || 0),
+        distanceMiles: Number(set?.distanceMiles || 0),
+        speedMph: Number(set?.speedMph || 0),
+        done: Boolean(set?.done),
+        notes: typeof set?.notes === 'string' ? set.notes : '',
+        prefilledFields: set?.prefilledFields && typeof set.prefilledFields === 'object' ? { ...set.prefilledFields } : {},
+        prefilledFromLastWorkout: Boolean(set?.prefilledFromLastWorkout),
+      })),
+    };
+  });
 };
 
 const setFriendlyError = (area, {
@@ -1161,17 +1212,163 @@ const checkActiveSession = async () => {
         }
       }
       selectedDay.value = nextSession.workoutDayName;
-      // Rebuild sessionExercises from expanded plan
+      // Rebuild sessionExercises from plan when available; otherwise recover from draft notes.
       if (expandedPlanData.value) {
         sessionExercises.value = await buildSessionExercisesWithHistoryPrefill(expandedPlanData.value.exercises || []);
         applyWorkoutDraft(nextSession.notes);
         queueWorkoutDraftSave(true);
+      } else if (nextSession.canResumeFromDraft) {
+        sessionExercises.value = buildSessionExercisesFromDraft(nextSession.notes, nextSession.workoutDayName);
+        activeTab.value = 'dayDetails';
+      } else if (nextSession.isOrphaned) {
+        setFriendlyError('save', {
+          rawMessage: 'Your previous workout plan is no longer available. You can end the unfinished session and start a new workout.',
+          fallback: 'Your previous workout plan is no longer available. You can end the unfinished session and start a new workout.',
+        });
       }
     } else {
       activeSession.value    = null;
       hasActiveWorkout.value = false;
     }
   } catch (_) { /* non-fatal */ }
+};
+
+const continueExistingWorkoutSession = async (session) => {
+  if (!session) return;
+
+  activeSession.value = session;
+  hasActiveWorkout.value = true;
+  isPreviewMode.value = false;
+  conflictMessage.value = '';
+
+  if (session.workoutDate) {
+    const parsed = new Date(session.workoutDate);
+    if (!Number.isNaN(parsed.getTime())) {
+      selectedWorkoutDate.value = parsed.toISOString().split('T')[0];
+    }
+  }
+
+  selectedDay.value = String(session.workoutDayName || '').trim();
+
+  const pid = String(session.workoutPlanId || '').trim();
+  expandedPlanData.value = null;
+  if (pid) {
+    expandedPlanId.value = pid;
+    expandedLoading.value = true;
+    try {
+      const planRes = await fetch(`${API_BASE}/api/workout-planner?planId=${encodeURIComponent(pid)}`, { credentials: 'include' });
+      if (planRes.ok) {
+        const planData = await planRes.json();
+        expandedPlanData.value = planData?.planner || null;
+      }
+    } catch (_) {
+      // fallback to draft recovery below
+    } finally {
+      expandedLoading.value = false;
+    }
+  }
+
+  if (expandedPlanData.value) {
+    sessionExercises.value = await buildSessionExercisesWithHistoryPrefill(expandedPlanData.value.exercises || []);
+    applyWorkoutDraft(session.notes);
+    queueWorkoutDraftSave(true);
+    activeTab.value = 'dayDetails';
+    return;
+  }
+
+  if (session.canResumeFromDraft) {
+    sessionExercises.value = buildSessionExercisesFromDraft(session.notes, session.workoutDayName);
+    activeTab.value = 'dayDetails';
+    return;
+  }
+
+  setFriendlyError('save', {
+    rawMessage: 'Your previous workout plan is no longer available. You can end the unfinished session and start a new workout.',
+    fallback: 'Your previous workout plan is no longer available. You can end the unfinished session and start a new workout.',
+  });
+};
+
+const startWorkoutSessionRequest = async ({ dayName, forceEndAndStart = false, expectedActiveSessionId = null }) => {
+  const planId = expandedPlanId.value;
+  const workoutStartDate = selectedWorkoutDate.value || today();
+
+  const response = await fetch(`${API_BASE}/api/workout-sessions/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({
+      workoutPlanId: planId,
+      workoutDayName: dayName,
+      workoutDate: workoutStartDate,
+      conflictResolutionAction: forceEndAndStart ? 'end_and_start_new' : undefined,
+      activeSessionId: forceEndAndStart ? expectedActiveSessionId : undefined,
+    }),
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  return { response, payload, workoutStartDate };
+};
+
+const resolveActiveSessionConflict = async ({ dayName, activeSession: sessionFromConflict }) => {
+  const active = sessionFromConflict || activeSession.value;
+  if (!active) return;
+
+  const orphanNoResume = Boolean(active.isOrphaned && !active.canResumeFromDraft);
+  const choice = await showWorkoutSessionConflictDialog({
+    title: 'You Have a Workout in Progress',
+    message: orphanNoResume
+      ? 'Your previous workout plan is no longer available. You can end the unfinished session and start a new workout.'
+      : 'You already have a workout started. Would you like to continue your existing workout or end it and start a new one?',
+  });
+
+  if (choice === 'cancel') {
+    return;
+  }
+
+  if (choice === 'continue') {
+    await continueExistingWorkoutSession(active);
+    return;
+  }
+
+  const { response, payload, workoutStartDate } = await startWorkoutSessionRequest({
+    dayName,
+    forceEndAndStart: true,
+    expectedActiveSessionId: Number(active.id || 0) || null,
+  });
+
+  if (response.status === 409) {
+    activeSession.value = payload?.activeSession || active;
+    hasActiveWorkout.value = Boolean(activeSession.value);
+    setFriendlyError('save', {
+      status: Number(response.status || 0) || null,
+      code: payload?.code || payload?.errorCode || '',
+      rawMessage: payload?.error || 'Unable to end the active workout and start a new one right now.',
+      category: 'save',
+      fallback: 'Unable to end the active workout and start a new one right now.',
+    });
+    return;
+  }
+
+  if (!response.ok) {
+    setFriendlyError('save', {
+      status: Number(response.status || 0) || null,
+      code: payload?.code || payload?.errorCode || '',
+      rawMessage: payload?.error || 'Failed to start workout session.',
+      category: 'save',
+      fallback: 'Failed to start workout session.',
+    });
+    return;
+  }
+
+  activeSession.value = payload.session;
+  hasActiveWorkout.value = true;
+  selectedWorkoutDate.value = workoutStartDate;
+  selectedDay.value = dayName;
+  isPreviewMode.value = false;
+  sessionExercises.value = await buildSessionExercisesWithHistoryPrefill(expandedPlanData.value?.exercises || []);
+  applyWorkoutDraft(payload.session?.notes);
+  queueWorkoutDraftSave(true);
+  activeTab.value = 'dayDetails';
 };
 
 /* ─── Preview a day (no session created) ────────────────────────────────── */
@@ -1189,7 +1386,6 @@ const previewDay = (dayName) => {
 const startDayWorkout = async (dayName) => {
   conflictMessage.value = '';
   clearFriendlyError('save');
-  const planId = expandedPlanId.value;
 
   if (hasLiveWorkoutSession.value && activeSession.value) {
     if (activeSession.value.workoutDayName === dayName) {
@@ -1197,9 +1393,7 @@ const startDayWorkout = async (dayName) => {
       activeTab.value   = 'dayDetails';
       return;
     }
-    conflictMessage.value =
-      `You already have a workout in progress (${activeSession.value.workoutDayName}). ` +
-      'Please finish or end it before starting another.';
+    await resolveActiveSessionConflict({ dayName, activeSession: activeSession.value });
     return;
   }
 
@@ -1208,22 +1402,15 @@ const startDayWorkout = async (dayName) => {
     hasActiveWorkout.value = false;
   }
 
-  // Use the user's selected date as the workout start date; fall back to today only if unset.
-  const workoutStartDate = selectedWorkoutDate.value || today();
-
   try {
-    const res  = await fetch(`${API_BASE}/api/workout-sessions/start`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ workoutPlanId: planId, workoutDayName: dayName, workoutDate: workoutStartDate }),
-    });
-    const data = await res.json();
+    const { response: res, payload: data, workoutStartDate } = await startWorkoutSessionRequest({ dayName });
 
     if (res.status === 409) {
       conflictMessage.value = data.error || 'A workout is already in progress.';
       if (data.activeSession) {
         activeSession.value = data.activeSession;
         hasActiveWorkout.value = true;
+        await resolveActiveSessionConflict({ dayName, activeSession: data.activeSession });
       }
       return;
     }
