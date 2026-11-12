@@ -77,23 +77,27 @@ const profileToggleDropdown = (event) => {
     profileBtnId.value = '';
     dataBsToggle.value = 'dropdown';
     isActive.value = false;
+    document.documentElement.classList.remove('overflow-hidden');
     document.body.classList.remove('overflow-hidden');
   } else {
     profileBtnId.value = 'profileDropdown';
     dataBsToggle.value = '';
     isActive.value = true;
+    document.documentElement.classList.add('overflow-hidden');
     document.body.classList.add('overflow-hidden');
   }
 };
 
 const handleProfileClick = (event) => {
   isActive.value = true;
+  document.documentElement.classList.add('overflow-hidden');
   document.body.classList.add('overflow-hidden');
   event.stopPropagation();
 };
 
 const closeProfileSidebar = (event) => {
   isActive.value = false;
+  document.documentElement.classList.remove('overflow-hidden');
   document.body.classList.remove('overflow-hidden');
 };
 
@@ -128,6 +132,7 @@ const onNavCloseClick = (e) => {
 const closeMobileMenu = () => {
   isMobileMenuOpen.value = false;
   isSidebarMini.value = false;
+  document.documentElement.classList.remove('wa-mobile-menu-open');
   document.body.classList.remove('wa-mobile-menu-open');
 };
 
@@ -135,6 +140,7 @@ const openMobileMenu = () => {
   if (!isMobileBottomNav.value) return;
   isMobileMenuOpen.value = true;
   isSidebarMini.value = true;
+  document.documentElement.classList.add('wa-mobile-menu-open');
   document.body.classList.add('wa-mobile-menu-open');
 };
 
@@ -260,6 +266,7 @@ onUnmounted(() => {
     mobileNavMql.removeListener(onMobileViewportChange);
   }
   document.body.classList.remove('wa-mobile-nav-active');
+  document.documentElement.classList.remove('wa-mobile-menu-open', 'overflow-hidden');
   document.body.classList.remove('wa-mobile-menu-open');
 })
 
@@ -287,6 +294,10 @@ watch(
 
 router.afterEach((to) => {
   syncRouteShellState(to)
+
+  isActive.value = false
+  document.documentElement.classList.remove('overflow-hidden')
+  document.body.classList.remove('overflow-hidden')
 
   if (isMobileBottomNav.value) {
     closeMobileMenu();
@@ -538,6 +549,7 @@ body.wa-dashboard-active .mx-calendar-header .mx-btn:hover i {
     --wa-mobile-sheet-height: min(76dvh, 680px);
   }
 
+  html.wa-mobile-menu-open,
   body.wa-mobile-menu-open {
     overflow: hidden;
   }

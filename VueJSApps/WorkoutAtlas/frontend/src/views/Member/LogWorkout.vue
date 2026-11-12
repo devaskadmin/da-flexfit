@@ -5158,12 +5158,29 @@ onUnmounted(() => {
 
 /* ── v0.84.68.5 Mobile — Workout Log Compact Rework ──────────────────────── */
 @media (max-width: 768px) {
-  :global(body.wa-workout-log-active:not(.wa-mobile-menu-open)),
+  :global(html:not(.wa-mobile-menu-open):not(.overflow-hidden)) {
+    height: auto !important;
+    min-height: 100%;
+    overflow-y: auto !important;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  :global(body.wa-workout-log-active:not(.wa-mobile-menu-open)) {
+    height: auto !important;
+    min-height: 100%;
+    overflow-x: clip !important;
+    overflow-y: visible !important;
+    touch-action: pan-y;
+  }
+
   :global(body.wa-workout-log-active:not(.wa-mobile-menu-open) #app),
   :global(body.wa-workout-log-active:not(.wa-mobile-menu-open) .body-padding),
   :global(body.wa-workout-log-active:not(.wa-mobile-menu-open) .main-content) {
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
+    height: auto !important;
+    min-height: 0;
+    overflow-x: clip !important;
+    overflow-y: visible !important;
   }
 
   :global(body.wa-workout-log-active:not(.wa-mobile-menu-open) .main-content) {
@@ -5176,6 +5193,11 @@ onUnmounted(() => {
       calc(var(--wa-mobile-bottom-nav-height, 0px) + var(--wa-mobile-bottom-nav-gap, 0px))
     );
     --workout-bottom-bar-height: 76px;
+    --wl-page-bottom-clearance: calc(
+      var(--mobile-bottom-nav-height, 0px) +
+      env(safe-area-inset-bottom) +
+      24px
+    );
     --wl-bottom-bar-offset: calc(var(--mobile-bottom-nav-height, 0px) + env(safe-area-inset-bottom));
     --wl-active-workout-clearance: calc(
       var(--mobile-bottom-nav-height, 0px) +
@@ -5184,9 +5206,9 @@ onUnmounted(() => {
       24px
     );
     --wl-bottom-bar-total-height: var(--wl-active-workout-clearance);
-    padding-bottom: var(--wl-bottom-bar-total-height);
-    overflow-x: hidden;
-    overflow-y: visible;
+    padding-bottom: var(--wl-page-bottom-clearance);
+    overflow-x: clip !important;
+    overflow-y: visible !important;
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
   }
@@ -5796,14 +5818,19 @@ onUnmounted(() => {
   .wl-day-card__footer {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
+    gap: 8px;
   }
   .wl-day-card__footer > .wl-btn-preview,
   .wl-day-card__footer > .wl-btn-start {
     width: 100%;
     min-width: 0;
+    height: 44px;
     min-height: 44px;
+    max-height: 48px;
+    padding: 5px 8px;
     justify-content: center;
+    align-items: center;
+    line-height: 1.15;
   }
   .wl-btn-add-exercise,
   .wl-btn-complete {

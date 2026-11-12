@@ -6,6 +6,16 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.270] - 2026-11-12 - Mobile Workout Log Scrolling and Actions
+
+- **Fixed:** Workout Log now keeps the document as the single mobile vertical scroll owner instead of assigning competing scroll containers to the app shell, preventing iPhone Safari swipes from becoming stuck.
+- **Fixed:** Route changes clear stale profile-sidebar body scroll locks, while the mobile More screen continues to lock and release document scrolling through its existing open/close state.
+- **Changed:** Mobile Preview and Start Workout actions remain equal-width and side by side with an 8px gap, a fixed 44px height, and reduced padding; desktop action alignment and colors remain unchanged.
+- **Changed:** Mobile page and Current Workout detail padding now separately account for the fixed bottom navigation and active-workout action bar so the final card remains reachable without excessive blank space.
+- **Relevant source files:** `frontend/src/App.vue`; `frontend/src/views/Member/LogWorkout.vue`.
+- **Verification:** Passed production build; Vue diagnostics and `git diff --check`; 320px and 390px immediate scrolling, equal 44px actions with an 8px gap, zero horizontal overflow, final-card clearance, More screen lock/release, intercepted conflict-modal close/release, SPA away/return with stale-lock cleanup, refresh, and desktop action-layout regression checks.
+- **Known unresolved issues:** None observed in the verified scope.
+
 ## [0.85.268] - 2026-11-12 - Previous Workout Conflict Modal
 
 - **Added:** Clicking Start Workout now opens a mobile-first `Previous Workout Found` modal only when authenticated unfinished sessions exist. The modal displays each session's day and date, supports explicit selection for Continue Previous, and keeps blue/green actions side by side down to 320px.
