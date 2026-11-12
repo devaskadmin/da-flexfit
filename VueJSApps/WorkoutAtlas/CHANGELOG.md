@@ -6,6 +6,18 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.265] - 2026-11-12 - Remove Workout Session Lock (Multiple Simultaneous In-Progress Sessions)
+
+- **Added:** `GET /api/workout-sessions/in-progress` to return all authenticated user's active sessions (newest first), enabling explicit per-session resume and per-session end actions.
+- **Changed:** `POST /api/workout-sessions/start` now always creates a new `in_progress` session for the authenticated user and no longer enforces one-active-session conflict gating.
+- **Fixed:** Workout start flows in Log Workout and Workout Detail no longer block new starts behind conflict prompts; users can run multiple in-progress sessions at the same time.
+- **Removed:** One-active-session conflict UX and payload paths (`ACTIVE_SESSION_EXISTS`/`ACTIVE_SESSION_CHANGED`, conflict dialog routing, `conflictResolutionAction`, `activeSessionId`) from the active workout start flows.
+- **Affected functionality:** Multi-session start, in-progress session listing, targeted resume, targeted end, and targeted add-exercise updates for active workouts.
+- **Relevant source files:** `backend/api/workout-sessions.js`; `backend/tests/workout-session-recovery.integration.test.js`; `frontend/src/views/Member/LogWorkout.vue`; `frontend/src/views/Member/WorkoutDetail.vue`; `frontend/src/utils/browserDialogs.js`.
+- **Evidence:** Copilot session `be77a0db-2f84-48be-a63a-eef2b8dc45f0`.
+- **Verification:** Focused backend tests passed (`node --test tests/workout-session-recovery.test.js tests/workout-session-recovery.integration.test.js`) including: repeated/concurrent multi-start creation, in-progress list returning multiple sessions, and ending one session without altering sibling in-progress sessions. Frontend production build passed (`vite build`, 696 modules transformed).
+- **Known unresolved issues:** No schema migration or destructive DB updates were required or performed. Runtime/live-environment verification without restart remains environment-dependent; this release is code-complete and test-verified for deployment handoff.
+
 ## [0.85.264] - 2026-11-12 - Active Workout Session Lock / Orphaned Plan Recovery (P0)
 
 - **Added:** Structured active-session conflict metadata and recovery actions in `GET /api/workout-sessions/active` and `POST /api/workout-sessions/start`, plus explicit `POST /api/workout-sessions/:sessionId/end` to safely end an in-progress session without deleting history.

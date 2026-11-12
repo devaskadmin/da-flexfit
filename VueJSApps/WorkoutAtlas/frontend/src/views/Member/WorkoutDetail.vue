@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { API_BASE } from '@/config/env';
 import ExerciseSessionCard from '@/components/workout-session/ExerciseSessionCard.vue';
 import { useWorkoutSessionDraft } from '@/composable/useWorkoutSessionDraft';
-import { showWorkoutSessionConflictDialog } from '@/utils/browserDialogs';
 
 const route  = useRoute();
 const router = useRouter();
@@ -18,7 +17,6 @@ const loading         = ref(false);
 const saving          = ref(false);
 const saveMessage     = ref('');
 const saveError       = ref('');
-const conflictMessage = ref('');
 const workoutTimerNowMs = ref(Date.now());
 
 let workoutTimerIntervalId = null;
@@ -233,63 +231,8 @@ watch(
 
 /* ─── Start workout for a day (Overview) ────────────────────────────────── */
 const startDayWorkout = async (dayName) => {
-  conflictMessage.value = '';
   saveError.value       = '';
   clearWorkoutDraftSave();
-
-  // Already in a session for this day → just navigate
-  if (activeSession.value) {
-    if (activeSession.value.workoutDayName === dayName) {
-      selectedDay.value = dayName;
-      activeTab.value   = 'dayDetails';
-      return;
-    }
-    const choice = await showWorkoutSessionConflictDialog({
-      title: 'You Have a Workout in Progress',
-      message: 'You already have a workout started. Would you like to continue your existing workout or end it and start a new one?',
-    });
-
-    if (choice === 'continue') {
-      if (String(activeSession.value.workoutPlanId || '') === planId.value) {
-        selectedDay.value = String(activeSession.value.workoutDayName || '').trim();
-        activeTab.value = 'dayDetails';
-      } else {
-        router.push({ name: 'workouts' });
-      }
-    }
-
-    if (choice === 'end_and_start_new') {
-      try {
-        const retry = await fetch(`${API_BASE}/api/workout-sessions/start`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            workoutPlanId: planId.value,
-            workoutDayName: dayName,
-            workoutDate: today(),
-            conflictResolutionAction: 'end_and_start_new',
-            activeSessionId: Number(activeSession.value?.id || 0) || null,
-          }),
-        });
-
-        const retryData = await retry.json().catch(() => ({}));
-        if (!retry.ok) {
-          throw new Error(retryData?.error || 'Failed to start workout session.');
-        }
-
-        activeSession.value = retryData.session;
-        selectedDay.value = dayName;
-        activeTab.value = 'dayDetails';
-        applyWorkoutDraft(retryData.session?.notes);
-        queueWorkoutDraftSave(true);
-      } catch (err) {
-        saveError.value = err?.message || 'Failed to start workout.';
-      }
-    }
-
-    return;
-  }
 
   try {
     const res = await fetch(`${API_BASE}/api/workout-sessions/start`, {
@@ -303,55 +246,6 @@ const startDayWorkout = async (dayName) => {
       }),
     });
     const data = await res.json();
-
-    if (res.status === 409) {
-      conflictMessage.value = data.error || 'A workout is already in progress.';
-      if (data.activeSession) {
-        activeSession.value = data.activeSession;
-        applyWorkoutDraft(data.activeSession.notes);
-
-        const choice = await showWorkoutSessionConflictDialog({
-          title: 'You Have a Workout in Progress',
-          message: 'You already have a workout started. Would you like to continue your existing workout or end it and start a new one?',
-        });
-
-        if (choice === 'continue') {
-          if (String(data.activeSession.workoutPlanId || '') === planId.value) {
-            selectedDay.value = String(data.activeSession.workoutDayName || '').trim();
-            activeTab.value = 'dayDetails';
-          } else {
-            router.push({ name: 'workouts' });
-          }
-        }
-
-        if (choice === 'end_and_start_new') {
-          const retry = await fetch(`${API_BASE}/api/workout-sessions/start`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-              workoutPlanId: planId.value,
-              workoutDayName: dayName,
-              workoutDate: today(),
-              conflictResolutionAction: 'end_and_start_new',
-              activeSessionId: Number(data.activeSession?.id || 0) || null,
-            }),
-          });
-
-          const retryData = await retry.json().catch(() => ({}));
-          if (!retry.ok) {
-            throw new Error(retryData?.error || 'Failed to start workout session.');
-          }
-
-          activeSession.value = retryData.session;
-          selectedDay.value = dayName;
-          activeTab.value = 'dayDetails';
-          applyWorkoutDraft(retryData.session?.notes);
-          queueWorkoutDraftSave(true);
-        }
-      }
-      return;
-    }
     if (!res.ok) throw new Error(data?.error || 'Failed to start workout session.');
 
     activeSession.value = data.session;
@@ -448,7 +342,6 @@ const endWithoutSaving = async () => {
   activeSession.value   = null;
   activeTab.value       = 'overview';
   selectedDay.value     = '';
-  conflictMessage.value = '';
   if (endedDurationSeconds > 0) {
     saveMessage.value = `Workout ended. Workout Time: ${formatDurationHms(endedDurationSeconds)}`;
     setTimeout(() => {
@@ -542,11 +435,6 @@ onUnmounted(() => {
         </section>
 
         <!-- Banners -->
-        <div v-if="conflictMessage" class="wd-banner wd-banner--warn">
-          <i class="fa-solid fa-triangle-exclamation"></i>
-          {{ conflictMessage }}
-          <button type="button" class="wd-banner-dismiss" @click="conflictMessage = ''">✕</button>
-        </div>
         <div v-if="saveError && plan" class="wd-banner wd-banner--error">
           <i class="fa-solid fa-circle-xmark"></i>
           {{ saveError }}

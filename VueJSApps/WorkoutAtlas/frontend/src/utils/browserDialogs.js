@@ -31,32 +31,3 @@ export const showConfirmDialog = async (message, options = {}) => {
 export const showAlertDialog = async (message, options = {}) => {
   await Swal.fire(buildAlertOptions(message, options));
 };
-
-export const showWorkoutSessionConflictDialog = async ({
-  title = 'You Have a Workout in Progress',
-  message = 'You already have a workout started. Would you like to continue your existing workout or end it and start a new one?',
-} = {}) => {
-  const result = await Swal.fire({
-    title,
-    text: message,
-    icon: 'warning',
-    showCancelButton: true,
-    showDenyButton: true,
-    confirmButtonText: 'Continue Existing Workout',
-    denyButtonText: 'End Existing & Start New Workout',
-    cancelButtonText: 'Cancel',
-    reverseButtons: true,
-    allowOutsideClick: false,
-    allowEscapeKey: true,
-  });
-
-  if (result?.isConfirmed) {
-    return 'continue';
-  }
-
-  if (result?.isDenied) {
-    return 'end_and_start_new';
-  }
-
-  return 'cancel';
-};

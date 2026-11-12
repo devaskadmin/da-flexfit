@@ -11,7 +11,7 @@ import {
   canViewTechnicalDiagnostics,
   normalizeRoleSlug,
 } from '@/utils/userFriendlyErrors';
-import { showConfirmDialog, showWorkoutSessionConflictDialog } from '@/utils/browserDialogs';
+import { showConfirmDialog } from '@/utils/browserDialogs';
 
 const router = useRouter();
 const route = useRoute();
@@ -60,6 +60,7 @@ const latestHistoryByExerciseId = ref({});
 
 /* ─── Session state (Day Details) ───────────────────────────────────────── */
 const activeSession    = ref(null);
+const activeSessions   = ref([]);
 const hasActiveWorkout = ref(false);
 const selectedDay      = ref('');
 const sessionExercises = ref([]);
@@ -67,7 +68,6 @@ const isPreviewMode    = ref(false);
 const saving           = ref(false);
 const saveMessage      = ref('');
 const saveError        = ref('');
-const conflictMessage  = ref('');
 const currentRoleSlug = ref('user');
 const errorDiagnosticsByArea = ref({
   plansLoad: null,
@@ -1166,70 +1166,42 @@ const togglePlan = async (planId) => {
 };
 
 /* ─── Check active session ───────────────────────────────────────────────── */
+const loadInProgressSessions = async () => {
+  const res = await fetch(`${API_BASE}/api/workout-sessions/in-progress`, { credentials: 'include' });
+  if (!res.ok) {
+    return [];
+  }
+
+  const data = await res.json().catch(() => ({}));
+  const sessions = Array.isArray(data?.sessions) ? data.sessions : [];
+  activeSessions.value = sessions;
+  return sessions;
+};
+
 const checkActiveSession = async () => {
   try {
-    const res  = await fetch(`${API_BASE}/api/workout-sessions/active`, { credentials: 'include' });
-    if (!res.ok) return;
-    const data = await res.json();
-    if (data.session) {
-      const nextSession = data.session;
-      const nextStatus = normalizeSessionStatus(nextSession);
-      const isTerminalSession = sessionHasTerminalState(nextSession);
-      const hasLiveState = isLiveSessionStatus(nextStatus);
-
-      if (isTerminalSession || !hasLiveState) {
-        activeSession.value = null;
-        hasActiveWorkout.value = false;
-        return;
-      }
-
-      activeSession.value    = nextSession;
-      hasActiveWorkout.value = true;
-      isPreviewMode.value    = false;
-      // Restore the date picker to the active session's start date so the
-      // page always shows the correct workout even when returning on a later day.
-      if (nextSession.workoutDate) {
-        const d = new Date(nextSession.workoutDate);
-        if (!isNaN(d)) {
-          selectedWorkoutDate.value = d.toISOString().split('T')[0];
-        }
-      }
-      // Auto-expand the plan that has an active session
-      const pid = String(nextSession.workoutPlanId || '');
-      if (pid) {
-        expandedPlanId.value = pid;
-        try {
-          const planRes = await fetch(`${API_BASE}/api/workout-planner?planId=${encodeURIComponent(pid)}`, { credentials: 'include' });
-          if (planRes.ok) {
-            const planData = await planRes.json();
-            expandedPlanData.value = planData?.planner || null;
-            if (expandedPlanData.value) {
-              await loadWorkoutLogDayOrder(pid);
-            }
-          }
-        } catch (_) {
-          // non-fatal: keep previously loaded plan if refresh fails
-        }
-      }
-      selectedDay.value = nextSession.workoutDayName;
-      // Rebuild sessionExercises from plan when available; otherwise recover from draft notes.
-      if (expandedPlanData.value) {
-        sessionExercises.value = await buildSessionExercisesWithHistoryPrefill(expandedPlanData.value.exercises || []);
-        applyWorkoutDraft(nextSession.notes);
-        queueWorkoutDraftSave(true);
-      } else if (nextSession.canResumeFromDraft) {
-        sessionExercises.value = buildSessionExercisesFromDraft(nextSession.notes, nextSession.workoutDayName);
-        activeTab.value = 'dayDetails';
-      } else if (nextSession.isOrphaned) {
-        setFriendlyError('save', {
-          rawMessage: 'Your previous workout plan is no longer available. You can end the unfinished session and start a new workout.',
-          fallback: 'Your previous workout plan is no longer available. You can end the unfinished session and start a new workout.',
-        });
-      }
-    } else {
+    const sessions = await loadInProgressSessions();
+    if (!sessions.length) {
       activeSession.value    = null;
       hasActiveWorkout.value = false;
+      sessionExercises.value = [];
+      return;
     }
+
+    const currentSessionId = Number(activeSession.value?.id || 0);
+    const preferredSession = sessions.find((session) => Number(session?.id || 0) === currentSessionId);
+    const nextSession = preferredSession || sessions[0];
+    const nextStatus = normalizeSessionStatus(nextSession);
+    const isTerminalSession = sessionHasTerminalState(nextSession);
+    const hasLiveState = isLiveSessionStatus(nextStatus);
+
+    if (isTerminalSession || !hasLiveState) {
+      activeSession.value = null;
+      hasActiveWorkout.value = false;
+      return;
+    }
+
+    await continueExistingWorkoutSession(nextSession);
   } catch (_) { /* non-fatal */ }
 };
 
@@ -1239,7 +1211,6 @@ const continueExistingWorkoutSession = async (session) => {
   activeSession.value = session;
   hasActiveWorkout.value = true;
   isPreviewMode.value = false;
-  conflictMessage.value = '';
 
   if (session.workoutDate) {
     const parsed = new Date(session.workoutDate);
@@ -1288,7 +1259,7 @@ const continueExistingWorkoutSession = async (session) => {
   });
 };
 
-const startWorkoutSessionRequest = async ({ dayName, forceEndAndStart = false, expectedActiveSessionId = null }) => {
+const startWorkoutSessionRequest = async ({ dayName }) => {
   const planId = expandedPlanId.value;
   const workoutStartDate = selectedWorkoutDate.value || today();
 
@@ -1300,75 +1271,11 @@ const startWorkoutSessionRequest = async ({ dayName, forceEndAndStart = false, e
       workoutPlanId: planId,
       workoutDayName: dayName,
       workoutDate: workoutStartDate,
-      conflictResolutionAction: forceEndAndStart ? 'end_and_start_new' : undefined,
-      activeSessionId: forceEndAndStart ? expectedActiveSessionId : undefined,
     }),
   });
 
   const payload = await response.json().catch(() => ({}));
   return { response, payload, workoutStartDate };
-};
-
-const resolveActiveSessionConflict = async ({ dayName, activeSession: sessionFromConflict }) => {
-  const active = sessionFromConflict || activeSession.value;
-  if (!active) return;
-
-  const orphanNoResume = Boolean(active.isOrphaned && !active.canResumeFromDraft);
-  const choice = await showWorkoutSessionConflictDialog({
-    title: 'You Have a Workout in Progress',
-    message: orphanNoResume
-      ? 'Your previous workout plan is no longer available. You can end the unfinished session and start a new workout.'
-      : 'You already have a workout started. Would you like to continue your existing workout or end it and start a new one?',
-  });
-
-  if (choice === 'cancel') {
-    return;
-  }
-
-  if (choice === 'continue') {
-    await continueExistingWorkoutSession(active);
-    return;
-  }
-
-  const { response, payload, workoutStartDate } = await startWorkoutSessionRequest({
-    dayName,
-    forceEndAndStart: true,
-    expectedActiveSessionId: Number(active.id || 0) || null,
-  });
-
-  if (response.status === 409) {
-    activeSession.value = payload?.activeSession || active;
-    hasActiveWorkout.value = Boolean(activeSession.value);
-    setFriendlyError('save', {
-      status: Number(response.status || 0) || null,
-      code: payload?.code || payload?.errorCode || '',
-      rawMessage: payload?.error || 'Unable to end the active workout and start a new one right now.',
-      category: 'save',
-      fallback: 'Unable to end the active workout and start a new one right now.',
-    });
-    return;
-  }
-
-  if (!response.ok) {
-    setFriendlyError('save', {
-      status: Number(response.status || 0) || null,
-      code: payload?.code || payload?.errorCode || '',
-      rawMessage: payload?.error || 'Failed to start workout session.',
-      category: 'save',
-      fallback: 'Failed to start workout session.',
-    });
-    return;
-  }
-
-  activeSession.value = payload.session;
-  hasActiveWorkout.value = true;
-  selectedWorkoutDate.value = workoutStartDate;
-  selectedDay.value = dayName;
-  isPreviewMode.value = false;
-  sessionExercises.value = await buildSessionExercisesWithHistoryPrefill(expandedPlanData.value?.exercises || []);
-  applyWorkoutDraft(payload.session?.notes);
-  queueWorkoutDraftSave(true);
-  activeTab.value = 'dayDetails';
 };
 
 /* ─── Preview a day (no session created) ────────────────────────────────── */
@@ -1384,36 +1291,11 @@ const previewDay = (dayName) => {
 
 /* ─── Start workout for a day ────────────────────────────────────────────── */
 const startDayWorkout = async (dayName) => {
-  conflictMessage.value = '';
   clearFriendlyError('save');
-
-  if (hasLiveWorkoutSession.value && activeSession.value) {
-    if (activeSession.value.workoutDayName === dayName) {
-      selectedDay.value = dayName;
-      activeTab.value   = 'dayDetails';
-      return;
-    }
-    await resolveActiveSessionConflict({ dayName, activeSession: activeSession.value });
-    return;
-  }
-
-  if (activeSession.value && !hasLiveWorkoutSession.value) {
-    activeSession.value = null;
-    hasActiveWorkout.value = false;
-  }
 
   try {
     const { response: res, payload: data, workoutStartDate } = await startWorkoutSessionRequest({ dayName });
 
-    if (res.status === 409) {
-      conflictMessage.value = data.error || 'A workout is already in progress.';
-      if (data.activeSession) {
-        activeSession.value = data.activeSession;
-        hasActiveWorkout.value = true;
-        await resolveActiveSessionConflict({ dayName, activeSession: data.activeSession });
-      }
-      return;
-    }
     if (!res.ok) {
       throw {
         status: Number(res?.status || 0) || null,
@@ -1434,6 +1316,7 @@ const startDayWorkout = async (dayName) => {
     sessionExercises.value = await buildSessionExercisesWithHistoryPrefill(expandedPlanData.value?.exercises || []);
     applyWorkoutDraft(data.session.notes);
     queueWorkoutDraftSave(true);
+    await loadInProgressSessions();
 
     activeTab.value = 'dayDetails';
   } catch (err) {
@@ -1445,6 +1328,64 @@ const startDayWorkout = async (dayName) => {
       rawMessage: err?.rawMessage || err?.message,
       category: 'save',
       fallback: 'Unable to start this workout right now. Please try again.',
+    });
+  }
+};
+
+const getInProgressSessionsForDay = (dayName) => {
+  const normalizedDay = String(dayName || '').trim();
+  if (!normalizedDay) return [];
+  return activeSessions.value.filter(
+    (session) => String(session?.workoutDayName || '').trim() === normalizedDay
+  );
+};
+
+const resumeInProgressSession = async (session) => {
+  clearFriendlyError('save');
+  await continueExistingWorkoutSession(session);
+};
+
+const endInProgressSession = async (session) => {
+  const targetSessionId = Number(session?.id || 0);
+  if (!targetSessionId) return;
+
+  clearFriendlyError('save');
+
+  try {
+    const response = await fetch(`${API_BASE}/api/workout-sessions/${targetSessionId}/end`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw {
+        status: Number(response?.status || 0) || null,
+        rawMessage: payload?.error || 'Failed to end workout session.',
+        code: payload?.code || payload?.errorCode || '',
+        requestId: payload?.requestId || response.headers?.get('x-request-id') || '',
+        service: payload?.service || '',
+      };
+    }
+
+    if (Number(activeSession.value?.id || 0) === targetSessionId) {
+      activeSession.value = null;
+      hasActiveWorkout.value = false;
+      selectedDay.value = '';
+      activeTab.value = 'overview';
+      sessionExercises.value = [];
+    }
+
+    await checkActiveSession();
+  } catch (err) {
+    setFriendlyError('save', {
+      status: err?.status,
+      code: err?.code,
+      requestId: err?.requestId,
+      service: err?.service,
+      rawMessage: err?.rawMessage || err?.message,
+      category: 'save',
+      fallback: 'Unable to end this workout right now. Please try again.',
     });
   }
 };
@@ -1649,7 +1590,10 @@ const addExerciseToActiveWorkout = async (pickedExercises) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ exerciseId }),
+        body: JSON.stringify({
+          exerciseId,
+          sessionId: Number(activeSession.value?.id || 0),
+        }),
       });
 
       const payload = await response.json().catch(() => ({}));
@@ -2036,10 +1980,6 @@ onUnmounted(() => {
       </nav>
 
       <!-- ── Banners ─────────────────────────────────────────────────────── -->
-      <div v-if="conflictMessage" class="wl-banner wl-banner--warn">
-        <i class="fa-solid fa-triangle-exclamation"></i> {{ conflictMessage }}
-        <button type="button" class="wl-banner-dismiss" @click="conflictMessage = ''">✕</button>
-      </div>
       <div v-if="saveError" class="wl-banner wl-banner--error">
         <i class="fa-solid fa-circle-xmark"></i> {{ saveError }}
         <button type="button" class="wl-banner-dismiss" @click="clearFriendlyError('save')">✕</button>
@@ -2352,15 +2292,15 @@ onUnmounted(() => {
                   v-for="group in exercisesByGroup"
                   :key="group.name"
                   class="wl-day-card app-section-card"
-                  :class="{ 'wl-day-card--active': activeSession && activeSession.workoutDayName === group.name }"
+                  :class="{ 'wl-day-card--active': getInProgressSessionsForDay(group.name).length > 0 }"
                 >
                   <!-- Day card header -->
                   <div class="wl-day-card__header">
                     <div class="wl-day-card__title">
                       <i class="fa-solid fa-calendar-day wl-day-icon"></i>
                       <h4>{{ group.name }}</h4>
-                      <span v-if="activeSession && activeSession.workoutDayName === group.name" class="wl-in-progress-chip">
-                        In Progress
+                      <span v-if="getInProgressSessionsForDay(group.name).length > 0" class="wl-in-progress-chip">
+                        {{ getInProgressSessionsForDay(group.name).length }} In Progress
                       </span>
                     </div>
                     <div class="wl-day-card__meta">
@@ -2402,27 +2342,41 @@ onUnmounted(() => {
 
                   <!-- Action -->
                   <div class="wl-day-card__footer">
-                    <button
-                      v-if="activeSession && activeSession.workoutDayName === group.name"
-                      type="button" class="wl-btn-resume"
-                      @click="activeTab = 'dayDetails'"
-                    >
-                      <i class="fa-solid fa-circle-play"></i> Resume Workout
-                    </button>
-                    <template v-else>
-                      <button
-                        type="button" class="wl-btn-preview"
-                        @click="previewDay(group.name)"
+                    <template v-if="getInProgressSessionsForDay(group.name).length > 0">
+                      <div
+                        v-for="session in getInProgressSessionsForDay(group.name)"
+                        :key="session.id"
+                        class="wl-session-action-row"
                       >
-                        <i class="fa-solid fa-eye"></i> Preview
-                      </button>
-                      <button
-                        type="button" class="wl-btn-start"
-                        @click="startDayWorkout(group.name)"
-                      >
-                        <i class="fa-solid fa-play"></i> Start Workout
-                      </button>
+                        <span class="wl-session-action-label">Session #{{ session.id }}</span>
+                        <button
+                          type="button"
+                          class="wl-btn-resume"
+                          @click="resumeInProgressSession(session)"
+                        >
+                          <i class="fa-solid fa-circle-play"></i> Resume
+                        </button>
+                        <button
+                          type="button"
+                          class="wl-btn-end"
+                          @click="endInProgressSession(session)"
+                        >
+                          <i class="fa-solid fa-stop"></i> End
+                        </button>
+                      </div>
                     </template>
+                    <button
+                      type="button" class="wl-btn-preview"
+                      @click="previewDay(group.name)"
+                    >
+                      <i class="fa-solid fa-eye"></i> Preview
+                    </button>
+                    <button
+                      type="button" class="wl-btn-start"
+                      @click="startDayWorkout(group.name)"
+                    >
+                      <i class="fa-solid fa-play"></i> Start Workout
+                    </button>
                   </div>
                 </article>
               </div>

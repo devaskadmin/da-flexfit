@@ -3,8 +3,6 @@ const router  = express.Router();
 const pool    = require('../db.js');
 const { sanitizeText } = require('../utils/sanitize.js');
 
-const ACTIVE_CONFLICT_ACTION_END_AND_START = 'end_and_start_new';
-
 const parseDraftPayload = (notes) => {
   if (!notes) return null;
   if (typeof notes === 'object') return notes;
@@ -134,7 +132,7 @@ const requireAuth = (req, res, next) => {
 //     ADD COLUMN `workout_day_name` VARCHAR(120) NOT NULL DEFAULT '' AFTER `workout_day_id`;
 
 // ─── GET /api/workout-sessions/active ──────────────────────────────────────
-// Returns the single in_progress session for the current user, if any.
+// Returns the most recent in_progress session for the current user, if any.
 router.get('/workout-sessions/active', requireAuth, async (req, res) => {
   const connection = await pool.getConnection();
   try {
@@ -176,9 +174,49 @@ router.get('/workout-sessions/active', requireAuth, async (req, res) => {
   }
 });
 
+// ─── GET /api/workout-sessions/in-progress ────────────────────────────────
+// Returns all in_progress sessions for the current user (newest first).
+router.get('/workout-sessions/in-progress', requireAuth, async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    const userId = req.session.user.id;
+
+    const [rows] = await connection.query(
+      `SELECT
+         id,
+         user_id                    AS userId,
+         source_workout_schedule_id AS workoutPlanId,
+         workout_day_id             AS workoutDayId,
+         workout_day_name           AS workoutDayName,
+         workout_date               AS workoutDate,
+         status                     AS sessionStatus,
+         started_at                 AS startedAt,
+         ended_at                   AS endedAt,
+         duration_seconds           AS durationSeconds,
+         completed_at               AS completedAt,
+         notes                      AS notes
+       FROM workout_log_sessions
+       WHERE user_id = ? AND status = 'in_progress'
+       ORDER BY started_at DESC, id DESC`,
+      [userId]
+    );
+
+    const sessions = [];
+    for (const row of rows) {
+      sessions.push(await enrichSessionForConflict({ connection, userId, session: row }));
+    }
+
+    return res.status(200).json({ sessions });
+  } catch (err) {
+    console.error('❌ GET /workout-sessions/in-progress:', err);
+    return res.status(500).json({ error: 'Failed to load active workout sessions.' });
+  } finally {
+    connection.release();
+  }
+});
+
 // ─── POST /api/workout-sessions/start ──────────────────────────────────────
 // Creates a new in_progress session.
-// Returns 409 if user already has an in_progress session.
 router.post('/workout-sessions/start', requireAuth, async (req, res) => {
   const connection = await pool.getConnection();
   try {
@@ -188,8 +226,6 @@ router.post('/workout-sessions/start', requireAuth, async (req, res) => {
       workoutDayId,
       workoutDayName,
       workoutDate,
-      conflictResolutionAction,
-      activeSessionId,
     } = req.body;
 
     if (!workoutPlanId || !workoutDayName || !workoutDate) {
@@ -198,76 +234,7 @@ router.post('/workout-sessions/start', requireAuth, async (req, res) => {
       });
     }
 
-    const shouldEndExistingAndStart = conflictResolutionAction === ACTIVE_CONFLICT_ACTION_END_AND_START;
-    const expectedActiveSessionId = Number(activeSessionId || 0) || null;
-
     await connection.beginTransaction();
-
-    // Serialize start attempts per user to prevent duplicate active sessions during rapid clicks.
-    await connection.query(
-      `SELECT id
-       FROM users
-       WHERE id = ?
-       FOR UPDATE`,
-      [userId]
-    );
-
-    const [existing] = await connection.query(
-      `SELECT id,
-              user_id                    AS userId,
-              source_workout_schedule_id AS workoutPlanId,
-              workout_day_id             AS workoutDayId,
-              workout_day_name           AS workoutDayName,
-              workout_date               AS workoutDate,
-              status                     AS sessionStatus,
-              started_at                 AS startedAt,
-              ended_at                   AS endedAt,
-              duration_seconds           AS durationSeconds,
-              completed_at               AS completedAt,
-              notes                      AS notes
-       FROM workout_log_sessions
-       WHERE user_id = ? AND status = 'in_progress'
-       ORDER BY started_at DESC
-       LIMIT 1
-       FOR UPDATE`,
-      [userId]
-    );
-
-    if (existing.length > 0) {
-      const activeSession = await enrichSessionForConflict({ connection, userId, session: existing[0] });
-
-      if (!shouldEndExistingAndStart) {
-        await connection.rollback();
-        return res.status(409).json({
-          code: 'ACTIVE_SESSION_EXISTS',
-          title: 'You Have a Workout in Progress',
-          error: 'You already have a workout in progress. Would you like to continue your existing workout or end it and start a new one?',
-          activeSession,
-        });
-      }
-
-      if (expectedActiveSessionId && Number(activeSession.id || 0) !== expectedActiveSessionId) {
-        await connection.rollback();
-        return res.status(409).json({
-          code: 'ACTIVE_SESSION_CHANGED',
-          error: 'Your active workout changed. Please review and try again.',
-          activeSession,
-        });
-      }
-
-      await connection.query(
-        `UPDATE workout_log_sessions
-         SET status = 'ended',
-             ended_at = NOW(),
-             completed_at = COALESCE(completed_at, NOW()),
-             duration_seconds = CASE
-               WHEN started_at IS NULL THEN COALESCE(duration_seconds, 0)
-               ELSE GREATEST(TIMESTAMPDIFF(SECOND, started_at, NOW()), 0)
-             END
-         WHERE id = ? AND user_id = ? AND status = 'in_progress'`,
-        [activeSession.id, userId]
-      );
-    }
 
     // Create new session
     const [result] = await connection.query(
@@ -436,27 +403,41 @@ router.post('/workout-sessions/active/add-exercise', requireAuth, async (req, re
   try {
     const userId = Number(req.session.user.id || 0);
     const exerciseId = Number(req.body?.exerciseId || 0);
+    const sessionId = Number(req.body?.sessionId || 0) || null;
 
     if (!exerciseId) {
       return res.status(400).json({ error: 'exerciseId is required.' });
     }
 
-    const [activeRows] = await connection.query(
-      `SELECT
-         id,
-         source_workout_schedule_id AS workoutPlanId,
-         workout_day_id             AS workoutDayId,
-         workout_day_name           AS workoutDayName,
-         status
-       FROM workout_log_sessions
-       WHERE user_id = ? AND status = 'in_progress'
-       ORDER BY started_at DESC
-       LIMIT 1`,
-      [userId]
-    );
+    const [activeRows] = sessionId
+      ? await connection.query(
+          `SELECT
+             id,
+             source_workout_schedule_id AS workoutPlanId,
+             workout_day_id             AS workoutDayId,
+             workout_day_name           AS workoutDayName,
+             status
+           FROM workout_log_sessions
+           WHERE id = ? AND user_id = ? AND status = 'in_progress'
+           LIMIT 1`,
+          [sessionId, userId]
+        )
+      : await connection.query(
+          `SELECT
+             id,
+             source_workout_schedule_id AS workoutPlanId,
+             workout_day_id             AS workoutDayId,
+             workout_day_name           AS workoutDayName,
+             status
+           FROM workout_log_sessions
+           WHERE user_id = ? AND status = 'in_progress'
+           ORDER BY started_at DESC
+           LIMIT 1`,
+          [userId]
+        );
 
     if (!activeRows.length) {
-      return res.status(409).json({ error: 'No active in-progress workout session found.' });
+      return res.status(404).json({ error: 'Active in-progress workout session not found for this user.' });
     }
 
     const activeSession = activeRows[0] || {};

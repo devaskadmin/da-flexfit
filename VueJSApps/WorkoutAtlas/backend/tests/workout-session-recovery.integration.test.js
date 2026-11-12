@@ -77,6 +77,17 @@ const createMockPool = (seedState = {}) => {
       .filter((session) => Number(session.user_id) === Number(userId) && session.status === 'in_progress')
       .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())[0] || null;
 
+  const findLiveSessionsForUser = (userId) =>
+    state.sessions
+      .filter((session) => Number(session.user_id) === Number(userId) && session.status === 'in_progress')
+      .sort((a, b) => {
+        const startedDiff = new Date(b.started_at).getTime() - new Date(a.started_at).getTime();
+        if (startedDiff !== 0) {
+          return startedDiff;
+        }
+        return Number(b.id || 0) - Number(a.id || 0);
+      });
+
   const toActiveRow = (session) => ({
     id: session.id,
     userId: session.user_id,
@@ -117,6 +128,15 @@ const createMockPool = (seedState = {}) => {
         await acquireUserLock(params[0], connectionState);
       }
       return [[{ id: Number(params[0]) }], []];
+    }
+
+    if (
+      normalizedSql.includes('FROM workout_log_sessions') &&
+      normalizedSql.includes("WHERE user_id = ? AND status = 'in_progress'") &&
+      normalizedSql.includes('ORDER BY started_at DESC, id DESC')
+    ) {
+      const liveRows = findLiveSessionsForUser(params[0]).map(toActiveRow);
+      return [liveRows, []];
     }
 
     if (normalizedSql.includes('FROM workout_log_sessions') && normalizedSql.includes("WHERE user_id = ? AND status = 'in_progress'") && normalizedSql.includes('SELECT id,')) {
@@ -366,7 +386,7 @@ test('deleted-plan orphan active session is detected, ended, and replaced withou
     assert.equal(activeRes.body.session.orphanReason, 'missing_plan_reference');
     assert.equal(activeRes.body.session.canResumeFromDraft, true);
 
-    const conflictReq = {
+    const startReq = {
       session: { user: { id: 77 } },
       body: {
         workoutPlanId: 900,
@@ -374,35 +394,21 @@ test('deleted-plan orphan active session is detected, ended, and replaced withou
         workoutDate: '2026-11-12',
       },
     };
-    const conflictRes = createResponseRecorder();
-    await start(conflictReq, conflictRes);
+    const startRes = createResponseRecorder();
+    await start(startReq, startRes);
 
-    assert.equal(conflictRes.statusCode, 409);
-    assert.equal(conflictRes.body.code, 'ACTIVE_SESSION_EXISTS');
-    assert.equal(conflictRes.body.activeSession.id, 500);
+    assert.equal(startRes.statusCode, 201);
+    assert.equal(startRes.body.session.id, 501);
+    assert.equal(startRes.body.session.sessionStatus, 'in_progress');
 
-    const replaceReq = {
-      session: { user: { id: 77 } },
-      body: {
-        workoutPlanId: 900,
-        workoutDayName: 'Any Day',
-        workoutDate: '2026-11-12',
-        conflictResolutionAction: 'end_and_start_new',
-        activeSessionId: 500,
-      },
-    };
-    const replaceRes = createResponseRecorder();
-    await start(replaceReq, replaceRes);
-
-    assert.equal(replaceRes.statusCode, 201);
-    assert.equal(replaceRes.body.session.id, 501);
-    const endedOrphan = mockPool._state.sessions.find((session) => session.id === 500);
-    assert.equal(endedOrphan.status, 'ended');
-    assert.equal(endedOrphan.notes, orphanNotes);
+    const preservedOrphan = mockPool._state.sessions.find((session) => session.id === 500);
+    assert.equal(preservedOrphan.status, 'in_progress');
+    assert.equal(preservedOrphan.notes, orphanNotes);
 
     const liveSessions = mockPool._state.sessions.filter((session) => session.status === 'in_progress' && session.user_id === 77);
-    assert.equal(liveSessions.length, 1);
-    assert.equal(liveSessions[0].id, 501);
+    assert.equal(liveSessions.length, 2);
+    assert.equal(liveSessions.some((session) => session.id === 500), true);
+    assert.equal(liveSessions.some((session) => session.id === 501), true);
 
     assert.equal(mockPool._state.workoutLog.length, originalWorkoutLogCount);
     assert.equal(mockPool._state.workoutLogSets.length, originalWorkoutSetCount);
@@ -411,7 +417,7 @@ test('deleted-plan orphan active session is detected, ended, and replaced withou
   }
 });
 
-test('stale activeSessionId returns ACTIVE_SESSION_CHANGED and preserves current active session', async () => {
+test('start ignores legacy conflict fields and still creates a new in-progress session', async () => {
   const mockPool = createMockPool({
     sessions: [
       {
@@ -450,19 +456,19 @@ test('stale activeSessionId returns ACTIVE_SESSION_CHANGED and preserves current
     const res = createResponseRecorder();
     await start(req, res);
 
-    assert.equal(res.statusCode, 409);
-    assert.equal(res.body.code, 'ACTIVE_SESSION_CHANGED');
-    assert.equal(res.body.activeSession.id, 700);
+    assert.equal(res.statusCode, 201);
+    assert.equal(res.body.session.id, 800);
+    assert.equal(res.body.session.sessionStatus, 'in_progress');
 
     const current = mockPool._state.sessions.find((session) => session.id === 700);
     assert.equal(current.status, 'in_progress');
-    assert.equal(mockPool._state.sessions.filter((session) => session.user_id === 55).length, 1);
+    assert.equal(mockPool._state.sessions.filter((session) => session.user_id === 55).length, 2);
   } finally {
     restore();
   }
 });
 
-test('end-and-start rollback restores original active session when replacement insert fails', async () => {
+test('start rollback preserves existing in-progress sessions when insert fails', async () => {
   const mockPool = createMockPool({
     sessions: [
       {
@@ -495,8 +501,6 @@ test('end-and-start rollback restores original active session when replacement i
         workoutPlanId: 111,
         workoutDayName: 'Any Day',
         workoutDate: '2026-11-12',
-        conflictResolutionAction: 'end_and_start_new',
-        activeSessionId: 800,
       },
     };
     const res = createResponseRecorder();
@@ -513,7 +517,7 @@ test('end-and-start rollback restores original active session when replacement i
   }
 });
 
-test('repeated start requests cannot create two in-progress sessions for the same user', async () => {
+test('repeated start requests can create multiple in-progress sessions for the same user', async () => {
   const mockPool = createMockPool({
     sessions: [],
     workoutSchedules: [{ id: 222, user_id: 88, title: 'Plan 222' }],
@@ -548,17 +552,16 @@ test('repeated start requests cannot create two in-progress sessions for the sam
     const secondRes = createResponseRecorder();
     await start(secondReq, secondRes);
 
-    assert.equal(secondRes.statusCode, 409);
-    assert.equal(secondRes.body.code, 'ACTIVE_SESSION_EXISTS');
+    assert.equal(secondRes.statusCode, 201);
 
     const liveSessions = mockPool._state.sessions.filter((session) => session.user_id === 88 && session.status === 'in_progress');
-    assert.equal(liveSessions.length, 1);
+    assert.equal(liveSessions.length, 2);
   } finally {
     restore();
   }
 });
 
-test('concurrent start attempts are serialized and produce a single in-progress session', async () => {
+test('concurrent start attempts can create multiple in-progress sessions for the same user', async () => {
   const mockPool = createMockPool({
     sessions: [],
     workoutSchedules: [{ id: 333, user_id: 66, title: 'Plan 333' }],
@@ -596,11 +599,131 @@ test('concurrent start attempts are serialized and produce a single in-progress 
     ]);
 
     const statusCodes = [resA.statusCode, resB.statusCode].sort((left, right) => left - right);
-    assert.deepEqual(statusCodes, [201, 409]);
+    assert.deepEqual(statusCodes, [201, 201]);
 
     const liveSessions = mockPool._state.sessions.filter((session) => session.user_id === 66 && session.status === 'in_progress');
-    assert.equal(liveSessions.length, 1);
-    assert.equal(mockPool._state.counters.insertStartSession, 1);
+    assert.equal(liveSessions.length, 2);
+    assert.equal(mockPool._state.counters.insertStartSession, 2);
+  } finally {
+    restore();
+  }
+});
+
+test('in-progress endpoint returns all active sessions and supports independent resume selection', async () => {
+  const mockPool = createMockPool({
+    sessions: [
+      {
+        id: 1401,
+        user_id: 33,
+        source_workout_schedule_id: 500,
+        workout_day_id: null,
+        workout_day_name: 'Monday',
+        workout_date: '2026-11-12',
+        status: 'in_progress',
+        started_at: '2026-11-12T09:00:00.000Z',
+        ended_at: null,
+        duration_seconds: 0,
+        completed_at: null,
+        notes: '',
+      },
+      {
+        id: 1402,
+        user_id: 33,
+        source_workout_schedule_id: 500,
+        workout_day_id: null,
+        workout_day_name: 'Tuesday',
+        workout_date: '2026-11-12',
+        status: 'in_progress',
+        started_at: '2026-11-12T10:00:00.000Z',
+        ended_at: null,
+        duration_seconds: 0,
+        completed_at: null,
+        notes: '',
+      },
+    ],
+    workoutSchedules: [{ id: 500, user_id: 33, title: 'Plan 500' }],
+  });
+
+  const { route, restore } = loadRouteWithMockPool(mockPool);
+  try {
+    const getInProgress = getBusinessHandler(route, 'get', '/workout-sessions/in-progress');
+
+    const req = { session: { user: { id: 33 } } };
+    const res = createResponseRecorder();
+    await getInProgress(req, res);
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(Array.isArray(res.body.sessions), true);
+    assert.equal(res.body.sessions.length, 2);
+    assert.equal(res.body.sessions[0].id, 1402);
+    assert.equal(res.body.sessions[1].id, 1401);
+  } finally {
+    restore();
+  }
+});
+
+test('ending one in-progress session does not alter other in-progress sessions for the same user', async () => {
+  const mockPool = createMockPool({
+    sessions: [
+      {
+        id: 1501,
+        user_id: 44,
+        source_workout_schedule_id: 600,
+        workout_day_id: null,
+        workout_day_name: 'Monday',
+        workout_date: '2026-11-12',
+        status: 'in_progress',
+        started_at: '2026-11-12T08:00:00.000Z',
+        ended_at: null,
+        duration_seconds: 0,
+        completed_at: null,
+        notes: '',
+      },
+      {
+        id: 1502,
+        user_id: 44,
+        source_workout_schedule_id: 600,
+        workout_day_id: null,
+        workout_day_name: 'Tuesday',
+        workout_date: '2026-11-12',
+        status: 'in_progress',
+        started_at: '2026-11-12T09:00:00.000Z',
+        ended_at: null,
+        duration_seconds: 0,
+        completed_at: null,
+        notes: '',
+      },
+    ],
+    workoutSchedules: [{ id: 600, user_id: 44, title: 'Plan 600' }],
+  });
+
+  const { route, restore } = loadRouteWithMockPool(mockPool);
+  try {
+    const endSession = getBusinessHandler(route, 'post', '/workout-sessions/:sessionId/end');
+    const getInProgress = getBusinessHandler(route, 'get', '/workout-sessions/in-progress');
+
+    const endReq = {
+      session: { user: { id: 44 } },
+      params: { sessionId: '1501' },
+    };
+    const endRes = createResponseRecorder();
+    await endSession(endReq, endRes);
+
+    assert.equal(endRes.statusCode, 200);
+    assert.equal(endRes.body.endedSessionId, 1501);
+
+    const ended = mockPool._state.sessions.find((session) => session.id === 1501);
+    const stillLive = mockPool._state.sessions.find((session) => session.id === 1502);
+    assert.equal(ended.status, 'ended');
+    assert.equal(stillLive.status, 'in_progress');
+
+    const listReq = { session: { user: { id: 44 } } };
+    const listRes = createResponseRecorder();
+    await getInProgress(listReq, listRes);
+
+    assert.equal(listRes.statusCode, 200);
+    assert.equal(listRes.body.sessions.length, 1);
+    assert.equal(listRes.body.sessions[0].id, 1502);
   } finally {
     restore();
   }
