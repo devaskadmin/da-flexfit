@@ -6,6 +6,8 @@ const workoutSessionsRoute = require('../api/workout-sessions');
 const {
   parseDraftPayload,
   getDraftExerciseCount,
+  normalizeSessionIds,
+  sessionIdSetsMatch,
 } = workoutSessionsRoute._private;
 
 test('parseDraftPayload parses JSON notes payload', () => {
@@ -38,4 +40,14 @@ test('getDraftExerciseCount returns exercise count from draft notes', () => {
   });
 
   assert.equal(getDraftExerciseCount(notes), 3);
+});
+
+test('normalizeSessionIds sanitizes, deduplicates, and sorts explicit conflict selections', () => {
+  assert.deepEqual(normalizeSessionIds(['12', 5, 12, 0, null, 'bad']), [5, 12]);
+});
+
+test('sessionIdSetsMatch requires the exact current unfinished-session set', () => {
+  assert.equal(sessionIdSetsMatch([9, 3], ['3', '9']), true);
+  assert.equal(sessionIdSetsMatch([3], [3, 9]), false);
+  assert.equal(sessionIdSetsMatch([3, 9, 10], [3, 9]), false);
 });

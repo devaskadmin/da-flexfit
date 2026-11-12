@@ -6,6 +6,18 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.268] - 2026-11-12 - Previous Workout Conflict Modal
+
+- **Added:** Clicking Start Workout now opens a mobile-first `Previous Workout Found` modal only when authenticated unfinished sessions exist. The modal displays each session's day and date, supports explicit selection for Continue Previous, and keeps blue/green actions side by side down to 320px.
+- **Changed:** Continue Previous restores the selected session's plan or saved draft, opens Day Details, and pauses the displayed workout timer without ending, deleting, or creating a session.
+- **Changed:** Start New Workout atomically validates and ends exactly the displayed unfinished sessions before creating the originally selected workout. Multiple sessions require an explicit all-session confirmation; stale conflicts refresh without partial changes or duplicate creation.
+- **Fixed:** Current Workout exercise details now keep Complete Set rows on the dark card surface, use white/slate text and input contrast, and provide 44px mobile targets for Add Set, Complete Set, and Complete Exercise without changing their behavior.
+- **Removed:** Workout day cards no longer display Session IDs, Resume/End controls, In Progress badges, or active-session borders. Day details, summaries, Preview, and Start Workout actions remain unchanged.
+- **Safety:** Session replacement retains ownership validation and saved notes/history, rolls back all ended-session changes if creation fails, and does not add a database-level active-session uniqueness restriction.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `backend/api/workout-sessions.js`; `backend/tests/workout-session-recovery.test.js`; `backend/tests/workout-session-recovery.integration.test.js`.
+- **Verification:** Focused backend conflict/recovery tests and frontend production build passed. Desktop and 320px browser checks covered modal dismissal, paused continuation, atomic Start New behavior, multi-session confirmation, action-button geometry, and no horizontal overflow using isolated intercepted fixtures. Exercise-detail checks at desktop, 390px, and 320px confirmed dark set controls, readable inputs and labels, 44px action targets, and working Add Set, Complete Set, and Complete Exercise behavior without real session writes.
+- **Known unresolved issues:** None identified for this change.
+
 ## [0.85.267] - 2026-11-12 - Compact Workout Day Buttons
 
 - **Changed:** Workout Log day cards use tighter padding and spacing while retaining day names, statistics, and wrapping exercise summaries.

@@ -68,6 +68,13 @@ const latestHistoryByExerciseId = ref({});
 const activeSession    = ref(null);
 const activeSessions   = ref([]);
 const hasActiveWorkout = ref(false);
+const showWorkoutConflictModal = ref(false);
+const workoutConflictSessions = ref([]);
+const selectedConflictSessionId = ref(null);
+const pendingWorkoutStart = ref(null);
+const conflictModalLoading = ref(false);
+const conflictModalError = ref('');
+const confirmMultipleSessionEnd = ref(false);
 const selectedDay      = ref('');
 const sessionExercises = ref([]);
 const isPreviewMode    = ref(false);
@@ -90,6 +97,8 @@ const diagnosticsExpandedByArea = ref({
   deleteHistory: false,
 });
 const workoutTimerNowMs = ref(Date.now());
+const workoutTimerPaused = ref(false);
+const pausedWorkoutElapsedSeconds = ref(0);
 const addExercisePickerOpen = ref(false);
 const exerciseLibraryLoading = ref(false);
 const exerciseLibrary = ref([]);
@@ -333,11 +342,24 @@ const getHistorySessionDurationSeconds = (session) => {
   return Math.max(Math.floor((completedAtMs - startedAtMs) / 1000), 0);
 };
 
-const activeWorkoutElapsedSeconds = computed(() =>
-  hasActiveWorkout.value ? getElapsedSecondsFromStart(activeSession.value?.startedAt) : 0,
-);
+const activeWorkoutElapsedSeconds = computed(() => {
+  if (!hasActiveWorkout.value) return 0;
+  return workoutTimerPaused.value
+    ? pausedWorkoutElapsedSeconds.value
+    : getElapsedSecondsFromStart(activeSession.value?.startedAt);
+});
 
 const activeWorkoutTimerLabel = computed(() => formatDurationHms(activeWorkoutElapsedSeconds.value));
+
+const selectedConflictSession = computed(() =>
+  workoutConflictSessions.value.find(
+    (session) => Number(session?.id || 0) === Number(selectedConflictSessionId.value || 0)
+  ) || null
+);
+
+const canContinueConflictSession = computed(() =>
+  Boolean(selectedConflictSession.value?.continuationPossible)
+);
 
 const normalizeSessionStatus = (session) =>
   String(session?.sessionStatus || session?.status || '').trim().toLowerCase();
@@ -425,8 +447,26 @@ const setWorkoutTimerRunning = (isRunning) => {
 };
 
 const syncWorkoutTimerState = () => {
-  const shouldRun = Boolean(hasActiveWorkout.value && activeSession.value?.startedAt);
+  const shouldRun = Boolean(
+    hasActiveWorkout.value && activeSession.value?.startedAt && !workoutTimerPaused.value
+  );
   setWorkoutTimerRunning(shouldRun);
+};
+
+const setWorkoutTimerPaused = (isPaused) => {
+  workoutTimerNowMs.value = Date.now();
+  if (isPaused) {
+    pausedWorkoutElapsedSeconds.value = getElapsedSecondsFromStart(activeSession.value?.startedAt);
+  }
+  workoutTimerPaused.value = Boolean(isPaused);
+  syncWorkoutTimerState();
+};
+
+const formatConflictSessionDate = (value) => {
+  if (!value) return 'Date unavailable';
+  const normalized = String(value).slice(0, 10);
+  const parsed = new Date(`${normalized}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? normalized : parsed.toLocaleDateString();
 };
 
 const today = () => new Date().toISOString().split('T')[0];
@@ -1213,12 +1253,13 @@ const checkActiveSession = async () => {
   } catch (_) { /* non-fatal */ }
 };
 
-const continueExistingWorkoutSession = async (session, { activateTab = true } = {}) => {
+const continueExistingWorkoutSession = async (session, { activateTab = true, pauseTimer = false } = {}) => {
   if (!session) return;
 
   activeSession.value = session;
   hasActiveWorkout.value = true;
   isPreviewMode.value = false;
+  setWorkoutTimerPaused(pauseTimer);
 
   if (session.workoutDate) {
     const parsed = new Date(session.workoutDate);
@@ -1230,6 +1271,12 @@ const continueExistingWorkoutSession = async (session, { activateTab = true } = 
   selectedDay.value = String(session.workoutDayName || '').trim();
 
   const pid = String(session.workoutPlanId || '').trim();
+  if (!pid && pauseTimer && session.canResumeFromDraft) {
+    sessionExercises.value = buildSessionExercisesFromDraft(session.notes, session.workoutDayName);
+    activeTab.value = selectTabDuringSessionRecovery({ currentTab: activeTab.value, activateTab });
+    return;
+  }
+
   expandedPlanData.value = selectExpandedPlanDuringSessionRecovery({
     currentPlan: expandedPlanData.value,
     sessionPlanId: pid,
@@ -1270,9 +1317,13 @@ const continueExistingWorkoutSession = async (session, { activateTab = true } = 
   });
 };
 
-const startWorkoutSessionRequest = async ({ dayName }) => {
-  const planId = expandedPlanId.value;
-  const workoutStartDate = selectedWorkoutDate.value || today();
+const startWorkoutSessionRequest = async ({
+  dayName,
+  planId = expandedPlanId.value,
+  workoutStartDate = selectedWorkoutDate.value || today(),
+  endSessionIds = [],
+  confirmMultipleEnd = false,
+}) => {
 
   const response = await fetch(`${API_BASE}/api/workout-sessions/start`, {
     method: 'POST',
@@ -1282,11 +1333,50 @@ const startWorkoutSessionRequest = async ({ dayName }) => {
       workoutPlanId: planId,
       workoutDayName: dayName,
       workoutDate: workoutStartDate,
+      ...(endSessionIds.length ? { endSessionIds, confirmMultipleEnd } : {}),
     }),
   });
 
   const payload = await response.json().catch(() => ({}));
   return { response, payload, workoutStartDate };
+};
+
+const closeWorkoutConflictModal = () => {
+  if (conflictModalLoading.value) return;
+  showWorkoutConflictModal.value = false;
+  workoutConflictSessions.value = [];
+  selectedConflictSessionId.value = null;
+  pendingWorkoutStart.value = null;
+  conflictModalError.value = '';
+  confirmMultipleSessionEnd.value = false;
+};
+
+const openWorkoutConflictModal = ({ sessions, pendingStart, message = '' }) => {
+  const normalizedSessions = Array.isArray(sessions) ? sessions : [];
+  workoutConflictSessions.value = normalizedSessions;
+  pendingWorkoutStart.value = pendingStart;
+  const firstContinuable = normalizedSessions.find((session) => session?.continuationPossible);
+  selectedConflictSessionId.value = firstContinuable?.id || null;
+  conflictModalError.value = message;
+  confirmMultipleSessionEnd.value = false;
+  showWorkoutConflictModal.value = true;
+};
+
+const activateStartedWorkout = async ({ session, pendingStart }) => {
+  activeSession.value = session;
+  hasActiveWorkout.value = true;
+  selectedWorkoutDate.value = pendingStart.workoutStartDate;
+  selectedDay.value = pendingStart.dayName;
+  isPreviewMode.value = false;
+  setWorkoutTimerPaused(false);
+
+  sessionExercises.value = await buildSessionExercisesWithHistoryPrefill(
+    pendingStart.planExercises || []
+  );
+  applyWorkoutDraft(session.notes);
+  queueWorkoutDraftSave(true);
+  await loadInProgressSessions();
+  activeTab.value = 'dayDetails';
 };
 
 /* ─── Preview a day (no session created) ────────────────────────────────── */
@@ -1304,8 +1394,20 @@ const previewDay = (dayName) => {
 const startDayWorkout = async (dayName) => {
   clearFriendlyError('save');
 
+  const pendingStart = {
+    dayName,
+    planId: expandedPlanId.value,
+    workoutStartDate: selectedWorkoutDate.value || today(),
+    planExercises: expandedPlanData.value?.exercises || [],
+  };
+
   try {
-    const { response: res, payload: data, workoutStartDate } = await startWorkoutSessionRequest({ dayName });
+    const { response: res, payload: data } = await startWorkoutSessionRequest(pendingStart);
+
+    if (res.status === 409 && Array.isArray(data?.activeSessions) && data.activeSessions.length) {
+      openWorkoutConflictModal({ sessions: data.activeSessions, pendingStart });
+      return;
+    }
 
     if (!res.ok) {
       throw {
@@ -1317,19 +1419,7 @@ const startDayWorkout = async (dayName) => {
       };
     }
 
-    activeSession.value    = data.session;
-    hasActiveWorkout.value = true;
-    selectedWorkoutDate.value = workoutStartDate; // lock the date picker to the start date
-    selectedDay.value      = dayName;
-    isPreviewMode.value    = false;
-
-    // Build session exercises from the expanded plan
-    sessionExercises.value = await buildSessionExercisesWithHistoryPrefill(expandedPlanData.value?.exercises || []);
-    applyWorkoutDraft(data.session.notes);
-    queueWorkoutDraftSave(true);
-    await loadInProgressSessions();
-
-    activeTab.value = 'dayDetails';
+    await activateStartedWorkout({ session: data.session, pendingStart });
   } catch (err) {
     setFriendlyError('save', {
       status: err?.status,
@@ -1343,61 +1433,72 @@ const startDayWorkout = async (dayName) => {
   }
 };
 
-const getInProgressSessionsForDay = (dayName) => {
-  const normalizedDay = String(dayName || '').trim();
-  if (!normalizedDay) return [];
-  return activeSessions.value.filter(
-    (session) => String(session?.workoutDayName || '').trim() === normalizedDay
-  );
-};
+const continuePreviousWorkout = async () => {
+  const session = selectedConflictSession.value;
+  if (!session?.continuationPossible) {
+    conflictModalError.value = 'Select an unfinished workout that can be restored.';
+    return;
+  }
 
-const resumeInProgressSession = async (session) => {
+  conflictModalLoading.value = true;
   clearFriendlyError('save');
-  await continueExistingWorkoutSession(session);
+  try {
+    await continueExistingWorkoutSession(session, { pauseTimer: true });
+    conflictModalLoading.value = false;
+    closeWorkoutConflictModal();
+  } catch (err) {
+    conflictModalError.value = err?.message || 'Unable to restore the previous workout.';
+    conflictModalLoading.value = false;
+  }
 };
 
-const endInProgressSession = async (session) => {
-  const targetSessionId = Number(session?.id || 0);
-  if (!targetSessionId) return;
+const startNewWorkoutAfterConflict = async () => {
+  const sessions = workoutConflictSessions.value;
+  const pendingStart = pendingWorkoutStart.value;
+  if (!pendingStart || sessions.length === 0) return;
+  if (sessions.length > 1 && !confirmMultipleSessionEnd.value) {
+    conflictModalError.value = 'Confirm that all listed unfinished workouts will be ended.';
+    return;
+  }
 
+  conflictModalLoading.value = true;
+  conflictModalError.value = '';
   clearFriendlyError('save');
 
   try {
-    const response = await fetch(`${API_BASE}/api/workout-sessions/${targetSessionId}/end`, {
-      method: 'POST',
-      credentials: 'include',
+    const endSessionIds = sessions.map((session) => Number(session.id));
+    const { response, payload } = await startWorkoutSessionRequest({
+      ...pendingStart,
+      endSessionIds,
+      confirmMultipleEnd: sessions.length > 1 && confirmMultipleSessionEnd.value,
     });
 
-    const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
+      if (response.status === 409 && Array.isArray(payload?.activeSessions)) {
+        openWorkoutConflictModal({
+          sessions: payload.activeSessions,
+          pendingStart,
+          message: payload.error || 'The unfinished workout list changed. Review it and try again.',
+        });
+        conflictModalLoading.value = false;
+        return;
+      }
       throw {
         status: Number(response?.status || 0) || null,
-        rawMessage: payload?.error || 'Failed to end workout session.',
+        rawMessage: payload?.error || 'Failed to end the previous workout.',
         code: payload?.code || payload?.errorCode || '',
         requestId: payload?.requestId || response.headers?.get('x-request-id') || '',
         service: payload?.service || '',
       };
     }
 
-    if (Number(activeSession.value?.id || 0) === targetSessionId) {
-      activeSession.value = null;
-      hasActiveWorkout.value = false;
-      selectedDay.value = '';
-      activeTab.value = 'overview';
-      sessionExercises.value = [];
-    }
-
-    await checkActiveSession();
+    conflictModalLoading.value = false;
+    closeWorkoutConflictModal();
+    await activateStartedWorkout({ session: payload.session, pendingStart });
   } catch (err) {
-    setFriendlyError('save', {
-      status: err?.status,
-      code: err?.code,
-      requestId: err?.requestId,
-      service: err?.service,
-      rawMessage: err?.rawMessage || err?.message,
-      category: 'save',
-      fallback: 'Unable to end this workout right now. Please try again.',
-    });
+    conflictModalError.value = err?.rawMessage || err?.message ||
+      'The previous workout could not be ended. No new workout was started.';
+    conflictModalLoading.value = false;
   }
 };
 
@@ -1781,7 +1882,7 @@ watch(selectedWorkoutDate, () => {
 });
 
 watch(
-  [hasActiveWorkout, () => activeSession.value?.startedAt],
+  [hasActiveWorkout, () => activeSession.value?.startedAt, workoutTimerPaused],
   () => {
     syncWorkoutTimerState();
   },
@@ -2303,16 +2404,12 @@ onUnmounted(() => {
                   v-for="group in exercisesByGroup"
                   :key="group.name"
                   class="wl-day-card app-section-card"
-                  :class="{ 'wl-day-card--active': getInProgressSessionsForDay(group.name).length > 0 }"
                 >
                   <!-- Day card header -->
                   <div class="wl-day-card__header">
                     <div class="wl-day-card__title">
                       <i class="fa-solid fa-calendar-day wl-day-icon"></i>
                       <h4>{{ group.name }}</h4>
-                      <span v-if="getInProgressSessionsForDay(group.name).length > 0" class="wl-in-progress-chip">
-                        {{ getInProgressSessionsForDay(group.name).length }} In Progress
-                      </span>
                     </div>
                     <div class="wl-day-card__meta">
                       <span><i class="fa-solid fa-list-check"></i> {{ group.exercises.length }} exercise{{ group.exercises.length !== 1 ? 's' : '' }}</span>
@@ -2353,29 +2450,6 @@ onUnmounted(() => {
 
                   <!-- Action -->
                   <div class="wl-day-card__footer">
-                    <template v-if="getInProgressSessionsForDay(group.name).length > 0">
-                      <div
-                        v-for="session in getInProgressSessionsForDay(group.name)"
-                        :key="session.id"
-                        class="wl-session-action-row"
-                      >
-                        <span class="wl-session-action-label">Session #{{ session.id }}</span>
-                        <button
-                          type="button"
-                          class="wl-btn-resume"
-                          @click="resumeInProgressSession(session)"
-                        >
-                          <i class="fa-solid fa-circle-play"></i> Resume
-                        </button>
-                        <button
-                          type="button"
-                          class="wl-btn-end"
-                          @click="endInProgressSession(session)"
-                        >
-                          <i class="fa-solid fa-stop"></i> End
-                        </button>
-                      </div>
-                    </template>
                     <button
                       type="button" class="wl-btn-preview"
                       @click="previewDay(group.name)"
@@ -2431,6 +2505,7 @@ onUnmounted(() => {
               <span v-if="activeSession && hasActiveWorkout" class="wl-workout-time">
                 <i class="fa-solid fa-stopwatch"></i>
                 Workout Time: <strong>{{ activeWorkoutTimerLabel }}</strong>
+                <span v-if="workoutTimerPaused" class="wl-workout-time__paused">Paused</span>
               </span>
             </div>
           </div>
@@ -2754,6 +2829,91 @@ onUnmounted(() => {
       @close="closeAddExercisePicker"
       @add="addExerciseToActiveWorkout"
     />
+    <Teleport to="body">
+      <div v-if="showWorkoutConflictModal" class="wl-modal-overlay wl-conflict-overlay">
+        <div class="wl-modal wl-conflict-modal" role="dialog" aria-modal="true" aria-labelledby="workout-conflict-title">
+          <div class="wl-modal__header wl-conflict-modal__header">
+            <h5 id="workout-conflict-title">
+              <i class="fa-solid fa-clock-rotate-left"></i> Previous Workout Found
+            </h5>
+            <button
+              type="button"
+              class="wl-modal__close"
+              aria-label="Close previous workout dialog"
+              :disabled="conflictModalLoading"
+              @click="closeWorkoutConflictModal"
+            >
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="wl-modal__body wl-conflict-modal__body">
+            <p class="wl-conflict-modal__message">
+              You have an unfinished workout. Would you like to continue your previous workout or start a new one?
+            </p>
+
+            <div class="wl-conflict-session-list" role="radiogroup" aria-label="Unfinished workouts">
+              <label
+                v-for="session in workoutConflictSessions"
+                :key="session.id"
+                class="wl-conflict-session"
+                :class="{
+                  'wl-conflict-session--selected': Number(selectedConflictSessionId) === Number(session.id),
+                  'wl-conflict-session--unavailable': !session.continuationPossible,
+                }"
+              >
+                <input
+                  v-model="selectedConflictSessionId"
+                  type="radio"
+                  name="previous-workout"
+                  :value="session.id"
+                  :disabled="!session.continuationPossible || conflictModalLoading"
+                />
+                <span class="wl-conflict-session__details">
+                  <strong>{{ session.workoutDayName || 'Workout' }}</strong>
+                  <span>{{ formatConflictSessionDate(session.workoutDate) }}</span>
+                  <small v-if="session.continuationPossible">Select to continue with the timer paused</small>
+                  <small v-else>Cannot be restored; start new to close this session</small>
+                </span>
+                <span class="wl-conflict-session__end-label">Will be ended if Start New is selected</span>
+              </label>
+            </div>
+
+            <label v-if="workoutConflictSessions.length > 1" class="wl-conflict-confirm">
+              <input
+                v-model="confirmMultipleSessionEnd"
+                type="checkbox"
+                :disabled="conflictModalLoading"
+              />
+              <span>I confirm that all {{ workoutConflictSessions.length }} listed workouts will be ended before the new workout starts.</span>
+            </label>
+
+            <div v-if="conflictModalError" class="wl-banner wl-banner--error wl-conflict-modal__error" role="alert">
+              <i class="fa-solid fa-circle-xmark"></i> {{ conflictModalError }}
+            </div>
+          </div>
+          <div class="wl-modal__footer wl-conflict-modal__actions">
+            <button
+              type="button"
+              class="wl-conflict-action wl-conflict-action--continue"
+              :disabled="conflictModalLoading || !canContinueConflictSession"
+              @click="continuePreviousWorkout"
+            >
+              <i class="fa-solid fa-circle-play"></i>
+              <span>{{ conflictModalLoading ? 'Please wait…' : 'Continue Previous' }}</span>
+            </button>
+            <button
+              type="button"
+              class="wl-conflict-action wl-conflict-action--start"
+              :disabled="conflictModalLoading || (workoutConflictSessions.length > 1 && !confirmMultipleSessionEnd)"
+              @click="startNewWorkoutAfterConflict"
+            >
+              <i class="fa-solid fa-play"></i>
+              <span>{{ conflictModalLoading ? 'Please wait…' : 'Start New Workout' }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
     <!-- ── Delete History Confirmation Modal ────────────────────────────── -->
     <Teleport to="body">
       <div v-if="showDeleteHistoryModal" class="wl-modal-overlay" @click.self="closeDeleteHistoryModal">
@@ -3666,11 +3826,6 @@ onUnmounted(() => {
   border-radius: 12px; padding: 12px 14px; background: #fff;
   display: grid; gap: 8px; transition: border-color 0.15s, box-shadow 0.15s;
 }
-.wl-day-card--active {
-  border-color: #22c55e;
-  box-shadow: 0 0 0 3px rgba(34,197,94,0.12);
-}
-
 .wl-day-card__header  { display: grid; gap: 8px; }
 .wl-day-card__title   { display: flex; align-items: center; gap: 10px; }
 .wl-day-card__title h4 {
@@ -3678,10 +3833,6 @@ onUnmounted(() => {
   color: var(--text-color, #111827); flex: 1;
 }
 .wl-day-icon { color: #3b82f6; }
-.wl-in-progress-chip {
-  background: #dcfce7; color: #166534; border: 1px solid #86efac;
-  border-radius: 999px; padding: 2px 10px; font-size: 0.72rem; font-weight: 800;
-}
 .wl-day-card__meta {
   display: flex; gap: 12px; flex-wrap: wrap;
   color: var(--text-color-secondary, #6b7280); font-size: 0.8rem;
@@ -3707,13 +3858,6 @@ onUnmounted(() => {
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.wl-session-action-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-right: auto;
 }
 
 .wl-btn-preview {
@@ -3751,13 +3895,6 @@ onUnmounted(() => {
 }
 
 .wl-exercise-list--preview { opacity: 0.75; pointer-events: none; user-select: none; }
-.wl-btn-resume {
-  background: #2563eb; border: none; color: #fff;
-  border-radius: 10px; padding: 10px 20px;
-  font-size: 0.85rem; font-weight: 700; cursor: pointer;
-  display: flex; align-items: center; gap: 7px; transition: background 0.15s;
-}
-.wl-btn-resume:hover { background: #1d4ed8; }
 
 /* ── Day Details tab ────────────────────────────────────────────────────── */
 .wl-day-detail-header {
@@ -3789,10 +3926,11 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--text-color, #111827);
+  color: #cbd5e1;
   font-size: 0.78rem;
   font-weight: 700;
 }
+.wl-workout-time strong { color: #ffffff; }
 .wl-workout-time i { color: #2563eb; }
 .wl-exercise-list  { display: grid; gap: 12px; }
 
@@ -4184,6 +4322,205 @@ onUnmounted(() => {
 .wl-btn-delete:hover:not(:disabled) { background: #b91c1c; }
 .wl-btn-delete:disabled { opacity: .6; cursor: not-allowed; }
 
+/* ── Previous workout conflict modal ───────────────────────────────────── */
+.wl-conflict-overlay {
+  padding: 8px;
+}
+
+.wl-conflict-modal {
+  width: min(100%, 500px);
+  max-height: calc(100dvh - 16px);
+  overflow: hidden;
+  background: var(--wl-surface-1, #ffffff);
+  border: 1px solid var(--wl-border, #dbe3ee);
+  border-radius: 8px;
+  color: var(--wl-text, #111827);
+}
+
+.wl-conflict-modal__header {
+  flex-shrink: 0;
+  padding: 12px 12px 10px;
+  gap: 8px;
+  background: var(--wl-surface-2, #f8fafc);
+  border-color: var(--wl-border, #dbe3ee);
+}
+
+.wl-conflict-modal__header h5 {
+  min-width: 0;
+  color: var(--wl-text, #111827);
+  font-size: 0.96rem;
+  line-height: 1.25;
+}
+
+.wl-conflict-modal__header h5 i {
+  color: #2563eb;
+}
+
+.wl-conflict-modal .wl-modal__close,
+.wl-conflict-modal .wl-modal__close:hover,
+.wl-conflict-modal .wl-modal__close:focus {
+  position: relative;
+  z-index: 2;
+  border-radius: 4px !important;
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #dc2626;
+}
+
+.wl-conflict-modal .wl-modal__close:hover,
+.wl-conflict-modal .wl-modal__close:focus {
+  background: #ffe4e6;
+  border-color: #fda4af;
+}
+
+.wl-conflict-modal .wl-modal__close i {
+  color: #dc2626;
+  pointer-events: none;
+}
+
+.wl-conflict-modal__body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+  color: var(--wl-text, #111827);
+}
+
+.wl-conflict-modal__message {
+  margin: 0 0 10px;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.wl-conflict-session-list {
+  display: grid;
+  gap: 6px;
+}
+
+.wl-conflict-session {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 4px 8px;
+  align-items: start;
+  padding: 9px;
+  border: 1px solid var(--wl-border, #dbe3ee);
+  border-radius: 7px;
+  background: var(--wl-surface-2, #f8fafc);
+  cursor: pointer;
+}
+
+.wl-conflict-session--selected {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.14);
+}
+
+.wl-conflict-session--unavailable {
+  cursor: default;
+}
+
+.wl-conflict-session input,
+.wl-conflict-confirm input {
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  accent-color: #2563eb;
+}
+
+.wl-conflict-session__details {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.wl-conflict-session__details strong {
+  overflow-wrap: anywhere;
+  font-size: 0.84rem;
+  line-height: 1.25;
+}
+
+.wl-conflict-session__details > span,
+.wl-conflict-session__details small {
+  color: var(--wl-text-secondary, #64748b);
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+.wl-conflict-session__end-label {
+  grid-column: 2;
+  color: #dc2626;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.wl-conflict-confirm {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--wl-text, #111827);
+  font-size: 0.76rem;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.wl-conflict-modal__error {
+  margin-top: 10px;
+}
+
+.wl-conflict-modal__actions {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px 12px 12px;
+  background: var(--wl-surface-2, #f8fafc);
+  border-color: var(--wl-border, #dbe3ee);
+}
+
+.wl-conflict-action {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 8px 6px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.wl-conflict-action--continue {
+  background: #2563eb;
+  border-color: #1d4ed8;
+}
+
+.wl-conflict-action--start {
+  background: #15803d;
+  border-color: #166534;
+}
+
+.wl-conflict-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.wl-workout-time__paused {
+  margin-left: 4px;
+  color: #fbbf24;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 /* ── v0.81.9 Hero title row utility ──────────────────────────────────────── */
 .wl-hero-title-row {
   display: flex;
@@ -4263,16 +4600,6 @@ onUnmounted(() => {
 
 .wl-page .wl-btn-add-exercise:hover {
   background: #1d4ed8;
-}
-
-.wl-page .wl-btn-resume {
-  background: var(--wl-accent);
-  border-color: color-mix(in srgb, var(--wl-accent) 64%, #0f172a 36%);
-  color: #f8fafc;
-}
-
-.wl-page .wl-btn-resume:hover {
-  background: color-mix(in srgb, var(--wl-accent) 86%, #ffffff 14%);
 }
 
 .wl-page .wl-stats .wl-stat-card,
@@ -4448,8 +4775,7 @@ onUnmounted(() => {
   background: #166534;
 }
 
-.wl-page .wl-custom-order-badge,
-.wl-page .wl-in-progress-chip {
+.wl-page .wl-custom-order-badge {
   background: rgba(22, 163, 74, 0.18);
   border-color: rgba(74, 222, 128, 0.45);
   color: #bbf7d0;
@@ -4524,21 +4850,32 @@ onUnmounted(() => {
   box-shadow: 0 1px 8px rgba(0, 0, 0, 0.22);
 }
 
+.wl-page :deep(.c3-row-done) {
+  background: var(--wl-surface-1) !important;
+}
+
 .wl-page :deep(.sec-meta p),
 .wl-page :deep(.set-num),
 .wl-page :deep(.sec-sets-summary),
 .wl-page :deep(.c3-col-set),
 .wl-page :deep(.c3-col-info) {
-  color: var(--wl-text-secondary);
+  color: #cbd5e1;
 }
 
 .wl-page :deep(.sec-meta h5),
-.wl-page :deep(.sec-summary),
-.wl-page :deep(.c3-head span),
 .wl-page :deep(.c3-set-num),
 .wl-page :deep(.c3-col-value),
 .wl-page :deep(.c3-btn-label) {
-  color: var(--wl-text);
+  color: #ffffff;
+}
+
+.wl-page :deep(.c3-head span),
+.wl-page :deep(.sec-summary) {
+  color: #cbd5e1;
+}
+
+.wl-page :deep(.sec-prefill-note) {
+  color: #94a3b8;
 }
 
 .wl-page :deep(.sec-type-chip),
@@ -4563,7 +4900,13 @@ onUnmounted(() => {
 .wl-page :deep(.sec-select-btn),
 .wl-page :deep(.add-set-btn) {
   border-color: color-mix(in srgb, var(--wl-accent) 45%, var(--wl-border) 55%);
-  color: var(--wl-accent);
+  color: #ffffff;
+}
+
+.wl-page :deep(.set-input),
+.wl-page :deep(.set-input--prefilled) {
+  background: #111b2e !important;
+  color: #ffffff !important;
 }
 
 .wl-page :deep(.exercise-collapse-btn) {
@@ -4616,7 +4959,7 @@ onUnmounted(() => {
 }
 
 .wl-page :deep(.set-input::placeholder) {
-  color: var(--wl-text-muted);
+  color: #94a3b8;
 }
 
 .wl-page :deep(.c3-rm-btn) {
@@ -4629,7 +4972,7 @@ onUnmounted(() => {
 .wl-page :deep(.c3-finish-btn) {
   background: #16a34a;
   border-color: #15803d;
-  color: #f8fafc;
+  color: #ffffff;
 }
 
 .wl-page :deep(.c3-complete-btn:hover),
@@ -4976,11 +5319,9 @@ onUnmounted(() => {
     gap: 4px;
     border-radius: 10px;
   }
-  .wl-day-card--active { box-shadow: none; }
   .wl-day-card__header   { gap: 4px; }
   .wl-day-card__title    { gap: 5px; }
   .wl-day-card__title h4 { font-size: 0.78rem; }
-  .wl-in-progress-chip   { padding: 1px 7px; font-size: 0.56rem; }
   .wl-day-card__meta     { font-size: 0.6rem; gap: 4px; }
   .wl-day-card__ex-summary {
     padding-top: 5px;
@@ -4993,10 +5334,9 @@ onUnmounted(() => {
   }
   .wl-day-card__footer   { gap: 6px; }
 
-  /* Preview / Start / Resume buttons: compact */
+  /* Preview / Start buttons: compact */
   .wl-btn-preview,
-  .wl-btn-start,
-  .wl-btn-resume {
+  .wl-btn-start {
     padding: 6px 10px;
     min-height: 32px;
     font-size: 0.66rem;
@@ -5163,15 +5503,29 @@ onUnmounted(() => {
   .wl-page :deep(.c3-icon-btn--done) {
     border-color: rgba(34, 197, 94, 0.45) !important;
     background: rgba(34, 197, 94, 0.16) !important;
-    color: #f8fafc !important;
+    color: #ffffff !important;
   }
 
   .wl-page :deep(.strength-mobile-row .c3-icon-btn) {
-    width: 38px;
-    height: 38px;
-    min-width: 38px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
     border-radius: 10px;
     font-size: 0.78rem;
+  }
+
+  .wl-page :deep(.add-set-btn),
+  .wl-page :deep(.c3-complete-btn),
+  .wl-page :deep(.c3-finish-btn) {
+    min-height: 44px;
+  }
+
+  .wl-page :deep(.session-exercise-card),
+  .wl-page :deep(.cardio-table-wrap),
+  .wl-page :deep(.cardio-3col-table) {
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
   }
 
   .wl-page :deep(.strength-mobile-row .c3-icon-btn--remove) {
@@ -5277,11 +5631,6 @@ onUnmounted(() => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
   }
-  .wl-day-card__footer .wl-session-action-row {
-    grid-column: 1 / -1;
-    width: 100%;
-    margin-right: 0;
-  }
   .wl-day-card__footer > .wl-btn-preview,
   .wl-day-card__footer > .wl-btn-start {
     width: 100%;
@@ -5289,7 +5638,6 @@ onUnmounted(() => {
     min-height: 44px;
     justify-content: center;
   }
-  .wl-btn-resume { justify-content: center; }
   .wl-btn-add-exercise,
   .wl-btn-complete {
     width: 100%;

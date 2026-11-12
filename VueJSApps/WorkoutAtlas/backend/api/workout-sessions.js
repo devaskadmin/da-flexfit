@@ -25,6 +25,19 @@ const normalizeSessionStatus = (session) => String(session?.sessionStatus || ses
 const isLiveSessionStatus = (status) =>
   status === 'in_progress' || status === 'in-progress' || status === 'active' || status === 'paused';
 
+const normalizeSessionIds = (values) => Array.from(new Set(
+  (Array.isArray(values) ? values : [])
+    .map((value) => Number(value || 0))
+    .filter((value) => Number.isInteger(value) && value > 0)
+)).sort((left, right) => left - right);
+
+const sessionIdSetsMatch = (left, right) => {
+  const normalizedLeft = normalizeSessionIds(left);
+  const normalizedRight = normalizeSessionIds(right);
+  return normalizedLeft.length === normalizedRight.length &&
+    normalizedLeft.every((value, index) => value === normalizedRight[index]);
+};
+
 const enrichSessionForConflict = async ({ connection, userId, session }) => {
   const normalized = {
     ...session,
@@ -226,6 +239,8 @@ router.post('/workout-sessions/start', requireAuth, async (req, res) => {
       workoutDayId,
       workoutDayName,
       workoutDate,
+      endSessionIds,
+      confirmMultipleEnd,
     } = req.body;
 
     if (!workoutPlanId || !workoutDayName || !workoutDate) {
@@ -235,6 +250,93 @@ router.post('/workout-sessions/start', requireAuth, async (req, res) => {
     }
 
     await connection.beginTransaction();
+
+    await connection.query(
+      `SELECT id FROM users WHERE id = ? FOR UPDATE`,
+      [userId]
+    );
+
+    const [activeRows] = await connection.query(
+      `SELECT
+         id,
+         user_id                    AS userId,
+         source_workout_schedule_id AS workoutPlanId,
+         workout_day_id             AS workoutDayId,
+         workout_day_name           AS workoutDayName,
+         workout_date               AS workoutDate,
+         status                     AS sessionStatus,
+         started_at                 AS startedAt,
+         ended_at                   AS endedAt,
+         duration_seconds           AS durationSeconds,
+         completed_at               AS completedAt,
+         notes                      AS notes
+       FROM workout_log_sessions
+       WHERE user_id = ? AND status = 'in_progress'
+       ORDER BY started_at DESC, id DESC
+       FOR UPDATE`,
+      [userId]
+    );
+
+    const requestedEndIds = normalizeSessionIds(endSessionIds);
+    const activeSessionIds = normalizeSessionIds(activeRows.map((session) => session.id));
+
+    if (activeRows.length && requestedEndIds.length === 0) {
+      const activeSessions = [];
+      for (const row of activeRows) {
+        activeSessions.push(await enrichSessionForConflict({ connection, userId, session: row }));
+      }
+      await connection.rollback();
+      return res.status(409).json({
+        code: 'WORKOUT_SESSION_CONFLICT',
+        error: 'You have an unfinished workout.',
+        activeSessions,
+      });
+    }
+
+    if (requestedEndIds.length > 0 && !sessionIdSetsMatch(requestedEndIds, activeSessionIds)) {
+      const activeSessions = [];
+      for (const row of activeRows) {
+        activeSessions.push(await enrichSessionForConflict({ connection, userId, session: row }));
+      }
+      await connection.rollback();
+      return res.status(409).json({
+        code: 'STALE_WORKOUT_SESSION_CONFLICT',
+        error: 'Your unfinished workouts changed. Review the current sessions before starting a new workout.',
+        activeSessions,
+      });
+    }
+
+    if (requestedEndIds.length > 1 && confirmMultipleEnd !== true) {
+      await connection.rollback();
+      return res.status(409).json({
+        code: 'MULTIPLE_WORKOUT_CONFIRMATION_REQUIRED',
+        error: 'Explicit confirmation is required before ending multiple unfinished workouts.',
+        activeSessions: activeRows,
+      });
+    }
+
+    for (const sessionId of requestedEndIds) {
+      const [endResult] = await connection.query(
+        `UPDATE workout_log_sessions
+         SET status = 'ended',
+             ended_at = NOW(),
+             completed_at = COALESCE(completed_at, NOW()),
+             duration_seconds = CASE
+               WHEN started_at IS NULL THEN 0
+               ELSE GREATEST(TIMESTAMPDIFF(SECOND, started_at, NOW()), 0)
+             END
+         WHERE id = ? AND user_id = ? AND status = 'in_progress'`,
+        [sessionId, userId]
+      );
+
+      if (Number(endResult?.affectedRows || 0) !== 1) {
+        await connection.rollback();
+        return res.status(409).json({
+          code: 'STALE_WORKOUT_SESSION_CONFLICT',
+          error: 'An unfinished workout changed before it could be ended. No new workout was started.',
+        });
+      }
+    }
 
     // Create new session
     const [result] = await connection.query(
@@ -798,4 +900,6 @@ module.exports = router;
 module.exports._private = {
   parseDraftPayload,
   getDraftExerciseCount,
+  normalizeSessionIds,
+  sessionIdSetsMatch,
 };
