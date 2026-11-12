@@ -106,6 +106,7 @@ const exerciseAddLoading = ref(false);
 const sessionUserId = ref(null);
 
 let workoutTimerIntervalId = null;
+let workoutLogMountReady = false;
 
 /* ─── Accordion: active exercise ───────────────────────────────────── */
 const activeExerciseId = ref(null);
@@ -467,6 +468,14 @@ const formatConflictSessionDate = (value) => {
   const normalized = String(value).slice(0, 10);
   const parsed = new Date(`${normalized}T00:00:00`);
   return Number.isNaN(parsed.getTime()) ? normalized : parsed.toLocaleDateString();
+};
+
+const formatSessionStatus = (session) => {
+  const status = normalizeSessionStatus(session);
+  if (status === 'in_progress' || status === 'in-progress') return 'In Progress';
+  if (status === 'paused') return 'Paused';
+  if (status === 'active') return 'Active';
+  return status ? status.replaceAll('_', ' ') : 'In Progress';
 };
 
 const today = () => new Date().toISOString().split('T')[0];
@@ -909,8 +918,12 @@ watch(
     const normalizedGroups = Array.isArray(nextGroups) ? nextGroups : [];
     const hasSelectedDay = Boolean(String(selectedDay.value || '').trim());
     const selectedDayStillExists = normalizedGroups.includes(selectedDay.value);
+    const selectedDayBelongsToActiveSession = Boolean(
+      activeSession.value &&
+      String(activeSession.value?.workoutDayName || '').trim() === String(selectedDay.value || '').trim()
+    );
 
-    if (!nextExpandedPlanId || (hasSelectedDay && !selectedDayStillExists)) {
+    if (!selectedDayBelongsToActiveSession && (!nextExpandedPlanId || (hasSelectedDay && !selectedDayStillExists))) {
       selectedDay.value = '';
       if (activeTab.value === 'dayDetails') {
         activeTab.value = 'overview';
@@ -1217,7 +1230,7 @@ const togglePlan = async (planId) => {
 const loadInProgressSessions = async () => {
   const res = await fetch(`${API_BASE}/api/workout-sessions/in-progress`, { credentials: 'include' });
   if (!res.ok) {
-    return [];
+    return activeSessions.value;
   }
 
   const data = await res.json().catch(() => ({}));
@@ -1253,6 +1266,17 @@ const checkActiveSession = async () => {
   } catch (_) { /* non-fatal */ }
 };
 
+const openCurrentWorkouts = () => {
+  if (!activeSessions.value.length && !selectedDay.value) return;
+  activeTab.value = 'dayDetails';
+};
+
+const resumeInProgressSession = async (session) => {
+  if (!session?.continuationPossible) return;
+  clearFriendlyError('save');
+  await continueExistingWorkoutSession(session, { activateTab: true, pauseTimer: false });
+};
+
 const continueExistingWorkoutSession = async (session, { activateTab = true, pauseTimer = false } = {}) => {
   if (!session) return;
 
@@ -1271,7 +1295,7 @@ const continueExistingWorkoutSession = async (session, { activateTab = true, pau
   selectedDay.value = String(session.workoutDayName || '').trim();
 
   const pid = String(session.workoutPlanId || '').trim();
-  if (!pid && pauseTimer && session.canResumeFromDraft) {
+  if (!pid && session.canResumeFromDraft) {
     sessionExercises.value = buildSessionExercisesFromDraft(session.notes, session.workoutDayName);
     activeTab.value = selectTabDuringSessionRecovery({ currentTab: activeTab.value, activateTab });
     return;
@@ -1551,6 +1575,10 @@ const completeWorkout = async () => {
     saveMessage.value = completedDurationSeconds > 0
       ? `✓ Workout complete! Great work! Workout Time: ${formatDurationHms(completedDurationSeconds)}`
       : '✓ Workout complete! Great work!';
+    const completedSessionId = Number(activeSession.value?.id || 0);
+    activeSessions.value = activeSessions.value.filter(
+      (session) => Number(session?.id || 0) !== completedSessionId
+    );
     activeSession.value    = null;
     hasActiveWorkout.value = false;
 
@@ -2020,13 +2048,18 @@ const saveHistoryWorkout = async (session) => {
 onMounted(async () => {
   document.addEventListener('pointerdown', onDocumentPointerDownForPlanActionMenu);
   document.body.classList.add(WORKOUT_LOG_ACTIVE_BODY_CLASS);
-  await loadSessionUserId();
-  await loadWorkoutLists();
-  await checkActiveSession();
-  await openRequestedPlanFromQuery();
+  try {
+    await loadSessionUserId();
+    await loadWorkoutLists();
+    await checkActiveSession();
+    await openRequestedPlanFromQuery();
+  } finally {
+    workoutLogMountReady = true;
+  }
 });
 
 onActivated(async () => {
+  if (!workoutLogMountReady) return;
   await loadSessionUserId();
   await loadWorkoutLists();
   await checkActiveSession();
@@ -2034,6 +2067,7 @@ onActivated(async () => {
 });
 
 onUnmounted(() => {
+  workoutLogMountReady = false;
   document.removeEventListener('pointerdown', onDocumentPointerDownForPlanActionMenu);
   document.body.classList.remove(WORKOUT_LOG_ACTIVE_BODY_CLASS);
   void persistWorkoutDraft();
@@ -2126,11 +2160,12 @@ onUnmounted(() => {
         </button>
         <button
           type="button" role="tab"
-          :class="['wl-tab', 'wa-h-tab', activeTab === 'dayDetails' ? 'wl-tab--active wa-h-tab--active' : '', (!selectedDay || !hasWorkoutPlans) ? 'wl-tab--disabled' : '']"
-          :disabled="!selectedDay || !hasWorkoutPlans"
-          @click="selectedDay && hasWorkoutPlans && (activeTab = 'dayDetails')"
+          :class="['wl-tab', 'wa-h-tab', activeTab === 'dayDetails' ? 'wl-tab--active wa-h-tab--active' : '', (!selectedDay && !activeSessions.length) ? 'wl-tab--disabled' : '']"
+          :disabled="!selectedDay && !activeSessions.length"
+          @click="openCurrentWorkouts"
         >
           <i class="fa-solid fa-dumbbell"></i> Current Workout
+          <span v-if="activeSessions.length" class="wl-tab-session-count">{{ activeSessions.length }}</span>
         </button>
         <button
           type="button" role="tab"
@@ -2480,6 +2515,42 @@ onUnmounted(() => {
       <!-- ══ DAY DETAILS TAB ═════════════════════════════════════════════ -->
       <div v-show="activeTab === 'dayDetails'" class="wl-tab-panel wl-tab-panel--day-details">
 
+        <section v-if="activeSessions.length" class="wl-active-sessions" aria-labelledby="unfinished-workouts-title">
+          <div class="wl-active-sessions__heading">
+            <div>
+              <h4 id="unfinished-workouts-title">Unfinished Workouts</h4>
+              <p>Select a workout to restore its saved progress.</p>
+            </div>
+            <span>{{ activeSessions.length }} active</span>
+          </div>
+          <div class="wl-active-sessions__list">
+            <article
+              v-for="session in activeSessions"
+              :key="session.id"
+              class="wl-active-session"
+              :class="{ 'wl-active-session--selected': Number(activeSession?.id) === Number(session.id) }"
+            >
+              <div class="wl-active-session__details">
+                <strong>{{ session.workoutDayName || 'Workout day unavailable' }}</strong>
+                <span>{{ formatConflictSessionDate(session.workoutDate) }}</span>
+                <small>{{ formatSessionStatus(session) }}</small>
+              </div>
+              <button
+                type="button"
+                class="wl-active-session__resume"
+                :disabled="!session.continuationPossible"
+                @click="resumeInProgressSession(session)"
+              >
+                <i class="fa-solid fa-circle-play" aria-hidden="true"></i>
+                {{ Number(activeSession?.id) === Number(session.id) ? 'Open' : 'Resume' }}
+              </button>
+              <span v-if="!session.continuationPossible" class="wl-active-session__unavailable">
+                Saved plan and draft unavailable
+              </span>
+            </article>
+          </div>
+        </section>
+
         <template v-if="selectedDay && dayExercises.length > 0">
           <!-- Preview mode banner -->
           <div v-if="isPreviewMode" class="wl-preview-banner">
@@ -2501,12 +2572,14 @@ onUnmounted(() => {
               <div class="wl-progress-bar">
                 <div class="wl-progress-fill" :style="{ width: progressPct + '%' }"></div>
               </div>
-              <span class="wl-progress-label">{{ totalCompleted }} / {{ totalSets }} sets ({{ progressPct }}%)</span>
-              <span v-if="activeSession && hasActiveWorkout" class="wl-workout-time">
-                <i class="fa-solid fa-stopwatch"></i>
-                Workout Time: <strong>{{ activeWorkoutTimerLabel }}</strong>
-                <span v-if="workoutTimerPaused" class="wl-workout-time__paused">Paused</span>
-              </span>
+              <div class="wl-day-detail-header__meta">
+                <span class="wl-progress-label">{{ totalCompleted }} / {{ totalSets }} sets ({{ progressPct }}%)</span>
+                <span v-if="activeSession && hasActiveWorkout" class="wl-workout-time">
+                  <i class="fa-solid fa-stopwatch"></i>
+                  Workout Time: <strong>{{ activeWorkoutTimerLabel }}</strong>
+                  <span v-if="workoutTimerPaused" class="wl-workout-time__paused">Paused</span>
+                </span>
+              </div>
             </div>
           </div>
 
@@ -2527,7 +2600,7 @@ onUnmounted(() => {
           </div>
         </template>
 
-        <div v-else class="wl-empty app-section-card">
+        <div v-else-if="!activeSessions.length" class="wl-empty app-section-card">
           <i class="fa-solid fa-dumbbell wl-empty-icon"></i>
           <p>No day selected. Go to <strong>Overview</strong>, pick a workout plan and click <strong>Start Workout</strong> on a day.</p>
           <button type="button" class="wl-btn" @click="activeTab = 'overview'">Go to Overview</button>
@@ -3898,20 +3971,34 @@ onUnmounted(() => {
 
 /* ── Day Details tab ────────────────────────────────────────────────────── */
 .wl-day-detail-header {
-  display: flex; flex-wrap: wrap;
-  justify-content: space-between; align-items: flex-start; gap: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
   padding: 16px; background: var(--panel-bg, #f8fafc);
   border: 1px solid var(--border-color, #e5e7eb);
   border-radius: 12px; margin-bottom: 16px;
 }
-.wl-day-detail-header__left  { display: flex; align-items: center; gap: 12px; }
+.wl-day-detail-header__left  { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .wl-day-detail-header__left h4 { margin: 0; font-size: 1rem; font-weight: 800; }
 .wl-day-detail-count {
   background: #dbeafe; color: #1d4ed8;
   border-radius: 999px; padding: 2px 10px;
   font-size: 0.75rem; font-weight: 700;
 }
-.wl-day-detail-header__progress { display: grid; gap: 6px; min-width: 200px; }
+.wl-day-detail-header__progress {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin: 0 auto;
+}
+.wl-day-detail-header__meta {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  text-align: center;
+}
 
 .wl-progress-bar {
   height: 8px; background: #e5e7eb;
@@ -3933,6 +4020,80 @@ onUnmounted(() => {
 .wl-workout-time strong { color: #ffffff; }
 .wl-workout-time i { color: #2563eb; }
 .wl-exercise-list  { display: grid; gap: 12px; }
+
+.wl-tab-session-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.2);
+  color: #bbf7d0;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.wl-active-sessions {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid var(--wl-border, rgba(148, 163, 184, 0.24));
+  border-radius: 10px;
+  background: var(--wl-surface-1, #1b2444);
+}
+
+.wl-active-sessions__heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.wl-active-sessions__heading h4,
+.wl-active-sessions__heading p { margin: 0; }
+.wl-active-sessions__heading h4 { color: #ffffff; font-size: 0.95rem; }
+.wl-active-sessions__heading p { color: #94a3b8; font-size: 0.76rem; margin-top: 2px; }
+.wl-active-sessions__heading > span { color: #cbd5e1; font-size: 0.75rem; white-space: nowrap; }
+
+.wl-active-sessions__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 8px;
+}
+
+.wl-active-session {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 8px;
+  background: #111b2e;
+}
+
+.wl-active-session--selected { border-color: rgba(74, 222, 128, 0.6); }
+.wl-active-session__details { display: grid; gap: 2px; min-width: 0; }
+.wl-active-session__details strong { color: #ffffff; overflow-wrap: anywhere; }
+.wl-active-session__details span { color: #cbd5e1; font-size: 0.76rem; }
+.wl-active-session__details small { color: #94a3b8; font-size: 0.7rem; text-transform: capitalize; }
+.wl-active-session__resume {
+  min-width: 88px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.wl-active-session__resume:disabled { opacity: 0.5; cursor: not-allowed; }
+.wl-active-session__unavailable { grid-column: 1 / -1; color: #fca5a5; font-size: 0.7rem; }
 
 /* ── Sticky bottom bar ──────────────────────────────────────────────────── */
 .wl-bottom-bar {
@@ -5359,7 +5520,8 @@ onUnmounted(() => {
   .wl-day-detail-header__left    { gap: 6px; }
   .wl-day-detail-header__left h4 { font-size: 0.78rem; }
   .wl-day-detail-count           { padding: 1px 7px; font-size: 0.58rem; }
-  .wl-day-detail-header__progress { min-width: 120px; gap: 3px; }
+  .wl-day-detail-header__progress { width: 100%; min-width: 0; gap: 6px; }
+  .wl-day-detail-header__meta { gap: 6px 12px; }
   .wl-progress-label              { font-size: 0.6rem; }
   .wl-preview-badge               { padding: 1px 7px; font-size: 0.56rem; }
 
@@ -5374,6 +5536,11 @@ onUnmounted(() => {
   .wl-workout-time i {
     color: #60a5fa;
   }
+
+  .wl-active-sessions { padding: 10px; }
+  .wl-active-sessions__heading { align-items: flex-start; }
+  .wl-active-sessions__list { grid-template-columns: minmax(0, 1fr); }
+  .wl-active-session { width: 100%; box-sizing: border-box; }
 
   /* History */
   .wl-history-datebar { padding: 6px 10px; font-size: 0.64rem; margin-bottom: 6px; gap: 6px; }
