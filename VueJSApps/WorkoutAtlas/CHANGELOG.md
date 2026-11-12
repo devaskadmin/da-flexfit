@@ -6,6 +6,16 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.267] - 2026-11-12 - Compact Workout Day Buttons
+
+- **Changed:** Workout Log day cards use tighter padding and spacing while retaining day names, statistics, and wrapping exercise summaries.
+- **Changed:** Preview and Start Workout remain grouped at the right on desktop and render side by side at approximately equal widths on mobile, with Preview first.
+- **Changed:** Day-card Preview actions now use `#2563EB` with white text and eye icon; Start Workout retains its existing green treatment.
+- **Safety:** Existing Preview, Start Workout, multi-session, workout-history, schedule-data, and mobile-bottom-navigation behavior is unchanged.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`.
+- **Verification:** Desktop and iPhone-width browser checks confirmed button order, responsive geometry, visible exercise summaries, no horizontal overflow, and functional Preview/Start actions. Frontend production build passed.
+- **Known unresolved issues:** None identified for this layout change.
+
 ## [0.85.266] - 2026-11-12 - Fix Workout Log Plan Loading and Auto Recovery
 
 - **Fixed:** Existing plans no longer display `No scheduled days found` when saved schedule rows are present. Workout Log derives renderable day cards from stored exercise group labels when configured group metadata is incomplete or mismatched.

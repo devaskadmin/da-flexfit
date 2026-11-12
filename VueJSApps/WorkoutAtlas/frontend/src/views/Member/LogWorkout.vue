@@ -3663,8 +3663,8 @@ onUnmounted(() => {
 
 .wl-day-card {
   border: 1px solid var(--border-color, #e5e7eb);
-  border-radius: 12px; padding: 16px; background: #fff;
-  display: grid; gap: 12px; transition: border-color 0.15s, box-shadow 0.15s;
+  border-radius: 12px; padding: 12px 14px; background: #fff;
+  display: grid; gap: 8px; transition: border-color 0.15s, box-shadow 0.15s;
 }
 .wl-day-card--active {
   border-color: #22c55e;
@@ -3693,7 +3693,7 @@ onUnmounted(() => {
 .wl-day-card__ex-summary {
   margin: 0;
   border-top: 1px solid var(--border-color, #f3f4f6);
-  padding-top: 10px;
+  padding-top: 7px;
   font-size: 0.75rem;
   line-height: 1.4;
   color: var(--text-color-secondary, #6b7280);
@@ -3701,7 +3701,20 @@ onUnmounted(() => {
   overflow-wrap: anywhere;
 }
 
-.wl-day-card__footer { display: flex; justify-content: flex-end; gap: 10px; }
+.wl-day-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.wl-session-action-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+}
 
 .wl-btn-preview {
   background: #fff; border: 1.5px solid #2563eb; color: #2563eb;
@@ -4406,6 +4419,27 @@ onUnmounted(() => {
   background: #15803d;
   border-color: #166534;
   color: #f8fafc;
+}
+
+.wl-page .wl-day-card__footer .wl-btn-preview {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+.wl-page .wl-day-card__footer .wl-btn-preview i {
+  color: #ffffff;
+}
+
+.wl-page .wl-day-card__footer .wl-btn-preview:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+
+.wl-page .wl-day-card__footer .wl-btn-preview:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
 }
 
 .wl-page .wl-order-toolbar-btn--save:hover,
@@ -5238,8 +5272,24 @@ onUnmounted(() => {
   }
   .wl-history-session__meta { flex-direction: column; gap: 4px; }
   .wl-history-datebar { flex-direction: column; align-items: flex-start; gap: 6px; }
-  .wl-day-card__footer { flex-direction: column; }
-  .wl-btn-preview, .wl-btn-start, .wl-btn-resume { width: 100%; justify-content: center; }
+  .wl-day-card__footer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .wl-day-card__footer .wl-session-action-row {
+    grid-column: 1 / -1;
+    width: 100%;
+    margin-right: 0;
+  }
+  .wl-day-card__footer > .wl-btn-preview,
+  .wl-day-card__footer > .wl-btn-start {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    justify-content: center;
+  }
+  .wl-btn-resume { justify-content: center; }
   .wl-btn-add-exercise,
   .wl-btn-complete {
     width: 100%;
