@@ -6,6 +6,17 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.266] - 2026-11-12 - Fix Workout Log Plan Loading and Auto Recovery
+
+- **Fixed:** Existing plans no longer display `No scheduled days found` when saved schedule rows are present. Workout Log derives renderable day cards from stored exercise group labels when configured group metadata is incomplete or mismatched.
+- **Fixed:** Automatic orphan-session recovery no longer clears the selected plan detail when the session has no source plan ID.
+- **Changed:** Automatic recovery keeps the user on the Workout Log overview; explicit Continue/Current Workout actions still open Day Details.
+- **Safety:** Multiple simultaneous in-progress sessions remain permitted. No session-lock behavior, database writes, migrations, or workout-history changes are included.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `frontend/src/utils/workoutLogGrouping.mjs`; `backend/tests/workout-log-grouping-regression.test.js`.
+- **Evidence:** This `0.85.266` release commit and authenticated local browser verification.
+- **Verification:** The saved `SK - Lean Muscle` plan rendered all four stored day cards and 21 assignments (16 unique exercises) after refresh, a five-second wait, manual collapse/reopen, and desktop/mobile checks. Relevant regression tests passed (16/16), the frontend production build passed (697 modules transformed), and session `119` remained unchanged.
+- **Known unresolved issues:** None identified for this fix.
+
 ## [0.85.265] - 2026-11-12 - Remove Workout Session Lock (Multiple Simultaneous In-Progress Sessions)
 
 - **Added:** `GET /api/workout-sessions/in-progress` to return all authenticated user's active sessions (newest first), enabling explicit per-session resume and per-session end actions.

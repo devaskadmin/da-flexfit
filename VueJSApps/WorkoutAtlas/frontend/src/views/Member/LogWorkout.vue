@@ -12,6 +12,12 @@ import {
   normalizeRoleSlug,
 } from '@/utils/userFriendlyErrors';
 import { showConfirmDialog } from '@/utils/browserDialogs';
+import {
+  buildWorkoutLogExerciseGroups,
+  filterWorkoutLogDayExercises,
+  selectExpandedPlanDuringSessionRecovery,
+  selectTabDuringSessionRecovery,
+} from '@/utils/workoutLogGrouping.mjs';
 
 const router = useRouter();
 const route = useRoute();
@@ -527,20 +533,20 @@ const buildExerciseNameSummary = (exercises = []) =>
     .filter(Boolean)
     .join(' • ');
 
-const exercisesByGroup = computed(() =>
-  groups.value
-    .map((group) => {
-      const groupExercises = allExercises.value.filter(
-        (ex) => (ex.scheduleGroup || groups.value[0]) === group,
-      );
-      return {
-        name: group,
-        exercises: groupExercises,
-        exerciseNameSummary: buildExerciseNameSummary(groupExercises),
-      };
-    })
-    .filter((g) => g.exercises.length > 0),
-);
+const exercisesByGroup = computed(() => {
+  const grouped = buildWorkoutLogExerciseGroups({
+    groups: groups.value,
+    exercises: allExercises.value,
+  });
+
+  return grouped
+    .map((entry) => ({
+      name: entry.name,
+      exercises: entry.exercises,
+      exerciseNameSummary: buildExerciseNameSummary(entry.exercises),
+    }))
+    .filter((entry) => entry.exercises.length > 0);
+});
 
 const currentDayOrderState = computed(() => getDayOrderState(expandedPlanId.value));
 const dayOrderDirty = computed(() => Boolean(currentDayOrderState.value?.dirty));
@@ -846,9 +852,11 @@ const resetWorkoutLogDayOrder = async () => {
 
 /* ─── Derived: selected day exercises (for Day Details tab) ─────────────── */
 const dayExercises = computed(() =>
-  sessionExercises.value.filter(
-    (ex) => (ex.scheduleGroup || (groups.value[0] || '')) === selectedDay.value,
-  ),
+  filterWorkoutLogDayExercises({
+    selectedDay: selectedDay.value,
+    exercises: sessionExercises.value,
+    fallbackGroup: groups.value[0] || '',
+  })
 );
 
 watch(
@@ -1201,11 +1209,11 @@ const checkActiveSession = async () => {
       return;
     }
 
-    await continueExistingWorkoutSession(nextSession);
+    await continueExistingWorkoutSession(nextSession, { activateTab: false });
   } catch (_) { /* non-fatal */ }
 };
 
-const continueExistingWorkoutSession = async (session) => {
+const continueExistingWorkoutSession = async (session, { activateTab = true } = {}) => {
   if (!session) return;
 
   activeSession.value = session;
@@ -1222,7 +1230,10 @@ const continueExistingWorkoutSession = async (session) => {
   selectedDay.value = String(session.workoutDayName || '').trim();
 
   const pid = String(session.workoutPlanId || '').trim();
-  expandedPlanData.value = null;
+  expandedPlanData.value = selectExpandedPlanDuringSessionRecovery({
+    currentPlan: expandedPlanData.value,
+    sessionPlanId: pid,
+  });
   if (pid) {
     expandedPlanId.value = pid;
     expandedLoading.value = true;
@@ -1243,13 +1254,13 @@ const continueExistingWorkoutSession = async (session) => {
     sessionExercises.value = await buildSessionExercisesWithHistoryPrefill(expandedPlanData.value.exercises || []);
     applyWorkoutDraft(session.notes);
     queueWorkoutDraftSave(true);
-    activeTab.value = 'dayDetails';
+    activeTab.value = selectTabDuringSessionRecovery({ currentTab: activeTab.value, activateTab });
     return;
   }
 
   if (session.canResumeFromDraft) {
     sessionExercises.value = buildSessionExercisesFromDraft(session.notes, session.workoutDayName);
-    activeTab.value = 'dayDetails';
+    activeTab.value = selectTabDuringSessionRecovery({ currentTab: activeTab.value, activateTab });
     return;
   }
 
