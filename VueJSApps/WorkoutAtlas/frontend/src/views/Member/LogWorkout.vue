@@ -1220,6 +1220,12 @@ const togglePlan = async (planId) => {
 };
 
 /* ─── Check active session ───────────────────────────────────────────────── */
+const sortSessionsNewestFirst = (sessions = []) => [...sessions].sort((left, right) => {
+  const leftStartedAt = new Date(left?.startedAt || left?.sessionStartedAt || 0).getTime() || 0;
+  const rightStartedAt = new Date(right?.startedAt || right?.sessionStartedAt || 0).getTime() || 0;
+  return rightStartedAt - leftStartedAt || Number(right?.id || 0) - Number(left?.id || 0);
+});
+
 const loadInProgressSessions = async () => {
   const res = await fetch(`${API_BASE}/api/workout-sessions/in-progress`, { credentials: 'include' });
   if (!res.ok) {
@@ -1227,7 +1233,7 @@ const loadInProgressSessions = async () => {
   }
 
   const data = await res.json().catch(() => ({}));
-  const sessions = Array.isArray(data?.sessions) ? data.sessions : [];
+  const sessions = sortSessionsNewestFirst(Array.isArray(data?.sessions) ? data.sessions : []);
   activeSessions.value = sessions;
   return sessions;
 };
@@ -1242,9 +1248,7 @@ const checkActiveSession = async () => {
       return;
     }
 
-    const currentSessionId = Number(activeSession.value?.id || 0);
-    const preferredSession = sessions.find((session) => Number(session?.id || 0) === currentSessionId);
-    const nextSession = preferredSession || sessions[0];
+    const nextSession = sessions[0];
     const nextStatus = normalizeSessionStatus(nextSession);
     const isTerminalSession = sessionHasTerminalState(nextSession);
     const hasLiveState = isLiveSessionStatus(nextStatus);
@@ -1259,15 +1263,25 @@ const checkActiveSession = async () => {
   } catch (_) { /* non-fatal */ }
 };
 
-const openCurrentWorkouts = () => {
-  if (!activeSessions.value.length && !selectedDay.value) return;
+const openCurrentWorkout = async () => {
   activeTab.value = 'dayDetails';
-};
 
-const resumeInProgressSession = async (session) => {
-  if (!session?.continuationPossible) return;
-  clearFriendlyError('save');
-  await continueExistingWorkoutSession(session, { activateTab: true, pauseTimer: false });
+  try {
+    const sessions = await loadInProgressSessions();
+    if (!sessions.length) {
+      activeSession.value = null;
+      hasActiveWorkout.value = false;
+      isPreviewMode.value = false;
+      selectedDay.value = '';
+      sessionExercises.value = [];
+      return;
+    }
+
+    clearFriendlyError('save');
+    await continueExistingWorkoutSession(sessions[0], { activateTab: true, pauseTimer: false });
+  } catch (_) {
+    // Keep Current Workout open so its existing error or empty state remains visible.
+  }
 };
 
 const continueExistingWorkoutSession = async (session, { activateTab = true, pauseTimer = false } = {}) => {
@@ -2163,12 +2177,10 @@ onUnmounted(() => {
         </button>
         <button
           type="button" role="tab"
-          :class="['wl-tab', 'wa-h-tab', activeTab === 'dayDetails' ? 'wl-tab--active wa-h-tab--active' : '', (!selectedDay && !activeSessions.length) ? 'wl-tab--disabled' : '']"
-          :disabled="!selectedDay && !activeSessions.length"
-          @click="openCurrentWorkouts"
+          :class="['wl-tab', 'wa-h-tab', activeTab === 'dayDetails' ? 'wl-tab--active wa-h-tab--active' : '']"
+          @click="openCurrentWorkout"
         >
           <i class="fa-solid fa-dumbbell"></i> Current Workout
-          <span v-if="activeSessions.length" class="wl-tab-session-count">{{ activeSessions.length }}</span>
         </button>
         <button
           type="button" role="tab"
@@ -2518,42 +2530,6 @@ onUnmounted(() => {
       <!-- ══ DAY DETAILS TAB ═════════════════════════════════════════════ -->
       <div v-show="activeTab === 'dayDetails'" class="wl-tab-panel wl-tab-panel--day-details">
 
-        <section v-if="activeSessions.length" class="wl-active-sessions" aria-labelledby="unfinished-workouts-title">
-          <div class="wl-active-sessions__heading">
-            <div>
-              <h4 id="unfinished-workouts-title">Unfinished Workouts</h4>
-              <p>Select a workout to restore its saved progress.</p>
-            </div>
-            <span>{{ activeSessions.length }} active</span>
-          </div>
-          <div class="wl-active-sessions__list">
-            <article
-              v-for="session in activeSessions"
-              :key="session.id"
-              class="wl-active-session"
-              :class="{ 'wl-active-session--selected': Number(activeSession?.id) === Number(session.id) }"
-            >
-              <div class="wl-active-session__details">
-                <strong>{{ session.workoutDayName || 'Workout day unavailable' }}</strong>
-                <span>{{ formatConflictSessionDate(session.workoutDate) }}</span>
-                <small>{{ formatSessionStatus(session) }}</small>
-              </div>
-              <button
-                type="button"
-                class="wl-active-session__resume"
-                :disabled="!session.continuationPossible"
-                @click="resumeInProgressSession(session)"
-              >
-                <i class="fa-solid fa-circle-play" aria-hidden="true"></i>
-                {{ Number(activeSession?.id) === Number(session.id) ? 'Open' : 'Resume' }}
-              </button>
-              <span v-if="!session.continuationPossible" class="wl-active-session__unavailable">
-                Saved plan and draft unavailable
-              </span>
-            </article>
-          </div>
-        </section>
-
         <template v-if="selectedDay && dayExercises.length > 0">
           <!-- Preview mode banner -->
           <div v-if="isPreviewMode" class="wl-preview-banner">
@@ -2603,10 +2579,14 @@ onUnmounted(() => {
           </div>
         </template>
 
-        <div v-else-if="!activeSessions.length" class="wl-empty app-section-card">
+        <div v-else class="wl-empty app-section-card">
           <i class="fa-solid fa-dumbbell wl-empty-icon"></i>
-          <p>No day selected. Go to <strong>Overview</strong>, pick a workout plan and click <strong>Start Workout</strong> on a day.</p>
-          <button type="button" class="wl-btn" @click="activeTab = 'overview'">Go to Overview</button>
+          <h6>{{ activeSessions.length ? 'Current workout unavailable' : 'No workout in progress' }}</h6>
+          <p v-if="activeSessions.length">
+            {{ selectedDay || 'The latest unfinished workout' }} could not be restored from its saved workout details.
+          </p>
+          <p v-else>Choose a workout day to begin your next session.</p>
+          <button type="button" class="wl-btn" @click="activeTab = 'overview'">Start My Workout</button>
         </div>
       </div>
 

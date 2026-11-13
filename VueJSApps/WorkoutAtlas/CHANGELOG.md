@@ -6,6 +6,16 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.272] - 2026-11-13 - Current Workout UI Cleanup
+
+- **Removed:** Current Workout no longer displays the Unfinished Workouts grid, repeated session cards, per-session Open/Resume actions, or active-session count badges.
+- **Changed:** Current Workout reloads unfinished sessions newest-first and restores only the most recently started workout's day, saved exercise progress, progress bar, timer, and exercise controls. Legacy older sessions remain untouched and available to the existing Previous Workout conflict workflow.
+- **Changed:** Current Workout remains accessible with no active session and displays a compact empty state with a Start My Workout action.
+- **Safety:** This release is frontend-only. It does not end, delete, migrate, or otherwise modify legacy sessions or workout history, and the 0.85.271 atomic Exit & Start New behavior remains unchanged.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `CHANGELOG.md`.
+- **Verification:** Frontend production build passed. Intercepted API fixtures verified Monday restoration after Dashboard navigation and browser refresh, Continue Previous restoration, exact-ID Exit & Start New replacement with one Tuesday session remaining, newest-only legacy-session display, saved draft progress, the no-session empty state, and zero real session writes. Screenshots at 320px, 390px, and desktop confirmed no session grid, repeated entries, management controls, overlap, or horizontal scrolling while preserving progress, timer, exercise controls, fixed workout actions, and mobile bottom navigation. Focused 0.85.271 backend regression coverage remained green.
+- **Known unresolved issues:** None observed in the verified scope.
+
 ## [0.85.271] - 2026-11-13 - Compact Previous Workout Modal
 
 - **Changed:** Previous Workout Found now uses a compact dark modal that displays only the most recently started unfinished session's available plan name, day, original date, and status, without radio controls, repeated warnings, or a scrollable session-card list.
