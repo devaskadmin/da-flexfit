@@ -6,6 +6,16 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.276] - 2026-11-13 - My Plans Thumbnail Fallback Hardening
+
+- **Fixed:** My Plans thumbnails now ignore invalid string values such as `null`/`undefined` for cover references and correctly fall back to the WorkoutAtlas default workout-plan image.
+- **Fixed:** Cover-image error handling now performs a guarded two-stage fallback (custom/plan cover -> default workout-plan image -> final inline placeholder) to prevent broken-image icons and infinite fallback loops.
+- **Changed:** Thumbnail fallback reliability now covers mixed rows with valid covers, missing covers, invalid custom URLs, and failed image requests without changing plan data or stored image references.
+- **Safety:** Frontend-only change. No workout-plan records, cover-image storage keys, APIs, SQL, workout-session logic, or 0.85.275 action-button styling behavior were modified.
+- **Relevant source files:** `frontend/src/components/workout-builder/WorkoutScheduleListItem.vue`; `frontend/src/utils/workoutPlanImage.js`; `CHANGELOG.md`.
+- **Verification:** Fixture-based non-destructive checks validated valid/missing/invalid/failed/mixed image scenarios at 320px, 375px, 390px, 430px, 768px, and desktop; no horizontal overflow; object-fit preserved; and 0.85.275 button sizing/colors remained intact. Screenshots captured at 320px, 390px, and desktop. Frontend build, focused WorkoutAtlas regression tests, and `git diff --check` passed.
+- **Known unresolved issues:** None observed in the verified scope.
+
 ## [0.85.275] - 2026-11-13 - My Plans Action Button Visual Consistency
 
 - **Fixed:** My Plans table action buttons now use consistent, high-contrast action colors with white icons: View (`#2563EB`), Edit (`#D97706`), and Delete (`#DC2626`).

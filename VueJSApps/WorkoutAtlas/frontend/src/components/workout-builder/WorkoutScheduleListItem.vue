@@ -19,8 +19,16 @@ const props = defineProps({
 
 const emit = defineEmits(['open', 'edit', 'delete']);
 
+const normalizeCoverValue = (value) => {
+  const normalized = String(value || '').trim();
+  if (!normalized || /^(null|undefined)$/i.test(normalized)) {
+    return '';
+  }
+  return normalized;
+};
+
 const coverImageSrc = computed(() => {
-  const explicit = String(props.schedule?.coverImageUrl || props.schedule?.coverImage || '').trim();
+  const explicit = normalizeCoverValue(props.schedule?.coverImageUrl || props.schedule?.coverImage || '');
   if (explicit) {
     return explicit;
   }
