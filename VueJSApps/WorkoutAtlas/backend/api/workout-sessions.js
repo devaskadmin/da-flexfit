@@ -59,7 +59,7 @@ const enrichSessionForConflict = async ({ connection, userId, session }) => {
     orphanReason = 'missing_plan_reference';
   } else {
     const [planRows] = await connection.query(
-      `SELECT id, user_id
+      `SELECT id, user_id, title AS workoutPlanName
        FROM workout_schedules
        WHERE id = ?
        LIMIT 1`,
@@ -75,6 +75,9 @@ const enrichSessionForConflict = async ({ connection, userId, session }) => {
         orphanReason = 'inaccessible_plan';
       } else {
         planAccessible = true;
+        normalized.workoutPlanName = String(
+          planRows[0]?.workoutPlanName || planRows[0]?.title || ''
+        ).trim();
       }
     }
 

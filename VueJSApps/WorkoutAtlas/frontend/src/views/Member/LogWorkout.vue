@@ -69,12 +69,11 @@ const activeSession    = ref(null);
 const activeSessions   = ref([]);
 const hasActiveWorkout = ref(false);
 const showWorkoutConflictModal = ref(false);
-const workoutConflictSessions = ref([]);
-const selectedConflictSessionId = ref(null);
+const workoutConflictSession = ref(null);
+const workoutConflictSessionIds = ref([]);
 const pendingWorkoutStart = ref(null);
 const conflictModalLoading = ref(false);
 const conflictModalError = ref('');
-const confirmMultipleSessionEnd = ref(false);
 const selectedDay      = ref('');
 const sessionExercises = ref([]);
 const isPreviewMode    = ref(false);
@@ -352,14 +351,8 @@ const activeWorkoutElapsedSeconds = computed(() => {
 
 const activeWorkoutTimerLabel = computed(() => formatDurationHms(activeWorkoutElapsedSeconds.value));
 
-const selectedConflictSession = computed(() =>
-  workoutConflictSessions.value.find(
-    (session) => Number(session?.id || 0) === Number(selectedConflictSessionId.value || 0)
-  ) || null
-);
-
 const canContinueConflictSession = computed(() =>
-  Boolean(selectedConflictSession.value?.continuationPossible)
+  Boolean(workoutConflictSession.value?.continuationPossible)
 );
 
 const normalizeSessionStatus = (session) =>
@@ -1368,21 +1361,24 @@ const startWorkoutSessionRequest = async ({
 const closeWorkoutConflictModal = () => {
   if (conflictModalLoading.value) return;
   showWorkoutConflictModal.value = false;
-  workoutConflictSessions.value = [];
-  selectedConflictSessionId.value = null;
+  workoutConflictSession.value = null;
+  workoutConflictSessionIds.value = [];
   pendingWorkoutStart.value = null;
   conflictModalError.value = '';
-  confirmMultipleSessionEnd.value = false;
 };
 
 const openWorkoutConflictModal = ({ sessions, pendingStart, message = '' }) => {
   const normalizedSessions = Array.isArray(sessions) ? sessions : [];
-  workoutConflictSessions.value = normalizedSessions;
+  workoutConflictSession.value = [...normalizedSessions].sort((left, right) => {
+    const leftStartedAt = new Date(left?.startedAt || left?.sessionStartedAt || 0).getTime() || 0;
+    const rightStartedAt = new Date(right?.startedAt || right?.sessionStartedAt || 0).getTime() || 0;
+    return rightStartedAt - leftStartedAt || Number(right?.id || 0) - Number(left?.id || 0);
+  })[0] || null;
+  workoutConflictSessionIds.value = normalizedSessions
+    .map((session) => Number(session?.id || 0))
+    .filter((sessionId) => Number.isInteger(sessionId) && sessionId > 0);
   pendingWorkoutStart.value = pendingStart;
-  const firstContinuable = normalizedSessions.find((session) => session?.continuationPossible);
-  selectedConflictSessionId.value = firstContinuable?.id || null;
   conflictModalError.value = message;
-  confirmMultipleSessionEnd.value = false;
   showWorkoutConflictModal.value = true;
 };
 
@@ -1458,9 +1454,11 @@ const startDayWorkout = async (dayName) => {
 };
 
 const continuePreviousWorkout = async () => {
-  const session = selectedConflictSession.value;
+  if (conflictModalLoading.value) return;
+
+  const session = workoutConflictSession.value;
   if (!session?.continuationPossible) {
-    conflictModalError.value = 'Select an unfinished workout that can be restored.';
+    conflictModalError.value = 'This unfinished workout cannot be restored.';
     return;
   }
 
@@ -1477,24 +1475,29 @@ const continuePreviousWorkout = async () => {
 };
 
 const startNewWorkoutAfterConflict = async () => {
-  const sessions = workoutConflictSessions.value;
+  if (conflictModalLoading.value) return;
+
+  const session = workoutConflictSession.value;
+  const endSessionIds = workoutConflictSessionIds.value;
   const pendingStart = pendingWorkoutStart.value;
-  if (!pendingStart || sessions.length === 0) return;
-  if (sessions.length > 1 && !confirmMultipleSessionEnd.value) {
-    conflictModalError.value = 'Confirm that all listed unfinished workouts will be ended.';
-    return;
-  }
+  if (!pendingStart || !session || endSessionIds.length === 0) return;
 
   conflictModalLoading.value = true;
   conflictModalError.value = '';
   clearFriendlyError('save');
 
   try {
-    const endSessionIds = sessions.map((session) => Number(session.id));
+    if (activeSession.value) {
+      const draftSaved = await persistWorkoutDraft();
+      if (!draftSaved) {
+        throw new Error('Unable to save the current workout progress. No workouts were ended.');
+      }
+    }
+
     const { response, payload } = await startWorkoutSessionRequest({
       ...pendingStart,
       endSessionIds,
-      confirmMultipleEnd: sessions.length > 1 && confirmMultipleSessionEnd.value,
+      confirmMultipleEnd: endSessionIds.length > 1,
     });
 
     if (!response.ok) {
@@ -2921,44 +2924,19 @@ onUnmounted(() => {
           </div>
           <div class="wl-modal__body wl-conflict-modal__body">
             <p class="wl-conflict-modal__message">
-              You have an unfinished workout. Would you like to continue your previous workout or start a new one?
+              You have an unfinished workout. Would you like to continue it or end your previous workouts and start a new one?
             </p>
 
-            <div class="wl-conflict-session-list" role="radiogroup" aria-label="Unfinished workouts">
-              <label
-                v-for="session in workoutConflictSessions"
-                :key="session.id"
-                class="wl-conflict-session"
-                :class="{
-                  'wl-conflict-session--selected': Number(selectedConflictSessionId) === Number(session.id),
-                  'wl-conflict-session--unavailable': !session.continuationPossible,
-                }"
-              >
-                <input
-                  v-model="selectedConflictSessionId"
-                  type="radio"
-                  name="previous-workout"
-                  :value="session.id"
-                  :disabled="!session.continuationPossible || conflictModalLoading"
-                />
-                <span class="wl-conflict-session__details">
-                  <strong>{{ session.workoutDayName || 'Workout' }}</strong>
-                  <span>{{ formatConflictSessionDate(session.workoutDate) }}</span>
-                  <small v-if="session.continuationPossible">Select to continue with the timer paused</small>
-                  <small v-else>Cannot be restored; start new to close this session</small>
-                </span>
-                <span class="wl-conflict-session__end-label">Will be ended if Start New is selected</span>
-              </label>
+            <div v-if="workoutConflictSession" class="wl-conflict-summary">
+              <div v-if="workoutConflictSession.workoutPlanName" class="wl-conflict-summary__plan">
+                {{ workoutConflictSession.workoutPlanName }}
+              </div>
+              <div class="wl-conflict-summary__day">{{ workoutConflictSession.workoutDayName || 'Workout' }}</div>
+              <div class="wl-conflict-summary__meta">
+                <span><i class="fa-regular fa-calendar" aria-hidden="true"></i>{{ formatConflictSessionDate(workoutConflictSession.workoutDate) }}</span>
+                <span class="wl-conflict-summary__status"><i class="fa-solid fa-circle" aria-hidden="true"></i>In Progress</span>
+              </div>
             </div>
-
-            <label v-if="workoutConflictSessions.length > 1" class="wl-conflict-confirm">
-              <input
-                v-model="confirmMultipleSessionEnd"
-                type="checkbox"
-                :disabled="conflictModalLoading"
-              />
-              <span>I confirm that all {{ workoutConflictSessions.length }} listed workouts will be ended before the new workout starts.</span>
-            </label>
 
             <div v-if="conflictModalError" class="wl-banner wl-banner--error wl-conflict-modal__error" role="alert">
               <i class="fa-solid fa-circle-xmark"></i> {{ conflictModalError }}
@@ -2977,11 +2955,11 @@ onUnmounted(() => {
             <button
               type="button"
               class="wl-conflict-action wl-conflict-action--start"
-              :disabled="conflictModalLoading || (workoutConflictSessions.length > 1 && !confirmMultipleSessionEnd)"
+              :disabled="conflictModalLoading || !workoutConflictSession"
               @click="startNewWorkoutAfterConflict"
             >
               <i class="fa-solid fa-play"></i>
-              <span>{{ conflictModalLoading ? 'Please wait…' : 'Start New Workout' }}</span>
+              <span>{{ conflictModalLoading ? 'Please wait…' : 'Exit & Start New' }}</span>
             </button>
           </div>
         </div>
@@ -4489,26 +4467,26 @@ onUnmounted(() => {
 }
 
 .wl-conflict-modal {
-  width: min(100%, 500px);
+  width: min(100%, 420px);
   max-height: calc(100dvh - 16px);
   overflow: hidden;
-  background: var(--wl-surface-1, #ffffff);
-  border: 1px solid var(--wl-border, #dbe3ee);
+  background: #111827;
+  border: 1px solid #334155;
   border-radius: 8px;
-  color: var(--wl-text, #111827);
+  color: #f8fafc;
 }
 
 .wl-conflict-modal__header {
   flex-shrink: 0;
   padding: 12px 12px 10px;
   gap: 8px;
-  background: var(--wl-surface-2, #f8fafc);
-  border-color: var(--wl-border, #dbe3ee);
+  background: #0f172a;
+  border-color: #334155;
 }
 
 .wl-conflict-modal__header h5 {
   min-width: 0;
-  color: var(--wl-text, #111827);
+  color: #f8fafc;
   font-size: 0.96rem;
   line-height: 1.25;
 }
@@ -4523,27 +4501,26 @@ onUnmounted(() => {
   position: relative;
   z-index: 2;
   border-radius: 4px !important;
-  background: #fff1f2;
-  border-color: #fecdd3;
-  color: #dc2626;
+  background: #3f151b;
+  border-color: #7f1d1d;
+  color: #f87171;
 }
 
 .wl-conflict-modal .wl-modal__close:hover,
 .wl-conflict-modal .wl-modal__close:focus {
-  background: #ffe4e6;
-  border-color: #fda4af;
+  background: #4c1820;
+  border-color: #ef4444;
 }
 
 .wl-conflict-modal .wl-modal__close i {
-  color: #dc2626;
+  color: #f87171;
   pointer-events: none;
 }
 
 .wl-conflict-modal__body {
   min-height: 0;
-  overflow-y: auto;
   padding: 12px;
-  color: var(--wl-text, #111827);
+  color: #e2e8f0;
 }
 
 .wl-conflict-modal__message {
@@ -4552,76 +4529,54 @@ onUnmounted(() => {
   line-height: 1.45;
 }
 
-.wl-conflict-session-list {
+.wl-conflict-summary {
   display: grid;
-  gap: 6px;
-}
-
-.wl-conflict-session {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  gap: 4px 8px;
-  align-items: start;
-  padding: 9px;
-  border: 1px solid var(--wl-border, #dbe3ee);
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid #334155;
   border-radius: 7px;
-  background: var(--wl-surface-2, #f8fafc);
-  cursor: pointer;
+  background: #1e293b;
 }
 
-.wl-conflict-session--selected {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.14);
+.wl-conflict-summary__plan {
+  color: #93c5fd;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-transform: uppercase;
 }
 
-.wl-conflict-session--unavailable {
-  cursor: default;
-}
-
-.wl-conflict-session input,
-.wl-conflict-confirm input {
-  width: 18px;
-  height: 18px;
-  margin: 1px 0 0;
-  accent-color: #2563eb;
-}
-
-.wl-conflict-session__details {
-  min-width: 0;
-  display: grid;
-  gap: 1px;
-}
-
-.wl-conflict-session__details strong {
+.wl-conflict-summary__day {
   overflow-wrap: anywhere;
-  font-size: 0.84rem;
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 800;
   line-height: 1.25;
 }
 
-.wl-conflict-session__details > span,
-.wl-conflict-session__details small {
-  color: var(--wl-text-secondary, #64748b);
-  font-size: 0.72rem;
+.wl-conflict-summary__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  color: #cbd5e1;
+  font-size: 0.75rem;
   line-height: 1.3;
 }
 
-.wl-conflict-session__end-label {
-  grid-column: 2;
-  color: #dc2626;
-  font-size: 0.68rem;
-  font-weight: 700;
-  line-height: 1.25;
+.wl-conflict-summary__meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
-.wl-conflict-confirm {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  gap: 8px;
-  margin-top: 10px;
-  color: var(--wl-text, #111827);
-  font-size: 0.76rem;
-  line-height: 1.35;
-  cursor: pointer;
+.wl-conflict-summary__status {
+  color: #4ade80;
+  font-weight: 800;
+}
+
+.wl-conflict-summary__status i {
+  font-size: 0.5rem;
 }
 
 .wl-conflict-modal__error {
@@ -4634,8 +4589,8 @@ onUnmounted(() => {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   padding: 10px 12px 12px;
-  background: var(--wl-surface-2, #f8fafc);
-  border-color: var(--wl-border, #dbe3ee);
+  background: #0f172a;
+  border-color: #334155;
 }
 
 .wl-conflict-action {

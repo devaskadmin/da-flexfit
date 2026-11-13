@@ -6,6 +6,16 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.271] - 2026-11-13 - Compact Previous Workout Modal
+
+- **Changed:** Previous Workout Found now uses a compact dark modal that displays only the most recently started unfinished session's available plan name, day, original date, and status, without radio controls, repeated warnings, or a scrollable session-card list.
+- **Changed:** Continue Previous restores the displayed latest session and its saved draft in Day Details with the timer paused. Exit & Start New first persists the currently loaded draft, then atomically ends every unfinished session owned by the authenticated user across all plans and days before starting the exact requested workout.
+- **Fixed:** The start-session transaction serializes requests with a per-user row lock, locks all user-owned active sessions, requires an exact confirmed conflict-ID snapshot, rejects stale subsets, preserves notes/logs/sets, and rolls back every closure if the replacement insert fails. Successful replacement leaves exactly one in-progress session for that user and never changes another user's sessions.
+- **Read-only investigation:** The current account has 10 distinct unfinished database rows with 10 unique session IDs, ordered newest-first. Six distinct rows share the same Monday / 2026-10-14 display label, explaining the repeated cards without indicating duplicate rendering. No records were deleted, merged, or modified.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `backend/api/workout-sessions.js`; `backend/tests/workout-session-recovery.test.js`; `backend/tests/workout-session-recovery.integration.test.js`.
+- **Verification:** All 15 focused backend tests passed, including no-active start, conflicts, exact-set replacement across plans, legacy orphan closure, other-user isolation, stale subset rejection, multi-row rollback, concurrency, and independent resume coverage. Intercepted browser fixtures passed newest-session display, close-without-change, saved-progress restore with paused timer, draft-before-replacement, complete-ID replacement, duplicate-submit blocking, exactly one remaining active session, failure messaging without premature modal close, and navigate-away/return progress restoration. At 320px, 375px, 390px, and desktop the dark modal had equal one-row 44px actions, an 8px gap, no internal scroll, and no horizontal overflow; mobile and desktop screenshots were captured. Frontend production build passed.
+- **Known unresolved issues:** None observed in the verified scope.
+
 ## [0.85.270] - 2026-11-12 - Mobile Workout Log Scrolling and Actions
 
 - **Fixed:** Workout Log now keeps the document as the single mobile vertical scroll owner instead of assigning competing scroll containers to the app shell, preventing iPhone Safari swipes from becoming stuck.

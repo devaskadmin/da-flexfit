@@ -485,10 +485,27 @@ test('start rollback preserves existing in-progress sessions when insert fails',
         completed_at: null,
         notes: 'draft',
       },
+      {
+        id: 801,
+        user_id: 42,
+        source_workout_schedule_id: 112,
+        workout_day_id: null,
+        workout_day_name: 'Other Plan Day',
+        workout_date: '2026-11-11',
+        status: 'in_progress',
+        started_at: '2026-11-11T11:00:00.000Z',
+        ended_at: null,
+        duration_seconds: 0,
+        completed_at: null,
+        notes: 'other draft',
+      },
     ],
-    workoutSchedules: [{ id: 111, user_id: 42, title: 'Plan 111' }],
+    workoutSchedules: [
+      { id: 111, user_id: 42, title: 'Plan 111' },
+      { id: 112, user_id: 42, title: 'Plan 112' },
+    ],
     failInsertOnStart: true,
-    nextSessionId: 801,
+    nextSessionId: 802,
   });
 
   const { route, restore } = loadRouteWithMockPool(mockPool);
@@ -501,7 +518,8 @@ test('start rollback preserves existing in-progress sessions when insert fails',
         workoutPlanId: 111,
         workoutDayName: 'Any Day',
         workoutDate: '2026-11-12',
-        endSessionIds: [800],
+        endSessionIds: [800, 801],
+        confirmMultipleEnd: true,
       },
     };
     const res = createResponseRecorder();
@@ -511,7 +529,8 @@ test('start rollback preserves existing in-progress sessions when insert fails',
 
     const original = mockPool._state.sessions.find((session) => session.id === 800);
     assert.equal(original.status, 'in_progress');
-    assert.equal(mockPool._state.sessions.filter((session) => session.user_id === 42).length, 1);
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 801).status, 'in_progress');
+    assert.equal(mockPool._state.sessions.filter((session) => session.user_id === 42).length, 2);
     assert.equal(mockPool._state.counters.rollback > 0, true);
   } finally {
     restore();
@@ -686,6 +705,121 @@ test('multiple unfinished sessions require confirmation and replace atomically w
   }
 });
 
+test('replacement ends every user-owned session across plans and preserves other users and saved data', async () => {
+  const mockPool = createMockPool({
+    sessions: [
+      {
+        id: 1351,
+        user_id: 68,
+        source_workout_schedule_id: 445,
+        workout_day_id: null,
+        workout_day_name: 'Monday',
+        workout_date: '2026-11-10',
+        status: 'in_progress',
+        started_at: '2026-11-10T09:00:00.000Z',
+        ended_at: null,
+        duration_seconds: 0,
+        completed_at: null,
+        notes: '{"version":1,"exercises":[]}',
+      },
+      {
+        id: 1352,
+        user_id: 68,
+        source_workout_schedule_id: 446,
+        workout_day_id: null,
+        workout_day_name: 'Tuesday',
+        workout_date: '2026-11-11',
+        status: 'in_progress',
+        started_at: '2026-11-11T09:00:00.000Z',
+        ended_at: null,
+        duration_seconds: 0,
+        completed_at: null,
+        notes: '{"version":1,"exercises":[]}',
+      },
+      {
+        id: 1353,
+        user_id: 68,
+        source_workout_schedule_id: null,
+        workout_day_id: null,
+        workout_day_name: 'Legacy Orphan',
+        workout_date: '2026-11-12',
+        status: 'in_progress',
+        started_at: '2026-11-12T09:00:00.000Z',
+        ended_at: null,
+        duration_seconds: 0,
+        completed_at: null,
+        notes: '{"version":1,"exercises":[{"id":"saved-orphan"}]}',
+      },
+      {
+        id: 2351,
+        user_id: 69,
+        source_workout_schedule_id: 445,
+        workout_day_id: null,
+        workout_day_name: 'Other User Day',
+        workout_date: '2026-11-12',
+        status: 'in_progress',
+        started_at: '2026-11-12T10:00:00.000Z',
+        ended_at: null,
+        duration_seconds: 0,
+        completed_at: null,
+        notes: '{"version":1,"exercises":[]}',
+      },
+    ],
+    workoutSchedules: [
+      { id: 445, user_id: 68, title: 'Lose Weight' },
+      { id: 446, user_id: 68, title: 'Gain Muscle' },
+    ],
+    workoutLog: [{ WorkoutLogID: 61, workout_log_session_id: 1351, UserID: 68, ExerciseID: 10 }],
+    workoutLogSets: [{ id: 71, workout_log_id: 61, set_number: 1, reps: 8, weight: 50 }],
+    nextSessionId: 1354,
+  });
+
+  const { route, restore } = loadRouteWithMockPool(mockPool);
+  try {
+    const start = getBusinessHandler(route, 'post', '/workout-sessions/start');
+    const staleSubsetRes = createResponseRecorder();
+    await start({
+      session: { user: { id: 68 } },
+      body: {
+        workoutPlanId: 445,
+        workoutDayName: 'Wednesday',
+        workoutDate: '2026-11-12',
+        endSessionIds: [1353],
+      },
+    }, staleSubsetRes);
+
+    assert.equal(staleSubsetRes.statusCode, 409);
+    assert.equal(staleSubsetRes.body.code, 'STALE_WORKOUT_SESSION_CONFLICT');
+    assert.equal(mockPool._state.sessions.filter((session) => session.user_id === 68 && session.status === 'in_progress').length, 3);
+
+    const res = createResponseRecorder();
+    await start({
+      session: { user: { id: 68 } },
+      body: {
+        workoutPlanId: 445,
+        workoutDayName: 'Wednesday',
+        workoutDate: '2026-11-12',
+        endSessionIds: [1351, 1352, 1353],
+        confirmMultipleEnd: true,
+      },
+    }, res);
+
+    assert.equal(res.statusCode, 201);
+    assert.equal(res.body.session.id, 1354);
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 1351).status, 'ended');
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 1352).status, 'ended');
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 1353).status, 'ended');
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 2351).status, 'in_progress');
+    assert.equal(mockPool._state.sessions.filter((session) => session.user_id === 68 && session.status === 'in_progress').length, 1);
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 1354).status, 'in_progress');
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 1353).notes.includes('saved-orphan'), true);
+    assert.equal(mockPool._state.workoutLog.length, 1);
+    assert.equal(mockPool._state.workoutLogSets.length, 1);
+  } finally {
+    restore();
+  }
+});
+
 test('in-progress endpoint returns all active sessions and supports independent resume selection', async () => {
   const mockPool = createMockPool({
     sessions: [
@@ -734,6 +868,7 @@ test('in-progress endpoint returns all active sessions and supports independent 
     assert.equal(res.body.sessions.length, 2);
     assert.equal(res.body.sessions[0].id, 1402);
     assert.equal(res.body.sessions[1].id, 1401);
+    assert.equal(res.body.sessions[0].workoutPlanName, 'Plan 500');
   } finally {
     restore();
   }
