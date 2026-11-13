@@ -2577,6 +2577,23 @@ onUnmounted(() => {
               @exercise-completed="onExerciseCompleted"
             />
           </div>
+
+          <div v-if="hasActiveWorkout && activeSession && !isPreviewMode" class="wl-bottom-bar">
+            <div class="wl-bottom-bar__inner">
+              <span class="wl-bottom-bar__label">{{ totalCompleted }} / {{ totalSets }} sets done</span>
+              <div class="wl-bottom-bar__actions">
+                <button type="button" class="wl-btn-add-exercise" :disabled="saving || exerciseLibraryLoading || exerciseAddLoading" @click="openAddExercisePicker">
+                  <i v-if="exerciseLibraryLoading || exerciseAddLoading" class="fa-solid fa-spinner fa-spin"></i>
+                  <i v-else class="fa-solid fa-dumbbell"></i>
+                  <span>{{ exerciseAddLoading ? 'Adding…' : 'Add Exercise' }}</span>
+                </button>
+                <button type="button" class="wl-btn-complete" :disabled="saving" @click="completeWorkout">
+                  <i class="fa-solid fa-flag-checkered"></i>
+                  {{ saving ? 'Saving…' : 'Complete & End Workout' }}
+                </button>
+              </div>
+            </div>
+          </div>
         </template>
 
         <div v-else class="wl-empty app-section-card">
@@ -2861,23 +2878,6 @@ onUnmounted(() => {
 
     </div>
 
-    <!-- ── Sticky bottom bar (Day Details only) ───────────────────────────── -->
-    <div v-if="activeTab === 'dayDetails' && selectedDay && dayExercises.length > 0 && hasActiveWorkout && activeSession && !isPreviewMode" class="wl-bottom-bar">
-      <div class="wl-bottom-bar__inner">
-        <span class="wl-bottom-bar__label">{{ totalCompleted }} / {{ totalSets }} sets done</span>
-        <div class="wl-bottom-bar__actions">
-          <button type="button" class="wl-btn-add-exercise" :disabled="saving || exerciseLibraryLoading || exerciseAddLoading" @click="openAddExercisePicker">
-            <i v-if="exerciseLibraryLoading || exerciseAddLoading" class="fa-solid fa-spinner fa-spin"></i>
-            <i v-else class="fa-solid fa-dumbbell"></i>
-            <span>{{ exerciseAddLoading ? 'Adding…' : 'Add Exercise' }}</span>
-          </button>
-          <button type="button" class="wl-btn-complete" :disabled="saving" @click="completeWorkout">
-            <i class="fa-solid fa-flag-checkered"></i>
-            {{ saving ? 'Saving…' : 'Complete & End Workout' }}
-          </button>
-        </div>
-      </div>
-    </div>
     <ExercisePickerModal
       :is-open="addExercisePickerOpen"
       :exercises="exerciseLibrary"
@@ -2996,7 +2996,6 @@ onUnmounted(() => {
 <style scoped>
 .wl-page {
   --mobile-bottom-nav-height: 0px;
-  --wl-bottom-bar-height: 92px;
   padding-bottom: 100px;
 }
 
@@ -4053,15 +4052,19 @@ onUnmounted(() => {
 .wl-active-session__resume:disabled { opacity: 0.5; cursor: not-allowed; }
 .wl-active-session__unavailable { grid-column: 1 / -1; color: #fca5a5; font-size: 0.7rem; }
 
-/* ── Sticky bottom bar ──────────────────────────────────────────────────── */
+/* ── Workout actions (in-flow) ──────────────────────────────────────────── */
 .wl-bottom-bar {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+  position: static;
+  margin-top: 12px;
+  margin-bottom: 0;
+  padding: 12px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
   background: rgba(255,255,255,0.96);
-  border-top: 1px solid var(--border-color, #e5e7eb);
-  backdrop-filter: blur(8px); padding: 12px 16px;
 }
 .wl-bottom-bar__inner {
-  max-width: 960px; margin: 0 auto;
+  max-width: 960px;
+  margin: 0 auto;
   display: grid; align-items: center; gap: 8px;
 }
 .wl-bottom-bar__label   { font-size: 0.88rem; font-weight: 700; color: var(--text-color, #111827); }
@@ -4078,6 +4081,7 @@ onUnmounted(() => {
   border: none;
   color: #fff;
   border-radius: 10px;
+  min-height: 44px;
   padding: 10px 14px;
   font-size: 0.84rem;
   font-weight: 800;
@@ -4098,6 +4102,7 @@ onUnmounted(() => {
 
 .wl-btn-complete {
   background: #dc2626; border: none; color: #fff;
+  min-height: 44px;
   border-radius: 10px; padding: 10px 18px;
   font-size: 0.88rem; font-weight: 800; cursor: pointer;
   width: 100%;
@@ -5127,20 +5132,11 @@ onUnmounted(() => {
       76px,
       calc(var(--wa-mobile-bottom-nav-height, 0px) + var(--wa-mobile-bottom-nav-gap, 0px))
     );
-    --workout-bottom-bar-height: 76px;
     --wl-page-bottom-clearance: calc(
       var(--mobile-bottom-nav-height, 0px) +
       env(safe-area-inset-bottom) +
       24px
     );
-    --wl-bottom-bar-offset: calc(var(--mobile-bottom-nav-height, 0px) + env(safe-area-inset-bottom));
-    --wl-active-workout-clearance: calc(
-      var(--mobile-bottom-nav-height, 0px) +
-      var(--workout-bottom-bar-height, 76px) +
-      env(safe-area-inset-bottom) +
-      24px
-    );
-    --wl-bottom-bar-total-height: var(--wl-active-workout-clearance);
     padding-bottom: var(--wl-page-bottom-clearance);
     overflow-x: clip !important;
     overflow-y: visible !important;
@@ -5149,23 +5145,7 @@ onUnmounted(() => {
   }
 
   .wl-tab-panel--day-details {
-    padding-bottom: var(--wl-active-workout-clearance);
-  }
-
-  .wl-bottom-bar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    width: 100%;
-    bottom: calc(var(--mobile-bottom-nav-height, 0px) + env(safe-area-inset-bottom));
-    z-index: 60;
-    margin-top: 0;
-    margin-bottom: 0;
-    padding: 6px max(10px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
-    max-width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-    overflow-x: hidden;
+    padding-bottom: var(--wl-page-bottom-clearance);
   }
 
   .wl-bottom-bar__inner {

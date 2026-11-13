@@ -6,6 +6,16 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.273] - 2026-11-13 - In-Flow Current Workout Action Section
+
+- **Changed:** Current Workout action controls (`Add Exercise`, `Complete & End Workout`) now render in normal content flow immediately after the exercise list instead of using a floating overlay above mobile navigation.
+- **Changed:** Removed workout-action fixed positioning and bar-specific mobile offset behavior from `LogWorkout.vue` while preserving side-by-side action layout, button colors, and control handlers.
+- **Changed:** Day Details mobile bottom padding now reserves space for fixed bottom navigation without reserving extra space for a floating workout action bar.
+- **Safety:** No backend, SQL, session-management, timer, progress, or workout persistence logic changed. 0.85.271 atomic replacement and 0.85.272 newest-only Current Workout behavior remain intact.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `CHANGELOG.md`.
+- **Verification:** Intercepted fixtures verified no floating/sticky action overlay and natural bottom-of-content placement at 320px, 375px, 390px, 768px, and 1280px; actions remained side by side, fully visible/tappable above fixed mobile nav, with no obscured exercise content and no horizontal scroll. Empty Current Workout state showed no action bar. Screenshots captured at 320px, 390px, and desktop. Frontend production build and focused workout-session backend regression tests passed.
+- **Known unresolved issues:** None observed in the verified scope.
+
 ## [0.85.272] - 2026-11-13 - Current Workout UI Cleanup
 
 - **Removed:** Current Workout no longer displays the Unfinished Workouts grid, repeated session cards, per-session Open/Resume actions, or active-session count badges.
