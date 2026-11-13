@@ -6,6 +6,17 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.277] - 2026-11-13 - Mobile Workout Day Card Readability and Action Balance
+
+- **Changed:** Workout Log day cards under Start My Workout now use larger mobile typography and improved spacing so day names, metadata, and exercise summaries remain readable without crowding.
+- **Fixed:** Mobile day-card metadata and summary text were increased to approximately 13px-equivalent sizing with improved line-height and wrap behavior to reduce cramped reading at narrow widths.
+- **Changed:** Day-card action buttons now maintain a strict two-column mobile layout with an 8px gap, centered icon+label alignment, and consistent 44px minimum tap height.
+- **Fixed:** Preview and Start Workout day-card actions now preserve required visual identity on mobile through existing theme overrides: Preview blue (`#2563EB`) and Start green (`#15803D`).
+- **Safety:** Frontend CSS-only update in Workout Log day cards; no backend/API/SQL/session/timer/navigation logic was changed.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `CHANGELOG.md`.
+- **Verification:** Frontend production build passed, focused workout-session recovery tests passed (15/15), and `git diff --check` passed.
+- **Known unresolved issues:** None observed in the validated scope.
+
 ## [0.85.276] - 2026-11-13 - My Plans Thumbnail Fallback Hardening
 
 - **Fixed:** My Plans thumbnails now ignore invalid string values such as `null`/`undefined` for cover references and correctly fall back to the WorkoutAtlas default workout-plan image.

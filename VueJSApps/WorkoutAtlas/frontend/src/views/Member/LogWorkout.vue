@@ -5198,7 +5198,7 @@ onUnmounted(() => {
   .wl-exercise-list { gap: 6px; }
   .wl-accordion      { gap: 6px; }
   .wl-history-list   { gap: 6px; }
-  .wl-day-grid       { gap: 6px; }
+  .wl-day-grid       { gap: 10px; }
 
   /* Hero: compact padding, no glow */
   .builder-hero {
@@ -5438,35 +5438,56 @@ onUnmounted(() => {
     display: none;
   }
 
-  /* Workout day cards: smaller text, tighter rows, no glow */
+  /* Workout day cards: readable mobile sizing with balanced spacing */
   .wl-day-card {
-    padding: 5px 7px 6px;
-    gap: 4px;
+    padding: 10px 12px;
+    gap: 8px;
     border-radius: 10px;
   }
-  .wl-day-card__header   { gap: 4px; }
-  .wl-day-card__title    { gap: 5px; }
-  .wl-day-card__title h4 { font-size: 0.78rem; }
-  .wl-day-card__meta     { font-size: 0.6rem; gap: 4px; }
+  .wl-day-card__header   { gap: 7px; }
+  .wl-day-card__title    { gap: 7px; }
+  .wl-day-card__title h4 { font-size: 0.9rem; line-height: 1.25; }
+  .wl-day-card__meta     { font-size: 0.82rem; gap: 7px 10px; line-height: 1.3; }
+  .wl-day-card__meta span { line-height: 1.3; }
   .wl-day-card__ex-summary {
-    padding-top: 5px;
-    font-size: 0.62rem;
-    line-height: 1.35;
+    padding-top: 7px;
+    font-size: 0.82rem;
+    line-height: 1.45;
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
     overflow: hidden;
   }
-  .wl-day-card__footer   { gap: 6px; }
+  .wl-day-card__footer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    align-items: stretch;
+  }
 
-  /* Preview / Start buttons: compact */
-  .wl-btn-preview,
-  .wl-btn-start {
-    padding: 6px 10px;
-    min-height: 32px;
-    font-size: 0.66rem;
-    border-radius: 9px;
-    gap: 5px;
+  .wl-day-card__footer > .wl-btn-preview,
+  .wl-day-card__footer > .wl-btn-start {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    height: 44px;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+    border-radius: 10px;
+    gap: 6px;
+    line-height: 1.2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .wl-day-card__footer > .wl-btn-preview i,
+  .wl-day-card__footer > .wl-btn-start i {
+    font-size: 0.84rem;
+    line-height: 1;
   }
 
   /* Secondary label sizes (global ~20% reduction) */
@@ -5724,6 +5745,19 @@ onUnmounted(() => {
 }
 
 @media (max-width: 800px) {
+  .wl-day-card__footer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .wl-day-card__footer > .wl-btn-preview,
+  .wl-day-card__footer > .wl-btn-start {
+    min-height: 44px;
+    height: 44px;
+  }
+
   .wl-plan {
     overflow: visible;
   }
