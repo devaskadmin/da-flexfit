@@ -3352,7 +3352,7 @@ onUnmounted(() => {
 }
 
 .wl-tabs.wa-h-tabs--tricolor > :nth-child(1):not(.wa-h-tab--active):not(.active):not([aria-selected="true"]) {
-  background: #1d4f9f !important;
+  background: #2563EB !important;
 }
 .wl-tabs.wa-h-tabs--tricolor > :nth-child(2):not(.wa-h-tab--active):not(.active):not([aria-selected="true"]) {
   background: #15803D !important;
@@ -3360,22 +3360,49 @@ onUnmounted(() => {
 .wl-tabs.wa-h-tabs--tricolor > :nth-child(3):not(.wa-h-tab--active):not(.active):not([aria-selected="true"]) {
   background: #8f1f2a !important;
 }
-.wl-tabs .wl-tab.wa-h-tab--active,
-.wl-tabs .wl-tab.active,
-.wl-tabs .wl-tab[aria-selected="true"] {
-  background: #15803D !important;
+
+.wl-tabs.wa-h-tabs--tricolor > :nth-child(1) { --wl-tab-assigned-bg: #2563EB; }
+.wl-tabs.wa-h-tabs--tricolor > :nth-child(2) { --wl-tab-assigned-bg: #15803D; }
+.wl-tabs.wa-h-tabs--tricolor > :nth-child(3) { --wl-tab-assigned-bg: #8f1f2a; }
+
+.wl-tabs.wa-h-tabs--tricolor .wl-tab {
+  background: var(--wl-tab-assigned-bg, #2563EB) !important;
   color: #ffffff !important;
   border-color: transparent !important;
-  box-shadow: inset 0 -2px 0 0 rgba(200, 221, 255, 0.95), 0 0 0 1px rgba(196, 220, 255, 0.28) !important;
+  filter: none !important;
 }
 
-/* Keep Start My Workout on the original navy/blue active treatment only. */
-.wl-tabs .wl-tab:nth-child(1).wa-h-tab--active,
-.wl-tabs .wl-tab:nth-child(1).active,
-.wl-tabs .wl-tab:nth-child(1)[aria-selected="true"] {
-  background: #1d4f9f !important;
+.wl-tabs.wa-h-tabs--tricolor .wl-tab:hover,
+.wl-tabs.wa-h-tabs--tricolor .wl-tab:focus,
+.wl-tabs.wa-h-tabs--tricolor .wl-tab:focus-visible,
+.wl-tabs.wa-h-tabs--tricolor .wl-tab:active,
+.wl-tabs.wa-h-tabs--tricolor .wl-tab.active,
+.wl-tabs.wa-h-tabs--tricolor .wl-tab.wa-h-tab--active,
+.wl-tabs.wa-h-tabs--tricolor .wl-tab[aria-selected="true"] {
+  background: var(--wl-tab-assigned-bg, #2563EB) !important;
   color: #ffffff !important;
   border-color: transparent !important;
+  filter: none !important;
+}
+
+.wl-tabs.wa-h-tabs--tricolor .wl-tab.wa-h-tab--active,
+.wl-tabs.wa-h-tabs--tricolor .wl-tab.active,
+.wl-tabs.wa-h-tabs--tricolor .wl-tab[aria-selected="true"] {
+  box-shadow: inset 0 -2px 0 0 rgba(200, 221, 255, 0.95), 0 0 0 1px rgba(196, 220, 255, 0.28) !important;
+  outline: 2px solid rgba(196, 220, 255, 0.55) !important;
+  outline-offset: -2px !important;
+}
+
+.wl-tabs.wa-h-tabs--tricolor > :nth-child(1).wa-h-tab--active,
+.wl-tabs.wa-h-tabs--tricolor > :nth-child(1).active,
+.wl-tabs.wa-h-tabs--tricolor > :nth-child(1)[aria-selected="true"],
+.wl-tabs.wa-h-tabs--tricolor > :nth-child(2).wa-h-tab--active,
+.wl-tabs.wa-h-tabs--tricolor > :nth-child(2).active,
+.wl-tabs.wa-h-tabs--tricolor > :nth-child(2)[aria-selected="true"],
+.wl-tabs.wa-h-tabs--tricolor > :nth-child(3).wa-h-tab--active,
+.wl-tabs.wa-h-tabs--tricolor > :nth-child(3).active,
+.wl-tabs.wa-h-tabs--tricolor > :nth-child(3)[aria-selected="true"] {
+  box-shadow: inset 0 -2px 0 0 rgba(200, 221, 255, 0.95), 0 0 0 1px rgba(196, 220, 255, 0.28) !important;
 }
 .wl-view-switch {
   display: grid;

@@ -6,6 +6,16 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.274] - 2026-11-13 - Workout Navigation Tab Color Lock
+
+- **Fixed:** Workout Log main navigation tabs now keep their assigned background colors in all interaction states (default, hover, focus, active, selected, and click): Start My Workout (`#2563EB`), Current Workout (existing green), and Workout Log (existing red).
+- **Changed:** Selection emphasis for the three workout tabs now relies on a subtle underline/outline indicator instead of recoloring tabs when active.
+- **Fixed:** Generic active-state selectors that previously forced selected tabs to green were replaced with per-tab color-lock rules that also guard against `.active` and framework state overrides.
+- **Safety:** No backend, SQL, workout-session logic, 0.85.271 session management, 0.85.272 newest-session display, or 0.85.273 in-flow action-bar behavior was changed.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `CHANGELOG.md`.
+- **Verification:** Manual and fixture-backed checks confirmed stable tab colors while switching repeatedly between all three tabs at 320px, 390px, and desktop for hover/focus/selected states, with no unrelated button recoloring. Frontend production build, focused workout-session backend regression tests, and `git diff --check` passed.
+- **Known unresolved issues:** None observed in the verified scope.
+
 ## [0.85.273] - 2026-11-13 - In-Flow Current Workout Action Section
 
 - **Changed:** Current Workout action controls (`Add Exercise`, `Complete & End Workout`) now render in normal content flow immediately after the exercise list instead of using a floating overlay above mobile navigation.
