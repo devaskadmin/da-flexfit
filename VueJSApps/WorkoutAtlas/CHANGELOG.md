@@ -6,6 +6,17 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.275] - 2026-11-13 - My Plans Action Button Visual Consistency
+
+- **Fixed:** My Plans table action buttons now use consistent, high-contrast action colors with white icons: View (`#2563EB`), Edit (`#D97706`), and Delete (`#DC2626`).
+- **Fixed:** Action button colors are now locked for default, hover, focus, active, and selected/active-class states so interaction no longer shifts button identity.
+- **Changed:** My Plans icon-only action controls now use compact, centered square buttons sized to approximately `36x36` on desktop and `44x44` on mobile, with consistent `6px` desktop and `8px` mobile spacing.
+- **Changed:** Actions cell layout now keeps inline no-wrap alignment to prevent awkward wrapping/overflow while preserving existing responsive table behavior.
+- **Safety:** This release is frontend-only and scoped to My Plans row styling; no click handlers, authorization flow, delete confirmation logic, backend APIs, SQL, workout sessions, gateway infrastructure, or prior 0.85.271-0.85.274 fixes were changed.
+- **Relevant source files:** `frontend/src/components/workout-builder/WorkoutScheduleListItem.vue`; `CHANGELOG.md`.
+- **Verification:** Fixture-safe UI checks at 320px, 390px, and desktop confirmed color lock and button sizing, View/Edit navigation opened the expected plan query, Delete opened the existing confirmation modal and was canceled (no destructive action), responsive readability remained intact, frontend production build passed, focused workout-session regression tests passed, and `git diff --check` passed.
+- **Known unresolved issues:** None observed in the verified scope.
+
 ## [0.85.274] - 2026-11-13 - Workout Navigation Tab Color Lock
 
 - **Fixed:** Workout Log main navigation tabs now keep their assigned background colors in all interaction states (default, hover, focus, active, selected, and click): Start My Workout (`#2563EB`), Current Workout (existing green), and Workout Log (existing red).

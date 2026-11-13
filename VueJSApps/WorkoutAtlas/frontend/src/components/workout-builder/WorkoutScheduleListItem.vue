@@ -156,6 +156,73 @@ const onCoverError = (event) => {
   flex-shrink: 0;
 }
 
+.my-plan-row .global-library-table__actions-cell {
+  width: 132px;
+  white-space: nowrap;
+}
+
+.my-plan-row .global-plans-table__actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.my-plan-row .global-plans-table__actions--icon-only .global-plans-table__btn {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 8px !important;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff !important;
+  line-height: 1;
+  box-shadow: none;
+  transform: none;
+}
+
+.my-plan-row .global-plans-table__actions--icon-only .global-plans-table__btn i {
+  font-size: 0.88rem;
+  line-height: 1;
+  color: currentColor;
+}
+
+.my-plan-row .global-plans-table__btn--open,
+.my-plan-row .global-plans-table__btn--open:is(:hover, :focus, :focus-visible, :active, .active, [aria-pressed="true"]) {
+  background: #2563eb !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+
+.my-plan-row .global-plans-table__btn--edit,
+.my-plan-row .global-plans-table__btn--edit:is(:hover, :focus, :focus-visible, :active, .active, [aria-pressed="true"]) {
+  background: #d97706 !important;
+  border-color: #b45309 !important;
+  color: #ffffff !important;
+}
+
+.my-plan-row .global-plans-table__btn--delete,
+.my-plan-row .global-plans-table__btn--delete:is(:hover, :focus, :focus-visible, :active, .active, [aria-pressed="true"]) {
+  background: #dc2626 !important;
+  border-color: #b91c1c !important;
+  color: #ffffff !important;
+}
+
+.my-plan-row .global-plans-table__actions--icon-only .global-plans-table__btn:focus-visible {
+  outline: 2px solid rgba(191, 219, 254, 0.85);
+  outline-offset: 1px;
+}
+
+.my-plan-row .global-plans-table__actions--icon-only .global-plans-table__btn:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
 @media (max-width: 800px) {
   .my-plan-row td {
     display: flex;
@@ -216,15 +283,15 @@ const onCoverError = (event) => {
     display: inline-flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 5px;
+    gap: 8px;
     width: auto;
   }
 
   .my-plan-row .global-plans-table__actions--icon-only .global-plans-table__btn {
-    width: 34px;
-    height: 34px;
-    min-width: 34px;
-    min-height: 34px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
   }
 }
 </style>
