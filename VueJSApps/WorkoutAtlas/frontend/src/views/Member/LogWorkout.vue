@@ -1974,8 +1974,6 @@ const startWorkoutSessionRequest = async ({
   workoutDayId = null,
   planId = expandedPlanId.value,
   workoutStartDate = selectedWorkoutDate.value || today(),
-  endSessionIds = [],
-  confirmMultipleEnd = false,
 }) => {
 
   const response = await fetch(`${API_BASE}/api/workout-sessions/start`, {
@@ -1987,7 +1985,6 @@ const startWorkoutSessionRequest = async ({
       ...(Number(workoutDayId || 0) > 0 ? { workoutDayId: Number(workoutDayId) } : {}),
       workoutDayName: dayName,
       workoutDate: workoutStartDate,
-      ...(endSessionIds.length ? { endSessionIds, confirmMultipleEnd } : {}),
     }),
   });
 
@@ -2331,29 +2328,8 @@ const startNewWorkoutAfterConflict = async () => {
   clearFriendlyError('save');
 
   try {
-    const hasSavedProgress = Number(session?.draftExerciseCount || 0) > 0 || Boolean(session?.hasSavedProgress);
-    if (hasSavedProgress) {
-      const confirmed = await showConfirmDialog(
-        'Starting a new workout will end this unfinished workout. Saved progress for this unfinished workout will no longer be resumable. Continue?',
-        {
-          title: 'Start New Workout',
-          confirmButtonText: 'Start New Workout',
-          cancelButtonText: 'Keep Existing Workout',
-          icon: 'warning',
-        }
-      );
-      if (!confirmed) {
-        conflictModalLoading.value = false;
-        return;
-      }
-    }
-
-    const explicitEndSessionIds = session?.id ? [Number(session.id)] : [];
-
     const { response, payload } = await startWorkoutSessionRequest({
       ...pendingStart,
-      endSessionIds: explicitEndSessionIds,
-      confirmMultipleEnd: explicitEndSessionIds.length > 1,
     });
 
     if (!response.ok) {

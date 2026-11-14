@@ -6,6 +6,16 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.288] - 2026-11-14 - Second Workout Start Flow Clarification
+
+- **Fixed:** The start-new-workout conflict flow no longer sends stale end-session replacement requests or shows the destructive legacy warning when a user starts a second active workout while one session remains unfinished.
+- **Changed:** The frontend conflict modal now treats a second session as an independent session start and respects the backend rule that the user must complete or cancel an active workout before a third can begin.
+- **Preserved:** Existing modal structure, resume flow, active-session data, and non-destructive conflict messaging remain intact.
+- **Safety:** No database migration, gateway change, or production-data mutation was introduced. The fix is limited to the frontend conflict/start request flow and the repo version metadata.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `CHANGELOG.md`; `frontend/package.json`; `backend/package.json`.
+- **Verification:** Targeted backend workout-session regression tests and the frontend production build were run after the fix. Manual browser follow-up should still validate the live iPhone workflow.
+- **Known unresolved issues:** Real-device gym UX verification remains pending for the final iPhone-specific interaction details.
+
 ## [0.85.287] - 2026-11-14 - Global & Featured Workout Plan Closeout
 
 - **Fixed:** Public Featured workout-plan discovery is now available without requiring an authenticated session so registration and onboarding can surface curated plans as intended.
