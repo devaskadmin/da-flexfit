@@ -6,6 +6,15 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.289] - 2026-11-14 - Session-aware Workout Timer Controls
+
+- **Verified:** Current Workout timer behavior matches the Prompt 2 acceptance criteria: entering an active session resumes from accumulated elapsed time, leaving the view pauses and persists state, re-entry resumes appropriately, and manual Pause/Play stays session-specific.
+- **Verified:** Timer progression is isolated per workout session ID and does not leak across repeated plan/day sessions, with refresh safety and duplicate-interval protections already in place through the existing session timer snapshot logic.
+- **Changed:** The timer behavior is documented as the verified 0.85.289 checkpoint for the existing session-aware implementation already present in the app, without introducing a second timer or new persistence schema.
+- **Relevance:** `frontend/src/views/Member/LogWorkout.vue`; `frontend/src/utils/workoutSessionTimer.mjs`; `frontend/src/utils/workoutSessionTimer.test.mjs`; `CHANGELOG.md`.
+- **Verification:** The existing timer unit suite passed, and the frontend production build completed successfully on the verified current code. Real-device mobile follow-up remains the only non-automated acceptance item.
+- **Known unresolved issues:** Manual live gym verification for the exact iPhone pause/play UX and tab-switch timing remains outside automated coverage.
+
 ## [0.85.288] - 2026-11-14 - Second Workout Start Flow Clarification
 
 - **Fixed:** The start-new-workout conflict flow no longer sends stale end-session replacement requests or shows the destructive legacy warning when a user starts a second active workout while one session remains unfinished.
