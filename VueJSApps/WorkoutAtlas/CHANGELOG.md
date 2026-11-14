@@ -6,6 +6,16 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.290] - 2026-11-14 - Completion routes to Workout Log history
+
+- **Fixed:** The successful `Complete & End Workout` flow now routes the user directly to the existing Workout Log history tab after the backend confirms the session completed, instead of resetting to the overview tab and leaving the completed session invisible.
+- **Changed:** Completion logic now preserves the completed workout date, clears the active-session state, reloads the correct day’s history, and waits for a successful backend completion response before switching away from Current Workout.
+- **Preserved:** Failed completion requests still keep the active workout state and error message intact; no destructive session-ending behavior is triggered before backend confirmation.
+- **Safety:** No schema changes, new API contract, or production data writes were introduced. This is a targeted frontend completion-flow fix limited to route state and the repo version metadata.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `CHANGELOG.md`; `frontend/package.json`; `backend/package.json`.
+- **Verification:** Pending local validation in the repo: full backend `node --test` run and frontend `npm run build` after the patch. Real mobile/device confirmation remains needed for the final iPhone navigation flow.
+- **Known unresolved issues:** Live gym verification on the actual device is still required to confirm the completed session appears in the history tab without visual flicker or duplicate navigation.
+
 ## [0.85.289] - 2026-11-14 - Session-aware Workout Timer Controls
 
 - **Verified:** Current Workout timer behavior matches the Prompt 2 acceptance criteria: entering an active session resumes from accumulated elapsed time, leaving the view pauses and persists state, re-entry resumes appropriately, and manual Pause/Play stays session-specific.

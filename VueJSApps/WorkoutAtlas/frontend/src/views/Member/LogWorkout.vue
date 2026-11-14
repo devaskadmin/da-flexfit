@@ -2415,7 +2415,9 @@ const completeWorkout = async () => {
     saveMessage.value = completedDurationSeconds > 0
       ? `✓ Workout complete! Great work! Workout Time: ${formatDurationHms(completedDurationSeconds)}`
       : '✓ Workout complete! Great work!';
+
     const completedSessionId = Number(activeSession.value?.id || 0);
+    const completedWorkoutDate = String(activeSession.value?.workoutDate || selectedWorkoutDate.value || today()).trim();
     activeSessions.value = activeSessions.value.filter(
       (session) => Number(session?.id || 0) !== completedSessionId
     );
@@ -2423,11 +2425,13 @@ const completeWorkout = async () => {
     activeSession.value    = null;
     hasActiveWorkout.value = false;
 
-    setTimeout(() => {
-      saveMessage.value = '';
-      activeTab.value   = 'overview';
-      selectedDay.value = '';
-    }, 2000);
+    if (completedWorkoutDate) {
+      selectedWorkoutDate.value = completedWorkoutDate;
+    }
+    activeTab.value = 'workoutHistory';
+    selectedDay.value = '';
+    saveMessage.value = '';
+    await loadWorkoutHistory();
     return true;
   } catch (err) {
     setFriendlyError('save', {
