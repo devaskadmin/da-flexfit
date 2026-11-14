@@ -6,6 +6,116 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.287] - 2026-11-14 - Global & Featured Workout Plan Closeout
+
+- **Fixed:** Public Featured workout-plan discovery is now available without requiring an authenticated session so registration and onboarding can surface curated plans as intended.
+- **Fixed:** The Guest registration flow now loads and displays featured global plans in the subscription step, while keeping the existing subscription and account setup flow intact.
+- **Changed:** The backend public featured feed (`GET /api/featured-workout-plans`) now allows guest access to published featured plans while preserving the existing public visibility filters and published-status checks.
+- **Preserved:** Global plan creation, admin/trainer authority gating, source-global provenance metadata, and personal-copy adoption behavior remain unchanged for non-registration paths.
+- **Safety:** No duplicate builders, new APIs, new tables, or schema migration work was introduced. This is a closeout fix for the approved 0.85 scope and the existing implementation surfaces already in the codebase.
+- **Relevant source files:** `backend/api/users.js`; `frontend/src/views/Guest/register.vue`; `backend/tests/featured-plan-public-access.test.js`; `CHANGELOG.md`.
+- **Verification:** New regression test passed: `node --test tests/featured-plan-public-access.test.js` (1/1 pass). Frontend production build passed: `npm run build` completed successfully with Vite production output generation. Exit code 0.
+- **Known unresolved issues:** No open release-blocking issues remain in the verified 0.85.287 Global/Featured closeout scope.
+
+## [0.85.286] - 2026-11-14 - Mobile Workout Bug Cleanup
+
+- **Fixed:** Workout Statistics now start collapsed on viewport widths of 800px or less while remaining manually expandable/collapsible and preserving desktop behavior and the existing calculations.
+- **Fixed:** Current Workout Add Set controls are kept compact and centered beneath exercise sets with a mobile-safe 44px touch target while preserving set numbering, persistence, editing, and removal flows.
+- **Fixed:** Workout timer behavior remains per-session, refresh-safe, and immune to duplicate intervals during resume/restart switching, while session completion finalizes duration without prematurely ending the workout.
+- **Fixed:** Mobile action bar layout remains in-flow instead of floating over the fixed bottom navigation, keeping exercise cards, timer controls, notes, and other workout content reachable and unobstructed.
+- **Fixed:** Workout Log tab colors remain stable across default, selected, hover, and focus states without switching to another tab's color identity.
+- **Fixed:** Exercise image failures now route to the authenticated default backend image endpoint and stop after the default image fails, while preserving Gateway-only media resolution and never restoring the legacy static `/assets/Excerises` route.
+- **Fixed:** Two-session conflict rules remain enforced for active unfinished workouts, and session switching preserves saved sets, notes, cardio details, and timer state without silent data replacement.
+- **Changed:** The 0.85.285 session lifecycle behavior remains intact and is preserved as the baseline under this release scope.
+- **Safety:** No new storage layer, no new timer schema, no backend media architecture changes, no gateway modifications, and no database migration was introduced.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `frontend/src/components/workout-session/ExerciseSessionCard.vue`; `frontend/src/utils/exerciseImage.js`; `frontend/src/utils/workoutSessionTimer.mjs`; `CHANGELOG.md`.
+- **Verification:** Frontend timer unit coverage passed via Node TAP; frontend production build passed; backend full suite stayed green at 115/115; exit code 0; `git diff --check` passed.
+- **Known unresolved issues:** No open release-blocking issues remain in the current mobile workout bug cleanup scope.
+
+## [0.85.285] - 2026-11-14 - Workout Session Lifecycle Overhaul (Backend + LogWorkout UX)
+
+- **Added:** `GET /api/workout-schedules/:id/delete-impact` to preview active in-progress sessions that will be affected before deleting a workout plan.
+- **Changed:** `POST /api/workout-sessions/start` now performs invalid active-session fail-safe cleanup, returns `WORKOUT_SESSION_CONFLICT` for single active unfinished sessions (UI decision required), and returns `WORKOUT_SESSION_LIMIT_REACHED` when the two-active-session cap is reached.
+- **Changed:** Workout-plan deletion routes (`DELETE /api/workout-schedules/:id`, `DELETE /api/workout-planner/:planId`) now run transactionally and cancel in-progress sessions bound to the deleted plan, returning `cancelledActiveSessionCount`.
+- **Changed:** `POST /api/workout-sessions/complete/:sessionId` and `POST /api/workout-sessions/cancel/:sessionId` lifecycle handling now uses stronger transaction/idempotency behavior with explicit cancelled-state semantics for cancel flows.
+- **Changed:** Workout Log conflict modal now supports both one-session and two-session active conflict states with explicit action sets (Continue Existing / Start New Workout / Cancel for one-session; Resume Selected / Complete Selected / Cancel Selected / Start New Workout / Back for two-session).
+- **Changed:** Workout Log start flow now guards duplicate start requests, pre-checks active sessions, and enforces slot-free start sequencing when two active sessions exist.
+- **Changed:** Workout Log plan deletion now preloads delete impact and surfaces active-session cancellation impact in confirmation and success feedback.
+- **Added:** Integration test coverage for invalid plan-less active session fail-safe cleanup and updated orphan-with-draft resumability expectations.
+- **Safety:** No gateway/media resolver changes were made in this release scope.
+- **Relevant source files:** `backend/api/workout-sessions.js`; `backend/api/users.js`; `backend/tests/workout-session-recovery.integration.test.js`; `frontend/src/views/Member/LogWorkout.vue`; `CHANGELOG.md`.
+- **Verification:** Frontend production build passed (`vite build`). Targeted backend workout-session tests executed after patching: all listed subtests in `workout-session-recovery.test.js`, `workout-session-recovery.integration.test.js`, and `workout-session-status-policy.test.js` reported passing during run output; harness summary footer did not emit in this environment before terminal teardown. `git diff --check` passed.
+- **Known unresolved issues:** Full mobile/browser lifecycle verification matrix (320/375/390/430/768/desktop screenshots) and explicit `WorkoutDetail.vue` parity validation for new conflict-code UX remain pending.
+
+## [0.85.284] - 2026-11-13 - Workout Log History Exercise Image Resolution Fix
+
+- **Fixed:** Workout Log history exercise thumbnails no longer bind raw gallery payload strings directly to `<img src>`, preventing malformed URLs such as encoded JSON arrays from rendering as broken image requests.
+- **Fixed:** History exercise cards now resolve thumbnail sources through the existing shared WorkoutAtlas exercise image resolver (`getExerciseImage`) used by Current Workout image handling.
+- **Fixed:** History thumbnail loading now uses guarded fallback behavior: attempted image -> default exercise image -> final inline fallback, preventing broken-image icons and infinite fallback loops when media requests fail.
+- **Changed:** History API response now includes `exerciseId` in each exercise row so legacy filename gallery entries (for example `"1.jpg"`) can be resolved through the canonical media endpoint.
+- **Preserved:** History card structure, exercise metadata, set tables, completion indicators, current-workout image flow, and 0.85.283 dark-theme contrast behavior.
+- **Safety:** Primary fix is frontend image-resolution/fallback logic. Backend change is minimal and backward-compatible response enrichment only; no schema, authorization, workout-session lifecycle, or persistence logic changes.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `backend/api/workout-log.js`; `CHANGELOG.md`.
+- **Verification:** Frontend production build passed. Browser checks on Workout Log completed history confirmed valid image loads and fallback image behavior without broken-image indicators at 320/375/390/430/768/1024 widths.
+- **Known unresolved issues:** Full media-asset coverage QA across uncommon legacy records and unavailable upstream image objects remains required.
+
+## [0.85.283] - 2026-11-13 - Workout Log Exercise Card Text Contrast Fix
+
+- **Fixed:** Completed Workout Log history exercise cards now enforce explicit high-contrast foreground colors for names, per-set values, and nested inline text elements in dark-themed UI.
+- **Fixed:** History card metadata, set headers, set numbers, and secondary text now use consistent muted-light tokens to prevent dark/black inherited text on narrow mobile dark-theme views.
+- **Changed:** Contrast rules are scoped to Workout Log history session exercise cards only (`.wl-history-session .wl-hist-*`) and do not globally override Bootstrap table, card, or button text styles.
+- **Preserved:** Existing dark blue history card backgrounds, green completion indicators, category badge treatment, history data retrieval, session recovery behavior, and Current Workout interaction patterns.
+- **Safety:** Frontend-only CSS refinement. No backend/API/SQL/session lifecycle/timer/workout data changes.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `CHANGELOG.md`.
+- **Verification:** Frontend production build passed. Browser validation on the actual Workout Log completed-history view confirmed readable computed foreground colors for exercise title/tags/set headers/set values at 320/375/390/430/768/1024 widths with no horizontal overflow introduced by this patch.
+- **Known unresolved issues:** Full manual accessibility audit across all historical data variants (including uncommon legacy records and edit mode combinations) remains required in QA.
+
+## [0.85.282] - 2026-11-13 - Independent Workout Session Timer Fix
+
+- **Fixed:** Current Workout timer state is now tracked per workout session ID (session-keyed map), preventing elapsed time and paused/running state leakage when switching between two active sessions.
+- **Fixed:** Resume paths that previously forced local timer pause now restore timer behavior from the session's persisted status instead of applying a global pause override.
+- **Fixed:** Timer sync now updates from timestamp-based session snapshots and enforces monotonic non-negative elapsed values, reducing drift and avoiding duplicate interval behavior across remount/switch flows.
+- **Changed:** Active-session timer display now derives from per-session snapshots and existing backend session fields (`startedAt`, `durationSeconds`, `sessionStatus`) without introducing new session storage or browser-local timer source of truth.
+- **Added:** Frontend unit tests for session timer invariants: independent elapsed time, pause isolation, resume baseline continuity, switch safety, recovery baseline, monotonic updates, isolated end behavior, terminal-session freeze, and stale-state pruning.
+- **Safety:** Frontend-only timer reliability patch. No backend API contract changes, no SQL schema migration, no changes to two-session cap, set persistence, workout-plan templates, history visibility policy, or missed eligibility policy.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `frontend/src/utils/workoutSessionTimer.mjs`; `frontend/src/utils/workoutSessionTimer.test.mjs`; `CHANGELOG.md`.
+- **Verification:** Frontend build passed; new timer unit suite passed (9/9); focused backend regressions passed (15/15) for session recovery/conflict/history-policy safety.
+- **Schema note:** No schema changes required for this fix. Existing persistence architecture was reused.
+
+## [0.85.281] - 2026-11-13 - Workout Navigation Tab Color Consistency
+
+- **Fixed:** Workout Log page tab colors now remain consistent for Start My Workout (blue), Current Workout (green), and Workout Log (red) across default, hover, selected, active, and keyboard-focus states.
+- **Fixed:** Active-state styling no longer relies on positional `:nth-child(...)` tab mapping, which could be overridden by shared active-tab class combinations and cause assigned colors to drift.
+- **Changed:** Tabs now use explicit per-tab tone classes (`wl-tab--overview`, `wl-tab--current`, `wl-tab--history`) and `aria-selected` state binding for deterministic state styling.
+- **Changed:** Selected-tab emphasis now uses a consistent underline/shadow/outline indicator without changing each tab's assigned background color.
+- **Safety:** Frontend-only change in Workout Log tab markup/styles. No backend/API/SQL/session lifecycle, workout recovery, exercise logging, history retrieval, or navigation destination logic changed.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `CHANGELOG.md`.
+- **Verification:** Frontend production build passed. Browser-computed background-color checks were executed at 320/375/390/430/768/1024 widths while selecting all three tabs; assigned colors remained stable in tested states.
+- **Known unresolved issues:** Full manual end-to-end regression coverage for all workout flows remains required per release process.
+
+## [0.85.280] - 2026-11-13 - Current Workout Mobile UI Layout Fixes
+
+- **Fixed:** Current Workout exercise three-dot management trigger now aligns to the top-right edge of the exercise card using header/action layout updates instead of offset-based placement.
+- **Fixed:** Exercise action dropdown viewport behavior was hardened with explicit card/header overflow visibility and mobile-safe panel max width so menu content is not clipped at narrow widths.
+- **Changed:** Current Workout mobile bottom action area keeps in-flow behavior with explicit static positioning guardrails and no duplicate Day Details bottom clearance.
+- **Fixed:** Mobile action buttons in Current Workout bottom bar now retain 44px minimum touch target height for reliable thumb access while preserving labels, colors, and handlers.
+- **Safety:** Frontend-only CSS/template adjustment. No backend, SQL, session lifecycle, timer, set-persistence, resume logic, draft persistence, workout plan editing rules, or history eligibility logic changed.
+- **Relevant source files:** `frontend/src/components/workout-session/ExerciseSessionCard.vue`; `frontend/src/views/Member/LogWorkout.vue`; `CHANGELOG.md`.
+- **Verification:** Frontend production build passed. Static and runtime geometry checks were run for menu/action-bar structure at 390px preview state; full active-session viewport overlap validation at 320/375/390/430/768 and desktop still requires manual QA with a live in-progress workout state.
+- **Known unresolved issues:** Automated browser checks in this session could not exercise the bottom action bar overlap end-to-end because no live active Current Workout session was present in the shared page context.
+
+## [0.85.279] - 2026-11-13 - Separate Workout Log History Visibility from Missed Eligibility
+
+- **Changed:** `GET /api/workout-log/history` now uses an explicit Workout Log visibility policy and includes persisted records for `in_progress`, `paused`, `active`, `ended`, `completed`, and canceled/cancelled sessions, plus legacy rows without session linkage.
+- **Fixed:** The 0.85.278 terminal-only history filter could hide in-progress persisted sets from Workout Log. History now remains inclusive so users can see completed sets before ending a workout.
+- **Added:** Backend status-policy utility separating Workout Log visibility (`WORKOUT_HISTORY_VISIBLE_STATUSES`) from Missed eligibility (`isMissedExerciseEligible` / ended-only + incomplete + valid session).
+- **Added:** Focused regressions verifying Workout Log history visibility for active/completed/ended/cancelled sessions, and Missed eligibility exclusions for in-progress/completed/cancelled/orphan records.
+- **Changed:** Session-start regression tests now assert resume semantics (same-day repeated/concurrent starts return create+resume without duplication) while preserving two-session-limit and conflict/rollback coverage.
+- **Safety:** No schema migrations. No workout plan edits. No exercise image/menu/UI redesign work. No destructive history/session cleanup.
+- **Relevant source files:** `backend/api/workout-log.js`; `backend/utils/workout-session-status-policy.js`; `backend/tests/workout-log-history-visibility.test.js`; `backend/tests/workout-session-status-policy.test.js`; `backend/tests/workout-session-recovery.integration.test.js`; `CHANGELOG.md`.
+- **Verification:** Backend focused suite passed: `node --test tests/workout-session-status-policy.test.js tests/workout-log-history-visibility.test.js tests/workout-session-recovery.integration.test.js` (15/15).
+- **Known unresolved issues:** No dedicated Missed Exercises UI/component or endpoint was found in current WorkoutAtlas source; Missed behavior is currently locked by backend policy tests/utilities and awaits integration with a concrete Missed feature data source.
+
 ## [0.85.277] - 2026-11-13 - Mobile Workout Day Card Readability and Action Balance
 
 - **Changed:** Workout Log day cards under Start My Workout now use larger mobile typography and improved spacing so day names, metadata, and exercise summaries remain readable without crowding.

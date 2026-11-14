@@ -1,4 +1,4 @@
-const test = require('node:test');
+const { test, after } = require('node:test');
 const assert = require('node:assert/strict');
 
 const exerciseApi = require('../api/excerises.js');
@@ -32,6 +32,10 @@ const {
   MAX_EXERCISE_SEARCH_KEYWORDS,
 } = exerciseApi;
 const pool = require('../db');
+
+after(async () => {
+  await pool.end();
+});
 
 test('canonicalImageNameForSlot uses exercise and exercise-2 names with validated extensions', () => {
   assert.equal(exerciseApi.canonicalImageNameForSlot(0, '.jpg'), 'exercise.jpg');

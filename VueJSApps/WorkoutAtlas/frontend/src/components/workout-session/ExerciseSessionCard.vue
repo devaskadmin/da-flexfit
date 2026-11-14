@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { DEFAULT_EXERCISE_IMAGE, getExerciseImage } from '@/utils/exerciseImage';
 
 const props = defineProps({
@@ -15,9 +15,41 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  canMoveUp: {
+    type: Boolean,
+    default: false,
+  },
+  canMoveDown: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-const emit = defineEmits(['add-set', 'remove-set', 'update-set', 'select', 'exercise-completed']);
+const emit = defineEmits([
+  'add-set',
+  'remove-set',
+  'update-set',
+  'select',
+  'exercise-completed',
+  'move-up',
+  'move-down',
+  'edit-exercise',
+  'remove-exercise',
+]);
+
+const managementMenuOpen = ref(false);
+const managementMenuRoot = ref(null);
+
+const failedImageSignatures = new Set();
+const INLINE_IMAGE_FALLBACK =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect width="120" height="120" rx="12" fill="#e5e7eb"/><path d="M28 76l20-22 14 16 10-12 20 18" fill="none" stroke="#94a3b8" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="44" cy="40" r="8" fill="#94a3b8"/></svg>');
+
+const buildImageSignature = (exercise, imageSrc) => {
+  const exerciseId = Number(exercise?.exerciseId || exercise?.ExerciseID || 0);
+  const baseId = exerciseId > 0 ? String(exerciseId) : String(exercise?.id || exercise?.name || 'unknown');
+  return `${baseId}::${String(imageSrc || '').trim()}`;
+};
 
 function completeExercise(exerciseId) {
   props.exercise.sessionSets.forEach((set, idx) => {
@@ -56,7 +88,7 @@ const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input
 
 const resolveExerciseImage = (exercise) => {
   const safeExercise = exercise && typeof exercise === 'object' ? exercise : {};
-  return getExerciseImage({
+  const resolved = getExerciseImage({
     ...safeExercise,
     image:
       safeExercise.image ||
@@ -66,19 +98,80 @@ const resolveExerciseImage = (exercise) => {
       safeExercise.ImageURL ||
       '',
   });
+
+  const signature = buildImageSignature(safeExercise, resolved);
+  if (failedImageSignatures.has(signature)) {
+    return DEFAULT_EXERCISE_IMAGE;
+  }
+
+  return resolved;
 };
 
-const handleExerciseImageError = (event) => {
+const handleExerciseImageError = (event, exercise) => {
   const target = event?.target;
   if (!target) return;
 
+  const attemptedSrc = String(target.currentSrc || target.src || '').trim();
+  const signature = buildImageSignature(exercise, attemptedSrc);
+  if (attemptedSrc) {
+    failedImageSignatures.add(signature);
+  }
+
   if (target.dataset.fallbackApplied === '1') {
+    if (target.dataset.fallbackFinal !== '1') {
+      target.dataset.fallbackFinal = '1';
+      target.src = INLINE_IMAGE_FALLBACK;
+    }
     return;
   }
 
   target.dataset.fallbackApplied = '1';
   target.src = DEFAULT_EXERCISE_IMAGE;
 };
+
+const closeManagementMenu = () => {
+  managementMenuOpen.value = false;
+};
+
+const toggleManagementMenu = () => {
+  managementMenuOpen.value = !managementMenuOpen.value;
+};
+
+const onDocumentPointerDown = (event) => {
+  if (!managementMenuOpen.value) return;
+  const target = event?.target;
+  if (!target || typeof target.closest !== 'function') {
+    closeManagementMenu();
+    return;
+  }
+  if (!target.closest('.sec-management-menu')) {
+    closeManagementMenu();
+  }
+};
+
+const onDocumentKeyDown = (event) => {
+  if (event?.key === 'Escape') {
+    closeManagementMenu();
+  }
+};
+
+const handleMenuAction = (action) => {
+  closeManagementMenu();
+  if (action === 'move-up') emit('move-up', props.exercise.id);
+  if (action === 'move-down') emit('move-down', props.exercise.id);
+  if (action === 'edit-exercise') emit('edit-exercise', props.exercise.id);
+  if (action === 'remove-exercise') emit('remove-exercise', props.exercise.id);
+};
+
+onMounted(() => {
+  document.addEventListener('pointerdown', onDocumentPointerDown);
+  document.addEventListener('keydown', onDocumentKeyDown);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('pointerdown', onDocumentPointerDown);
+  document.removeEventListener('keydown', onDocumentKeyDown);
+});
 </script>
 
 <template>
@@ -92,7 +185,7 @@ const handleExerciseImageError = (event) => {
           class="sec-thumb"
           loading="lazy"
           decoding="async"
-          @error="handleExerciseImageError"
+          @error="(event) => handleExerciseImageError(event, exercise)"
         />
         <div class="sec-meta">
           <h5>{{ exercise.name }}</h5>
@@ -122,6 +215,63 @@ const handleExerciseImageError = (event) => {
           <i :class="isExpanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
           <span class="sr-only">{{ isExpanded ? 'Collapse exercise' : 'Select exercise' }}</span>
         </button>
+        <div class="sec-management-menu" ref="managementMenuRoot" @click.stop>
+          <button
+            type="button"
+            class="sec-management-menu__trigger"
+            aria-label="Exercise actions"
+            :aria-expanded="managementMenuOpen ? 'true' : 'false'"
+            @click.stop="toggleManagementMenu"
+          >
+            <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+          </button>
+
+          <div
+            v-if="managementMenuOpen"
+            class="sec-management-menu__panel"
+            role="menu"
+            aria-label="Exercise management actions"
+          >
+            <button
+              type="button"
+              class="sec-management-menu__item"
+              role="menuitem"
+              :disabled="!canMoveUp"
+              @click="handleMenuAction('move-up')"
+            >
+              <i class="fa-solid fa-arrow-up"></i>
+              <span>Move Up</span>
+            </button>
+            <button
+              type="button"
+              class="sec-management-menu__item"
+              role="menuitem"
+              :disabled="!canMoveDown"
+              @click="handleMenuAction('move-down')"
+            >
+              <i class="fa-solid fa-arrow-down"></i>
+              <span>Move Down</span>
+            </button>
+            <button
+              type="button"
+              class="sec-management-menu__item"
+              role="menuitem"
+              @click="handleMenuAction('edit-exercise')"
+            >
+              <i class="fa-solid fa-pen"></i>
+              <span>Edit Exercise</span>
+            </button>
+            <button
+              type="button"
+              class="sec-management-menu__item sec-management-menu__item--danger"
+              role="menuitem"
+              @click="handleMenuAction('remove-exercise')"
+            >
+              <i class="fa-solid fa-trash"></i>
+              <span>Remove Exercise</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -479,6 +629,7 @@ const handleExerciseImageError = (event) => {
   gap: 14px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
   transition: box-shadow 0.18s ease, border-color 0.18s ease;
+  overflow: visible;
 }
 
 .session-exercise-card--active {
@@ -497,10 +648,10 @@ const handleExerciseImageError = (event) => {
 /* ─── Header ──────────────────────────────── */
 .sec-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   cursor: pointer;
   user-select: none;
   border-radius: 8px;
@@ -519,8 +670,8 @@ const handleExerciseImageError = (event) => {
 
 .sec-header-actions {
   display: inline-grid;
-  grid-template-columns: auto auto auto;
-  align-items: center;
+  grid-template-columns: auto auto auto auto;
+  align-items: start;
   gap: 6px;
   width: auto;
   max-width: 100%;
@@ -532,6 +683,89 @@ const handleExerciseImageError = (event) => {
 
 .sec-header-actions .sec-type-chip {
   justify-self: start;
+}
+
+.sec-management-menu {
+  position: relative;
+  justify-self: end;
+}
+
+.sec-management-menu__trigger {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  min-height: 30px;
+  max-height: 30px;
+  padding: 0;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: rgba(15, 23, 42, 0.52);
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.sec-management-menu__trigger:hover {
+  background: rgba(30, 64, 175, 0.26);
+  border-color: rgba(96, 165, 250, 0.65);
+  color: #dbeafe;
+}
+
+.sec-management-menu__trigger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.24);
+}
+
+.sec-management-menu__panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 176px;
+  max-width: min(220px, calc(100vw - 24px));
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #0f172a;
+  box-shadow: 0 18px 30px rgba(15, 23, 42, 0.38);
+  padding: 6px;
+  z-index: 12;
+  display: grid;
+  gap: 4px;
+}
+
+.sec-management-menu__item {
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 8px 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sec-management-menu__item:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.22);
+}
+
+.sec-management-menu__item:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.sec-management-menu__item--danger {
+  color: #fecaca;
+}
+
+.sec-management-menu__item--danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.22);
 }
 
 .sec-header-actions .sec-sets-summary {
@@ -1175,9 +1409,17 @@ const handleExerciseImageError = (event) => {
   .sec-header-actions {
     flex: 0 0 auto;
     display: inline-grid;
-    grid-template-columns: auto auto auto;
+    grid-template-columns: auto auto auto auto;
     justify-content: initial;
     min-width: 0;
+  }
+
+  .sec-management-menu__trigger {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    max-height: 36px;
   }
 
   .strength-table--desktop {
@@ -1435,14 +1677,15 @@ const handleExerciseImageError = (event) => {
 
   .add-set-btn,
   .c3-finish-btn {
-    width: 100%;
+    width: fit-content;
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
     justify-content: center;
+    margin: 0 auto;
   }
 
-  .add-set-btn { font-size: 0.72rem; padding: 5px 10px; }
+  .add-set-btn { font-size: 0.72rem; padding: 5px 10px; min-height: 44px; }
   .c3-finish-btn { font-size: 0.76rem; padding: 6px 12px; }
 
   .sec-summary   { font-size: 0.7rem; }

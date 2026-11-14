@@ -21,9 +21,15 @@ const getDraftExerciseCount = (notes) => {
 };
 
 const normalizeSessionStatus = (session) => String(session?.sessionStatus || session?.status || '').trim().toLowerCase();
+const MAX_SIMULTANEOUS_ACTIVE_WORKOUT_SESSIONS = 2;
 
 const isLiveSessionStatus = (status) =>
   status === 'in_progress' || status === 'in-progress' || status === 'active' || status === 'paused';
+
+const SESSION_DURATION_SECONDS_SQL = `CASE
+  WHEN started_at IS NULL THEN 0
+  ELSE GREATEST(TIMESTAMPDIFF(SECOND, started_at, NOW()), 0)
+END`;
 
 const normalizeSessionIds = (values) => Array.from(new Set(
   (Array.isArray(values) ? values : [])
@@ -56,7 +62,10 @@ const enrichSessionForConflict = async ({ connection, userId, session }) => {
   let dayReferenceValid = true;
 
   if (!normalized.workoutPlanId) {
-    orphanReason = 'missing_plan_reference';
+    // Legacy plan-less sessions can remain valid when they have persisted draft progress.
+    if (!canResumeFromDraft) {
+      orphanReason = 'missing_plan_reference';
+    }
   } else {
     const [planRows] = await connection.query(
       `SELECT id, user_id, title AS workoutPlanName
@@ -128,9 +137,41 @@ const enrichSessionForConflict = async ({ connection, userId, session }) => {
     orphanReason,
     draftExerciseCount,
     canResumeFromDraft,
+    hasSavedProgress: canResumeFromDraft,
     continuationPossible: !isOrphaned || canResumeFromDraft,
     isLive: isLiveSessionStatus(status),
   };
+};
+
+const cancelInvalidActiveSession = async ({ connection, sessionId, userId }) => {
+  await connection.query(
+    `UPDATE workout_log_sessions
+     SET status = 'cancelled',
+         ended_at = NOW(),
+         completed_at = NULL,
+         duration_seconds = ${SESSION_DURATION_SECONDS_SQL}
+     WHERE id = ?
+       AND user_id = ?
+       AND status = 'in_progress'`,
+    [sessionId, userId]
+  );
+};
+
+const cleanupInvalidActiveSessions = async ({ connection, userId, activeSessions }) => {
+  const validSessions = [];
+  const cancelledSessions = [];
+
+  for (const session of activeSessions) {
+    if (session?.isOrphaned && !session?.continuationPossible) {
+      await cancelInvalidActiveSession({ connection, sessionId: session.id, userId });
+      cancelledSessions.push(Number(session.id));
+      continue;
+    }
+
+    validSessions.push(session);
+  }
+
+  return { validSessions, cancelledSessions };
 };
 
 // ─── Auth guard helper ──────────────────────────────────────────────────────
@@ -280,65 +321,65 @@ router.post('/workout-sessions/start', requireAuth, async (req, res) => {
       [userId]
     );
 
+    const normalizedPlanId = Number(workoutPlanId || 0);
+    const normalizedRequestedDayId = Number(workoutDayId || 0) || null;
+    const normalizedRequestedDayName = String(workoutDayName || '').trim().toLowerCase();
+
+    const activeSessions = [];
+    for (const row of activeRows) {
+      activeSessions.push(await enrichSessionForConflict({ connection, userId, session: row }));
+    }
+
+    const {
+      validSessions: sessionsAfterFailSafe,
+      cancelledSessions,
+    } = await cleanupInvalidActiveSessions({ connection, userId, activeSessions });
+
     const requestedEndIds = normalizeSessionIds(endSessionIds);
-    const activeSessionIds = normalizeSessionIds(activeRows.map((session) => session.id));
 
-    if (activeRows.length && requestedEndIds.length === 0) {
-      const activeSessions = [];
-      for (const row of activeRows) {
-        activeSessions.push(await enrichSessionForConflict({ connection, userId, session: row }));
+    const existingMatchingSession = sessionsAfterFailSafe.find((session) => {
+      if (Number(session?.workoutPlanId || 0) !== normalizedPlanId) {
+        return false;
       }
+
+      const sessionDayId = Number(session?.workoutDayId || 0) || null;
+      if (normalizedRequestedDayId && sessionDayId) {
+        return normalizedRequestedDayId === sessionDayId;
+      }
+
+      return String(session?.workoutDayName || '').trim().toLowerCase() === normalizedRequestedDayName;
+    }) || null;
+
+    if (requestedEndIds.length === 0 && existingMatchingSession?.isLive) {
       await connection.rollback();
-      return res.status(409).json({
-        code: 'WORKOUT_SESSION_CONFLICT',
-        error: 'You have an unfinished workout.',
-        activeSessions,
+      return res.status(200).json({
+        message: 'Existing workout session resumed.',
+        resumed: true,
+        session: existingMatchingSession,
+        cleanedInvalidSessionIds: cancelledSessions,
       });
     }
 
-    if (requestedEndIds.length > 0 && !sessionIdSetsMatch(requestedEndIds, activeSessionIds)) {
-      const activeSessions = [];
-      for (const row of activeRows) {
-        activeSessions.push(await enrichSessionForConflict({ connection, userId, session: row }));
-      }
+    const countableActiveSessions = sessionsAfterFailSafe.filter((session) => session?.isLive && !session?.isOrphaned);
+
+    if (countableActiveSessions.length >= MAX_SIMULTANEOUS_ACTIVE_WORKOUT_SESSIONS) {
       await connection.rollback();
       return res.status(409).json({
-        code: 'STALE_WORKOUT_SESSION_CONFLICT',
-        error: 'Your unfinished workouts changed. Review the current sessions before starting a new workout.',
-        activeSessions,
+        code: 'WORKOUT_SESSION_LIMIT_REACHED',
+        error: `You can only keep ${MAX_SIMULTANEOUS_ACTIVE_WORKOUT_SESSIONS} active workouts at a time.`,
+        activeSessions: countableActiveSessions,
+        cleanedInvalidSessionIds: cancelledSessions,
       });
     }
 
-    if (requestedEndIds.length > 1 && confirmMultipleEnd !== true) {
+    if (requestedEndIds.length > 0) {
       await connection.rollback();
       return res.status(409).json({
-        code: 'MULTIPLE_WORKOUT_CONFIRMATION_REQUIRED',
-        error: 'Explicit confirmation is required before ending multiple unfinished workouts.',
-        activeSessions: activeRows,
+        code: 'WORKOUT_SESSION_END_ACTION_REQUIRED',
+        error: 'Starting a new workout no longer ends active sessions. Complete or cancel one active workout to free a slot.',
+        activeSessions: countableActiveSessions,
+        cleanedInvalidSessionIds: cancelledSessions,
       });
-    }
-
-    for (const sessionId of requestedEndIds) {
-      const [endResult] = await connection.query(
-        `UPDATE workout_log_sessions
-         SET status = 'ended',
-             ended_at = NOW(),
-             completed_at = COALESCE(completed_at, NOW()),
-             duration_seconds = CASE
-               WHEN started_at IS NULL THEN 0
-               ELSE GREATEST(TIMESTAMPDIFF(SECOND, started_at, NOW()), 0)
-             END
-         WHERE id = ? AND user_id = ? AND status = 'in_progress'`,
-        [sessionId, userId]
-      );
-
-      if (Number(endResult?.affectedRows || 0) !== 1) {
-        await connection.rollback();
-        return res.status(409).json({
-          code: 'STALE_WORKOUT_SESSION_CONFLICT',
-          error: 'An unfinished workout changed before it could be ended. No new workout was started.',
-        });
-      }
     }
 
     // Create new session
@@ -375,6 +416,7 @@ router.post('/workout-sessions/start', requireAuth, async (req, res) => {
         completedAt:    null,
         notes:          '',
       },
+      cleanedInvalidSessionIds: cancelledSessions,
     });
   } catch (err) {
     try {
@@ -433,11 +475,10 @@ router.post('/workout-sessions/:sessionId/end', requireAuth, async (req, res) =>
        SET status = 'ended',
            ended_at = NOW(),
            completed_at = COALESCE(completed_at, NOW()),
-           duration_seconds = CASE
-             WHEN started_at IS NULL THEN 0
-             ELSE GREATEST(TIMESTAMPDIFF(SECOND, started_at, NOW()), 0)
-           END
-       WHERE id = ? AND user_id = ? AND status = 'in_progress'`,
+           duration_seconds = ${SESSION_DURATION_SECONDS_SQL}
+       WHERE id = ?
+         AND user_id = ?
+         AND status IN ('in_progress', 'in-progress', 'active', 'paused')`,
       [sessionId, userId]
     );
 
@@ -680,6 +721,7 @@ router.post('/workout-sessions/active/add-exercise', requireAuth, async (req, re
       message: 'Exercise added to active workout day and saved to your workout plan.',
       exercise: {
         id: `wse-${insertedId}`,
+        workoutScheduleGroupId: Number(groupRow.id || 0) || null,
         exerciseId: Number(exercise.ExerciseID),
         name: String(exercise.ExerciseTitle || '').trim(),
         image: String(exercise.ImageURL || '').trim(),
@@ -713,40 +755,76 @@ router.post('/workout-sessions/active/add-exercise', requireAuth, async (req, re
 // ─── POST /api/workout-sessions/complete/:sessionId ────────────────────────
 // Marks a session as completed.
 router.post('/workout-sessions/complete/:sessionId', requireAuth, async (req, res) => {
+  const connection = await pool.getConnection();
   try {
-    const userId    = req.session.user.id;
+    const userId = req.session.user.id;
     const sessionId = Number(req.params.sessionId);
 
     if (!sessionId) {
       return res.status(400).json({ error: 'Invalid sessionId.' });
     }
 
-    const [rows] = await pool.query(
-      `SELECT id, started_at AS startedAt
+    await connection.beginTransaction();
+
+    const [rows] = await connection.query(
+      `SELECT id, status
        FROM workout_log_sessions
        WHERE id = ? AND user_id = ?
-       LIMIT 1`,
+       LIMIT 1
+       FOR UPDATE`,
       [sessionId, userId]
     );
 
     if (rows.length === 0) {
+      await connection.rollback();
       return res.status(404).json({ error: 'Session not found.' });
     }
 
-    await pool.query(
+    const currentStatus = normalizeSessionStatus(rows[0]);
+    if (currentStatus === 'completed') {
+      const [[existingCompletedSession]] = await connection.query(
+        `SELECT
+           id,
+           user_id                    AS userId,
+           source_workout_schedule_id AS workoutPlanId,
+           workout_day_id             AS workoutDayId,
+           workout_day_name           AS workoutDayName,
+           workout_date               AS workoutDate,
+           status                     AS sessionStatus,
+           started_at                 AS startedAt,
+           ended_at                   AS endedAt,
+           duration_seconds           AS durationSeconds,
+           completed_at               AS completedAt
+         FROM workout_log_sessions
+         WHERE id = ? AND user_id = ?
+         LIMIT 1`,
+        [sessionId, userId]
+      );
+
+      await connection.commit();
+      return res.status(200).json({
+        message: 'Workout session already completed.',
+        alreadyCompleted: true,
+        session: existingCompletedSession,
+      });
+    }
+
+    if (!isLiveSessionStatus(currentStatus)) {
+      await connection.rollback();
+      return res.status(409).json({ error: 'Only active workout sessions can be completed.' });
+    }
+
+    await connection.query(
       `UPDATE workout_log_sessions
        SET status = 'completed',
            ended_at = NOW(),
            completed_at = NOW(),
-           duration_seconds = CASE
-             WHEN started_at IS NULL THEN 0
-             ELSE GREATEST(TIMESTAMPDIFF(SECOND, started_at, NOW()), 0)
-           END
+           duration_seconds = ${SESSION_DURATION_SECONDS_SQL}
        WHERE id = ? AND user_id = ?`,
       [sessionId, userId]
     );
 
-    const [[session]] = await pool.query(
+    const [[session]] = await connection.query(
       `SELECT
          id,
          user_id                    AS userId,
@@ -765,50 +843,66 @@ router.post('/workout-sessions/complete/:sessionId', requireAuth, async (req, re
       [sessionId, userId]
     );
 
+    await connection.commit();
     return res.status(200).json({ message: 'Workout session completed.', session });
   } catch (err) {
+    try {
+      await connection.rollback();
+    } catch (_) {
+      // ignore rollback errors
+    }
     console.error('❌ POST /workout-sessions/complete:', err);
     return res.status(500).json({ error: 'Failed to complete workout session.' });
+  } finally {
+    connection.release();
   }
 });
 
 // ─── POST /api/workout-sessions/cancel/:sessionId ──────────────────────────
 // Cancels (ends without completing) a session.
 router.post('/workout-sessions/cancel/:sessionId', requireAuth, async (req, res) => {
+  const connection = await pool.getConnection();
   try {
-    const userId    = req.session.user.id;
+    const userId = req.session.user.id;
     const sessionId = Number(req.params.sessionId);
 
     if (!sessionId) {
       return res.status(400).json({ error: 'Invalid sessionId.' });
     }
 
-    const [rows] = await pool.query(
-      `SELECT id
+    await connection.beginTransaction();
+
+    const [rows] = await connection.query(
+      `SELECT id, status
        FROM workout_log_sessions
        WHERE id = ? AND user_id = ?
-       LIMIT 1`,
+       LIMIT 1
+       FOR UPDATE`,
       [sessionId, userId]
     );
 
     if (rows.length === 0) {
+      await connection.rollback();
       return res.status(404).json({ error: 'Session not found.' });
     }
 
-    await pool.query(
+    const currentStatus = normalizeSessionStatus(rows[0]);
+    if (!isLiveSessionStatus(currentStatus)) {
+      await connection.rollback();
+      return res.status(409).json({ error: 'Only active workout sessions can be cancelled.' });
+    }
+
+    await connection.query(
       `UPDATE workout_log_sessions
-       SET status = 'ended',
+       SET status = 'cancelled',
            ended_at = NOW(),
-           completed_at = NOW(),
-           duration_seconds = CASE
-             WHEN started_at IS NULL THEN 0
-             ELSE GREATEST(TIMESTAMPDIFF(SECOND, started_at, NOW()), 0)
-           END
+           completed_at = NULL,
+           duration_seconds = ${SESSION_DURATION_SECONDS_SQL}
        WHERE id = ? AND user_id = ?`,
       [sessionId, userId]
     );
 
-    const [[session]] = await pool.query(
+    const [[session]] = await connection.query(
       `SELECT
          id,
          user_id                    AS userId,
@@ -827,10 +921,18 @@ router.post('/workout-sessions/cancel/:sessionId', requireAuth, async (req, res)
       [sessionId, userId]
     );
 
-    return res.status(200).json({ message: 'Workout session ended.', session });
+    await connection.commit();
+    return res.status(200).json({ message: 'Workout session cancelled.', session });
   } catch (err) {
+    try {
+      await connection.rollback();
+    } catch (_) {
+      // ignore rollback errors
+    }
     console.error('❌ POST /workout-sessions/cancel:', err);
     return res.status(500).json({ error: 'Failed to cancel workout session.' });
+  } finally {
+    connection.release();
   }
 });
 

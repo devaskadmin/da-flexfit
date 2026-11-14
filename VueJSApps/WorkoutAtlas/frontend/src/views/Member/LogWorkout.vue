@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import ExerciseSessionCard from '@/components/workout-session/ExerciseSessionCard.vue';
 import ExercisePickerModal from '@/components/workout-builder/ExercisePickerModal.vue';
 import { API_BASE } from '@/config/env';
+import { DEFAULT_EXERCISE_IMAGE, getExerciseImage } from '@/utils/exerciseImage';
 import { useWorkoutSessionDraft } from '@/composable/useWorkoutSessionDraft';
 import {
   buildDiagnosticsPayload,
@@ -18,6 +19,11 @@ import {
   selectExpandedPlanDuringSessionRecovery,
   selectTabDuringSessionRecovery,
 } from '@/utils/workoutLogGrouping.mjs';
+import {
+  pruneSessionTimerState,
+  removeSessionTimerState,
+  upsertSessionTimerState,
+} from '@/utils/workoutSessionTimer.mjs';
 
 const router = useRouter();
 const route = useRoute();
@@ -69,11 +75,13 @@ const activeSession    = ref(null);
 const activeSessions   = ref([]);
 const hasActiveWorkout = ref(false);
 const showWorkoutConflictModal = ref(false);
-const workoutConflictSession = ref(null);
+const workoutConflictSessions = ref([]);
+const selectedConflictSessionId = ref(null);
 const workoutConflictSessionIds = ref([]);
 const pendingWorkoutStart = ref(null);
 const conflictModalLoading = ref(false);
 const conflictModalError = ref('');
+const startWorkoutRequestLoading = ref(false);
 const selectedDay      = ref('');
 const sessionExercises = ref([]);
 const isPreviewMode    = ref(false);
@@ -96,16 +104,37 @@ const diagnosticsExpandedByArea = ref({
   deleteHistory: false,
 });
 const workoutTimerNowMs = ref(Date.now());
-const workoutTimerPaused = ref(false);
-const pausedWorkoutElapsedSeconds = ref(0);
+const sessionTimerStateById = ref({});
 const addExercisePickerOpen = ref(false);
 const exerciseLibraryLoading = ref(false);
 const exerciseLibrary = ref([]);
 const exerciseAddLoading = ref(false);
+const showExerciseEditModal = ref(false);
+const exerciseEditLoading = ref(false);
+const exerciseEditError = ref('');
+const exerciseEditDraft = ref({
+  exerciseId: '',
+  name: '',
+  workoutType: 'strength',
+  sets: 1,
+  reps: 0,
+  weight: 0,
+  duration: 0,
+  distanceMiles: 0,
+  caloriesBurned: 0,
+});
 const sessionUserId = ref(null);
 
 let workoutTimerIntervalId = null;
 let workoutLogMountReady = false;
+let workoutLogSetPersistTimeoutId = null;
+let workoutLogSetPersistInFlight = false;
+let workoutLogSetPersistQueued = false;
+let workoutLogSetPersistPromise = null;
+const failedHistoryImageSignatures = new Set();
+const INLINE_HISTORY_IMAGE_FALLBACK =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect width="120" height="120" rx="12" fill="#e5e7eb"/><path d="M28 76l20-22 14 16 10-12 20 18" fill="none" stroke="#94a3b8" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="44" cy="40" r="8" fill="#94a3b8"/></svg>');
 
 /* ─── Accordion: active exercise ───────────────────────────────────── */
 const activeExerciseId = ref(null);
@@ -167,9 +196,19 @@ const buildSessionExercisesFromDraft = (notes, fallbackDayName = 'Any Day') => {
     return {
       id: String(exercise?.id || `draft-${index + 1}`),
       exerciseId: Number(exercise?.exerciseId || 0) || null,
+      workoutScheduleGroupId: Number(exercise?.workoutScheduleGroupId || 0) || null,
       name: String(exercise?.name || `Exercise ${index + 1}`).trim() || `Exercise ${index + 1}`,
+      image: String(exercise?.image || '').trim(),
       workoutType: String(exercise?.workoutType || inferredWorkoutType).trim() || inferredWorkoutType,
+      sets: Number(exercise?.sets || sessionSets.length || 1),
+      reps: Number(exercise?.reps || 0),
+      weight: Number(exercise?.weight || 0),
+      duration: Number(exercise?.duration || 0),
+      distance: Number(exercise?.distance || 0),
+      calories: Number(exercise?.calories || 0),
+      restTime: Number(exercise?.restTime || 0),
       scheduleGroup: String(exercise?.scheduleGroup || safeDayName).trim() || safeDayName,
+      sortOrder: Number(exercise?.sortOrder || index + 1),
       sessionSets: sessionSets.map((set, setIndex) => ({
         setNum: Number(set?.setNum || setIndex + 1),
         weight: Number(set?.weight || 0),
@@ -216,6 +255,66 @@ const setFriendlyError = (area, {
     ...errorDiagnosticsByArea.value,
     [area]: buildDiagnosticsPayload({ status, code, requestId, service, rawMessage }),
   };
+};
+
+const buildHistoryImageSignature = (exercise, imageSrc) => {
+  const exerciseId = Number(exercise?.exerciseId || exercise?.ExerciseID || 0);
+  const baseId = exerciseId > 0
+    ? String(exerciseId)
+    : String(exercise?.workoutLogId || exercise?.exerciseName || 'unknown');
+  return `${baseId}::${String(imageSrc || '').trim()}`;
+};
+
+const resolveHistoryExerciseImage = (exercise) => {
+  const safeExercise = exercise && typeof exercise === 'object' ? exercise : {};
+  const rawImage = String(
+    safeExercise.exerciseImage ||
+    safeExercise.image ||
+    safeExercise.imageUrl ||
+    safeExercise.ImageURL ||
+    ''
+  ).trim();
+  const looksLikeGalleryPayload = /^\s*\[/.test(rawImage);
+
+  const resolved = getExerciseImage({
+    exerciseId: Number(safeExercise.exerciseId || safeExercise.ExerciseID || 0),
+    ExerciseID: Number(safeExercise.exerciseId || safeExercise.ExerciseID || 0),
+    image: looksLikeGalleryPayload ? '' : rawImage,
+    imageUrl: looksLikeGalleryPayload ? '' : rawImage,
+    ImageURL: looksLikeGalleryPayload ? '' : rawImage,
+    ImageGallery: looksLikeGalleryPayload
+      ? rawImage
+      : (safeExercise.ImageGallery || safeExercise.imageGallery || ''),
+  });
+
+  const signature = buildHistoryImageSignature(safeExercise, resolved);
+  if (failedHistoryImageSignatures.has(signature)) {
+    return DEFAULT_EXERCISE_IMAGE;
+  }
+
+  return resolved;
+};
+
+const handleHistoryExerciseImageError = (event, exercise) => {
+  const target = event?.target;
+  if (!target) return;
+
+  const attemptedSrc = String(target.currentSrc || target.src || '').trim();
+  const signature = buildHistoryImageSignature(exercise, attemptedSrc);
+  if (attemptedSrc) {
+    failedHistoryImageSignatures.add(signature);
+  }
+
+  if (target.dataset.fallbackApplied === '1') {
+    if (target.dataset.fallbackFinal !== '1') {
+      target.dataset.fallbackFinal = '1';
+      target.src = INLINE_HISTORY_IMAGE_FALLBACK;
+    }
+    return;
+  }
+
+  target.dataset.fallbackApplied = '1';
+  target.src = DEFAULT_EXERCISE_IMAGE;
 };
 
 const clearFriendlyError = (area) => {
@@ -327,6 +426,43 @@ const getElapsedSecondsFromStart = (startedAtValue) => {
   return Math.max(Math.floor((workoutTimerNowMs.value - startedAtMs) / 1000), 0);
 };
 
+const getActiveSessionTimerState = () => {
+  const sessionId = Number(activeSession.value?.id || 0);
+  if (!sessionId) {
+    return null;
+  }
+  return sessionTimerStateById.value[sessionId] || null;
+};
+
+const syncSessionTimerStateFor = (session, nowMs = Date.now()) => {
+  sessionTimerStateById.value = upsertSessionTimerState(
+    sessionTimerStateById.value,
+    session,
+    nowMs
+  );
+};
+
+const syncActiveSessionTimerState = (nowMs = Date.now()) => {
+  if (!activeSession.value) return;
+  syncSessionTimerStateFor(activeSession.value, nowMs);
+};
+
+const primeSessionTimerStates = (sessions = [], nowMs = Date.now()) => {
+  const normalizedSessions = Array.isArray(sessions) ? sessions : [];
+  let nextState = sessionTimerStateById.value;
+  for (const session of normalizedSessions) {
+    nextState = upsertSessionTimerState(nextState, session, nowMs);
+  }
+  const keepIds = normalizedSessions
+    .map((session) => Number(session?.id || 0))
+    .filter((sessionId) => Number.isInteger(sessionId) && sessionId > 0);
+  sessionTimerStateById.value = pruneSessionTimerState(nextState, keepIds);
+};
+
+const removeSessionTimerStateById = (sessionId) => {
+  sessionTimerStateById.value = removeSessionTimerState(sessionTimerStateById.value, sessionId);
+};
+
 const getHistorySessionDurationSeconds = (session) => {
   const explicitDuration = Number(session?.sessionDurationSeconds || 0);
   if (explicitDuration > 0) {
@@ -344,12 +480,36 @@ const getHistorySessionDurationSeconds = (session) => {
 
 const activeWorkoutElapsedSeconds = computed(() => {
   if (!hasActiveWorkout.value) return 0;
-  return workoutTimerPaused.value
-    ? pausedWorkoutElapsedSeconds.value
-    : getElapsedSecondsFromStart(activeSession.value?.startedAt);
+  const timerState = getActiveSessionTimerState();
+  if (timerState) {
+    return Math.max(Number(timerState.elapsedSeconds || 0), 0);
+  }
+  return getElapsedSecondsFromStart(activeSession.value?.startedAt);
+});
+
+const workoutTimerPaused = computed(() => {
+  const timerState = getActiveSessionTimerState();
+  return Boolean(timerState?.isPaused);
 });
 
 const activeWorkoutTimerLabel = computed(() => formatDurationHms(activeWorkoutElapsedSeconds.value));
+
+const workoutConflictSession = computed(() => {
+  const sessions = Array.isArray(workoutConflictSessions.value) ? workoutConflictSessions.value : [];
+  if (!sessions.length) return null;
+
+  const selectedId = Number(selectedConflictSessionId.value || 0);
+  if (selectedId > 0) {
+    const matched = sessions.find((session) => Number(session?.id || 0) === selectedId);
+    if (matched) return matched;
+  }
+
+  return sessions[0] || null;
+});
+
+const hasTwoOrMoreConflictSessions = computed(() =>
+  (Array.isArray(workoutConflictSessions.value) ? workoutConflictSessions.value.length : 0) >= 2
+);
 
 const canContinueConflictSession = computed(() =>
   Boolean(workoutConflictSession.value?.continuationPossible)
@@ -357,6 +517,65 @@ const canContinueConflictSession = computed(() =>
 
 const normalizeSessionStatus = (session) =>
   String(session?.sessionStatus || session?.status || '').trim().toLowerCase();
+
+const normalizeDayContext = (dayInput, fallbackPlanId = expandedPlanId.value) => {
+  if (typeof dayInput === 'string') {
+    return {
+      dayName: String(dayInput || '').trim(),
+      dayId: null,
+      planId: String(fallbackPlanId || '').trim(),
+    };
+  }
+
+  if (dayInput && typeof dayInput === 'object') {
+    return {
+      dayName: String(dayInput?.name || dayInput?.dayName || '').trim(),
+      dayId: Number(dayInput?.dayId || dayInput?.workoutDayId || dayInput?.workoutScheduleGroupId || 0) || null,
+      planId: String(dayInput?.planId || fallbackPlanId || '').trim(),
+    };
+  }
+
+  return { dayName: '', dayId: null, planId: String(fallbackPlanId || '').trim() };
+};
+
+const sessionMatchesDayContext = (session, dayContext) => {
+  if (!session || !dayContext) return false;
+
+  const sessionPlanId = String(session?.workoutPlanId || '').trim();
+  const contextPlanId = String(dayContext?.planId || '').trim();
+  if (!sessionPlanId || !contextPlanId || sessionPlanId !== contextPlanId) {
+    return false;
+  }
+
+  const sessionDayId = Number(session?.workoutDayId || 0) || null;
+  const contextDayId = Number(dayContext?.dayId || 0) || null;
+  if (sessionDayId && contextDayId) {
+    return sessionDayId === contextDayId;
+  }
+
+  const sessionDayName = String(session?.workoutDayName || '').trim().toLowerCase();
+  const contextDayName = String(dayContext?.dayName || '').trim().toLowerCase();
+  return Boolean(sessionDayName && contextDayName && sessionDayName === contextDayName);
+};
+
+const getActiveSessionForDayContext = (dayInput, sessionList = activeSessions.value) => {
+  const dayContext = normalizeDayContext(dayInput);
+  if (!dayContext?.planId || !dayContext?.dayName) {
+    return null;
+  }
+
+  const sessions = Array.isArray(sessionList) ? sessionList : [];
+  return sessions.find((session) => {
+    if (sessionHasTerminalState(session)) {
+      return false;
+    }
+    const status = normalizeSessionStatus(session);
+    if (!isLiveSessionStatus(status)) {
+      return false;
+    }
+    return sessionMatchesDayContext(session, dayContext);
+  }) || null;
+};
 
 const sessionHasTerminalState = (session) => {
   if (!session) return false;
@@ -415,9 +634,11 @@ const hasLiveWorkoutSession = computed(() => {
 });
 
 const selectedDaySessionState = computed(() => {
-  const day = String(selectedDay.value || '').trim();
-  const sessionDay = String(activeSession.value?.workoutDayName || '').trim();
-  if (!day || !sessionDay || day !== sessionDay || !hasLiveWorkoutSession.value || isPreviewMode.value) {
+  if (!selectedDayContext.value || !hasLiveWorkoutSession.value || isPreviewMode.value || !activeSession.value) {
+    return null;
+  }
+
+  if (!sessionMatchesDayContext(activeSession.value, selectedDayContext.value)) {
     return null;
   }
 
@@ -428,8 +649,10 @@ const setWorkoutTimerRunning = (isRunning) => {
   if (isRunning) {
     if (workoutTimerIntervalId != null) return;
     workoutTimerNowMs.value = Date.now();
+    syncActiveSessionTimerState(workoutTimerNowMs.value);
     workoutTimerIntervalId = window.setInterval(() => {
       workoutTimerNowMs.value = Date.now();
+      syncActiveSessionTimerState(workoutTimerNowMs.value);
     }, 1000);
     return;
   }
@@ -442,25 +665,65 @@ const setWorkoutTimerRunning = (isRunning) => {
 
 const syncWorkoutTimerState = () => {
   const shouldRun = Boolean(
-    hasActiveWorkout.value && activeSession.value?.startedAt && !workoutTimerPaused.value
+    hasLiveWorkoutSession.value && activeSession.value?.startedAt && !workoutTimerPaused.value
   );
   setWorkoutTimerRunning(shouldRun);
 };
 
-const setWorkoutTimerPaused = (isPaused) => {
-  workoutTimerNowMs.value = Date.now();
-  if (isPaused) {
-    pausedWorkoutElapsedSeconds.value = getElapsedSecondsFromStart(activeSession.value?.startedAt);
-  }
-  workoutTimerPaused.value = Boolean(isPaused);
-  syncWorkoutTimerState();
-};
-
 const formatConflictSessionDate = (value) => {
   if (!value) return 'Date unavailable';
-  const normalized = String(value).slice(0, 10);
-  const parsed = new Date(`${normalized}T00:00:00`);
-  return Number.isNaN(parsed.getTime()) ? normalized : parsed.toLocaleDateString();
+  const rawValue = String(value).trim();
+  if (!rawValue) return 'Date unavailable';
+
+  const parsed = new Date(rawValue);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toLocaleDateString();
+  }
+
+  const normalized = rawValue.slice(0, 10);
+  const normalizedParsed = new Date(`${normalized}T00:00:00`);
+  return Number.isNaN(normalizedParsed.getTime()) ? 'Date unavailable' : normalizedParsed.toLocaleDateString();
+};
+
+const getConflictSessionPlanName = (session) => {
+  const candidates = [
+    session?.workoutPlanName,
+    session?.planName,
+    session?.workoutPlanTitle,
+    session?.planTitle,
+  ];
+  for (const candidate of candidates) {
+    const normalized = String(candidate || '').trim();
+    if (normalized) return normalized;
+  }
+  return '';
+};
+
+const getConflictSessionDayName = (session) => {
+  const candidates = [
+    session?.workoutDayName,
+    session?.dayName,
+    session?.scheduleGroup,
+  ];
+  for (const candidate of candidates) {
+    const normalized = String(candidate || '').trim();
+    if (normalized) return normalized;
+  }
+  return 'Day unavailable';
+};
+
+const getConflictSessionDateValue = (session) => {
+  const candidates = [
+    session?.workoutDate,
+    session?.startedAt,
+    session?.sessionStartedAt,
+    session?.createdAt,
+  ];
+  for (const candidate of candidates) {
+    const normalized = String(candidate || '').trim();
+    if (normalized) return normalized;
+  }
+  return '';
 };
 
 const formatSessionStatus = (session) => {
@@ -469,6 +732,15 @@ const formatSessionStatus = (session) => {
   if (status === 'paused') return 'Paused';
   if (status === 'active') return 'Active';
   return status ? status.replaceAll('_', ' ') : 'In Progress';
+};
+
+const formatHistorySessionStatus = (session) => {
+  const status = normalizeSessionStatus(session);
+  if (status === 'in_progress' || status === 'in-progress' || status === 'active') return 'In Progress';
+  if (status === 'completed') return 'Completed';
+  if (status === 'ended' || status === 'cancelled' || status === 'canceled') return 'Ended Early';
+  if (status === 'paused') return 'Paused';
+  return status ? status.replaceAll('_', ' ') : 'Unknown';
 };
 
 const today = () => new Date().toISOString().split('T')[0];
@@ -484,8 +756,14 @@ const summaryStats = computed(() => {
     averageDuration: Math.round(totalDuration / workoutLists.value.length),
   };
 });
-const isStatsExpanded = ref(false);
+const isStatsExpanded = ref(typeof window !== 'undefined' ? window.innerWidth > 800 : true);
 const hasWorkoutPlans = computed(() => plansLoaded.value && Array.isArray(workoutLists.value) && workoutLists.value.length > 0);
+
+onMounted(() => {
+  if (typeof window !== 'undefined' && window.innerWidth <= 800) {
+    isStatsExpanded.value = false;
+  }
+});
 const shouldShowPlanLoadError = computed(() =>
   plansLoaded.value && plansLoadRequested.value && !loading.value && Boolean(plansLoadError.value)
 );
@@ -584,11 +862,33 @@ const exercisesByGroup = computed(() => {
   return grouped
     .map((entry) => ({
       name: entry.name,
+      dayId: (() => {
+        const match = (entry.exercises || []).find((exercise) => Number(exercise?.workoutScheduleGroupId || 0) > 0);
+        return Number(match?.workoutScheduleGroupId || 0) || null;
+      })(),
+      planId: String(expandedPlanId.value || '').trim(),
       exercises: entry.exercises,
       exerciseNameSummary: buildExerciseNameSummary(entry.exercises),
     }))
     .filter((entry) => entry.exercises.length > 0);
 });
+
+const selectedDayContext = computed(() => {
+  const selected = String(selectedDay.value || '').trim();
+  if (!selected) return null;
+  const group = exercisesByGroup.value.find((entry) => entry.name === selected);
+  if (group) {
+    return normalizeDayContext(group);
+  }
+  return normalizeDayContext({ name: selected, planId: expandedPlanId.value });
+});
+
+const selectedDayActiveSession = computed(() => {
+  if (!selectedDayContext.value) return null;
+  return getActiveSessionForDayContext(selectedDayContext.value);
+});
+
+const hasActiveSessionForDay = (dayInput) => Boolean(getActiveSessionForDayContext(dayInput));
 
 const currentDayOrderState = computed(() => getDayOrderState(expandedPlanId.value));
 const dayOrderDirty = computed(() => Boolean(currentDayOrderState.value?.dirty));
@@ -913,7 +1213,8 @@ watch(
     const selectedDayStillExists = normalizedGroups.includes(selectedDay.value);
     const selectedDayBelongsToActiveSession = Boolean(
       activeSession.value &&
-      String(activeSession.value?.workoutDayName || '').trim() === String(selectedDay.value || '').trim()
+      selectedDayContext.value &&
+      sessionMatchesDayContext(activeSession.value, selectedDayContext.value)
     );
 
     if (!selectedDayBelongsToActiveSession && (!nextExpandedPlanId || (hasSelectedDay && !selectedDayStillExists))) {
@@ -953,16 +1254,239 @@ const isCardio = (exercise) =>
   String(exercise.workoutType || '').toLowerCase() === 'cardio' ||
   (Number(exercise.duration || 0) > 0 && Number(exercise.reps || 0) === 0);
 
+const normalizeExerciseWorkoutType = (exercise) => {
+  const normalized = String(exercise?.workoutType || exercise?.WorkoutType || '').trim().toLowerCase();
+  if (normalized === 'cardio') return 'cardio';
+  if (normalized === 'other') return 'other';
+  if (normalized === 'strength') return 'strength';
+  return isCardio(exercise) ? 'cardio' : 'strength';
+};
+
+const buildSessionSetFromTargets = (exercise, setNum) => {
+  const workoutType = normalizeExerciseWorkoutType(exercise);
+
+  return {
+    setNum,
+    weight: Number(exercise?.weight || 0),
+    reps: Number(exercise?.reps || 0),
+    duration: Number(exercise?.duration || 0),
+    caloriesBurned: workoutType === 'cardio' ? Number(exercise?.calories || 0) : 0,
+    distanceMiles: workoutType === 'cardio' ? Number(exercise?.distance || 0) : 0,
+    speedMph: 0,
+    done: false,
+    prefilledFields: {},
+    prefilledFromLastWorkout: false,
+  };
+};
+
 /* ─── Set helpers ────────────────────────────────────────────────────────── */
 const buildInitialSets = (exercise) => {
   const count = Math.max(Number(exercise.sets || 1), 1);
-  return Array.from({ length: count }, (_, i) => ({
-    setNum: i + 1, weight: Number(exercise.weight || 0),
-    reps: Number(exercise.reps || 0), duration: Number(exercise.duration || 0),
-    caloriesBurned: 0, distanceMiles: 0, speedMph: 0, done: false,
-    prefilledFields: {},
-    prefilledFromLastWorkout: false,
-  }));
+  return Array.from({ length: count }, (_, i) => buildSessionSetFromTargets(exercise, i + 1));
+};
+
+const isExerciseInSelectedDay = (exercise) => {
+  const selected = String(selectedDay.value || '').trim().toLowerCase();
+  if (!selected) return false;
+  return String(exercise?.scheduleGroup || '').trim().toLowerCase() === selected;
+};
+
+const moveActiveExercise = (exerciseId, direction = 'up') => {
+  if (isPreviewMode.value || !hasActiveWorkout.value) return;
+
+  const normalizedDirection = direction === 'down' ? 1 : -1;
+  const sessionIndex = sessionExercises.value.findIndex((entry) => entry.id === exerciseId);
+  if (sessionIndex < 0) return;
+
+  const selectedDayIndexes = sessionExercises.value
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => isExerciseInSelectedDay(entry))
+    .map(({ index }) => index);
+
+  const currentDayPosition = selectedDayIndexes.indexOf(sessionIndex);
+  if (currentDayPosition < 0) return;
+
+  const nextDayPosition = currentDayPosition + normalizedDirection;
+  if (nextDayPosition < 0 || nextDayPosition >= selectedDayIndexes.length) {
+    return;
+  }
+
+  const targetIndex = selectedDayIndexes[nextDayPosition];
+  const reordered = [...sessionExercises.value];
+  [reordered[sessionIndex], reordered[targetIndex]] = [reordered[targetIndex], reordered[sessionIndex]];
+  sessionExercises.value = reordered;
+  queueWorkoutDraftSave(true);
+};
+
+const closeEditExerciseModal = () => {
+  if (exerciseEditLoading.value) return;
+  showExerciseEditModal.value = false;
+  exerciseEditError.value = '';
+};
+
+const openEditExerciseModal = (exerciseId) => {
+  if (isPreviewMode.value || !hasActiveWorkout.value) return;
+
+  const exercise = sessionExercises.value.find((entry) => entry.id === exerciseId);
+  if (!exercise) return;
+
+  const workoutType = normalizeExerciseWorkoutType(exercise);
+  exerciseEditDraft.value = {
+    exerciseId: String(exercise.id || ''),
+    name: String(exercise.name || '').trim(),
+    workoutType,
+    sets: Math.max(Number(exercise.sessionSets?.length || exercise.sets || 1), 1),
+    reps: Number(exercise.reps || exercise.sessionSets?.find((set) => !set.done)?.reps || 0),
+    weight: Number(exercise.weight || exercise.sessionSets?.find((set) => !set.done)?.weight || 0),
+    duration: Number(exercise.duration || exercise.sessionSets?.find((set) => !set.done)?.duration || 0),
+    distanceMiles: Number(exercise.distance || exercise.sessionSets?.find((set) => !set.done)?.distanceMiles || 0),
+    caloriesBurned: Number(exercise.calories || exercise.sessionSets?.find((set) => !set.done)?.caloriesBurned || 0),
+  };
+  exerciseEditError.value = '';
+  showExerciseEditModal.value = true;
+};
+
+const applyExerciseTargetEdits = async () => {
+  if (exerciseEditLoading.value) return;
+
+  const draft = exerciseEditDraft.value || {};
+  const exerciseId = String(draft.exerciseId || '').trim();
+  if (!exerciseId) return;
+
+  const exercise = sessionExercises.value.find((entry) => entry.id === exerciseId);
+  if (!exercise) {
+    exerciseEditError.value = 'Exercise no longer exists in this workout.';
+    return;
+  }
+
+  const workoutType = normalizeExerciseWorkoutType(exercise);
+  const nextSetsCount = Math.max(Number(draft.sets || 1), 1);
+  const completedSetCount = (exercise.sessionSets || []).filter((set) => Boolean(set?.done)).length;
+  if (nextSetsCount < completedSetCount) {
+    exerciseEditError.value = `Sets cannot be lower than completed sets (${completedSetCount}).`;
+    return;
+  }
+
+  const nextReps = Math.max(Number(draft.reps || 0), 0);
+  const nextWeight = Math.max(Number(draft.weight || 0), 0);
+  const nextDuration = Math.max(Number(draft.duration || 0), 0);
+  const nextDistance = Math.max(Number(draft.distanceMiles || 0), 0);
+  const nextCalories = Math.max(Number(draft.caloriesBurned || 0), 0);
+
+  const nextSessionSets = Array.isArray(exercise.sessionSets)
+    ? exercise.sessionSets.map((set, index) => ({ ...set, setNum: index + 1 }))
+    : [];
+
+  while (nextSessionSets.length < nextSetsCount) {
+    nextSessionSets.push(buildSessionSetFromTargets({
+      ...exercise,
+      workoutType,
+      reps: nextReps,
+      weight: nextWeight,
+      duration: nextDuration,
+      distance: nextDistance,
+      calories: nextCalories,
+    }, nextSessionSets.length + 1));
+  }
+
+  if (nextSessionSets.length > nextSetsCount) {
+    const removedSets = nextSessionSets.slice(nextSetsCount);
+    if (removedSets.some((set) => Boolean(set?.done))) {
+      exerciseEditError.value = 'Cannot remove completed sets. Increase set count or unmark those sets first.';
+      return;
+    }
+    nextSessionSets.length = nextSetsCount;
+  }
+
+  const patchedSessionSets = nextSessionSets.map((set, index) => {
+    if (set?.done) {
+      return {
+        ...set,
+        setNum: index + 1,
+      };
+    }
+
+    if (workoutType === 'strength') {
+      return {
+        ...set,
+        setNum: index + 1,
+        reps: nextReps,
+        weight: nextWeight,
+      };
+    }
+
+    return {
+      ...set,
+      setNum: index + 1,
+      duration: nextDuration,
+      distanceMiles: nextDistance,
+      caloriesBurned: nextCalories,
+    };
+  });
+
+  exerciseEditLoading.value = true;
+  exerciseEditError.value = '';
+  try {
+    exercise.sessionSets = patchedSessionSets;
+    exercise.sets = nextSetsCount;
+    if (workoutType === 'strength') {
+      exercise.reps = nextReps;
+      exercise.weight = nextWeight;
+    } else {
+      exercise.duration = nextDuration;
+      exercise.distance = nextDistance;
+      exercise.calories = nextCalories;
+    }
+
+    queueWorkoutDraftSave(true);
+    queueWorkoutSetProgressPersistence({ immediate: true });
+    showExerciseEditModal.value = false;
+  } finally {
+    exerciseEditLoading.value = false;
+  }
+};
+
+const removeActiveExercise = async (exerciseId) => {
+  if (isPreviewMode.value || !hasActiveWorkout.value) return;
+
+  const exercise = sessionExercises.value.find((entry) => entry.id === exerciseId);
+  if (!exercise) return;
+
+  const completedSetCount = (exercise.sessionSets || []).filter((set) => Boolean(set?.done)).length;
+  const confirmMessage = completedSetCount > 0
+    ? 'This exercise has completed sets recorded. Removing it from the active workout will keep historical records already saved, but it will no longer appear in the remaining workout list. Remove it?'
+    : 'Remove this exercise from the active workout?';
+
+  const confirmed = await showConfirmDialog(confirmMessage, {
+    title: 'Remove Exercise?',
+    confirmButtonText: 'Remove',
+    cancelButtonText: 'Keep Exercise',
+    icon: completedSetCount > 0 ? 'warning' : 'question',
+  });
+
+  if (!confirmed) return;
+
+  clearFriendlyError('save');
+  const persisted = await persistWorkoutSetProgress();
+  if (!persisted) {
+    setFriendlyError('save', {
+      rawMessage: 'Unable to persist workout progress before removing this exercise.',
+      fallback: 'Unable to remove exercise right now because progress could not be saved.',
+    });
+    return;
+  }
+
+  const remaining = sessionExercises.value.filter((entry) => entry.id !== exerciseId);
+  sessionExercises.value = remaining;
+
+  if (activeExerciseId.value === exerciseId) {
+    const nextExercise = dayExercises.value[0] || null;
+    activeExerciseId.value = nextExercise?.id || null;
+  }
+
+  queueWorkoutDraftSave(true);
+  queueWorkoutSetProgressPersistence({ immediate: true });
+  saveMessage.value = `${exercise.name || 'Exercise'} removed from active workout.`;
 };
 
 const getLatestExerciseHistory = async (exerciseId) => {
@@ -1080,6 +1604,86 @@ const buildSessionExercisesWithHistoryPrefill = async (baseExercises = []) => {
   return sessionRows;
 };
 
+const buildCurrentWorkoutSessionPayload = () => ({
+  planId: expandedPlanId.value,
+  planName: expandedPlanData.value?.metadata?.name || '',
+  workoutDate: activeSession.value?.workoutDate || selectedWorkoutDate.value || today(),
+  workoutSessionId: activeSession.value?.id || null,
+  exercises: dayExercises.value.map((ex) => ({
+    exerciseId: ex.exerciseId,
+    name: ex.name,
+    workoutType: ex.workoutType || 'Strength',
+    scheduleGroup: ex.scheduleGroup,
+    sets: Array.isArray(ex.sessionSets) ? ex.sessionSets : [],
+  })),
+});
+
+const queueWorkoutSetProgressPersistence = ({ immediate = false } = {}) => {
+  if (!isWorkoutSessionActive.value || isPreviewMode.value || !activeSession.value?.id) return;
+
+  if (workoutLogSetPersistTimeoutId != null) {
+    window.clearTimeout(workoutLogSetPersistTimeoutId);
+    workoutLogSetPersistTimeoutId = null;
+  }
+
+  workoutLogSetPersistTimeoutId = window.setTimeout(() => {
+    workoutLogSetPersistTimeoutId = null;
+    void persistWorkoutSetProgress();
+  }, immediate ? 0 : 450);
+};
+
+const persistWorkoutSetProgress = async ({ rollback } = {}) => {
+  if (!isWorkoutSessionActive.value || isPreviewMode.value || !activeSession.value?.id) {
+    return true;
+  }
+
+  if (workoutLogSetPersistInFlight) {
+    workoutLogSetPersistQueued = true;
+    return workoutLogSetPersistPromise || true;
+  }
+
+  workoutLogSetPersistInFlight = true;
+  workoutLogSetPersistPromise = (async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/workout-log/session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildCurrentWorkoutSessionPayload()),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw await parseResponseError(response, 'Failed to save workout set progress.');
+      }
+
+      return true;
+    } catch (err) {
+      if (typeof rollback === 'function') {
+        rollback();
+      }
+      setFriendlyError('save', {
+        status: err?.status,
+        code: err?.code,
+        requestId: err?.requestId,
+        service: err?.service,
+        rawMessage: err?.rawMessage || err?.message,
+        category: 'save',
+        fallback: 'Unable to save workout progress right now. Your latest set change was not persisted.',
+      });
+      return false;
+    } finally {
+      workoutLogSetPersistInFlight = false;
+      const shouldRunQueued = workoutLogSetPersistQueued;
+      workoutLogSetPersistQueued = false;
+      if (shouldRunQueued) {
+        queueWorkoutSetProgressPersistence({ immediate: true });
+      }
+    }
+  })();
+
+  return workoutLogSetPersistPromise;
+};
+
 const addSet = (exerciseId) => {
   if (isPreviewMode.value) return;
   const ex = sessionExercises.value.find((e) => e.id === exerciseId);
@@ -1098,6 +1702,7 @@ const addSet = (exerciseId) => {
     prefilledFromLastWorkout: false,
   });
   queueWorkoutDraftSave();
+  queueWorkoutSetProgressPersistence();
 };
 
 const removeSet = (exerciseId, setIndex) => {
@@ -1107,12 +1712,14 @@ const removeSet = (exerciseId, setIndex) => {
   ex.sessionSets.splice(setIndex, 1);
   ex.sessionSets.forEach((s, i) => { s.setNum = i + 1; });
   queueWorkoutDraftSave();
+  queueWorkoutSetProgressPersistence();
 };
 
 const updateSet = (exerciseId, setIndex, field, value) => {
   if (isPreviewMode.value) return;
   const ex = sessionExercises.value.find((e) => e.id === exerciseId);
   if (!ex) return;
+  const previousValue = ex.sessionSets[setIndex]?.[field];
   if (field !== 'done' && ex.sessionSets[setIndex]?.prefilledFields) {
     ex.sessionSets[setIndex].prefilledFields[field] = false;
     ex.sessionSets[setIndex].prefilledFromLastWorkout = Object.values(ex.sessionSets[setIndex].prefilledFields)
@@ -1120,6 +1727,18 @@ const updateSet = (exerciseId, setIndex, field, value) => {
   }
   ex.sessionSets[setIndex][field] = field === 'done' ? Boolean(value) : (Number(value) || 0);
   queueWorkoutDraftSave();
+
+  if (field === 'done') {
+    void persistWorkoutSetProgress({
+      rollback: () => {
+        ex.sessionSets[setIndex][field] = previousValue;
+        queueWorkoutDraftSave();
+      },
+    });
+    return;
+  }
+
+  queueWorkoutSetProgressPersistence();
 };
 
 /* ─── Load plan list ─────────────────────────────────────────────────────── */
@@ -1235,6 +1854,7 @@ const loadInProgressSessions = async () => {
   const data = await res.json().catch(() => ({}));
   const sessions = sortSessionsNewestFirst(Array.isArray(data?.sessions) ? data.sessions : []);
   activeSessions.value = sessions;
+  primeSessionTimerStates(sessions);
   return sessions;
 };
 
@@ -1245,6 +1865,7 @@ const checkActiveSession = async () => {
       activeSession.value    = null;
       hasActiveWorkout.value = false;
       sessionExercises.value = [];
+      sessionTimerStateById.value = {};
       return;
     }
 
@@ -1278,19 +1899,19 @@ const openCurrentWorkout = async () => {
     }
 
     clearFriendlyError('save');
-    await continueExistingWorkoutSession(sessions[0], { activateTab: true, pauseTimer: false });
+    await continueExistingWorkoutSession(sessions[0], { activateTab: true });
   } catch (_) {
     // Keep Current Workout open so its existing error or empty state remains visible.
   }
 };
 
-const continueExistingWorkoutSession = async (session, { activateTab = true, pauseTimer = false } = {}) => {
+const continueExistingWorkoutSession = async (session, { activateTab = true } = {}) => {
   if (!session) return;
 
   activeSession.value = session;
   hasActiveWorkout.value = true;
   isPreviewMode.value = false;
-  setWorkoutTimerPaused(pauseTimer);
+  syncSessionTimerStateFor(session);
 
   if (session.workoutDate) {
     const parsed = new Date(session.workoutDate);
@@ -1350,6 +1971,7 @@ const continueExistingWorkoutSession = async (session, { activateTab = true, pau
 
 const startWorkoutSessionRequest = async ({
   dayName,
+  workoutDayId = null,
   planId = expandedPlanId.value,
   workoutStartDate = selectedWorkoutDate.value || today(),
   endSessionIds = [],
@@ -1362,6 +1984,7 @@ const startWorkoutSessionRequest = async ({
     credentials: 'include',
     body: JSON.stringify({
       workoutPlanId: planId,
+      ...(Number(workoutDayId || 0) > 0 ? { workoutDayId: Number(workoutDayId) } : {}),
       workoutDayName: dayName,
       workoutDate: workoutStartDate,
       ...(endSessionIds.length ? { endSessionIds, confirmMultipleEnd } : {}),
@@ -1375,7 +1998,8 @@ const startWorkoutSessionRequest = async ({
 const closeWorkoutConflictModal = () => {
   if (conflictModalLoading.value) return;
   showWorkoutConflictModal.value = false;
-  workoutConflictSession.value = null;
+  workoutConflictSessions.value = [];
+  selectedConflictSessionId.value = null;
   workoutConflictSessionIds.value = [];
   pendingWorkoutStart.value = null;
   conflictModalError.value = '';
@@ -1383,17 +2007,26 @@ const closeWorkoutConflictModal = () => {
 
 const openWorkoutConflictModal = ({ sessions, pendingStart, message = '' }) => {
   const normalizedSessions = Array.isArray(sessions) ? sessions : [];
-  workoutConflictSession.value = [...normalizedSessions].sort((left, right) => {
+  const sortedSessions = [...normalizedSessions].sort((left, right) => {
     const leftStartedAt = new Date(left?.startedAt || left?.sessionStartedAt || 0).getTime() || 0;
     const rightStartedAt = new Date(right?.startedAt || right?.sessionStartedAt || 0).getTime() || 0;
     return rightStartedAt - leftStartedAt || Number(right?.id || 0) - Number(left?.id || 0);
-  })[0] || null;
-  workoutConflictSessionIds.value = normalizedSessions
+  });
+
+  workoutConflictSessions.value = sortedSessions;
+  selectedConflictSessionId.value = Number(sortedSessions[0]?.id || 0) || null;
+  workoutConflictSessionIds.value = sortedSessions
     .map((session) => Number(session?.id || 0))
     .filter((sessionId) => Number.isInteger(sessionId) && sessionId > 0);
   pendingWorkoutStart.value = pendingStart;
   conflictModalError.value = message;
   showWorkoutConflictModal.value = true;
+};
+
+const selectWorkoutConflictSession = (sessionId) => {
+  const normalizedId = Number(sessionId || 0);
+  if (!normalizedId) return;
+  selectedConflictSessionId.value = normalizedId;
 };
 
 const activateStartedWorkout = async ({ session, pendingStart }) => {
@@ -1402,7 +2035,7 @@ const activateStartedWorkout = async ({ session, pendingStart }) => {
   selectedWorkoutDate.value = pendingStart.workoutStartDate;
   selectedDay.value = pendingStart.dayName;
   isPreviewMode.value = false;
-  setWorkoutTimerPaused(false);
+  syncSessionTimerStateFor(session);
 
   sessionExercises.value = await buildSessionExercisesWithHistoryPrefill(
     pendingStart.planExercises || []
@@ -1414,8 +2047,9 @@ const activateStartedWorkout = async ({ session, pendingStart }) => {
 };
 
 /* ─── Preview a day (no session created) ────────────────────────────────── */
-const previewDay = (dayName) => {
-  selectedDay.value      = dayName;
+const previewDay = (dayInput) => {
+  const dayContext = normalizeDayContext(dayInput);
+  selectedDay.value      = dayContext.dayName;
   isPreviewMode.value    = true;
   // Build exercise list from expanded plan for display
   sessionExercises.value = (expandedPlanData.value?.exercises || []).map((ex) => ({
@@ -1425,12 +2059,61 @@ const previewDay = (dayName) => {
 };
 
 /* ─── Start workout for a day ────────────────────────────────────────────── */
-const startDayWorkout = async (dayName) => {
+const startDayWorkout = async (dayInput) => {
+  if (startWorkoutRequestLoading.value) {
+    return;
+  }
+
+  startWorkoutRequestLoading.value = true;
   clearFriendlyError('save');
 
+  const dayContext = normalizeDayContext(dayInput);
+  if (!dayContext.dayName || !dayContext.planId) {
+    setFriendlyError('save', {
+      rawMessage: 'Unable to identify this workout day. Please refresh and try again.',
+      fallback: 'Unable to identify this workout day. Please refresh and try again.',
+    });
+    startWorkoutRequestLoading.value = false;
+    return;
+  }
+
+  try {
+    const latestSessions = await loadInProgressSessions();
+    const existingSession = getActiveSessionForDayContext(dayContext, latestSessions);
+    if (existingSession?.continuationPossible) {
+      await continueExistingWorkoutSession(existingSession);
+      startWorkoutRequestLoading.value = false;
+      return;
+    }
+
+    const liveSessions = latestSessions.filter((session) => {
+      if (sessionHasTerminalState(session)) return false;
+      return isLiveSessionStatus(normalizeSessionStatus(session));
+    });
+
+    if (liveSessions.length === 1) {
+      openWorkoutConflictModal({
+        sessions: liveSessions,
+        pendingStart: {
+          dayName: dayContext.dayName,
+          workoutDayId: dayContext.dayId,
+          planId: dayContext.planId,
+          workoutStartDate: selectedWorkoutDate.value || today(),
+          planExercises: expandedPlanData.value?.exercises || [],
+        },
+        message: 'You have an unfinished workout. Continue it or start a new one.',
+      });
+      startWorkoutRequestLoading.value = false;
+      return;
+    }
+  } catch (_) {
+    // Continue to start flow if session refresh fails.
+  }
+
   const pendingStart = {
-    dayName,
-    planId: expandedPlanId.value,
+    dayName: dayContext.dayName,
+    workoutDayId: dayContext.dayId,
+    planId: dayContext.planId,
     workoutStartDate: selectedWorkoutDate.value || today(),
     planExercises: expandedPlanData.value?.exercises || [],
   };
@@ -1464,6 +2147,8 @@ const startDayWorkout = async (dayName) => {
       category: 'save',
       fallback: 'Unable to start this workout right now. Please try again.',
     });
+  } finally {
+    startWorkoutRequestLoading.value = false;
   }
 };
 
@@ -1479,7 +2164,7 @@ const continuePreviousWorkout = async () => {
   conflictModalLoading.value = true;
   clearFriendlyError('save');
   try {
-    await continueExistingWorkoutSession(session, { pauseTimer: true });
+    await continueExistingWorkoutSession(session);
     conflictModalLoading.value = false;
     closeWorkoutConflictModal();
   } catch (err) {
@@ -1488,30 +2173,187 @@ const continuePreviousWorkout = async () => {
   }
 };
 
-const startNewWorkoutAfterConflict = async () => {
+const tryStartPendingWorkoutIfSlotAvailable = async () => {
+  const pendingStart = pendingWorkoutStart.value;
+  if (!pendingStart) {
+    return false;
+  }
+
+  const latestSessions = await loadInProgressSessions();
+  const liveSessions = latestSessions.filter((session) => {
+    if (sessionHasTerminalState(session)) return false;
+    return isLiveSessionStatus(normalizeSessionStatus(session));
+  });
+
+  if (liveSessions.length >= 2) {
+    openWorkoutConflictModal({
+      sessions: liveSessions,
+      pendingStart,
+      message: 'You already have two workouts in progress. Complete or cancel one before starting another workout.',
+    });
+    return false;
+  }
+
+  const { response, payload } = await startWorkoutSessionRequest(pendingStart);
+  if (!response.ok) {
+    if (response.status === 409 && Array.isArray(payload?.activeSessions)) {
+      openWorkoutConflictModal({
+        sessions: payload.activeSessions,
+        pendingStart,
+        message: payload.error || 'Review your active workouts before starting another session.',
+      });
+      return false;
+    }
+
+    throw {
+      status: Number(response?.status || 0) || null,
+      rawMessage: payload?.error || 'Unable to start the requested workout.',
+      code: payload?.code || payload?.errorCode || '',
+      requestId: payload?.requestId || response.headers?.get('x-request-id') || '',
+      service: payload?.service || '',
+    };
+  }
+
+  closeWorkoutConflictModal();
+  await activateStartedWorkout({ session: payload.session, pendingStart });
+  return true;
+};
+
+const completeSelectedConflictWorkout = async () => {
   if (conflictModalLoading.value) return;
 
   const session = workoutConflictSession.value;
-  const endSessionIds = workoutConflictSessionIds.value;
-  const pendingStart = pendingWorkoutStart.value;
-  if (!pendingStart || !session || endSessionIds.length === 0) return;
+  if (!session) {
+    conflictModalError.value = 'Select a workout to complete.';
+    return;
+  }
 
   conflictModalLoading.value = true;
   conflictModalError.value = '';
   clearFriendlyError('save');
 
   try {
-    if (activeSession.value) {
-      const draftSaved = await persistWorkoutDraft();
-      if (!draftSaved) {
-        throw new Error('Unable to save the current workout progress. No workouts were ended.');
+    await continueExistingWorkoutSession(session, { activateTab: false });
+    const completed = await completeWorkout();
+    if (!completed) {
+      conflictModalError.value = saveError.value || 'Unable to complete the selected workout.';
+      conflictModalLoading.value = false;
+      return;
+    }
+
+    await tryStartPendingWorkoutIfSlotAvailable();
+  } catch (err) {
+    conflictModalError.value = err?.rawMessage || err?.message || 'Unable to complete the selected workout.';
+  } finally {
+    conflictModalLoading.value = false;
+  }
+};
+
+const cancelSelectedConflictWorkout = async () => {
+  if (conflictModalLoading.value) return;
+
+  const session = workoutConflictSession.value;
+  if (!session) {
+    conflictModalError.value = 'Select a workout to cancel.';
+    return;
+  }
+
+  const hasSavedProgress = Number(session?.draftExerciseCount || 0) > 0 || Boolean(session?.hasSavedProgress);
+  if (hasSavedProgress) {
+    const confirmed = await showConfirmDialog(
+      'This workout has saved progress. Cancelling it will discard unfinished progress for this session. Continue?',
+      {
+        title: 'Cancel Unfinished Workout',
+        confirmButtonText: 'Cancel Workout',
+        cancelButtonText: 'Keep Workout',
+        icon: 'warning',
+      }
+    );
+    if (!confirmed) {
+      return;
+    }
+  }
+
+  conflictModalLoading.value = true;
+  conflictModalError.value = '';
+  clearFriendlyError('save');
+
+  try {
+    const response = await fetch(`${API_BASE}/api/workout-sessions/cancel/${encodeURIComponent(session.id)}`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw {
+        status: Number(response?.status || 0) || null,
+        rawMessage: payload?.error || 'Unable to cancel the selected workout.',
+        code: payload?.code || payload?.errorCode || '',
+        requestId: payload?.requestId || response.headers?.get('x-request-id') || '',
+        service: payload?.service || '',
+      };
+    }
+
+    const cancelledId = Number(payload?.session?.id || session.id || 0);
+    if (cancelledId > 0) {
+      activeSessions.value = activeSessions.value.filter((entry) => Number(entry?.id || 0) !== cancelledId);
+      if (Number(activeSession.value?.id || 0) === cancelledId) {
+        activeSession.value = null;
+        hasActiveWorkout.value = false;
+      }
+      removeSessionTimerStateById(cancelledId);
+    }
+
+    await tryStartPendingWorkoutIfSlotAvailable();
+  } catch (err) {
+    conflictModalError.value = err?.rawMessage || err?.message || 'Unable to cancel the selected workout.';
+  } finally {
+    conflictModalLoading.value = false;
+  }
+};
+
+const startNewWorkoutAfterConflict = async () => {
+  if (conflictModalLoading.value) return;
+
+  const pendingStart = pendingWorkoutStart.value;
+  const conflictSessions = Array.isArray(workoutConflictSessions.value) ? workoutConflictSessions.value : [];
+  const session = workoutConflictSession.value;
+  if (!pendingStart) return;
+
+  if (conflictSessions.length >= 2) {
+    conflictModalError.value = 'You already have two workouts in progress. Complete or cancel one before starting another workout.';
+    return;
+  }
+
+  conflictModalLoading.value = true;
+  conflictModalError.value = '';
+  clearFriendlyError('save');
+
+  try {
+    const hasSavedProgress = Number(session?.draftExerciseCount || 0) > 0 || Boolean(session?.hasSavedProgress);
+    if (hasSavedProgress) {
+      const confirmed = await showConfirmDialog(
+        'Starting a new workout will end this unfinished workout. Saved progress for this unfinished workout will no longer be resumable. Continue?',
+        {
+          title: 'Start New Workout',
+          confirmButtonText: 'Start New Workout',
+          cancelButtonText: 'Keep Existing Workout',
+          icon: 'warning',
+        }
+      );
+      if (!confirmed) {
+        conflictModalLoading.value = false;
+        return;
       }
     }
 
+    const explicitEndSessionIds = session?.id ? [Number(session.id)] : [];
+
     const { response, payload } = await startWorkoutSessionRequest({
       ...pendingStart,
-      endSessionIds,
-      confirmMultipleEnd: endSessionIds.length > 1,
+      endSessionIds: explicitEndSessionIds,
+      confirmMultipleEnd: explicitEndSessionIds.length > 1,
     });
 
     if (!response.ok) {
@@ -1526,7 +2368,7 @@ const startNewWorkoutAfterConflict = async () => {
       }
       throw {
         status: Number(response?.status || 0) || null,
-        rawMessage: payload?.error || 'Failed to end the previous workout.',
+        rawMessage: payload?.error || 'Failed to start a new workout.',
         code: payload?.code || payload?.errorCode || '',
         requestId: payload?.requestId || response.headers?.get('x-request-id') || '',
         service: payload?.service || '',
@@ -1551,6 +2393,11 @@ const completeWorkout = async () => {
   clearWorkoutDraftSave();
 
   try {
+    const immediatePersistOk = await persistWorkoutSetProgress();
+    if (!immediatePersistOk) {
+      throw new Error('Unable to persist workout sets before completing the workout.');
+    }
+
     const sessionPayload = {
       planId:           expandedPlanId.value,
       planName:         expandedPlanData.value?.metadata?.name || '',
@@ -1596,6 +2443,7 @@ const completeWorkout = async () => {
     activeSessions.value = activeSessions.value.filter(
       (session) => Number(session?.id || 0) !== completedSessionId
     );
+    removeSessionTimerStateById(completedSessionId);
     activeSession.value    = null;
     hasActiveWorkout.value = false;
 
@@ -1604,6 +2452,7 @@ const completeWorkout = async () => {
       activeTab.value   = 'overview';
       selectedDay.value = '';
     }, 2000);
+    return true;
   } catch (err) {
     setFriendlyError('save', {
       status: err?.status,
@@ -1614,6 +2463,7 @@ const completeWorkout = async () => {
       category: 'save',
       fallback: 'Unable to complete this workout right now. Please try again.',
     });
+    return false;
   } finally {
     saving.value = false;
   }
@@ -1843,10 +2693,39 @@ const deleteWorkoutPlan = async (plan) => {
   }
 
   const planName = String(plan?.name || plan?.planName || 'this workout plan').trim();
-  const confirmed = await showConfirmDialog(`Delete ${planName}? This will permanently remove this workout plan.`, {
+  let impact = {
+    activeSessionCount: 0,
+    activeSessions: [],
+  };
+
+  try {
+    const impactRes = await fetch(`${API_BASE}/api/workout-schedules/${encodeURIComponent(planId)}/delete-impact`, {
+      credentials: 'include',
+    });
+    const impactBody = await impactRes.json().catch(() => ({}));
+    if (impactRes.ok) {
+      impact = {
+        activeSessionCount: Number(impactBody?.activeSessionCount || 0),
+        activeSessions: Array.isArray(impactBody?.activeSessions) ? impactBody.activeSessions : [],
+      };
+    }
+  } catch (_) {
+    // If impact lookup fails, keep delete flow available with base confirmation text.
+  }
+
+  const impactLines = impact.activeSessions
+    .slice(0, 2)
+    .map((session) => `- ${session?.workoutDayName || 'Workout'} (${session?.status || 'in_progress'})`);
+
+  const impactMessage = impact.activeSessionCount > 0
+    ? `\n\nThis plan currently has ${impact.activeSessionCount} active workout session(s). Deleting this plan will cancel those unfinished session(s).${impactLines.length ? `\n${impactLines.join('\n')}` : ''}`
+    : '';
+
+  const confirmed = await showConfirmDialog(`Delete ${planName}? This will permanently remove this workout plan.${impactMessage}`, {
     title: 'Delete Workout Plan',
     confirmButtonText: 'Delete',
     cancelButtonText: 'Cancel',
+    icon: impact.activeSessionCount > 0 ? 'warning' : 'question',
   });
   if (!confirmed) {
     return;
@@ -1873,7 +2752,10 @@ const deleteWorkoutPlan = async (plan) => {
     }
 
     removePlanFromUi(planId);
-    saveMessage.value = 'Workout plan deleted.';
+    const cancelledCount = Number(body?.cancelledActiveSessionCount || 0);
+    saveMessage.value = cancelledCount > 0
+      ? `Workout plan deleted. Cancelled ${cancelledCount} active workout session${cancelledCount === 1 ? '' : 's'}.`
+      : 'Workout plan deleted.';
     await autoExpandSinglePlanIfNeeded();
   } catch (err) {
     setFriendlyError('save', {
@@ -1927,8 +2809,17 @@ watch(selectedWorkoutDate, () => {
 });
 
 watch(
-  [hasActiveWorkout, () => activeSession.value?.startedAt, workoutTimerPaused],
+  [
+    hasActiveWorkout,
+    hasLiveWorkoutSession,
+    () => activeSession.value?.id,
+    () => activeSession.value?.startedAt,
+    () => activeSession.value?.durationSeconds,
+    () => activeSession.value?.sessionStatus,
+    workoutTimerNowMs,
+  ],
   () => {
+    syncActiveSessionTimerState();
     syncWorkoutTimerState();
   },
   { immediate: true },
@@ -2087,8 +2978,13 @@ onUnmounted(() => {
   workoutLogMountReady = false;
   document.removeEventListener('pointerdown', onDocumentPointerDownForPlanActionMenu);
   document.body.classList.remove(WORKOUT_LOG_ACTIVE_BODY_CLASS);
+  if (workoutLogSetPersistTimeoutId != null) {
+    window.clearTimeout(workoutLogSetPersistTimeoutId);
+    workoutLogSetPersistTimeoutId = null;
+  }
   void persistWorkoutDraft();
   setWorkoutTimerRunning(false);
+  sessionTimerStateById.value = {};
 });
 </script>
 
@@ -2170,21 +3066,24 @@ onUnmounted(() => {
       <nav class="wl-tabs wa-h-tabs wa-h-tabs--tricolor" role="tablist">
         <button
           type="button" role="tab"
-          :class="['wl-tab', 'wa-h-tab', activeTab === 'overview' ? 'wl-tab--active wa-h-tab--active' : '']"
+          :class="['wl-tab', 'wa-h-tab', 'wl-tab--overview', activeTab === 'overview' ? 'wl-tab--active wa-h-tab--active active' : '']"
+          :aria-selected="activeTab === 'overview' ? 'true' : 'false'"
           @click="activeTab = 'overview'"
         >
           <i class="fa-solid fa-list-ul"></i> Start My Workout
         </button>
         <button
           type="button" role="tab"
-          :class="['wl-tab', 'wa-h-tab', activeTab === 'dayDetails' ? 'wl-tab--active wa-h-tab--active' : '']"
+          :class="['wl-tab', 'wa-h-tab', 'wl-tab--current', activeTab === 'dayDetails' ? 'wl-tab--active wa-h-tab--active active' : '']"
+          :aria-selected="activeTab === 'dayDetails' ? 'true' : 'false'"
           @click="openCurrentWorkout"
         >
           <i class="fa-solid fa-dumbbell"></i> Current Workout
         </button>
         <button
           type="button" role="tab"
-          :class="['wl-tab', 'wa-h-tab', activeTab === 'workoutHistory' ? 'wl-tab--active wa-h-tab--active' : '']"
+          :class="['wl-tab', 'wa-h-tab', 'wl-tab--history', activeTab === 'workoutHistory' ? 'wl-tab--active wa-h-tab--active active' : '']"
+          :aria-selected="activeTab === 'workoutHistory' ? 'true' : 'false'"
           @click="openHistoryTab"
         >
           <i class="fa-solid fa-clock-rotate-left"></i> Workout Log
@@ -2463,6 +3362,9 @@ onUnmounted(() => {
                     </div>
                     <div class="wl-day-card__meta">
                       <span><i class="fa-solid fa-list-check"></i> {{ group.exercises.length }} exercise{{ group.exercises.length !== 1 ? 's' : '' }}</span>
+                      <span v-if="hasActiveSessionForDay(group)" class="wl-day-status wl-day-status--active">
+                        <i class="fa-solid fa-circle" aria-hidden="true"></i> In Progress
+                      </span>
                       <span v-if="expandedPlanData?.metadata?.estimatedDuration">
                         <i class="fa-solid fa-clock"></i>
                         ~{{ Math.round(expandedPlanData.metadata.estimatedDuration / (exercisesByGroup.length || 1)) }} min
@@ -2502,15 +3404,18 @@ onUnmounted(() => {
                   <div class="wl-day-card__footer">
                     <button
                       type="button" class="wl-btn-preview"
-                      @click="previewDay(group.name)"
+                      @click="previewDay(group)"
                     >
                       <i class="fa-solid fa-eye"></i> Preview
                     </button>
                     <button
-                      type="button" class="wl-btn-start"
-                      @click="startDayWorkout(group.name)"
+                      type="button"
+                      class="wl-btn-start"
+                      :class="{ 'wl-btn-start--resume': hasActiveSessionForDay(group) }"
+                      @click="startDayWorkout(group)"
                     >
-                      <i class="fa-solid fa-play"></i> Start Workout
+                      <i :class="hasActiveSessionForDay(group) ? 'fa-solid fa-rotate-right' : 'fa-solid fa-play'"></i>
+                      {{ hasActiveSessionForDay(group) ? 'Resume Workout' : 'Start Workout' }}
                     </button>
                   </div>
                 </article>
@@ -2535,8 +3440,14 @@ onUnmounted(() => {
           <div v-if="isPreviewMode" class="wl-preview-banner">
             <i class="fa-solid fa-eye"></i>
             <span>Preview only — <strong>start the workout</strong> to log sets.</span>
-            <button type="button" class="wl-btn-start wl-preview-banner__start" @click="startDayWorkout(selectedDay)">
-              <i class="fa-solid fa-play"></i> Start Workout
+            <button
+              type="button"
+              class="wl-btn-start wl-preview-banner__start"
+              :class="{ 'wl-btn-start--resume': Boolean(selectedDayActiveSession) }"
+              @click="startDayWorkout(selectedDayContext || selectedDay)"
+            >
+              <i :class="selectedDayActiveSession ? 'fa-solid fa-rotate-right' : 'fa-solid fa-play'"></i>
+              {{ selectedDayActiveSession ? 'Resume Workout' : 'Start Workout' }}
             </button>
           </div>
 
@@ -2565,16 +3476,22 @@ onUnmounted(() => {
           <!-- Exercises -->
           <div :class="['wl-exercise-list', isPreviewMode ? 'wl-exercise-list--preview' : '']">
             <ExerciseSessionCard
-              v-for="exercise in dayExercises"
+              v-for="(exercise, exerciseIndex) in dayExercises"
               :key="exercise.id"
               :exercise="exercise"
               :is-cardio="isCardio(exercise)"
               :is-expanded="activeExerciseId === exercise.id"
+              :can-move-up="exerciseIndex > 0"
+              :can-move-down="exerciseIndex < dayExercises.length - 1"
               @select="selectExercise"
               @add-set="addSet"
               @remove-set="removeSet"
               @update-set="updateSet"
               @exercise-completed="onExerciseCompleted"
+              @move-up="moveActiveExercise($event, 'up')"
+              @move-down="moveActiveExercise($event, 'down')"
+              @edit-exercise="openEditExerciseModal"
+              @remove-exercise="removeActiveExercise"
             />
           </div>
 
@@ -2646,9 +3563,9 @@ onUnmounted(() => {
           <i class="fa-solid fa-calendar-xmark wl-empty-icon"></i>
           <h6>No exercises recorded</h6>
           <p v-if="workoutHistoryUsername">
-            No completed workouts found for <strong>{{ workoutHistoryUsername }}</strong> started on <strong>{{ selectedWorkoutDate }}</strong>.
+            No recorded workouts found for <strong>{{ workoutHistoryUsername }}</strong> started on <strong>{{ selectedWorkoutDate }}</strong>.
           </p>
-          <p v-else>No completed workouts started on <strong>{{ selectedWorkoutDate }}</strong>.</p>
+          <p v-else>No recorded workouts started on <strong>{{ selectedWorkoutDate }}</strong>.</p>
         </div>
 
         <!-- Session list -->
@@ -2666,6 +3583,10 @@ onUnmounted(() => {
                 <span v-if="session.workoutDayName" class="wl-history-group__day">{{ session.workoutDayName }}</span>
               </div>
               <div class="wl-history-session__meta">
+                <span>
+                  <i class="fa-solid fa-signal"></i>
+                  Status: {{ formatHistorySessionStatus(session) }}
+                </span>
                 <span v-if="session.sessionStartedAt">
                   <i class="fa-solid fa-play"></i>
                   Started: {{ new Date(session.sessionStartedAt).toLocaleString() }}
@@ -2748,8 +3669,14 @@ onUnmounted(() => {
                 <!-- Exercise identity -->
                 <div class="wl-hist-ex-identity">
                   <div class="wl-hist-ex-thumb">
-                    <img v-if="ex.exerciseImage" :src="ex.exerciseImage" :alt="ex.exerciseName" class="wl-hist-thumb-img" />
-                    <i v-else class="fa-solid fa-dumbbell"></i>
+                    <img
+                      :src="resolveHistoryExerciseImage(ex)"
+                      :alt="ex.exerciseName"
+                      class="wl-hist-thumb-img"
+                      loading="lazy"
+                      decoding="async"
+                      @error="(event) => handleHistoryExerciseImageError(event, ex)"
+                    />
                   </div>
                   <div class="wl-hist-ex-info">
                     <strong class="wl-hist-ex-name">{{ ex.exerciseName }}</strong>
@@ -2886,11 +3813,112 @@ onUnmounted(() => {
       @add="addExerciseToActiveWorkout"
     />
     <Teleport to="body">
+      <div v-if="showExerciseEditModal" class="wl-modal-overlay" @click.self="closeEditExerciseModal">
+        <div class="wl-modal wl-exercise-edit-modal" role="dialog" aria-modal="true" aria-labelledby="edit-exercise-title">
+          <div class="wl-modal__header">
+            <h5 id="edit-exercise-title"><i class="fa-solid fa-pen"></i> Edit Exercise</h5>
+            <button
+              type="button"
+              class="wl-modal__close"
+              :disabled="exerciseEditLoading"
+              aria-label="Close edit exercise dialog"
+              @click="closeEditExerciseModal"
+            >
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="wl-modal__body">
+            <p class="wl-exercise-edit-modal__subtitle">
+              Update active workout targets for <strong>{{ exerciseEditDraft.name || 'Exercise' }}</strong>.
+            </p>
+
+            <div class="wl-exercise-edit-grid">
+              <label>
+                <span>Sets</span>
+                <input
+                  v-model.number="exerciseEditDraft.sets"
+                  type="number"
+                  min="1"
+                  class="wl-hist-set-input"
+                />
+              </label>
+
+              <template v-if="exerciseEditDraft.workoutType === 'strength'">
+                <label>
+                  <span>Repetitions</span>
+                  <input
+                    v-model.number="exerciseEditDraft.reps"
+                    type="number"
+                    min="0"
+                    class="wl-hist-set-input"
+                  />
+                </label>
+                <label>
+                  <span>Weight (lbs)</span>
+                  <input
+                    v-model.number="exerciseEditDraft.weight"
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    class="wl-hist-set-input"
+                  />
+                </label>
+              </template>
+
+              <template v-else>
+                <label>
+                  <span>Target Time (min)</span>
+                  <input
+                    v-model.number="exerciseEditDraft.duration"
+                    type="number"
+                    min="0"
+                    class="wl-hist-set-input"
+                  />
+                </label>
+                <label>
+                  <span>Distance (miles)</span>
+                  <input
+                    v-model.number="exerciseEditDraft.distanceMiles"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    class="wl-hist-set-input"
+                  />
+                </label>
+                <label>
+                  <span>Target Calories</span>
+                  <input
+                    v-model.number="exerciseEditDraft.caloriesBurned"
+                    type="number"
+                    min="0"
+                    class="wl-hist-set-input"
+                  />
+                </label>
+              </template>
+            </div>
+
+            <div v-if="exerciseEditError" class="wl-banner wl-banner--error wl-exercise-edit-modal__error" role="alert">
+              <i class="fa-solid fa-circle-xmark"></i> {{ exerciseEditError }}
+            </div>
+          </div>
+          <div class="wl-modal__footer">
+            <button type="button" class="wl-btn-preview" :disabled="exerciseEditLoading" @click="closeEditExerciseModal">Cancel</button>
+            <button type="button" class="wl-btn-start" :disabled="exerciseEditLoading" @click="applyExerciseTargetEdits">
+              <i v-if="exerciseEditLoading" class="fa-solid fa-spinner fa-spin"></i>
+              <i v-else class="fa-solid fa-floppy-disk"></i>
+              {{ exerciseEditLoading ? 'Saving…' : 'Save Changes' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+    <Teleport to="body">
       <div v-if="showWorkoutConflictModal" class="wl-modal-overlay wl-conflict-overlay">
         <div class="wl-modal wl-conflict-modal" role="dialog" aria-modal="true" aria-labelledby="workout-conflict-title">
           <div class="wl-modal__header wl-conflict-modal__header">
             <h5 id="workout-conflict-title">
-              <i class="fa-solid fa-clock-rotate-left"></i> Previous Workout Found
+              <i class="fa-solid fa-clock-rotate-left"></i>
+              {{ hasTwoOrMoreConflictSessions ? 'Multiple Active Workouts' : 'Unfinished Workout Found' }}
             </h5>
             <button
               type="button"
@@ -2903,18 +3931,49 @@ onUnmounted(() => {
             </button>
           </div>
           <div class="wl-modal__body wl-conflict-modal__body">
-            <p class="wl-conflict-modal__message">
-              You have an unfinished workout. Would you like to continue it or end your previous workouts and start a new one?
+            <p v-if="!hasTwoOrMoreConflictSessions" class="wl-conflict-modal__message">
+              You have an unfinished workout. Would you like to continue your existing workout or start a new one?
+            </p>
+            <p v-else class="wl-conflict-modal__message">
+              You already have two workouts in progress. Select one workout to resume, complete, or cancel before starting another workout.
             </p>
 
-            <div v-if="workoutConflictSession" class="wl-conflict-summary">
-              <div v-if="workoutConflictSession.workoutPlanName" class="wl-conflict-summary__plan">
-                {{ workoutConflictSession.workoutPlanName }}
+            <div
+              v-if="hasTwoOrMoreConflictSessions"
+              class="wl-conflict-list"
+              role="listbox"
+              aria-label="Active workout sessions"
+            >
+              <button
+                v-for="session in workoutConflictSessions"
+                :key="`conflict-${session.id}`"
+                type="button"
+                class="wl-conflict-list__item"
+                :class="{ 'is-selected': Number(session.id) === Number(selectedConflictSessionId || 0) }"
+                :disabled="conflictModalLoading"
+                @click="selectWorkoutConflictSession(session.id)"
+              >
+                <div class="wl-conflict-summary">
+                  <div v-if="getConflictSessionPlanName(session)" class="wl-conflict-summary__plan">
+                    {{ getConflictSessionPlanName(session) }}
+                  </div>
+                  <div class="wl-conflict-summary__day">{{ getConflictSessionDayName(session) }}</div>
+                  <div class="wl-conflict-summary__meta">
+                    <span><i class="fa-regular fa-calendar" aria-hidden="true"></i>{{ formatConflictSessionDate(getConflictSessionDateValue(session)) }}</span>
+                    <span class="wl-conflict-summary__status"><i class="fa-solid fa-circle" aria-hidden="true"></i>{{ session.statusLabel || 'In Progress' }}</span>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            <div v-else-if="workoutConflictSession" class="wl-conflict-summary">
+              <div v-if="getConflictSessionPlanName(workoutConflictSession)" class="wl-conflict-summary__plan">
+                {{ getConflictSessionPlanName(workoutConflictSession) }}
               </div>
-              <div class="wl-conflict-summary__day">{{ workoutConflictSession.workoutDayName || 'Workout' }}</div>
+              <div class="wl-conflict-summary__day">{{ getConflictSessionDayName(workoutConflictSession) }}</div>
               <div class="wl-conflict-summary__meta">
-                <span><i class="fa-regular fa-calendar" aria-hidden="true"></i>{{ formatConflictSessionDate(workoutConflictSession.workoutDate) }}</span>
-                <span class="wl-conflict-summary__status"><i class="fa-solid fa-circle" aria-hidden="true"></i>In Progress</span>
+                <span><i class="fa-regular fa-calendar" aria-hidden="true"></i>{{ formatConflictSessionDate(getConflictSessionDateValue(workoutConflictSession)) }}</span>
+                <span class="wl-conflict-summary__status"><i class="fa-solid fa-circle" aria-hidden="true"></i>{{ workoutConflictSession.statusLabel || 'In Progress' }}</span>
               </div>
             </div>
 
@@ -2922,25 +3981,84 @@ onUnmounted(() => {
               <i class="fa-solid fa-circle-xmark"></i> {{ conflictModalError }}
             </div>
           </div>
-          <div class="wl-modal__footer wl-conflict-modal__actions">
-            <button
-              type="button"
-              class="wl-conflict-action wl-conflict-action--continue"
-              :disabled="conflictModalLoading || !canContinueConflictSession"
-              @click="continuePreviousWorkout"
-            >
-              <i class="fa-solid fa-circle-play"></i>
-              <span>{{ conflictModalLoading ? 'Please wait…' : 'Continue Previous' }}</span>
-            </button>
-            <button
-              type="button"
-              class="wl-conflict-action wl-conflict-action--start"
-              :disabled="conflictModalLoading || !workoutConflictSession"
-              @click="startNewWorkoutAfterConflict"
-            >
-              <i class="fa-solid fa-play"></i>
-              <span>{{ conflictModalLoading ? 'Please wait…' : 'Exit & Start New' }}</span>
-            </button>
+          <div class="wl-modal__footer wl-conflict-modal__actions" :class="{ 'wl-conflict-modal__actions--multi': hasTwoOrMoreConflictSessions }">
+            <template v-if="hasTwoOrMoreConflictSessions">
+              <button
+                type="button"
+                class="wl-conflict-action wl-conflict-action--continue"
+                :disabled="conflictModalLoading || !canContinueConflictSession"
+                @click="continuePreviousWorkout"
+              >
+                <i class="fa-solid fa-circle-play"></i>
+                <span>{{ conflictModalLoading ? 'Please wait…' : 'Resume Selected' }}</span>
+              </button>
+              <button
+                type="button"
+                class="wl-conflict-action wl-conflict-action--complete"
+                :disabled="conflictModalLoading || !workoutConflictSession"
+                @click="completeSelectedConflictWorkout"
+              >
+                <i class="fa-solid fa-flag-checkered"></i>
+                <span>{{ conflictModalLoading ? 'Please wait…' : 'Complete Selected' }}</span>
+              </button>
+              <button
+                type="button"
+                class="wl-conflict-action wl-conflict-action--cancel"
+                :disabled="conflictModalLoading || !workoutConflictSession"
+                @click="cancelSelectedConflictWorkout"
+              >
+                <i class="fa-solid fa-ban"></i>
+                <span>{{ conflictModalLoading ? 'Please wait…' : 'Cancel Selected' }}</span>
+              </button>
+              <button
+                type="button"
+                class="wl-conflict-action wl-conflict-action--start"
+                :disabled="conflictModalLoading || !workoutConflictSession"
+                @click="startNewWorkoutAfterConflict"
+              >
+                <i class="fa-solid fa-play"></i>
+                <span>{{ conflictModalLoading ? 'Please wait…' : 'Start New Workout' }}</span>
+              </button>
+              <button
+                type="button"
+                class="wl-conflict-action wl-conflict-action--back"
+                :disabled="conflictModalLoading"
+                @click="closeWorkoutConflictModal"
+              >
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>Back</span>
+              </button>
+            </template>
+
+            <template v-else>
+              <button
+                type="button"
+                class="wl-conflict-action wl-conflict-action--cancel-dismiss"
+                :disabled="conflictModalLoading"
+                @click="closeWorkoutConflictModal"
+              >
+                <i class="fa-solid fa-xmark"></i>
+                <span>Cancel</span>
+              </button>
+              <button
+                type="button"
+                class="wl-conflict-action wl-conflict-action--continue"
+                :disabled="conflictModalLoading || !canContinueConflictSession"
+                @click="continuePreviousWorkout"
+              >
+                <i class="fa-solid fa-circle-play"></i>
+                <span>{{ conflictModalLoading ? 'Please wait…' : 'Continue Existing' }}</span>
+              </button>
+              <button
+                type="button"
+                class="wl-conflict-action wl-conflict-action--start"
+                :disabled="conflictModalLoading || !workoutConflictSession"
+                @click="startNewWorkoutAfterConflict"
+              >
+                <i class="fa-solid fa-play"></i>
+                <span>{{ conflictModalLoading ? 'Please wait…' : 'Start New Workout' }}</span>
+              </button>
+            </template>
           </div>
         </div>
       </div>
@@ -3351,58 +4469,48 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.wl-tabs.wa-h-tabs--tricolor > :nth-child(1):not(.wa-h-tab--active):not(.active):not([aria-selected="true"]) {
+.wl-page .wl-tabs.wa-h-tabs--tricolor .wl-tab--overview { --wl-tab-assigned-bg: #2563EB; }
+.wl-page .wl-tabs.wa-h-tabs--tricolor .wl-tab--current  { --wl-tab-assigned-bg: #15803D; }
+.wl-page .wl-tabs.wa-h-tabs--tricolor .wl-tab--history  { --wl-tab-assigned-bg: #8f1f2a; }
+
+.wl-page .wl-tabs.wa-h-tabs--tricolor .wl-tab--overview:not(.wa-h-tab--active):not(.active):not([aria-selected="true"]) {
   background: #2563EB !important;
 }
-.wl-tabs.wa-h-tabs--tricolor > :nth-child(2):not(.wa-h-tab--active):not(.active):not([aria-selected="true"]) {
+
+.wl-page .wl-tabs.wa-h-tabs--tricolor .wl-tab--current:not(.wa-h-tab--active):not(.active):not([aria-selected="true"]) {
   background: #15803D !important;
 }
-.wl-tabs.wa-h-tabs--tricolor > :nth-child(3):not(.wa-h-tab--active):not(.active):not([aria-selected="true"]) {
+
+.wl-page .wl-tabs.wa-h-tabs--tricolor .wl-tab--history:not(.wa-h-tab--active):not(.active):not([aria-selected="true"]) {
   background: #8f1f2a !important;
 }
 
-.wl-tabs.wa-h-tabs--tricolor > :nth-child(1) { --wl-tab-assigned-bg: #2563EB; }
-.wl-tabs.wa-h-tabs--tricolor > :nth-child(2) { --wl-tab-assigned-bg: #15803D; }
-.wl-tabs.wa-h-tabs--tricolor > :nth-child(3) { --wl-tab-assigned-bg: #8f1f2a; }
-
-.wl-tabs.wa-h-tabs--tricolor .wl-tab {
+.wl-page .wl-tabs.wa-h-tabs--tricolor .wl-tab {
   background: var(--wl-tab-assigned-bg, #2563EB) !important;
   color: #ffffff !important;
-  border-color: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
   filter: none !important;
 }
 
-.wl-tabs.wa-h-tabs--tricolor .wl-tab:hover,
-.wl-tabs.wa-h-tabs--tricolor .wl-tab:focus,
-.wl-tabs.wa-h-tabs--tricolor .wl-tab:focus-visible,
-.wl-tabs.wa-h-tabs--tricolor .wl-tab:active,
-.wl-tabs.wa-h-tabs--tricolor .wl-tab.active,
-.wl-tabs.wa-h-tabs--tricolor .wl-tab.wa-h-tab--active,
-.wl-tabs.wa-h-tabs--tricolor .wl-tab[aria-selected="true"] {
+.wl-page .wl-tabs.wa-h-tabs--tricolor .wl-tab:hover,
+.wl-page .wl-tabs.wa-h-tabs--tricolor .wl-tab:focus,
+.wl-page .wl-tabs.wa-h-tabs--tricolor .wl-tab:focus-visible,
+.wl-page .wl-tabs.wa-h-tabs--tricolor .wl-tab:active,
+.wl-page .wl-tabs.wa-h-tabs--tricolor .wl-tab.active,
+.wl-page .wl-tabs.wa-h-tabs--tricolor .wl-tab.wa-h-tab--active,
+.wl-page .wl-tabs.wa-h-tabs--tricolor .wl-tab[aria-selected="true"] {
   background: var(--wl-tab-assigned-bg, #2563EB) !important;
   color: #ffffff !important;
-  border-color: transparent !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
   filter: none !important;
 }
 
-.wl-tabs.wa-h-tabs--tricolor .wl-tab.wa-h-tab--active,
-.wl-tabs.wa-h-tabs--tricolor .wl-tab.active,
-.wl-tabs.wa-h-tabs--tricolor .wl-tab[aria-selected="true"] {
-  box-shadow: inset 0 -2px 0 0 rgba(200, 221, 255, 0.95), 0 0 0 1px rgba(196, 220, 255, 0.28) !important;
+.wl-page .wl-tabs.wa-h-tabs--tricolor .wl-tab.wa-h-tab--active,
+.wl-page .wl-tabs.wa-h-tabs--tricolor .wl-tab.active,
+.wl-page .wl-tabs.wa-h-tabs--tricolor .wl-tab[aria-selected="true"] {
+  box-shadow: inset 0 -3px 0 0 rgba(255, 255, 255, 0.92), 0 0 0 1px rgba(196, 220, 255, 0.30) !important;
   outline: 2px solid rgba(196, 220, 255, 0.55) !important;
   outline-offset: -2px !important;
-}
-
-.wl-tabs.wa-h-tabs--tricolor > :nth-child(1).wa-h-tab--active,
-.wl-tabs.wa-h-tabs--tricolor > :nth-child(1).active,
-.wl-tabs.wa-h-tabs--tricolor > :nth-child(1)[aria-selected="true"],
-.wl-tabs.wa-h-tabs--tricolor > :nth-child(2).wa-h-tab--active,
-.wl-tabs.wa-h-tabs--tricolor > :nth-child(2).active,
-.wl-tabs.wa-h-tabs--tricolor > :nth-child(2)[aria-selected="true"],
-.wl-tabs.wa-h-tabs--tricolor > :nth-child(3).wa-h-tab--active,
-.wl-tabs.wa-h-tabs--tricolor > :nth-child(3).active,
-.wl-tabs.wa-h-tabs--tricolor > :nth-child(3)[aria-selected="true"] {
-  box-shadow: inset 0 -2px 0 0 rgba(200, 221, 255, 0.95), 0 0 0 1px rgba(196, 220, 255, 0.28) !important;
 }
 .wl-view-switch {
   display: grid;
@@ -3898,6 +5006,25 @@ onUnmounted(() => {
 .wl-day-card__meta span { display: flex; align-items: center; gap: 4px; }
 .wl-day-card__meta i    { color: #3b82f6; }
 
+.wl-day-status {
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.wl-day-status--active {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  color: #166534;
+}
+
+.wl-day-status--active i {
+  color: #16a34a;
+  font-size: 0.55rem;
+}
+
 .wl-day-card__ex-summary {
   margin: 0;
   border-top: 1px solid var(--border-color, #f3f4f6);
@@ -3932,6 +5059,14 @@ onUnmounted(() => {
   display: flex; align-items: center; gap: 7px; transition: background 0.15s;
 }
 .wl-btn-start:hover { background: #1d4ed8; }
+
+.wl-btn-start--resume {
+  background: #15803d;
+}
+
+.wl-btn-start--resume:hover {
+  background: #166534;
+}
 
 /* Preview mode */
 .wl-preview-banner {
@@ -4463,6 +5598,48 @@ onUnmounted(() => {
   padding: 12px 20px 16px;
   border-top: 1px solid #f3f4f6;
 }
+
+.wl-exercise-edit-modal {
+  max-width: 520px;
+}
+
+.wl-exercise-edit-modal__subtitle {
+  margin: 0 0 12px;
+  color: var(--text-color-secondary, #6b7280);
+  font-size: 0.84rem;
+}
+
+.wl-exercise-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.wl-exercise-edit-grid label {
+  display: grid;
+  gap: 6px;
+}
+
+.wl-exercise-edit-grid label span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-color-secondary, #6b7280);
+}
+
+.wl-exercise-edit-grid .wl-hist-set-input {
+  max-width: none;
+  text-align: left;
+}
+
+.wl-exercise-edit-modal__error {
+  margin-top: 10px;
+}
+
+@media (max-width: 640px) {
+  .wl-exercise-edit-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .wl-btn-delete {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 8px 18px; border-radius: 8px;
@@ -4475,12 +5652,13 @@ onUnmounted(() => {
 
 /* ── Previous workout conflict modal ───────────────────────────────────── */
 .wl-conflict-overlay {
-  padding: 8px;
+  padding: 12px;
 }
 
 .wl-conflict-modal {
-  width: min(100%, 420px);
-  max-height: calc(100dvh - 16px);
+  width: min(100%, 548px);
+  max-width: 548px;
+  max-height: calc(100dvh - 24px);
   overflow: hidden;
   background: #111827;
   border: 1px solid #334155;
@@ -4490,7 +5668,7 @@ onUnmounted(() => {
 
 .wl-conflict-modal__header {
   flex-shrink: 0;
-  padding: 12px 12px 10px;
+  padding: 16px 16px 12px;
   gap: 8px;
   background: #0f172a;
   border-color: #334155;
@@ -4499,7 +5677,7 @@ onUnmounted(() => {
 .wl-conflict-modal__header h5 {
   min-width: 0;
   color: #f8fafc;
-  font-size: 0.96rem;
+  font-size: 1rem;
   line-height: 1.25;
 }
 
@@ -4531,20 +5709,44 @@ onUnmounted(() => {
 
 .wl-conflict-modal__body {
   min-height: 0;
-  padding: 12px;
+  padding: 16px;
   color: #e2e8f0;
 }
 
 .wl-conflict-modal__message {
-  margin: 0 0 10px;
-  font-size: 0.86rem;
+  margin: 0 0 14px;
+  font-size: 0.92rem;
   line-height: 1.45;
+}
+
+.wl-conflict-list {
+  display: grid;
+  gap: 8px;
+}
+
+.wl-conflict-list__item {
+  width: 100%;
+  padding: 0;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.wl-conflict-list__item:hover:not(:disabled) {
+  border-color: #60a5fa;
+}
+
+.wl-conflict-list__item.is-selected {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.35);
 }
 
 .wl-conflict-summary {
   display: grid;
-  gap: 7px;
-  padding: 12px;
+  gap: 8px;
+  padding: 14px;
   border: 1px solid #334155;
   border-radius: 7px;
   background: #1e293b;
@@ -4598,32 +5800,36 @@ onUnmounted(() => {
 .wl-conflict-modal__actions {
   flex-shrink: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  padding: 10px 12px 12px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  padding: 14px 16px 16px;
   background: #0f172a;
   border-color: #334155;
+}
+
+.wl-conflict-modal__actions--multi {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .wl-conflict-action {
   width: 100%;
   min-width: 0;
-  min-height: 46px;
-  padding: 8px 6px;
+  min-height: 44px;
+  padding: 10px 12px;
   border: 1px solid transparent;
-  border-radius: 7px;
+  border-radius: 7px !important;
   color: #ffffff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  font-size: 0.76rem;
+  gap: 7px;
+  font-size: 0.9rem;
   font-weight: 800;
-  line-height: 1.2;
+  line-height: 1.15;
   text-align: center;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
   cursor: pointer;
+  transition: background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .wl-conflict-action--continue {
@@ -4636,9 +5842,63 @@ onUnmounted(() => {
   border-color: #166534;
 }
 
+.wl-conflict-action--complete {
+  background: #0f766e;
+  border-color: #115e59;
+}
+
+.wl-conflict-action--cancel {
+  background: #b91c1c;
+  border-color: #991b1b;
+}
+
+.wl-conflict-action--cancel-dismiss {
+  background: #dc2626;
+  border-color: #b91c1c;
+}
+
+.wl-conflict-action--back {
+  background: #334155;
+  border-color: #475569;
+}
+
+.wl-conflict-action:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.wl-conflict-action:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.28);
+}
+
 .wl-conflict-action:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+@media (min-width: 640px) {
+  .wl-conflict-modal__actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .wl-conflict-modal__actions.wl-conflict-modal__actions--multi {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 639px) {
+  .wl-conflict-overlay {
+    padding: 10px;
+  }
+
+  .wl-conflict-modal {
+    width: min(100%, 560px);
+    max-height: calc(100dvh - 20px);
+  }
+
+  .wl-conflict-action {
+    white-space: normal;
+  }
 }
 
 .wl-workout-time__paused {
@@ -4798,6 +6058,35 @@ onUnmounted(() => {
   color: var(--wl-text-secondary);
 }
 
+/* Keep completed history exercise card text explicit in dark UI.
+   This avoids inheriting darker framework defaults on nested inline elements. */
+.wl-page .wl-history-session .wl-hist-ex-card,
+.wl-page .wl-history-session .wl-hist-ex-info,
+.wl-page .wl-history-session .wl-hist-sets-table,
+.wl-page .wl-history-session .wl-hist-set-row,
+.wl-page .wl-history-session .wl-history-ex__stats {
+  color: var(--wl-text);
+}
+
+.wl-page .wl-history-session .wl-hist-ex-name,
+.wl-page .wl-history-session .wl-hist-ex-name strong,
+.wl-page .wl-history-session .wl-hist-set-row span,
+.wl-page .wl-history-session .wl-hist-set-row strong {
+  color: var(--wl-text);
+}
+
+.wl-page .wl-history-session .wl-hist-tag,
+.wl-page .wl-history-session .wl-hist-sets-head--strength,
+.wl-page .wl-history-session .wl-hist-sets-head--cardio,
+.wl-page .wl-history-session .wl-hist-sets-head--cardio small,
+.wl-page .wl-history-session .wl-hist-set-num,
+.wl-page .wl-history-session .wl-history-session__meta,
+.wl-page .wl-history-session .wl-history-session__meta span,
+.wl-page .wl-history-session .wl-history-ex__stats,
+.wl-page .wl-history-session .wl-history-ex__stats span {
+  color: var(--wl-text-secondary);
+}
+
 .wl-page .wl-empty-icon,
 .wl-page .wl-plan__chevron,
 .wl-page .wl-day-icon,
@@ -4874,6 +6163,16 @@ onUnmounted(() => {
   background: #15803d;
   border-color: #166534;
   color: #f8fafc;
+}
+
+.wl-page .wl-day-status--active {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(74, 222, 128, 0.48);
+  color: #bbf7d0;
+}
+
+.wl-page .wl-day-status--active i {
+  color: #4ade80;
 }
 
 .wl-page .wl-day-card__footer .wl-btn-preview {
@@ -5172,7 +6471,17 @@ onUnmounted(() => {
   }
 
   .wl-tab-panel--day-details {
-    padding-bottom: var(--wl-page-bottom-clearance);
+    padding-bottom: 0;
+  }
+
+  .wl-bottom-bar {
+    position: static !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    z-index: auto !important;
+    margin-top: 10px;
+    margin-bottom: 0;
   }
 
   .wl-bottom-bar__inner {
@@ -5716,8 +7025,8 @@ onUnmounted(() => {
     max-width: 100%;
     min-width: 0;
     padding: 5px 8px;
-    min-height: 32px;
-    font-size: 0.66rem;
+    min-height: 44px;
+    font-size: 0.72rem;
     border-radius: 9px;
     gap: 4px;
     justify-content: center;
@@ -5732,8 +7041,8 @@ onUnmounted(() => {
     max-width: 100%;
     min-width: 0;
     padding: 5px 8px;
-    min-height: 32px;
-    font-size: 0.66rem;
+    min-height: 44px;
+    font-size: 0.72rem;
     border-radius: 9px;
     gap: 4px;
     justify-content: center;

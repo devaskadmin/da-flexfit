@@ -21,13 +21,70 @@ const normalizeSet = (set = {}, fallbackSetNum = 0) => ({
   prefilledFromLastWorkout: Boolean(set?.prefilledFromLastWorkout),
 });
 
+const inferWorkoutTypeFromSet = (set = {}) =>
+  Number(set?.duration || 0) > 0 && Number(set?.reps || 0) === 0 ? 'Cardio' : 'Strength';
+
+const normalizeExerciseType = (exercise = {}) => {
+  const explicitType = String(exercise?.workoutType || exercise?.WorkoutType || '').trim();
+  if (explicitType) {
+    return explicitType;
+  }
+
+  const firstSet = Array.isArray(exercise?.sessionSets) ? exercise.sessionSets[0] : null;
+  return inferWorkoutTypeFromSet(firstSet);
+};
+
 const serializeExercise = (exercise = {}) => ({
   id: String(exercise?.id || ''),
   exerciseId: exercise?.exerciseId ?? null,
+  workoutScheduleGroupId: Number(exercise?.workoutScheduleGroupId || 0) || null,
+  name: String(exercise?.name || '').trim(),
+  image: String(exercise?.image || exercise?.ImageURL || '').trim(),
+  workoutType: normalizeExerciseType(exercise),
+  muscleGroup: String(exercise?.muscleGroup || '').trim(),
+  equipment: String(exercise?.equipment || '').trim(),
+  sets: Number(exercise?.sets || 0),
+  reps: Number(exercise?.reps || 0),
+  weight: Number(exercise?.weight || 0),
+  duration: Number(exercise?.duration || 0),
+  distance: Number(exercise?.distance || 0),
+  calories: Number(exercise?.calories || 0),
+  restTime: Number(exercise?.restTime || 0),
+  notes: typeof exercise?.notes === 'string' ? exercise.notes : '',
+  scheduleGroup: String(exercise?.scheduleGroup || '').trim(),
+  sortOrder: Number(exercise?.sortOrder || 0),
   sessionSets: Array.isArray(exercise?.sessionSets)
     ? exercise.sessionSets.map((set, index) => normalizeSet(set, index + 1))
     : [],
 });
+
+const normalizeDraftExercise = (exercise = {}, index = 0) => {
+  const sets = Array.isArray(exercise?.sessionSets)
+    ? exercise.sessionSets.map((set, setIndex) => normalizeSet(set, setIndex + 1))
+    : [];
+
+  return {
+    id: String(exercise?.id || `draft-${index + 1}`),
+    exerciseId: Number(exercise?.exerciseId || 0) || null,
+    workoutScheduleGroupId: Number(exercise?.workoutScheduleGroupId || 0) || null,
+    name: String(exercise?.name || `Exercise ${index + 1}`).trim() || `Exercise ${index + 1}`,
+    image: String(exercise?.image || '').trim(),
+    workoutType: String(exercise?.workoutType || inferWorkoutTypeFromSet(sets[0])).trim() || inferWorkoutTypeFromSet(sets[0]),
+    muscleGroup: String(exercise?.muscleGroup || '').trim(),
+    equipment: String(exercise?.equipment || '').trim(),
+    sets: Number(exercise?.sets || sets.length || 1),
+    reps: Number(exercise?.reps || 0),
+    weight: Number(exercise?.weight || 0),
+    duration: Number(exercise?.duration || 0),
+    distance: Number(exercise?.distance || 0),
+    calories: Number(exercise?.calories || 0),
+    restTime: Number(exercise?.restTime || 0),
+    notes: typeof exercise?.notes === 'string' ? exercise.notes : '',
+    scheduleGroup: String(exercise?.scheduleGroup || 'Any Day').trim() || 'Any Day',
+    sortOrder: Number(exercise?.sortOrder || index + 1),
+    sessionSets: sets,
+  };
+};
 
 const parseDraftNotes = (notes) => {
   if (!notes) {
@@ -64,7 +121,7 @@ export function useWorkoutSessionDraft({ activeSession, sessionExercises }) {
   const getSessionId = () => Number(activeSession.value?.id || 0);
 
   const buildDraftPayload = () => ({
-    version: 1,
+    version: 2,
     exercises: Array.isArray(sessionExercises.value)
       ? sessionExercises.value.map((exercise) => serializeExercise(exercise))
       : [],
@@ -76,6 +133,15 @@ export function useWorkoutSessionDraft({ activeSession, sessionExercises }) {
 
     if (!draftExercises.length || !Array.isArray(sessionExercises.value)) {
       return false;
+    }
+
+    const draftVersion = Number(draft?.version || 1);
+
+    if (draftVersion >= 2) {
+      isHydratingDraft.value = true;
+      sessionExercises.value = draftExercises.map((exercise, index) => normalizeDraftExercise(exercise, index));
+      isHydratingDraft.value = false;
+      return true;
     }
 
     const draftById = new Map(

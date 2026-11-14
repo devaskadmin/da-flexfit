@@ -1,5 +1,6 @@
-const test = require('node:test');
+const { test, after } = require('node:test');
 const assert = require('node:assert/strict');
+const pool = require('../db');
 
 const workoutSessionsRoute = require('../api/workout-sessions');
 
@@ -9,6 +10,10 @@ const {
   normalizeSessionIds,
   sessionIdSetsMatch,
 } = workoutSessionsRoute._private;
+
+after(async () => {
+  await pool.end();
+});
 
 test('parseDraftPayload parses JSON notes payload', () => {
   const payload = parseDraftPayload('{"version":1,"exercises":[{"id":"wse-1"}]}');

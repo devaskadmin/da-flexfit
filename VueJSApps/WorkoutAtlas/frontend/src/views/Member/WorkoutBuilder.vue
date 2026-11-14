@@ -6092,10 +6092,10 @@ watch(
 
       <!-- ── TAB 4: Suggest with AI ─────────────────────────────── -->
       <section v-show="builderTab === 'ai'" class="builder-section ai-suggest-section">
-        <div v-if="!isAdminUser" class="ai-suggest-body planner-empty">
+        <div v-if="!userId" class="ai-suggest-body planner-empty">
           <div class="planner-empty__icon">🔒</div>
-          <h4>Administrator access required</h4>
-          <p>This AI tab is currently limited to administrators so the foundation stays secure and scoped.</p>
+          <h4>Authentication required</h4>
+          <p>Please sign in to use the Create with AI feature.</p>
         </div>
 
         <div v-else class="ai-suggest-body ai-suggest-card">

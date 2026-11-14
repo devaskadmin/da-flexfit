@@ -1,10 +1,15 @@
-const test = require('node:test');
+const { test, after } = require('node:test');
 const assert = require('node:assert/strict');
+const pool = require('../db');
 
 const {
   TARGET_PLAN_TYPES,
   buildWorkoutPlanConversionPreview,
 } = require('../services/workoutPlanConversionEngine');
+
+after(async () => {
+  await pool.end();
+});
 
 function buildSourcePlan(overrides = {}) {
   return {

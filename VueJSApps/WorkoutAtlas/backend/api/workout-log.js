@@ -4,6 +4,7 @@ const router = express.Router();
 // ✅ DB Connect
 const pool = require('../db.js');
 const { sanitizeText } = require('../utils/sanitize.js');
+const { WORKOUT_HISTORY_VISIBLE_STATUSES } = require('../utils/workout-session-status-policy.js');
 
 const buildNormalizedGroupOrder = (builderOrder = [], preferredOrder = []) => {
   const normalizedBuilder = Array.isArray(builderOrder)
@@ -590,7 +591,6 @@ router.post('/session', async (req, res) => {
     for (const ex of exercises) {
       const sets = Array.isArray(ex.sets) ? ex.sets : [];
       const doneSets = sets.filter((s) => s.done);
-      if (doneSets.length === 0) continue; // skip uncompleted exercises
 
       // Lookup ExerciseID – fall back to provided exerciseId or skip
       let exerciseID = ex.exerciseId || null;
@@ -636,48 +636,133 @@ router.post('/session', async (req, res) => {
         }
       }
 
-      const totalSets = doneSets.length;
-      const avgWeight = doneSets.reduce((a, s) => a + Number(s.weight || 0), 0) / totalSets;
-      const avgReps   = doneSets.reduce((a, s) => a + Number(s.reps || 0), 0)   / totalSets;
-      const totalDur  = doneSets.reduce((a, s) => a + Number(s.duration || 0), 0);
+      let existingWorkoutLogId = null;
 
-      const [logResult] = await connection.query(
-        `INSERT INTO workout_log
-          (
-            workout_log_session_id,
-            UserID,
-            ExerciseID,
-            source_workout_schedule_id,
-            source_workout_schedule_exercise_id,
-            source_schedule_group_label,
-            WorkoutDate,
-            performed_at,
-            WorkoutType,
-            Duration,
-            Reps,
-            Sets,
-            Weight
-          )
-         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?)`,
-        [
-          workoutLogSessionId,
-          userID,
-          exerciseID || null,
-          sourceScheduleId,
-          sourceScheduleExerciseId,
-          sanitizeText(ex.scheduleGroup || '', 120) || null,
-          date,
-          sanitizeText(ex.workoutType || 'Strength'),
-          Math.round(totalDur),
-          Math.round(avgReps),
-          totalSets,
-          Math.round(avgWeight),
-        ]
-      );
+      if (sourceScheduleExerciseId) {
+        const [existingBySourceExercise] = await connection.query(
+          `SELECT WorkoutLogID
+           FROM workout_log
+           WHERE workout_log_session_id = ?
+             AND UserID = ?
+             AND source_workout_schedule_exercise_id = ?
+           ORDER BY WorkoutLogID ASC
+           LIMIT 1`,
+          [workoutLogSessionId, userID, sourceScheduleExerciseId]
+        );
+        if (existingBySourceExercise.length) {
+          existingWorkoutLogId = Number(existingBySourceExercise[0].WorkoutLogID || 0) || null;
+        }
+      }
+
+      if (!existingWorkoutLogId && exerciseID) {
+        const [existingByExercise] = await connection.query(
+          `SELECT WorkoutLogID
+           FROM workout_log
+           WHERE workout_log_session_id = ?
+             AND UserID = ?
+             AND ExerciseID = ?
+             AND COALESCE(source_schedule_group_label, '') = COALESCE(?, '')
+           ORDER BY WorkoutLogID ASC
+           LIMIT 1`,
+          [
+            workoutLogSessionId,
+            userID,
+            exerciseID,
+            sanitizeText(ex.scheduleGroup || '', 120) || null,
+          ]
+        );
+        if (existingByExercise.length) {
+          existingWorkoutLogId = Number(existingByExercise[0].WorkoutLogID || 0) || null;
+        }
+      }
+
+      if (!existingWorkoutLogId && doneSets.length === 0) {
+        continue;
+      }
+
+      const totalSets = doneSets.length;
+      const avgWeight = totalSets > 0
+        ? doneSets.reduce((a, s) => a + Number(s.weight || 0), 0) / totalSets
+        : 0;
+      const avgReps = totalSets > 0
+        ? doneSets.reduce((a, s) => a + Number(s.reps || 0), 0) / totalSets
+        : 0;
+      const totalDur = doneSets.reduce((a, s) => a + Number(s.duration || 0), 0);
+
+      let workoutLogId = existingWorkoutLogId;
+
+      if (workoutLogId) {
+        await connection.query(
+          `UPDATE workout_log
+           SET ExerciseID                          = ?,
+               source_workout_schedule_id          = ?,
+               source_workout_schedule_exercise_id = ?,
+               source_schedule_group_label         = ?,
+               WorkoutDate                         = ?,
+               performed_at                        = NOW(),
+               WorkoutType                         = ?,
+               Duration                            = ?,
+               Reps                                = ?,
+               Sets                                = ?,
+               Weight                              = ?
+           WHERE WorkoutLogID = ?
+             AND UserID = ?
+             AND workout_log_session_id = ?`,
+          [
+            exerciseID || null,
+            sourceScheduleId,
+            sourceScheduleExerciseId,
+            sanitizeText(ex.scheduleGroup || '', 120) || null,
+            date,
+            sanitizeText(ex.workoutType || 'Strength'),
+            Math.round(totalDur),
+            Math.round(avgReps),
+            totalSets,
+            Math.round(avgWeight),
+            workoutLogId,
+            userID,
+            workoutLogSessionId,
+          ]
+        );
+      } else {
+        const [logResult] = await connection.query(
+          `INSERT INTO workout_log
+            (
+              workout_log_session_id,
+              UserID,
+              ExerciseID,
+              source_workout_schedule_id,
+              source_workout_schedule_exercise_id,
+              source_schedule_group_label,
+              WorkoutDate,
+              performed_at,
+              WorkoutType,
+              Duration,
+              Reps,
+              Sets,
+              Weight
+            )
+           VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?)`,
+          [
+            workoutLogSessionId,
+            userID,
+            exerciseID || null,
+            sourceScheduleId,
+            sourceScheduleExerciseId,
+            sanitizeText(ex.scheduleGroup || '', 120) || null,
+            date,
+            sanitizeText(ex.workoutType || 'Strength'),
+            Math.round(totalDur),
+            Math.round(avgReps),
+            totalSets,
+            Math.round(avgWeight),
+          ]
+        );
+        workoutLogId = logResult.insertId;
+      }
 
       insertedExerciseLogs += 1;
 
-      const workoutLogId = logResult.insertId;
       for (let index = 0; index < sets.length; index += 1) {
         const setEntry = sets[index] || {};
         await connection.query(
@@ -706,6 +791,13 @@ router.post('/session', async (req, res) => {
           ]
         );
       }
+
+      await connection.query(
+        `DELETE FROM workout_log_sets
+         WHERE workout_log_id = ?
+           AND set_number > ?`,
+        [workoutLogId, sets.length]
+      );
     }
 
     await connection.commit();
@@ -747,11 +839,13 @@ router.get('/history', async (req, res) => {
 
     // ── Step 1: fetch exercise-level rows filtered by started/workout date ──
     // WorkoutDate is set to the workout's intended start date, making it the
-    // correct filter key. Only include rows that either have no session (legacy)
-    // or belong to a completed session.
+    // correct filter key. Include legacy rows with no session id and all
+    // history-visible statuses so active/in-progress set progress remains
+    // visible in Workout Log without sharing missed-eligibility restrictions.
     const [exerciseRows] = await pool.query(`
       SELECT
         wl.WorkoutLogID                   AS workoutLogId,
+        wl.ExerciseID                     AS exerciseId,
         wl.workout_log_session_id         AS sessionId,
         wl.WorkoutDate                    AS workoutDate,
         wl.WorkoutType                    AS workoutType,
@@ -780,9 +874,12 @@ router.get('/history', async (req, res) => {
       LEFT JOIN exercises            ex  ON ex.ExerciseID = wl.ExerciseID
       WHERE wl.UserID = ?
         AND wl.WorkoutDate = ?
-        AND (wl.workout_log_session_id IS NULL OR wls.status = 'completed')
+        AND (
+          wl.workout_log_session_id IS NULL
+          OR wls.status IN (?)
+        )
       ORDER BY wl.workout_log_session_id ASC, wl.WorkoutLogID ASC
-    `, [userId, date]);
+    `, [userId, date, WORKOUT_HISTORY_VISIBLE_STATUSES]);
 
     if (exerciseRows.length === 0) {
       return res.status(200).json({
@@ -841,6 +938,7 @@ router.get('/history', async (req, res) => {
       }
       sessionMap.get(key).exercises.push({
         workoutLogId:  ex.workoutLogId,
+        exerciseId:    ex.exerciseId || null,
         exerciseName:  ex.exerciseName || 'Unknown Exercise',
         exerciseImage: ex.exerciseImage || null,
         muscleGroup:   ex.muscleGroup  || '',

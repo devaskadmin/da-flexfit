@@ -2381,7 +2381,7 @@ const normalizeFallbackExercises = (rawList = []) => {
       Instructions: Array.isArray(item?.instructions) ? item.instructions.join(' ') : '',
       ImageGallery: JSON.stringify(item?.images || []),
       PrimaryImage: primaryImage,
-      ImageURL: primaryImage ? `/assets/Excerises/${primaryImage}` : '',
+      ImageURL: buildExerciseMediaApiUrl(index + 1, primaryImage),
       MediaProvider: MEDIA_PROVIDER_LOCAL,
       MediaPath: buildLogicalMediaPath(index + 1),
       CreatedByUserID: null,

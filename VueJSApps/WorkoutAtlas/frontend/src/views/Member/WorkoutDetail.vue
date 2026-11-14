@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { API_BASE } from '@/config/env';
 import ExerciseSessionCard from '@/components/workout-session/ExerciseSessionCard.vue';
 import { useWorkoutSessionDraft } from '@/composable/useWorkoutSessionDraft';
+import { showConfirmDialog } from '@/utils/browserDialogs';
 
 const route  = useRoute();
 const router = useRouter();
@@ -18,8 +19,13 @@ const saving          = ref(false);
 const saveMessage     = ref('');
 const saveError       = ref('');
 const workoutTimerNowMs = ref(Date.now());
+const startWorkoutRequestLoading = ref(false);
 
 let workoutTimerIntervalId = null;
+let workoutSetPersistTimeoutId = null;
+let workoutSetPersistInFlight = false;
+let workoutSetPersistQueued = false;
+let workoutSetPersistPromise = null;
 
 /* ─── Data state ─────────────────────────────────────────────────────────── */
 const plan             = ref(null);
@@ -107,6 +113,79 @@ const buildInitialSets = (exercise) => {
   }));
 };
 
+const buildCurrentWorkoutSessionPayload = () => ({
+  planId: planId.value,
+  planName: plan.value?.metadata?.name || '',
+  workoutDate: activeSession.value?.workoutDate || today(),
+  workoutSessionId: activeSession.value?.id || null,
+  exercises: dayExercises.value.map((ex) => ({
+    exerciseId: ex.exerciseId,
+    name: ex.name,
+    workoutType: ex.workoutType || 'Strength',
+    scheduleGroup: ex.scheduleGroup,
+    sets: Array.isArray(ex.sessionSets) ? ex.sessionSets : [],
+  })),
+});
+
+const queueWorkoutSetProgressPersistence = ({ immediate = false } = {}) => {
+  if (!activeSession.value?.id || !selectedDay.value) return;
+
+  if (workoutSetPersistTimeoutId != null) {
+    window.clearTimeout(workoutSetPersistTimeoutId);
+    workoutSetPersistTimeoutId = null;
+  }
+
+  workoutSetPersistTimeoutId = window.setTimeout(() => {
+    workoutSetPersistTimeoutId = null;
+    void persistWorkoutSetProgress();
+  }, immediate ? 0 : 450);
+};
+
+const persistWorkoutSetProgress = async ({ rollback } = {}) => {
+  if (!activeSession.value?.id || !selectedDay.value) {
+    return true;
+  }
+
+  if (workoutSetPersistInFlight) {
+    workoutSetPersistQueued = true;
+    return workoutSetPersistPromise || true;
+  }
+
+  workoutSetPersistInFlight = true;
+  workoutSetPersistPromise = (async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/workout-log/session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildCurrentWorkoutSessionPayload()),
+        credentials: 'include',
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to save workout set progress.');
+      }
+
+      return true;
+    } catch (err) {
+      if (typeof rollback === 'function') {
+        rollback();
+      }
+      saveError.value = err?.message || 'Unable to save workout progress right now. Your latest set change was not persisted.';
+      return false;
+    } finally {
+      workoutSetPersistInFlight = false;
+      const shouldRunQueued = workoutSetPersistQueued;
+      workoutSetPersistQueued = false;
+      if (shouldRunQueued) {
+        queueWorkoutSetProgressPersistence({ immediate: true });
+      }
+    }
+  })();
+
+  return workoutSetPersistPromise;
+};
+
 const addSet = (exerciseId) => {
   const ex = sessionExercises.value.find((e) => e.id === exerciseId);
   if (!ex) return;
@@ -119,6 +198,7 @@ const addSet = (exerciseId) => {
     done:     false,
   });
   queueWorkoutDraftSave();
+  queueWorkoutSetProgressPersistence();
 };
 
 const removeSet = (exerciseId, setIndex) => {
@@ -127,14 +207,28 @@ const removeSet = (exerciseId, setIndex) => {
   ex.sessionSets.splice(setIndex, 1);
   ex.sessionSets.forEach((s, i) => { s.setNum = i + 1; });
   queueWorkoutDraftSave();
+  queueWorkoutSetProgressPersistence();
 };
 
 const updateSet = (exerciseId, setIndex, field, value) => {
   const ex = sessionExercises.value.find((e) => e.id === exerciseId);
   if (!ex) return;
+  const previousValue = ex.sessionSets[setIndex]?.[field];
   ex.sessionSets[setIndex][field] =
     field === 'done' ? Boolean(value) : (Number(value) || 0);
   queueWorkoutDraftSave();
+
+  if (field === 'done') {
+    void persistWorkoutSetProgress({
+      rollback: () => {
+        ex.sessionSets[setIndex][field] = previousValue;
+        queueWorkoutDraftSave();
+      },
+    });
+    return;
+  }
+
+  queueWorkoutSetProgressPersistence();
 };
 
 /* ─── Load plan ──────────────────────────────────────────────────────────── */
@@ -202,23 +296,61 @@ const loadPlan = async () => {
 /* ─── Check active session on mount ─────────────────────────────────────── */
 const checkActiveSession = async () => {
   try {
-    const res = await fetch(`${API_BASE}/api/workout-sessions/active`, {
+    const res = await fetch(`${API_BASE}/api/workout-sessions/in-progress`, {
       credentials: 'include',
     });
     if (!res.ok) return;
     const data = await res.json();
-    if (!data.session) return;
+    const sessions = Array.isArray(data?.sessions) ? data.sessions : [];
+    if (!sessions.length) return;
+    const matchingSession = sessions.find((session) =>
+      String(session?.workoutPlanId || '') === planId.value
+    );
+    if (!matchingSession) return;
     // Auto-switch only if the session belongs to this plan
-    if (String(data.session.workoutPlanId) === planId.value) {
-      activeSession.value = data.session;
-      selectedDay.value   = data.session.workoutDayName;
+    if (String(matchingSession.workoutPlanId) === planId.value) {
+      activeSession.value = matchingSession;
+      selectedDay.value   = matchingSession.workoutDayName;
       activeTab.value     = 'dayDetails';
-      applyWorkoutDraft(data.session.notes);
+      applyWorkoutDraft(matchingSession.notes);
       queueWorkoutDraftSave(true);
     }
   } catch (_) {
     // non-fatal
   }
+};
+
+const normalizeSessionStatus = (session) =>
+  String(session?.sessionStatus || session?.status || '').trim().toLowerCase();
+
+const isLiveSessionStatus = (status) =>
+  status === 'in_progress' || status === 'in-progress' || status === 'active' || status === 'paused';
+
+const loadInProgressSessions = async () => {
+  const res = await fetch(`${API_BASE}/api/workout-sessions/in-progress`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new Error('Unable to check current workout sessions.');
+  }
+  const data = await res.json().catch(() => ({}));
+  return Array.isArray(data?.sessions) ? data.sessions : [];
+};
+
+const continueSessionInDetail = async (session) => {
+  if (!session) return;
+
+  if (String(session?.workoutPlanId || '') !== planId.value) {
+    saveError.value = 'Your unfinished workout belongs to another plan. Open Workout Log to resume it.';
+    await router.push({ name: 'workouts' });
+    return;
+  }
+
+  activeSession.value = session;
+  selectedDay.value = String(session?.workoutDayName || '').trim();
+  activeTab.value = 'dayDetails';
+  applyWorkoutDraft(session?.notes);
+  queueWorkoutDraftSave(true);
 };
 
 watch(
@@ -231,22 +363,76 @@ watch(
 
 /* ─── Start workout for a day (Overview) ────────────────────────────────── */
 const startDayWorkout = async (dayName) => {
+  if (startWorkoutRequestLoading.value) {
+    return;
+  }
+
+  startWorkoutRequestLoading.value = true;
   saveError.value       = '';
   clearWorkoutDraftSave();
 
   try {
+    const sessions = await loadInProgressSessions();
+    const liveSessions = sessions.filter((session) =>
+      isLiveSessionStatus(normalizeSessionStatus(session))
+    );
+
+    const matchingSession = liveSessions.find((session) =>
+      String(session?.workoutPlanId || '') === planId.value &&
+      String(session?.workoutDayName || '').trim().toLowerCase() === String(dayName || '').trim().toLowerCase()
+    );
+
+    if (matchingSession) {
+      await continueSessionInDetail(matchingSession);
+      return;
+    }
+
+    let startPayload = {
+      workoutPlanId: planId.value,
+      workoutDayName: dayName,
+      workoutDate: today(),
+    };
+
+    if (liveSessions.length >= 2) {
+      saveError.value = 'You already have two workouts in progress. Complete or cancel one before starting another workout.';
+      return;
+    }
+
+    if (liveSessions.length === 1) {
+      const existingSession = liveSessions[0];
+      const continueExisting = await showConfirmDialog(
+        'You have an unfinished workout. Would you like to continue your existing workout?',
+        {
+          title: 'Unfinished Workout Found',
+          confirmButtonText: 'Continue Existing',
+          cancelButtonText: 'Start New Workout',
+          icon: 'question',
+        }
+      );
+
+      if (continueExisting) {
+        await continueSessionInDetail(existingSession);
+        return;
+      }
+    }
+
     const res = await fetch(`${API_BASE}/api/workout-sessions/start`, {
       method:      'POST',
       headers:     { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({
-        workoutPlanId:  planId.value,
-        workoutDayName: dayName,
-        workoutDate:    today(),
-      }),
+      body: JSON.stringify(startPayload),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data?.error || 'Failed to start workout session.');
+    if (!res.ok) {
+      const errorCode = String(data?.code || data?.errorCode || '').trim();
+      if (res.status === 409 && errorCode === 'WORKOUT_SESSION_LIMIT_REACHED') {
+        throw new Error('You already have two workouts in progress. Complete or cancel one before starting another workout.');
+      }
+      if (res.status === 409 && errorCode === 'WORKOUT_SESSION_CONFLICT') {
+        throw new Error('You have an unfinished workout. Continue it or start a new workout from Workout Log.');
+      }
+      throw new Error(data?.error || 'Failed to start workout session.');
+    }
 
     activeSession.value = data.session;
     selectedDay.value   = dayName;
@@ -255,6 +441,8 @@ const startDayWorkout = async (dayName) => {
     queueWorkoutDraftSave(true);
   } catch (err) {
     saveError.value = err?.message || 'Failed to start workout.';
+  } finally {
+    startWorkoutRequestLoading.value = false;
   }
 };
 
@@ -266,6 +454,11 @@ const completeWorkout = async () => {
   clearWorkoutDraftSave();
 
   try {
+    const immediatePersistOk = await persistWorkoutSetProgress();
+    if (!immediatePersistOk) {
+      throw new Error('Unable to persist workout sets before completing the workout.');
+    }
+
     // 1 ── Save logs
     const sessionPayload = {
       planId:          planId.value,
@@ -369,6 +562,10 @@ onActivated(async () => {
 });
 
 onUnmounted(() => {
+  if (workoutSetPersistTimeoutId != null) {
+    window.clearTimeout(workoutSetPersistTimeoutId);
+    workoutSetPersistTimeoutId = null;
+  }
   void persistWorkoutDraft();
   setWorkoutTimerRunning(false);
 });
@@ -528,6 +725,7 @@ onUnmounted(() => {
                 <button
                   v-else
                   type="button" class="wd-btn-start"
+                  :disabled="startWorkoutRequestLoading"
                   @click="startDayWorkout(group.name)"
                 >
                   <i class="fa-solid fa-play"></i> Start Workout

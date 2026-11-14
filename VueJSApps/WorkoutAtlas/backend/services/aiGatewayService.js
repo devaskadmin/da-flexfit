@@ -1,6 +1,6 @@
 ﻿const crypto = require('crypto');
 
-const DEFAULT_APP_NAME = 'workoutatlas';
+const DEFAULT_APP_NAME = 'Workout-Atlas';
 const DEFAULT_REQUEST_TYPE = 'LOCAL_AI_QA';
 const DEFAULT_GATEWAY_PATH = '/api/gateway';
 const DEFAULT_STORAGE_BUCKET = 'workoutatlas-s3-data';

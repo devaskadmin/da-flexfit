@@ -2255,6 +2255,7 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
   const normalizedExerciseRows = Array.isArray(exerciseRows) ? exerciseRows : [];
   const exercises = normalizedExerciseRows.map((row) => ({
     id: `wse-${row.id}`,
+    workoutScheduleGroupId: Number(row.workout_schedule_group_id || 0) || null,
     exerciseId: Number(row.exercise_id || 0),
     name: String(row.exercise_name || row.ExerciseTitle || '').trim(),
     image: String(row.exercise_image_url || row.ImageURL || '').trim(),
@@ -3487,6 +3488,104 @@ router.delete('/workout-schedules/:id/exercises/:scheduleExerciseId', async (req
   }
 });
 
+const SESSION_CLEANUP_DURATION_SQL = `CASE
+  WHEN started_at IS NULL THEN 0
+  ELSE GREATEST(TIMESTAMPDIFF(SECOND, started_at, NOW()), 0)
+END`;
+
+const listActiveSessionsForPlan = async ({ connection, scheduleId, userId }) => {
+  const [rows] = await connection.query(
+    `SELECT
+       id,
+       source_workout_schedule_id AS workoutPlanId,
+       workout_day_id             AS workoutDayId,
+       workout_day_name           AS workoutDayName,
+       workout_date               AS workoutDate,
+       started_at                 AS startedAt,
+       status,
+       notes
+     FROM workout_log_sessions
+     WHERE user_id = ?
+       AND source_workout_schedule_id = ?
+       AND status = 'in_progress'
+     ORDER BY started_at DESC, id DESC`,
+    [userId, scheduleId]
+  );
+
+  return rows.map((row) => ({
+    id: Number(row.id),
+    workoutPlanId: Number(row.workoutPlanId || 0) || null,
+    workoutDayId: row.workoutDayId == null ? null : Number(row.workoutDayId),
+    workoutDayName: String(row.workoutDayName || '').trim(),
+    workoutDate: row.workoutDate || null,
+    startedAt: row.startedAt || null,
+    status: String(row.status || '').trim().toLowerCase(),
+    hasSavedProgress: (() => {
+      try {
+        const draft = typeof row.notes === 'string' ? JSON.parse(row.notes) : row.notes;
+        return Array.isArray(draft?.exercises) && draft.exercises.length > 0;
+      } catch (_) {
+        return false;
+      }
+    })(),
+  }));
+};
+
+const cancelActiveSessionsForPlan = async ({ connection, scheduleId, userId }) => {
+  const [result] = await connection.query(
+    `UPDATE workout_log_sessions
+     SET status = 'cancelled',
+         ended_at = NOW(),
+         completed_at = NULL,
+         duration_seconds = ${SESSION_CLEANUP_DURATION_SQL}
+     WHERE user_id = ?
+       AND source_workout_schedule_id = ?
+       AND status = 'in_progress'`,
+    [userId, scheduleId]
+  );
+
+  return Number(result?.affectedRows || 0);
+};
+
+router.get('/workout-schedules/:id/delete-impact', async (req, res) => {
+  try {
+    const userId = req.session?.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User not logged in' });
+    }
+
+    const scheduleId = Number(req.params?.id || 0);
+    if (!scheduleId) {
+      return res.status(400).json({ error: 'Invalid schedule id' });
+    }
+
+    const [scheduleRows] = await pool.query(
+      'SELECT id, user_id, title AS planName FROM workout_schedules WHERE id = ? LIMIT 1',
+      [scheduleId]
+    );
+
+    if (!scheduleRows.length || Number(scheduleRows[0]?.user_id || 0) !== Number(userId)) {
+      return res.status(404).json({ error: 'Workout schedule not found' });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+      const activeSessions = await listActiveSessionsForPlan({ connection, scheduleId, userId });
+      return res.json({
+        planId: scheduleId,
+        planName: String(scheduleRows[0]?.planName || '').trim(),
+        activeSessionCount: activeSessions.length,
+        activeSessions,
+      });
+    } finally {
+      connection.release();
+    }
+  } catch (err) {
+    console.error('❌ Failed to fetch workout schedule delete impact:', err);
+    return res.status(500).json({ error: 'Failed to load workout schedule impact.' });
+  }
+});
+
 router.delete('/workout-schedules/:id', async (req, res) => {
   try {
     const userId = req.session?.user?.id;
@@ -3522,12 +3621,31 @@ router.delete('/workout-schedules/:id', async (req, res) => {
       return res.status(403).json({ error: 'You are not allowed to delete global workout templates.' });
     }
 
-    await cleanupWorkoutPlanCoverForSchedule(schedule);
+    const connection = await pool.getConnection();
+    let result;
+    let cancelledActiveSessionCount = 0;
+    try {
+      await connection.beginTransaction();
 
-    const [result] = await pool.query(
-      'DELETE FROM workout_schedules WHERE id = ? AND user_id = ?',
-      [scheduleId, userId]
-    );
+      await cleanupWorkoutPlanCoverForSchedule(schedule);
+      cancelledActiveSessionCount = await cancelActiveSessionsForPlan({ connection, scheduleId, userId });
+
+      [result] = await connection.query(
+        'DELETE FROM workout_schedules WHERE id = ? AND user_id = ?',
+        [scheduleId, userId]
+      );
+
+      await connection.commit();
+    } catch (innerErr) {
+      try {
+        await connection.rollback();
+      } catch (_) {
+        // ignore rollback errors
+      }
+      throw innerErr;
+    } finally {
+      connection.release();
+    }
 
     if (!result.affectedRows) {
       return res.status(404).json({ error: 'Workout schedule not found' });
@@ -3536,6 +3654,7 @@ router.delete('/workout-schedules/:id', async (req, res) => {
     const workoutLists = await loadSchedulesForUser(userId);
     return res.json({
       message: 'Workout schedule deleted',
+      cancelledActiveSessionCount,
       workoutLists,
       hasWorkoutLists: workoutLists.length > 0,
       hasSavedWorkoutExerciseList: await hasSavedExercisesForUser(userId),
@@ -3548,11 +3667,6 @@ router.delete('/workout-schedules/:id', async (req, res) => {
 
 router.get('/featured-workout-plans', async (req, res) => {
   try {
-    const userId = req.session?.user?.id;
-    if (!userId) {
-      return res.status(401).json({ error: 'User not logged in' });
-    }
-
     const workoutLists = await loadGlobalWorkoutPlans({
       planTypes: [FEATURED_WORKOUT_PLAN_TYPE],
       onlyPublished: true,
@@ -5237,12 +5351,31 @@ router.delete('/workout-planner/:planId', async (req, res) => {
       });
     }
 
-    await cleanupWorkoutPlanCoverForSchedule(schedule);
+    const connection = await pool.getConnection();
+    let result;
+    let cancelledActiveSessionCount = 0;
+    try {
+      await connection.beginTransaction();
 
-    const [result] = await pool.query(
-      'DELETE FROM workout_schedules WHERE id = ? AND user_id = ?',
-      [scheduleId, userId]
-    );
+      await cleanupWorkoutPlanCoverForSchedule(schedule);
+      cancelledActiveSessionCount = await cancelActiveSessionsForPlan({ connection, scheduleId, userId });
+
+      [result] = await connection.query(
+        'DELETE FROM workout_schedules WHERE id = ? AND user_id = ?',
+        [scheduleId, userId]
+      );
+
+      await connection.commit();
+    } catch (innerErr) {
+      try {
+        await connection.rollback();
+      } catch (_) {
+        // ignore rollback errors
+      }
+      throw innerErr;
+    } finally {
+      connection.release();
+    }
 
     if (!result.affectedRows) {
       return res.status(404).json({ error: 'Workout plan not found' });
@@ -5251,6 +5384,7 @@ router.delete('/workout-planner/:planId', async (req, res) => {
     const workoutLists = await loadSchedulesForUser(userId);
     return res.json({
       message: 'Workout plan deleted',
+      cancelledActiveSessionCount,
       workoutLists,
       hasWorkoutLists: workoutLists.length > 0,
       hasSavedWorkoutExerciseList: await hasSavedExercisesForUser(userId),

@@ -12,29 +12,15 @@ const {
   createRequestId,
 } = require('../services/aiGatewayService');
 
-function isAdminSession(req) {
-  const roleSlug = String(req?.session?.user?.roleSlug || '').trim().toLowerCase();
-  if (roleSlug === 'administrator' || roleSlug === 'admin') {
-    return true;
-  }
-
-  const role = String(req?.session?.user?.role || '').trim().toLowerCase();
-  return role === 'administrator' || role === 'admin';
-}
-
-function requireAdmin(req, res, next) {
+function requireAuthenticatedUser(req, res, next) {
   if (!req.session?.user?.id) {
-    return res.status(401).json({ error: 'Not authenticated.' });
-  }
-
-  if (!isAdminSession(req)) {
-    return res.status(403).json({ error: 'Administrator access required.' });
+    return res.status(401).json({ error: 'Authentication required.' });
   }
 
   next();
 }
 
-router.post('/ai/qa-message', requireAdmin, async (req, res) => {
+router.post('/ai/qa-message', requireAuthenticatedUser, async (req, res) => {
   const isDevelopment = String(process.env.NODE_ENV || '').trim().toLowerCase() !== 'production';
   let requestId = '';
   let gatewayUrl = '';

@@ -13,7 +13,6 @@ const REPO_ROOT = path.resolve(BACKEND_ROOT, '..');
 const DEFAULT_LOCAL_AWS_RELATIVE_PATH = 'backend/workoutatlas-s3-data';
 
 const CONTENT_ROOT = path.resolve(BACKEND_ROOT, 'workoutatlas-s3-data');
-const LEGACY_EXERCISE_ROOT = path.resolve(__dirname, '..', '..', 'frontend', 'src', 'assets', 'Excerises');
 
 const DEFAULT_EXERCISE_IMAGE_NAME = 'default.JPG';
 const DEFAULT_EXERCISE_STORAGE_KEY = 'APP/exercise-library/default.JPG';
@@ -411,45 +410,6 @@ async function fetchObjectViaGateway(storageKey) {
   }
 }
 
-function getLocalImageCandidates(exercise = {}, requestedImageName = '') {
-  const id = Number(exercise.ExerciseID || exercise.exerciseId || 0);
-  const relativeName = toSafeRelativePath(requestedImageName || exercise.PrimaryImage || exercise.primaryImage) || DEFAULT_EXERCISE_IMAGE_NAME;
-  const baseName = toSafeFileName(relativeName);
-  const localPath = buildExerciseImagePath({
-    ExerciseID: id,
-    MediaProvider: exercise.MediaProvider,
-    MediaPath: exercise.MediaPath,
-    PrimaryImage: relativeName,
-  });
-
-  const candidates = [];
-
-  if (localPath.localFilePath) {
-    candidates.push(localPath.localFilePath);
-  }
-
-  if (baseName) {
-    const localBaseName = buildExerciseImagePath({
-      ExerciseID: id,
-      MediaProvider: exercise.MediaProvider,
-      MediaPath: exercise.MediaPath,
-      PrimaryImage: baseName,
-    });
-    candidates.push(localBaseName.localFilePath);
-  }
-
-  if (!isDefaultExerciseImageReference(relativeName)) {
-    candidates.push(path.join(LEGACY_EXERCISE_ROOT, relativeName));
-    candidates.push(path.join(resolveLocalContentRoot(), DEFAULT_EXERCISE_STORAGE_KEY));
-  }
-
-  candidates.push(path.join(resolveLocalContentRoot(), DEFAULT_EXERCISE_STORAGE_KEY));
-  candidates.push(path.join(LEGACY_EXERCISE_ROOT, DEFAULT_EXERCISE_IMAGE_NAME));
-  candidates.push(path.join(LEGACY_EXERCISE_ROOT, 'default', 'default.jpg'));
-
-  return Array.from(new Set(candidates));
-}
-
 function detectMimeType(filePath) {
   const ext = path.extname(filePath || '').toLowerCase();
   return MIME_BY_EXT[ext] || 'application/octet-stream';
@@ -484,34 +444,16 @@ async function streamExerciseImage(res, exerciseOrRow, imageName) {
     return;
   } catch (gatewayError) {
     const safeGatewayError = String(gatewayError?.message || gatewayError || '').trim();
+    const status = Number(gatewayError?.statusCode || 502);
     if (shouldTraceMedia()) {
-      console.warn('[MEDIA] Gateway retrieval failed; using temporary local filesystem fallback.', safeGatewayError);
+      console.warn('[MEDIA] Gateway retrieval failed; returning controlled gateway error response.', safeGatewayError);
     }
-    console.warn(`MEDIA SOURCE: LOCAL_FALLBACK${safeGatewayError ? ` (Gateway error: ${safeGatewayError})` : ''}`);
-  }
+    console.warn(`MEDIA SOURCE: GATEWAY_ERROR${safeGatewayError ? ` (${safeGatewayError})` : ''}`);
 
-  // Temporary Stage 2A fallback: if gateway/S3 retrieval fails, read from local media path.
-  const candidates = getLocalImageCandidates(resolvedExercise, effectiveImageName);
-  const primaryLocal = buildExerciseImagePath({
-    ExerciseID: resolvedExercise.ExerciseID,
-    MediaProvider: resolvedExercise.MediaProvider,
-    MediaPath: resolvedExercise.MediaPath,
-    PrimaryImage: effectiveImageName,
-  }).localFilePath;
-  const match = candidates.find((candidate) => fs.existsSync(candidate));
-
-  if (!match) {
-    const err = new Error(`Exercise image not found in local content repository. Attempted: ${primaryLocal}`);
-    err.statusCode = 404;
+    const err = new Error(safeGatewayError || 'Gateway media retrieval failed.');
+    err.statusCode = status >= 400 ? status : 502;
     throw err;
   }
-
-  const stat = fs.statSync(match);
-  res.setHeader('content-type', detectMimeType(match));
-  res.setHeader('content-length', stat.size);
-  res.setHeader('cache-control', 'no-store, max-age=0');
-
-  fs.createReadStream(match).pipe(res);
 }
 
 async function ensureExerciseMediaColumns(pool) {

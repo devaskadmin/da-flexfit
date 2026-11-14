@@ -1,0 +1,36 @@
+﻿=== exercise-storage-marker.test.js ===
+EXIT=0
+# tests 46
+# pass 46
+# fail 0
+# skipped 0
+
+=== media-resolver-gateway-only.test.js ===
+EXIT=0
+# tests 2
+# pass 2
+# fail 0
+# skipped 0
+
+=== media-resolver-storage-key.test.js ===
+EXIT=0
+# tests 2
+# pass 2
+# fail 0
+# skipped 0
+
+=== workout-log-grouping-regression.test.js ===
+EXIT=0
+# tests 5
+# pass 5
+# fail 0
+# skipped 0
+
+=== workout-log-history-visibility.test.js ===
+EXIT=0
+# tests 1
+# pass 1
+# fail 0
+# skipped 0
+
+=== workout-plan-conversion-engine.test.js ===

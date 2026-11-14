@@ -3,6 +3,8 @@ import { API_BASE } from '@/config/env';
 export const DEFAULT_EXERCISE_IMAGE_NAME = 'default.JPG';
 export const DEFAULT_EXERCISE_IMAGE = `${API_BASE}/api/media/default-exercise-image?name=${encodeURIComponent(DEFAULT_EXERCISE_IMAGE_NAME)}`;
 
+const INVALID_IMAGE_SENTINELS = new Set(['null', 'undefined', 'nan', '[object object]']);
+
 export const isDefaultExerciseImageReference = (value) => {
   const raw = String(value || '').trim().replace(/\\/g, '/').replace(/^\/+/, '');
   if (!raw) return false;
@@ -53,13 +55,33 @@ const extractResolverImageName = (value) => {
   return fileName;
 };
 
+const extractResolverImageNameFromQuery = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  try {
+    const base = /^https?:\/\//i.test(raw) ? undefined : API_BASE;
+    const parsed = new URL(raw, base);
+    const name = String(parsed.searchParams.get('name') || '').trim();
+    return name;
+  } catch {
+    return '';
+  }
+};
+
+const normalizeImageCandidate = (value) => {
+  const candidate = String(value || '').trim();
+  if (!candidate) return '';
+  return INVALID_IMAGE_SENTINELS.has(candidate.toLowerCase()) ? '' : candidate;
+};
+
 const parseExerciseId = (exercise) => {
   const id = Number(exercise?.ExerciseID || exercise?.exerciseId || 0);
   return id > 0 ? id : 0;
 };
 
 const normalizeExerciseImagePath = (value) => {
-  const raw = String(value || '').trim();
+  const raw = normalizeImageCandidate(value);
   if (!raw) return '';
 
   if (isAbsoluteUrl(raw)) {
@@ -108,19 +130,31 @@ export const getExerciseImage = (exercise) => {
     return resolvedFromBackend;
   }
 
-  const directPrimary = String(exercise.PrimaryImage || exercise.primaryImage || '').trim();
+  const directPrimary = normalizeImageCandidate(exercise.PrimaryImage || exercise.primaryImage || '');
   if (exerciseId && directPrimary) {
     return buildExerciseImageUrl(exerciseId, directPrimary);
   }
 
-  const directImage =
+  const directImage = normalizeImageCandidate(
     exercise.ImageURL ||
     exercise.imageUrl ||
     exercise.image ||
     exercise.thumbnail ||
-    '';
+    ''
+  );
+
+  if (isDefaultExerciseImageReference(directImage)) {
+    return getDefaultExerciseImageUrl(exerciseId);
+  }
 
   if (isBackendMediaEndpoint(directImage)) {
+    if (exerciseId) {
+      const resolverName = extractResolverImageNameFromQuery(directImage);
+      if (resolverName) {
+        return buildExerciseImageUrl(exerciseId, resolverName);
+      }
+    }
+
     const normalizedDirectImage = normalizeExerciseImagePath(directImage);
     if (normalizedDirectImage) {
       return normalizedDirectImage;

@@ -24,6 +24,7 @@ const createMockPool = (seedState = {}) => {
       rollback: 0,
       insertStartSession: 0,
       updateEndSession: 0,
+      updateCancelSession: 0,
     },
     userLocks: new Map(),
   };
@@ -187,6 +188,32 @@ const createMockPool = (seedState = {}) => {
       return [{ affectedRows: 1 }, []];
     }
 
+    if (normalizedSql.startsWith('UPDATE workout_log_sessions') && normalizedSql.includes("SET status = 'cancelled'")) {
+      if (typeof snapshotForRollbackIfNeeded === 'function') {
+        snapshotForRollbackIfNeeded();
+      }
+
+      const targetId = Number(params[0]);
+      const userId = Number(params[1]);
+      const target = state.sessions.find(
+        (session) =>
+          Number(session.id) === targetId &&
+          Number(session.user_id) === userId &&
+          session.status === 'in_progress'
+      );
+
+      if (!target) {
+        return [{ affectedRows: 0 }, []];
+      }
+
+      state.counters.updateCancelSession += 1;
+      target.status = 'cancelled';
+      target.ended_at = nowIso();
+      target.completed_at = null;
+      target.duration_seconds = Math.max(Number(target.duration_seconds || 0), 0);
+      return [{ affectedRows: 1 }, []];
+    }
+
     if (normalizedSql.startsWith('INSERT INTO workout_log_sessions')) {
       if (typeof snapshotForRollbackIfNeeded === 'function') {
         snapshotForRollbackIfNeeded();
@@ -223,6 +250,15 @@ const createMockPool = (seedState = {}) => {
         (session) => Number(session.id) === sessionId && Number(session.user_id) === userId
       );
       return [row ? [{ id: row.id, status: row.status }] : [], []];
+    }
+
+    if (normalizedSql.includes('FROM workout_log_sessions') && normalizedSql.includes('WHERE id = ? AND user_id = ?') && normalizedSql.includes('SELECT id,')) {
+      const sessionId = Number(params[0]);
+      const userId = Number(params[1]);
+      const row = state.sessions.find(
+        (session) => Number(session.id) === sessionId && Number(session.user_id) === userId
+      );
+      return [row ? [toActiveRow(row)] : [], []];
     }
 
     throw new Error(`Unhandled SQL in mock pool: ${normalizedSql}`);
@@ -335,7 +371,7 @@ const getBusinessHandler = (route, method, routePath) => {
   return layer.route.stack[layer.route.stack.length - 1].handle;
 };
 
-test('deleted-plan orphan active session is detected, ended, and replaced without losing draft/history', async () => {
+test('plan-less session with draft remains resumable and starting a second workout preserves existing draft/history', async () => {
   const orphanNotes = JSON.stringify({
     version: 1,
     exercises: [{ id: 'wse-orphan-1', exerciseId: 260, sessionSets: [{ setNum: 1, reps: 9, weight: 85 }] }],
@@ -382,8 +418,8 @@ test('deleted-plan orphan active session is detected, ended, and replaced withou
 
     assert.equal(activeRes.statusCode, 200);
     assert.equal(activeRes.body.session.id, 500);
-    assert.equal(activeRes.body.session.isOrphaned, true);
-    assert.equal(activeRes.body.session.orphanReason, 'missing_plan_reference');
+    assert.equal(activeRes.body.session.isOrphaned, false);
+    assert.equal(activeRes.body.session.orphanReason, null);
     assert.equal(activeRes.body.session.canResumeFromDraft, true);
 
     const startReq = {
@@ -392,7 +428,6 @@ test('deleted-plan orphan active session is detected, ended, and replaced withou
         workoutPlanId: 900,
         workoutDayName: 'Any Day',
         workoutDate: '2026-11-12',
-        endSessionIds: [500],
       },
     };
     const startRes = createResponseRecorder();
@@ -401,14 +436,16 @@ test('deleted-plan orphan active session is detected, ended, and replaced withou
     assert.equal(startRes.statusCode, 201);
     assert.equal(startRes.body.session.id, 501);
     assert.equal(startRes.body.session.sessionStatus, 'in_progress');
+    assert.deepEqual(startRes.body.cleanedInvalidSessionIds, []);
 
     const preservedOrphan = mockPool._state.sessions.find((session) => session.id === 500);
-    assert.equal(preservedOrphan.status, 'ended');
+    assert.equal(preservedOrphan.status, 'in_progress');
     assert.equal(preservedOrphan.notes, orphanNotes);
 
     const liveSessions = mockPool._state.sessions.filter((session) => session.status === 'in_progress' && session.user_id === 77);
-    assert.equal(liveSessions.length, 1);
+    assert.equal(liveSessions.length, 2);
     assert.equal(liveSessions.some((session) => session.id === 501), true);
+    assert.equal(liveSessions.some((session) => session.id === 500), true);
 
     assert.equal(mockPool._state.workoutLog.length, originalWorkoutLogCount);
     assert.equal(mockPool._state.workoutLogSets.length, originalWorkoutSetCount);
@@ -417,7 +454,59 @@ test('deleted-plan orphan active session is detected, ended, and replaced withou
   }
 });
 
-test('start rejects stale conflict selections without ending or creating sessions', async () => {
+test('invalid plan-less active session without draft is auto-cancelled before starting a new workout', async () => {
+  const mockPool = createMockPool({
+    sessions: [
+      {
+        id: 540,
+        user_id: 77,
+        source_workout_schedule_id: null,
+        workout_day_id: null,
+        workout_day_name: 'Legacy Session',
+        workout_date: '2026-10-14',
+        status: 'in_progress',
+        started_at: '2026-10-14T20:47:17.000Z',
+        ended_at: null,
+        duration_seconds: 0,
+        completed_at: null,
+        notes: '',
+      },
+    ],
+    workoutSchedules: [{ id: 900, user_id: 77, title: 'Disposable Recovery Plan' }],
+    nextSessionId: 541,
+  });
+
+  const { route, restore } = loadRouteWithMockPool(mockPool);
+  try {
+    const start = getBusinessHandler(route, 'post', '/workout-sessions/start');
+
+    const startReq = {
+      session: { user: { id: 77 } },
+      body: {
+        workoutPlanId: 900,
+        workoutDayName: 'Any Day',
+        workoutDate: '2026-11-12',
+      },
+    };
+    const startRes = createResponseRecorder();
+    await start(startReq, startRes);
+
+    assert.equal(startRes.statusCode, 201);
+    assert.equal(startRes.body.session.id, 541);
+    assert.deepEqual(startRes.body.cleanedInvalidSessionIds, [540]);
+
+    const cancelledLegacySession = mockPool._state.sessions.find((session) => session.id === 540);
+    assert.equal(cancelledLegacySession.status, 'cancelled');
+
+    const liveSessions = mockPool._state.sessions.filter((session) => session.status === 'in_progress' && session.user_id === 77);
+    assert.equal(liveSessions.length, 1);
+    assert.equal(liveSessions.some((session) => session.id === 541), true);
+  } finally {
+    restore();
+  }
+});
+
+test('start rejects start-time endSessionIds and keeps active sessions unchanged', async () => {
   const mockPool = createMockPool({
     sessions: [
       {
@@ -456,7 +545,7 @@ test('start rejects stale conflict selections without ending or creating session
     await start(req, res);
 
     assert.equal(res.statusCode, 409);
-    assert.equal(res.body.code, 'STALE_WORKOUT_SESSION_CONFLICT');
+    assert.equal(res.body.code, 'WORKOUT_SESSION_END_ACTION_REQUIRED');
     assert.equal(res.body.activeSessions.length, 1);
 
     const current = mockPool._state.sessions.find((session) => session.id === 700);
@@ -468,7 +557,7 @@ test('start rejects stale conflict selections without ending or creating session
   }
 });
 
-test('start rollback preserves existing in-progress sessions when insert fails', async () => {
+test('start rollback preserves existing in-progress sessions when insert fails during second-session start', async () => {
   const mockPool = createMockPool({
     sessions: [
       {
@@ -485,24 +574,9 @@ test('start rollback preserves existing in-progress sessions when insert fails',
         completed_at: null,
         notes: 'draft',
       },
-      {
-        id: 801,
-        user_id: 42,
-        source_workout_schedule_id: 112,
-        workout_day_id: null,
-        workout_day_name: 'Other Plan Day',
-        workout_date: '2026-11-11',
-        status: 'in_progress',
-        started_at: '2026-11-11T11:00:00.000Z',
-        ended_at: null,
-        duration_seconds: 0,
-        completed_at: null,
-        notes: 'other draft',
-      },
     ],
     workoutSchedules: [
       { id: 111, user_id: 42, title: 'Plan 111' },
-      { id: 112, user_id: 42, title: 'Plan 112' },
     ],
     failInsertOnStart: true,
     nextSessionId: 802,
@@ -516,10 +590,8 @@ test('start rollback preserves existing in-progress sessions when insert fails',
       session: { user: { id: 42 } },
       body: {
         workoutPlanId: 111,
-        workoutDayName: 'Any Day',
+        workoutDayName: 'Wednesday',
         workoutDate: '2026-11-12',
-        endSessionIds: [800, 801],
-        confirmMultipleEnd: true,
       },
     };
     const res = createResponseRecorder();
@@ -529,15 +601,14 @@ test('start rollback preserves existing in-progress sessions when insert fails',
 
     const original = mockPool._state.sessions.find((session) => session.id === 800);
     assert.equal(original.status, 'in_progress');
-    assert.equal(mockPool._state.sessions.find((session) => session.id === 801).status, 'in_progress');
-    assert.equal(mockPool._state.sessions.filter((session) => session.user_id === 42).length, 2);
+    assert.equal(mockPool._state.sessions.filter((session) => session.user_id === 42).length, 1);
     assert.equal(mockPool._state.counters.rollback > 0, true);
   } finally {
     restore();
   }
 });
 
-test('repeated start requests return a conflict and do not create a duplicate session', async () => {
+test('repeated start requests resume the existing session and do not create a duplicate session', async () => {
   const mockPool = createMockPool({
     sessions: [],
     workoutSchedules: [{ id: 222, user_id: 88, title: 'Plan 222' }],
@@ -572,9 +643,9 @@ test('repeated start requests return a conflict and do not create a duplicate se
     const secondRes = createResponseRecorder();
     await start(secondReq, secondRes);
 
-    assert.equal(secondRes.statusCode, 409);
-    assert.equal(secondRes.body.code, 'WORKOUT_SESSION_CONFLICT');
-    assert.equal(secondRes.body.activeSessions.length, 1);
+    assert.equal(secondRes.statusCode, 200);
+    assert.equal(secondRes.body?.resumed, true);
+    assert.equal(Number(secondRes.body?.session?.id || 0), Number(firstRes.body?.session?.id || 0));
 
     const liveSessions = mockPool._state.sessions.filter((session) => session.user_id === 88 && session.status === 'in_progress');
     assert.equal(liveSessions.length, 1);
@@ -584,7 +655,7 @@ test('repeated start requests return a conflict and do not create a duplicate se
   }
 });
 
-test('concurrent start attempts create one session and return one conflict', async () => {
+test('concurrent same-day start attempts create one session and resume the same session', async () => {
   const mockPool = createMockPool({
     sessions: [],
     workoutSchedules: [{ id: 333, user_id: 66, title: 'Plan 333' }],
@@ -622,7 +693,13 @@ test('concurrent start attempts create one session and return one conflict', asy
     ]);
 
     const statusCodes = [resA.statusCode, resB.statusCode].sort((left, right) => left - right);
-    assert.deepEqual(statusCodes, [201, 409]);
+    assert.deepEqual(statusCodes, [200, 201]);
+
+    const resumedResponse = [resA.body, resB.body].find((payload) => payload?.resumed === true);
+    const createdResponse = [resA.body, resB.body].find((payload) => Number(payload?.session?.id || 0) > 0 && payload?.resumed !== true);
+    assert.ok(resumedResponse);
+    assert.ok(createdResponse);
+    assert.equal(Number(resumedResponse.session.id), Number(createdResponse.session.id));
 
     const liveSessions = mockPool._state.sessions.filter((session) => session.user_id === 66 && session.status === 'in_progress');
     assert.equal(liveSessions.length, 1);
@@ -632,7 +709,7 @@ test('concurrent start attempts create one session and return one conflict', asy
   }
 });
 
-test('multiple unfinished sessions require confirmation and replace atomically when explicitly confirmed', async () => {
+test('third workout start is blocked until one of two active sessions is explicitly completed or cancelled', async () => {
   const mockPool = createMockPool({
     sessions: [
       {
@@ -677,35 +754,24 @@ test('multiple unfinished sessions require confirmation and replace atomically w
       workoutPlanId: 444,
       workoutDayName: 'Wednesday',
       workoutDate: '2026-11-12',
-      endSessionIds: [1301, 1302],
     };
 
-    const unconfirmedRes = createResponseRecorder();
-    await start({ session: { user: { id: 67 } }, body: baseBody }, unconfirmedRes);
-    assert.equal(unconfirmedRes.statusCode, 409);
-    assert.equal(unconfirmedRes.body.code, 'MULTIPLE_WORKOUT_CONFIRMATION_REQUIRED');
-    assert.equal(mockPool._state.sessions.every((session) => session.status === 'in_progress'), true);
-    assert.equal(mockPool._state.counters.insertStartSession, 0);
-
-    const confirmedRes = createResponseRecorder();
-    await start({
-      session: { user: { id: 67 } },
-      body: { ...baseBody, confirmMultipleEnd: true },
-    }, confirmedRes);
-
-    assert.equal(confirmedRes.statusCode, 201);
-    assert.equal(confirmedRes.body.session.id, 1303);
-    assert.equal(mockPool._state.sessions.find((session) => session.id === 1301).status, 'ended');
-    assert.equal(mockPool._state.sessions.find((session) => session.id === 1302).status, 'ended');
-    assert.equal(mockPool._state.sessions.filter((session) => session.status === 'in_progress').length, 1);
+    const blockedRes = createResponseRecorder();
+    await start({ session: { user: { id: 67 } }, body: baseBody }, blockedRes);
+    assert.equal(blockedRes.statusCode, 409);
+    assert.equal(blockedRes.body.code, 'WORKOUT_SESSION_LIMIT_REACHED');
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 1301).status, 'in_progress');
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 1302).status, 'in_progress');
+    assert.equal(mockPool._state.sessions.filter((session) => session.status === 'in_progress').length, 2);
     assert.equal(mockPool._state.workoutLog.length, 1);
     assert.equal(mockPool._state.workoutLogSets.length, 1);
+    assert.equal(mockPool._state.counters.insertStartSession, 0);
   } finally {
     restore();
   }
 });
 
-test('replacement ends every user-owned session across plans and preserves other users and saved data', async () => {
+test('cancelling one selected session frees one slot and starting another preserves the remaining active session', async () => {
   const mockPool = createMockPool({
     sessions: [
       {
@@ -737,20 +803,6 @@ test('replacement ends every user-owned session across plans and preserves other
         notes: '{"version":1,"exercises":[]}',
       },
       {
-        id: 1353,
-        user_id: 68,
-        source_workout_schedule_id: null,
-        workout_day_id: null,
-        workout_day_name: 'Legacy Orphan',
-        workout_date: '2026-11-12',
-        status: 'in_progress',
-        started_at: '2026-11-12T09:00:00.000Z',
-        ended_at: null,
-        duration_seconds: 0,
-        completed_at: null,
-        notes: '{"version":1,"exercises":[{"id":"saved-orphan"}]}',
-      },
-      {
         id: 2351,
         user_id: 69,
         source_workout_schedule_id: 445,
@@ -771,26 +823,34 @@ test('replacement ends every user-owned session across plans and preserves other
     ],
     workoutLog: [{ WorkoutLogID: 61, workout_log_session_id: 1351, UserID: 68, ExerciseID: 10 }],
     workoutLogSets: [{ id: 71, workout_log_id: 61, set_number: 1, reps: 8, weight: 50 }],
-    nextSessionId: 1354,
+    nextSessionId: 1353,
   });
 
   const { route, restore } = loadRouteWithMockPool(mockPool);
   try {
     const start = getBusinessHandler(route, 'post', '/workout-sessions/start');
-    const staleSubsetRes = createResponseRecorder();
+    const cancel = getBusinessHandler(route, 'post', '/workout-sessions/cancel/:sessionId');
+
+    const rejectedReplacementRes = createResponseRecorder();
     await start({
       session: { user: { id: 68 } },
       body: {
         workoutPlanId: 445,
         workoutDayName: 'Wednesday',
         workoutDate: '2026-11-12',
-        endSessionIds: [1353],
+        endSessionIds: [1351],
       },
-    }, staleSubsetRes);
+    }, rejectedReplacementRes);
 
-    assert.equal(staleSubsetRes.statusCode, 409);
-    assert.equal(staleSubsetRes.body.code, 'STALE_WORKOUT_SESSION_CONFLICT');
-    assert.equal(mockPool._state.sessions.filter((session) => session.user_id === 68 && session.status === 'in_progress').length, 3);
+    assert.equal(rejectedReplacementRes.statusCode, 409);
+    assert.equal(rejectedReplacementRes.body.code, 'WORKOUT_SESSION_LIMIT_REACHED');
+    assert.equal(mockPool._state.sessions.filter((session) => session.user_id === 68 && session.status === 'in_progress').length, 2);
+
+    const cancelRes = createResponseRecorder();
+    await cancel({ session: { user: { id: 68 } }, params: { sessionId: '1351' } }, cancelRes);
+    assert.equal(cancelRes.statusCode, 200);
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 1351).status, 'cancelled');
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 1352).status, 'in_progress');
 
     const res = createResponseRecorder();
     await start({
@@ -799,20 +859,15 @@ test('replacement ends every user-owned session across plans and preserves other
         workoutPlanId: 445,
         workoutDayName: 'Wednesday',
         workoutDate: '2026-11-12',
-        endSessionIds: [1351, 1352, 1353],
-        confirmMultipleEnd: true,
       },
     }, res);
 
     assert.equal(res.statusCode, 201);
-    assert.equal(res.body.session.id, 1354);
-    assert.equal(mockPool._state.sessions.find((session) => session.id === 1351).status, 'ended');
-    assert.equal(mockPool._state.sessions.find((session) => session.id === 1352).status, 'ended');
-    assert.equal(mockPool._state.sessions.find((session) => session.id === 1353).status, 'ended');
+    assert.equal(res.body.session.id, 1353);
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 1352).status, 'in_progress');
     assert.equal(mockPool._state.sessions.find((session) => session.id === 2351).status, 'in_progress');
-    assert.equal(mockPool._state.sessions.filter((session) => session.user_id === 68 && session.status === 'in_progress').length, 1);
-    assert.equal(mockPool._state.sessions.find((session) => session.id === 1354).status, 'in_progress');
-    assert.equal(mockPool._state.sessions.find((session) => session.id === 1353).notes.includes('saved-orphan'), true);
+    assert.equal(mockPool._state.sessions.filter((session) => session.user_id === 68 && session.status === 'in_progress').length, 2);
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 1353).status, 'in_progress');
     assert.equal(mockPool._state.workoutLog.length, 1);
     assert.equal(mockPool._state.workoutLogSets.length, 1);
   } finally {

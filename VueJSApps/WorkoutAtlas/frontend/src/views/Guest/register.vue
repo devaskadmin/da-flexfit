@@ -46,6 +46,9 @@ const form = reactive({
 });
 
 const subscriptionTiers = ref([]);
+const featuredPlans = ref([]);
+const featuredPlansLoading = ref(false);
+const featuredPlansError = ref('');
 const planCarouselIndex = ref(0);
 
 const accountTypeOptions = computed(() => {
@@ -375,9 +378,25 @@ const loadSubscriptionTiers = async () => {
   }
 };
 
+const loadFeaturedPlans = async () => {
+  featuredPlansLoading.value = true;
+  featuredPlansError.value = '';
+
+  try {
+    const response = await axios.get(`${API_BASE}/api/featured-workout-plans`);
+    featuredPlans.value = Array.isArray(response?.data?.workoutLists) ? response.data.workoutLists : [];
+  } catch {
+    featuredPlans.value = [];
+    featuredPlansError.value = 'Featured workout plans are temporarily unavailable.';
+  } finally {
+    featuredPlansLoading.value = false;
+  }
+};
+
 onMounted(() => {
   restoreDraft();
   loadSubscriptionTiers();
+  loadFeaturedPlans();
 });
 </script>
 
@@ -537,6 +556,32 @@ onMounted(() => {
             </div>
 
             <div v-if="tiersLoading" class="auth-subtitle text-center mt-2">Loading subscription tiers...</div>
+
+            <div class="featured-plans-panel" v-if="!featuredPlansLoading || featuredPlans.length">
+              <div class="featured-plans-header">
+                <h5>Featured workout plans</h5>
+                <span v-if="featuredPlansLoading" class="featured-plans-loading">Loading...</span>
+              </div>
+
+              <div v-if="featuredPlansError" class="alert alert-light mt-2 mb-0 small">{{ featuredPlansError }}</div>
+
+              <div v-else-if="featuredPlans.length" class="featured-plans-grid">
+                <div v-for="plan in featuredPlans" :key="plan.id" class="featured-plan-card">
+                  <div class="featured-plan-card__topline">
+                    <span class="featured-plan-card__badge">Featured</span>
+                    <span class="featured-plan-card__meta">{{ Math.max(1, Number(plan.exerciseCount || 0)) }} exercises</span>
+                  </div>
+                  <h6>{{ plan.name || 'Featured Workout Plan' }}</h6>
+                  <p>{{ plan.description || 'A curated starter plan designed to help you get moving.' }}</p>
+                  <div class="featured-plan-card__footer">
+                    <span>{{ plan.estimatedDurationMinutes || plan.estimatedDuration || 45 }} min</span>
+                    <span>{{ plan.type || 'Strength' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div v-else class="featured-plans-empty">No featured workout plans are available right now.</div>
+            </div>
 
             <div class="wizard-actions wizard-actions-step2">
               <button type="button" class="btn btn-outline-secondary auth-button auth-button-back" @click="goToStep(1)">
@@ -771,6 +816,102 @@ onMounted(() => {
 
 .login-body.step2-compact .wizard-panel-step2 .wizard-actions-step2 {
   margin-top: 8px;
+}
+
+.featured-plans-panel {
+  margin-top: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.8);
+  padding: 0.85rem;
+}
+
+.featured-plans-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.featured-plans-header h5 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.featured-plans-loading {
+  color: #475569;
+  font-size: 0.75rem;
+}
+
+.featured-plans-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+}
+
+.featured-plan-card {
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+}
+
+.featured-plan-card__topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.featured-plan-card__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.featured-plan-card__meta,
+.featured-plan-card__footer {
+  color: #475569;
+  font-size: 0.72rem;
+}
+
+.featured-plan-card h6 {
+  margin: 0 0 0.35rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.featured-plan-card p {
+  margin: 0 0 0.5rem;
+  color: #475569;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.featured-plan-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.featured-plans-empty {
+  color: #64748b;
+  font-size: 0.8rem;
+  text-align: center;
+  padding: 0.5rem 0 0.1rem;
 }
 
 .login-body.step2-compact .other-option.auth-footer {
