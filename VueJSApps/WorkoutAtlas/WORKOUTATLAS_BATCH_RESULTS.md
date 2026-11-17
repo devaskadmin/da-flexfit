@@ -1,5 +1,12 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.300 - avatarPath database error and session-role reliability
+- Scope: investigate and resolve `Unknown column 'avatarPath'` by validating live schema and applying compatibility-safe auth/session/avatar query behavior without schema mutation.
+- Root-cause evidence: read-only DB inspection confirmed active `users` table lacks `avatarPath` and `avatarName` columns (and snake_case variants), while auth/session code contained explicit avatar-column SQL.
+- Files changed: `backend/api/auth.js`, `backend/src/routes/avatar.js`, `backend/tests/auth-avatar-session-compat.integration.test.js`, `backend/tests/auth-register-featured-plan.integration.test.js`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
+- Verification: targeted auth/avatar/session and featured-registration tests passed (11/11); full backend suite passed (154/154); frontend production build passed (`BUILD_OK`).
+- Browser/auth smoke limitations: local browser validation remained constrained by available authenticated credentials/session context, so end-to-end live login/profile/logout replay was not executed here; automated auth/session regression coverage was expanded to cover the schema mismatch condition directly.
+
 ## 0.85.299 - Featured workout plan registration integration
 - Scope: complete registration-feature integration so guest-selected featured plans are copied into a new user's private plan library during account creation using existing personal-copy architecture and transactional safety.
 - Files changed: `backend/api/auth.js`, `frontend/src/views/Guest/register.vue`, `backend/tests/auth-register-featured-plan.integration.test.js`, `backend/tests/featured-plan-public-access.test.js`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.

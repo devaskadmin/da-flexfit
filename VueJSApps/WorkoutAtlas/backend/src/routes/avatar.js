@@ -6,9 +6,40 @@ const pool = require('../../db');
 
 // Allowed avatar image extensions
 const ALLOWED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
+const DEFAULT_AVATAR_PATH = '/images/avatar/default.png';
+const DEFAULT_AVATAR_NAME = 'default.png';
 
 // Avatar images directory
 const AVATAR_DIR = path.join(__dirname, '../images/avatar');
+
+let usersAvatarColumnStatePromise = null;
+
+const fetchUsersAvatarColumnState = async () => {
+  const [rows] = await pool.query(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'users'
+       AND column_name IN ('avatarName', 'avatarPath')`
+  );
+
+  const columns = new Set(rows.map((row) => String(row?.column_name || '').trim()));
+  return {
+    hasAvatarName: columns.has('avatarName'),
+    hasAvatarPath: columns.has('avatarPath'),
+  };
+};
+
+const getUsersAvatarColumnState = async () => {
+  if (!usersAvatarColumnStatePromise) {
+    usersAvatarColumnStatePromise = fetchUsersAvatarColumnState().catch((err) => {
+      usersAvatarColumnStatePromise = null;
+      throw err;
+    });
+  }
+
+  return usersAvatarColumnStatePromise;
+};
 
 /**
  * GET /api/avatar/list
@@ -117,6 +148,16 @@ router.put('/update', async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Invalid avatar path'
+      });
+    }
+
+    const avatarSchemaState = await getUsersAvatarColumnState();
+    if (!avatarSchemaState.hasAvatarName || !avatarSchemaState.hasAvatarPath) {
+      req.session.user.avatarName = DEFAULT_AVATAR_NAME;
+      req.session.user.avatarPath = DEFAULT_AVATAR_PATH;
+      return res.status(409).json({
+        success: false,
+        message: 'Avatar customization is unavailable until avatar columns are enabled for this database schema.'
       });
     }
 

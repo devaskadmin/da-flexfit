@@ -140,6 +140,13 @@ const createRegisterHarness = ({
       state.executedSql.push(normalizedSql);
 
       if (normalizedSql.includes('FROM information_schema.columns')) {
+        if (normalizedSql.includes("table_name = 'users'")) {
+          return [[
+            { column_name: 'avatarPath' },
+            { column_name: 'avatarName' },
+          ], []];
+        }
+
         return [[
           { table_name: 'workout_schedules', column_name: 'category' },
           { table_name: 'workout_schedules', column_name: 'workout_plan_type' },

@@ -41,6 +41,9 @@ const authRateLimitStore = new Map();
 const GOOGLE_TEST_UNLINK_USER_ID_RAW = String(process.env.GOOGLE_TEST_UNLINK_USER_ID || '').trim();
 const GOOGLE_TEST_UNLINK_USERNAME = String(process.env.GOOGLE_TEST_UNLINK_USERNAME || '').trim().toLowerCase();
 const GOOGLE_TEST_UNLINK_EMAIL = String(process.env.GOOGLE_TEST_UNLINK_EMAIL || '').trim().toLowerCase();
+const DEFAULT_AVATAR_PATH = '/images/avatar/default.png';
+const DEFAULT_AVATAR_NAME = 'default.png';
+let usersAvatarColumnStatePromise = null;
 
 const clearSessionCookies = (res) => {
   const baseCookieOptions = {
@@ -81,6 +84,47 @@ const normalizeRoleValue = (rawValue = '') => {
   }
 
   return { role: 'user', roleSlug: 'user' };
+};
+
+const fetchUsersAvatarColumnState = async (queryable = pool) => {
+  const [rows] = await queryable.query(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'users'
+       AND column_name IN ('avatarPath', 'avatarName')`
+  );
+
+  const columns = new Set(
+    rows.map((entry) => String(entry?.column_name || '').trim())
+  );
+
+  return {
+    hasAvatarPath: columns.has('avatarPath'),
+    hasAvatarName: columns.has('avatarName'),
+  };
+};
+
+const getUsersAvatarColumnState = async (queryable = pool) => {
+  if (queryable !== pool) {
+    return fetchUsersAvatarColumnState(queryable);
+  }
+
+  if (!usersAvatarColumnStatePromise) {
+    usersAvatarColumnStatePromise = fetchUsersAvatarColumnState(pool)
+      .catch((err) => {
+        usersAvatarColumnStatePromise = null;
+        throw err;
+      });
+  }
+
+  return usersAvatarColumnStatePromise;
+};
+
+const buildAvatarSelectClause = (schemaState = {}) => {
+  const avatarPathSql = schemaState.hasAvatarPath ? 'avatarPath' : 'NULL AS avatarPath';
+  const avatarNameSql = schemaState.hasAvatarName ? 'avatarName' : 'NULL AS avatarName';
+  return `${avatarPathSql}, ${avatarNameSql}`;
 };
 
 const resolveSessionRole = async (userId) => {
@@ -139,8 +183,8 @@ const regenerateSessionAsync = (req) => {
 const establishAuthenticatedSession = async (req, user, options = {}) => {
   const mustResetPassword = Boolean(options.mustResetPassword);
   const roleContext = await resolveSessionRole(user.id);
-  const avatarPath = user.avatarPath || '/images/avatar/default.png';
-  const avatarName = user.avatarName || 'default.png';
+  const avatarPath = user.avatarPath || DEFAULT_AVATAR_PATH;
+  const avatarName = user.avatarName || DEFAULT_AVATAR_NAME;
   const registrationIncomplete = isRegistrationIncompleteUser(user);
 
   await regenerateSessionAsync(req);
@@ -1335,16 +1379,19 @@ router.get('/session', async (req, res) => {
         req.session.user.role = roleContext.role;
         req.session.user.roleSlug = roleContext.roleSlug;
 
+        const avatarSchemaState = await getUsersAvatarColumnState();
+        const avatarSelectClause = buildAvatarSelectClause(avatarSchemaState);
+
         const [userRows] = await pool.query(
-          'SELECT avatarPath, avatarName, external_auth, membershipType FROM users WHERE id = ? LIMIT 1',
+          `SELECT ${avatarSelectClause}, external_auth, membershipType FROM users WHERE id = ? LIMIT 1`,
           [req.session.user.id]
         );
         const user = userRows?.[0] || {};
 
         // Fetch user avatar data if not in session
         if (!req.session.user.avatarPath || !req.session.user.avatarName) {
-          req.session.user.avatarPath = user?.avatarPath || '/images/avatar/default.png';
-          req.session.user.avatarName = user?.avatarName || 'default.png';
+          req.session.user.avatarPath = user?.avatarPath || DEFAULT_AVATAR_PATH;
+          req.session.user.avatarName = user?.avatarName || DEFAULT_AVATAR_NAME;
         }
 
         registrationIncomplete = isRegistrationIncompleteUser(user);
@@ -1699,10 +1746,12 @@ router.post('/ext-register/complete', requireTrustedAuthOrigin, async (req, res)
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
+    const avatarSchemaState = await getUsersAvatarColumnState(conn);
+    const avatarSelectClause = buildAvatarSelectClause(avatarSchemaState);
 
     const [userRows] = await conn.query(
       `SELECT id, username, Password, membershipType, external_auth, external_auth_provider,
-              external_auth_subject, external_auth_linked_at, avatarName, avatarPath
+              external_auth_subject, external_auth_linked_at, ${avatarSelectClause}
        FROM users
        WHERE id = ?
        LIMIT 1
@@ -1802,7 +1851,7 @@ router.post('/ext-register/complete', requireTrustedAuthOrigin, async (req, res)
 
     const [updatedRows] = await pool.query(
       `SELECT id, username, Password, membershipType, external_auth, external_auth_provider,
-              external_auth_subject, external_auth_linked_at, avatarName, avatarPath
+              external_auth_subject, external_auth_linked_at, ${avatarSelectClause}
        FROM users
        WHERE id = ?
        LIMIT 1`,
@@ -1906,13 +1955,18 @@ router.post('/register', requireTrustedAuthOrigin, async (req, res) => {
     try {
       await conn.beginTransaction();
       const workoutSchemaState = await getRegistrationWorkoutSchemaState(conn);
+      const avatarSchemaState = await getUsersAvatarColumnState(conn);
 
       // 1. Create the core user row (with membershipType column and default avatar)
       // membershipType is for billing/profile tier only. Role is assigned separately for RBAC.
-      const [userResult] = await conn.query(
-        "INSERT INTO users (FirstName, LastName, username, Password, membershipType, avatarName, avatarPath) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        [safeFirst, safeLast, safeUser, hashedPassword, safeType, 'default.png', '/images/avatar/default.png']
-      );
+      let userInsertSql = 'INSERT INTO users (FirstName, LastName, username, Password, membershipType) VALUES (?, ?, ?, ?, ?)';
+      let userInsertParams = [safeFirst, safeLast, safeUser, hashedPassword, safeType];
+      if (avatarSchemaState.hasAvatarName && avatarSchemaState.hasAvatarPath) {
+        userInsertSql = 'INSERT INTO users (FirstName, LastName, username, Password, membershipType, avatarName, avatarPath) VALUES (?, ?, ?, ?, ?, ?, ?)';
+        userInsertParams = [safeFirst, safeLast, safeUser, hashedPassword, safeType, DEFAULT_AVATAR_NAME, DEFAULT_AVATAR_PATH];
+      }
+
+      const [userResult] = await conn.query(userInsertSql, userInsertParams);
       const newUserId = userResult.insertId;
 
       // 2. Create profile

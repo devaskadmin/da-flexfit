@@ -6,6 +6,18 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.300] - 2026-11-17 - Resolve avatarPath session schema mismatch and auth reliability
+
+- **Fixed:** Session hydration no longer hard-selects `users.avatarPath`/`users.avatarName` on schemas where those columns do not exist, preventing `Unknown column 'avatarPath'` failures from being surfaced as role/session resolution errors.
+- **Fixed:** Authentication registration and external-registration completion flows now adapt to live `users` schema capabilities and avoid avatar-column SQL on legacy databases while preserving the existing default-avatar fallback.
+- **Fixed:** Avatar update endpoint now performs schema-capability checks before issuing avatar-column updates, returning a controlled compatibility response instead of triggering SQL column errors when avatar columns are absent.
+- **Added:** Focused auth/session compatibility regression tests covering missing-avatar-column session hydration, role resolution continuity, and registration success against avatar-column-absent schemas.
+- **Added:** Existing 0.85.299 registration-feature integration harness updated for auth avatar-schema introspection query coverage.
+- **Relevant source files:** `backend/api/auth.js`; `backend/src/routes/avatar.js`; `backend/tests/auth-avatar-session-compat.integration.test.js`; `backend/tests/auth-register-featured-plan.integration.test.js`; `frontend/package.json`; `backend/package.json`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`.
+- **Verification:** Targeted auth/avatar/session + featured-registration tests passed (11/11). Full backend suite passed (154/154). Frontend production build passed.
+- **Live schema findings (read-only):** active database reports `users` has `membershipType` and `external_auth` but does not have `avatarPath`, `avatarName`, `avatar_path`, or `avatar_name`; `schema_migrations` table is unavailable in that environment.
+- **Migration requirement:** Not required for runtime compatibility in this release. Optional future migration can add avatar columns for persistent avatar customization support, but this release does not execute or require schema changes.
+
 ## [0.85.299] - 2026-11-17 - Featured workout plan registration integration
 
 - **Added:** Guest registration now supports an optional featured workout plan selection and passes `selectedFeaturedPlanId` in the existing registration payload.
