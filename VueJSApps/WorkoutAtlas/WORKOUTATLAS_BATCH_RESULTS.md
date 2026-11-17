@@ -1,5 +1,12 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.298 - Workout set persistence and history integrity hardening
+- Scope: audit and harden set edit/add/remove/completion persistence integrity by preserving 0.85.292 architecture and fixing a live-state gap where paused sessions could skip progress persistence.
+- Files changed: `frontend/src/views/Member/LogWorkout.vue`, `backend/tests/workout-log-session-persistence.test.js`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
+- Verification: targeted persistence/history/session regressions passed (37/37); full backend suite passed (144/144); frontend production build passed (`BUILD_OK`).
+- Compatibility checks: retained green coverage for daily summary behavior (0.85.294), mobile action layout paths (0.85.295 unaffected frontend routes), timer/session lifecycle paths (0.85.296), and paused-session schema compatibility regressions (0.85.297).
+- Caveats: authenticated end-to-end browser replay in this session remains dependent on local auth/session availability; no schema changes were made in 0.85.298.
+
 ## 0.85.297 - Timer paused-status schema compatibility
 - Scope: make Workout Timer paused-session lifecycle fully schema-compatible by adding paused enum migration support, aligning canonical schema defaults/statuses, and closing paused-active query gaps in plan/session cleanup paths.
 - Files changed: `backend/api/users.js`, `backend/api/workout-sessions.js`, `backend/schema/workout_schedule_schema.sql`, `backend/migrations/workout/20261117_workout_session_status_paused.sql`, `backend/tests/workout-session-recovery.integration.test.js`, `backend/tests/workout-session-status-schema.test.js`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.

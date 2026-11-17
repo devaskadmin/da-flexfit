@@ -1,6 +1,6 @@
 {
     "name": "flexFit",
-    "version": "0.85.297",
+    "version": "0.85.298",
     "private": true,
     "scripts": {
         "dev": "vite",

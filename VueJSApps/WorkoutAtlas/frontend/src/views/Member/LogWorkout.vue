@@ -1818,7 +1818,7 @@ const buildCurrentWorkoutSessionPayload = () => ({
 });
 
 const queueWorkoutSetProgressPersistence = ({ immediate = false } = {}) => {
-  if (!isWorkoutSessionActive.value || isPreviewMode.value || !activeSession.value?.id) return;
+  if (!hasLiveWorkoutSession.value || isPreviewMode.value || !activeSession.value?.id) return;
 
   if (workoutLogSetPersistTimeoutId != null) {
     window.clearTimeout(workoutLogSetPersistTimeoutId);
@@ -1832,7 +1832,7 @@ const queueWorkoutSetProgressPersistence = ({ immediate = false } = {}) => {
 };
 
 const flushWorkoutSetProgressPersistence = async () => {
-  if (!isWorkoutSessionActive.value || isPreviewMode.value || !activeSession.value?.id) {
+  if (!hasLiveWorkoutSession.value || isPreviewMode.value || !activeSession.value?.id) {
     return true;
   }
 
@@ -1857,7 +1857,7 @@ const flushWorkoutSetProgressPersistence = async () => {
 };
 
 const persistWorkoutSetProgress = async ({ rollback } = {}) => {
-  if (!isWorkoutSessionActive.value || isPreviewMode.value || !activeSession.value?.id) {
+  if (!hasLiveWorkoutSession.value || isPreviewMode.value || !activeSession.value?.id) {
     return true;
   }
 

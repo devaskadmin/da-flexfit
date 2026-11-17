@@ -6,6 +6,17 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.298] - 2026-11-17 - Workout set persistence and history integrity hardening
+
+- **Fixed:** Current Workout set-progress persistence now runs for live paused sessions as well as in-progress sessions, preventing edits made while paused from being skipped before tab switches, refreshes, or later completion.
+- **Fixed:** Completed-set correction flows (for example `35 lbs x 10` to `35 lbs x 8`) remain persisted through save cycles and continue to resolve into Workout Log history via the existing 0.85.292 persistence architecture.
+- **Added:** Regression coverage for paused-session set edits, and expanded set add/remove sequencing assertions validating one-set-at-a-time growth, neighboring-value preservation, correct renumbering after removal, and duplicate row prevention.
+- **Preserved:** No database schema changes, no workout history backfill/mutation logic changes, and no changes to workout history edit permissions for finalized history beyond existing behavior.
+- **Compatibility verified:** 0.85.294 daily cumulative summary, 0.85.295 mobile action layout paths, 0.85.296 timer/session routes, and 0.85.297 paused-session status compatibility remained green in targeted + full backend runs.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `backend/tests/workout-log-session-persistence.test.js`; `backend/tests/workout-log-history-visibility.test.js`; `backend/tests/workout-history-daily-summary.test.js`; `backend/tests/workout-session-recovery.integration.test.js`; `backend/tests/workout-session-status-schema.test.js`; `frontend/package.json`; `backend/package.json`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`.
+- **Verification:** Targeted persistence/history/session regressions passed (37/37). Full backend suite passed (144/144). Frontend production build passed.
+- **Known unresolved issues:** Authenticated browser replay in this session remains environment-dependent; automated persistence and history regressions are green, but full live gym device verification still depends on runtime login/session availability.
+
 ## [0.85.297] - 2026-11-17 - Timer paused-status database schema compatibility
 
 - **Fixed:** Added a forward-only, idempotent workout migration to safely add `paused` to `workout_log_sessions.status` enum values while preserving existing enum values and existing session rows.

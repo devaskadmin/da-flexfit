@@ -510,3 +510,160 @@ test('session save uses local date fallback without relying on Date#toISOString'
     restore();
   }
 });
+
+test('session save persists corrected completed-set values when session status is paused', async () => {
+  const { mockPool, state } = createSessionSaveHarness({
+    sessions: [{ id: 61, userId: 27, status: 'paused', workoutPlanId: null }],
+    existingLogs: [{ workoutLogId: 1001, workoutLogSessionId: 61, userId: 27, exerciseId: 910, scheduleGroup: 'Any Day' }],
+  });
+
+  const { route, restore } = loadRouteWithMockPool(mockPool);
+
+  try {
+    const handler = getBusinessHandler(route, 'post', '/session');
+
+    const resA = createResponseRecorder();
+    const resB = createResponseRecorder();
+
+    await handler(
+      {
+        session: { user: { id: 27 } },
+        body: {
+          planId: null,
+          workoutSessionId: 61,
+          workoutDate: '2026-11-17',
+          exercises: [
+            {
+              id: 'paused-ex',
+              exerciseId: 910,
+              workoutType: 'Strength',
+              scheduleGroup: 'Any Day',
+              sets: [{ setNum: 1, weight: 35, reps: 10, done: true }],
+            },
+          ],
+        },
+      },
+      resA
+    );
+
+    await handler(
+      {
+        session: { user: { id: 27 } },
+        body: {
+          planId: null,
+          workoutSessionId: 61,
+          workoutDate: '2026-11-17',
+          exercises: [
+            {
+              id: 'paused-ex',
+              exerciseId: 910,
+              workoutType: 'Strength',
+              scheduleGroup: 'Any Day',
+              sets: [{ setNum: 1, weight: 35, reps: 8, done: true }],
+            },
+          ],
+        },
+      },
+      resB
+    );
+
+    assert.equal(resA.statusCode, 201);
+    assert.equal(resB.statusCode, 201);
+    const setRow = state.logSetsByLogId.get(1001).get(1);
+    assert.equal(setRow.weight, 35);
+    assert.equal(setRow.reps, 8);
+    assert.equal(setRow.completed, 1);
+  } finally {
+    restore();
+  }
+});
+
+test('session save add/remove sequencing preserves neighboring values and prevents duplicate set rows', async () => {
+  const { mockPool, state } = createSessionSaveHarness({
+    sessions: [{ id: 71, userId: 31, status: 'in_progress', workoutPlanId: null }],
+    existingLogs: [{ workoutLogId: 1101, workoutLogSessionId: 71, userId: 31, exerciseId: 920, scheduleGroup: 'Any Day' }],
+  });
+
+  const { route, restore } = loadRouteWithMockPool(mockPool);
+
+  try {
+    const handler = getBusinessHandler(route, 'post', '/session');
+
+    const save = async (sets) => {
+      const res = createResponseRecorder();
+      await handler(
+        {
+          session: { user: { id: 31 } },
+          body: {
+            planId: null,
+            workoutSessionId: 71,
+            workoutDate: '2026-11-17',
+            exercises: [
+              {
+                id: 'sequence-ex',
+                exerciseId: 920,
+                workoutType: 'Strength',
+                scheduleGroup: 'Any Day',
+                sets,
+              },
+            ],
+          },
+        },
+        res
+      );
+      assert.equal(res.statusCode, 201);
+    };
+
+    await save([{ setNum: 1, weight: 35, reps: 10, done: true }]);
+    await save([
+      { setNum: 1, weight: 35, reps: 10, done: true },
+      { setNum: 2, weight: 35, reps: 8, done: true },
+    ]);
+    await save([
+      { setNum: 1, weight: 35, reps: 10, done: true },
+      { setNum: 2, weight: 35, reps: 8, done: true },
+      { setNum: 3, weight: 35, reps: 6, done: true },
+    ]);
+
+    let setMap = state.logSetsByLogId.get(1101);
+    assert.equal(setMap.size, 3);
+    assert.equal(setMap.get(1).reps, 10);
+    assert.equal(setMap.get(2).reps, 8);
+    assert.equal(setMap.get(3).reps, 6);
+
+    // Remove middle set (former set 3 should shift to set 2).
+    await save([
+      { setNum: 1, weight: 35, reps: 10, done: true },
+      { setNum: 2, weight: 35, reps: 6, done: true },
+    ]);
+    setMap = state.logSetsByLogId.get(1101);
+    assert.equal(setMap.size, 2);
+    assert.equal(setMap.get(1).reps, 10);
+    assert.equal(setMap.get(2).reps, 6);
+    assert.equal(setMap.has(3), false);
+
+    // Remove first set.
+    await save([{ setNum: 1, weight: 35, reps: 6, done: true }]);
+    setMap = state.logSetsByLogId.get(1101);
+    assert.equal(setMap.size, 1);
+    assert.equal(setMap.get(1).reps, 6);
+
+    // Add final set again; ensure exactly one new row and no duplicates.
+    await save([
+      { setNum: 1, weight: 35, reps: 6, done: true },
+      { setNum: 2, weight: 35, reps: 5, done: true },
+    ]);
+    await save([
+      { setNum: 1, weight: 35, reps: 6, done: true },
+      { setNum: 2, weight: 35, reps: 5, done: true },
+    ]);
+
+    setMap = state.logSetsByLogId.get(1101);
+    assert.equal(setMap.size, 2);
+    assert.equal(setMap.get(1).reps, 6);
+    assert.equal(setMap.get(2).reps, 5);
+    assert.ok(state.deleteCutoffs.some((entry) => entry.workoutLogId === 1101 && entry.maxSetNumber === 1));
+  } finally {
+    restore();
+  }
+});
