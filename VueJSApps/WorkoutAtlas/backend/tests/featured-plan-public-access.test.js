@@ -62,6 +62,9 @@ const createResponseRecorder = () => {
 };
 
 test('featured workout plans are publicly readable without a login session', async () => {
+  let capturedPlanTypes = null;
+  let capturedStatuses = null;
+
   const mockPool = {
     query: async (sql, params = []) => {
       const normalizedSql = String(sql || '').replace(/\s+/g, ' ').trim();
@@ -76,6 +79,8 @@ test('featured workout plans are publicly readable without a login session', asy
       }
 
       if (normalizedSql.includes('FROM workout_schedules ws')) {
+        capturedPlanTypes = params.slice(0, 1);
+        capturedStatuses = params.slice(1, 4);
         return [[{
           id: 42,
           user_id: 7,
@@ -113,6 +118,8 @@ test('featured workout plans are publicly readable without a login session', asy
     assert.equal(res.statusCode, 200, 'Guest access should be allowed for public featured plans');
     assert.equal(res.body.hasWorkoutLists, true);
     assert.equal(res.body.workoutLists[0].name, 'Featured Starter');
+    assert.deepEqual(capturedPlanTypes, ['featured']);
+    assert.deepEqual(capturedStatuses, ['active', 'published', 'completed']);
   } finally {
     restore();
   }

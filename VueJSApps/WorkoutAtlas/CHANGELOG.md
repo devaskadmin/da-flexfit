@@ -6,6 +6,18 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.299] - 2026-11-17 - Featured workout plan registration integration
+
+- **Added:** Guest registration now supports an optional featured workout plan selection and passes `selectedFeaturedPlanId` in the existing registration payload.
+- **Added:** Backend registration flow now transactionally validates selected featured plan eligibility and creates a new user-owned personal copy (schedule, groups, and exercises) at account creation time.
+- **Fixed:** Registration now rejects invalid or ineligible featured plan selections (non-featured, unpublished/draft, non-public, or exercise-empty templates) with safe rollback semantics.
+- **Added:** Registration response now includes `selectedFeaturedPlanId` and `assignedWorkoutPlanId` so onboarding/UI logic can confirm assignment state.
+- **Added:** Dedicated registration integration test coverage for success path, no-selection path, invalid-id path, ineligible/draft rejection, mid-copy rollback, and duplicate-username short-circuit behavior.
+- **Changed:** Public featured-plan regression test now additionally asserts published-feature filter parameters are used when querying public featured plans.
+- **Relevant source files:** `backend/api/auth.js`; `frontend/src/views/Guest/register.vue`; `backend/tests/auth-register-featured-plan.integration.test.js`; `backend/tests/featured-plan-public-access.test.js`; `frontend/package.json`; `backend/package.json`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`.
+- **Verification:** Targeted registration/featured tests passed (8/8). Full backend suite passed (151/151). Frontend production build passed.
+- **Known unresolved issues:** In this local browser environment, the registration featured section had no available featured plans to select, so end-to-end visual selection-state verification of a live featured card remains dependent on fixture data/runtime content availability.
+
 ## [0.85.298] - 2026-11-17 - Workout set persistence and history integrity hardening
 
 - **Fixed:** Current Workout set-progress persistence now runs for live paused sessions as well as in-progress sessions, preventing edits made while paused from being skipped before tab switches, refreshes, or later completion.

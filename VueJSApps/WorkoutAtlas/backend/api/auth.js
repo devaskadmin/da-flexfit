@@ -190,10 +190,274 @@ const isRegistrationIncompleteUser = (user = {}) => {
 const ALLOWED_MEMBERSHIP_TYPES = ['User', 'Trainer', 'Admin'];
 const ALLOWED_SELF_SERVICE_MEMBERSHIP_TYPES = ['User', 'Trainer'];
 const ALLOWED_EXTERNAL_REGISTRATION_TYPES = ['User', 'Trainer'];
+const FEATURED_PLAN_PUBLISHED_STATUSES = ['active', 'published', 'completed'];
 const REGISTRATION_TYPE_MAP = {
   User: { roleSlug: 'member' },
   Trainer: { roleSlug: 'trainer' },
   Admin: { roleSlug: 'admin' },
+};
+
+const getRegistrationWorkoutSchemaState = async (connection) => {
+  const [rows] = await connection.query(
+    `SELECT table_name, column_name
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND (
+         (table_name = 'workout_schedules' AND column_name IN (
+           'category', 'workout_plan_type', 'goal_type', 'goal_target_date',
+           'plan_duration_weeks', 'source_global_plan_id', 'global_plan_adopted_at',
+           'schedule_mode'
+         ))
+         OR (table_name = 'workout_schedule_groups' AND column_name IN ('workout_log_display_order'))
+         OR (table_name = 'workout_schedule_exercises' AND column_name IN ('target_distance_miles'))
+       )`
+  );
+
+  const hasColumn = (tableName, columnName) => rows.some(
+    (entry) => String(entry?.table_name || '').toLowerCase() === tableName &&
+      String(entry?.column_name || '').toLowerCase() === columnName
+  );
+
+  return {
+    hasCategory: hasColumn('workout_schedules', 'category'),
+    hasWorkoutPlanType: hasColumn('workout_schedules', 'workout_plan_type'),
+    hasGoalType: hasColumn('workout_schedules', 'goal_type'),
+    hasGoalTargetDate: hasColumn('workout_schedules', 'goal_target_date'),
+    hasPlanDurationWeeks: hasColumn('workout_schedules', 'plan_duration_weeks'),
+    hasSourceGlobalPlanId: hasColumn('workout_schedules', 'source_global_plan_id'),
+    hasGlobalPlanAdoptedAt: hasColumn('workout_schedules', 'global_plan_adopted_at'),
+    hasScheduleMode: hasColumn('workout_schedules', 'schedule_mode'),
+    hasWorkoutLogDisplayOrder: hasColumn('workout_schedule_groups', 'workout_log_display_order'),
+    hasTargetDistanceMiles: hasColumn('workout_schedule_exercises', 'target_distance_miles'),
+  };
+};
+
+const createRegistrationError = (message, statusCode = 400) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+};
+
+const assignFeaturedPlanToNewUser = async ({
+  connection,
+  newUserId,
+  selectedFeaturedPlanId,
+  schemaState,
+}) => {
+  const featuredPlanId = Number(selectedFeaturedPlanId || 0);
+  if (!featuredPlanId) {
+    return null;
+  }
+
+  const [sourceRows] = await connection.query(
+    `SELECT id, user_id, title, description, workout_type, category, goal_type,
+            goal_target_date, plan_duration_weeks, estimated_duration_minutes,
+            status, visibility, schedule_mode
+     FROM workout_schedules
+     WHERE id = ?
+       AND workout_plan_type = 'featured'
+       AND LOWER(COALESCE(status, '')) IN (?, ?, ?)
+       AND LOWER(COALESCE(visibility, '')) = 'public'
+       AND EXISTS (
+         SELECT 1
+         FROM workout_schedule_exercises wse
+         WHERE wse.workout_schedule_id = workout_schedules.id
+       )
+     LIMIT 1`,
+    [featuredPlanId, ...FEATURED_PLAN_PUBLISHED_STATUSES]
+  );
+
+  if (!sourceRows.length) {
+    throw createRegistrationError('Selected featured workout plan is unavailable.', 400);
+  }
+
+  const sourcePlan = sourceRows[0] || {};
+  const sourcePlanOwnerId = Number(sourcePlan.user_id || 0);
+  if (!sourcePlanOwnerId) {
+    throw createRegistrationError('Selected featured workout plan owner could not be resolved.', 400);
+  }
+
+  const cloneColumns = ['user_id', 'title', 'description', 'workout_type'];
+  const cloneValues = [
+    newUserId,
+    sanitizeText(sourcePlan.title || 'Featured Workout', 150) || 'Featured Workout',
+    sanitizeText(sourcePlan.description || '', 1000),
+    sanitizeText(sourcePlan.workout_type || 'Strength', 50) || 'Strength',
+  ];
+
+  if (schemaState.hasCategory) {
+    cloneColumns.push('category');
+    cloneValues.push(sourcePlan.category || null);
+  }
+  if (schemaState.hasWorkoutPlanType) {
+    cloneColumns.push('workout_plan_type');
+    cloneValues.push(null);
+  }
+  if (schemaState.hasSourceGlobalPlanId) {
+    cloneColumns.push('source_global_plan_id');
+    cloneValues.push(featuredPlanId);
+  }
+  if (schemaState.hasGlobalPlanAdoptedAt) {
+    cloneColumns.push('global_plan_adopted_at');
+    cloneValues.push(new Date());
+  }
+  if (schemaState.hasGoalType) {
+    cloneColumns.push('goal_type');
+    cloneValues.push(sourcePlan.goal_type || null);
+  }
+  if (schemaState.hasGoalTargetDate) {
+    cloneColumns.push('goal_target_date');
+    cloneValues.push(sourcePlan.goal_target_date || null);
+  }
+  if (schemaState.hasPlanDurationWeeks) {
+    cloneColumns.push('plan_duration_weeks');
+    cloneValues.push(sourcePlan.plan_duration_weeks || null);
+  }
+
+  cloneColumns.push('estimated_duration_minutes');
+  cloneValues.push(Number(sourcePlan.estimated_duration_minutes || 0));
+  cloneColumns.push('status');
+  cloneValues.push('draft');
+  cloneColumns.push('visibility');
+  cloneValues.push('private');
+
+  if (schemaState.hasScheduleMode) {
+    cloneColumns.push('schedule_mode');
+    cloneValues.push(String(sourcePlan.schedule_mode || '').trim().toLowerCase() === 'week' ? 'week' : 'day');
+  }
+
+  const [insertPlanResult] = await connection.query(
+    `INSERT INTO workout_schedules (${cloneColumns.join(', ')})
+     VALUES (${cloneColumns.map(() => '?').join(', ')})`,
+    cloneValues
+  );
+
+  const clonedPlanId = Number(insertPlanResult.insertId || 0);
+  if (!clonedPlanId) {
+    throw createRegistrationError('Failed to assign selected featured workout plan.', 500);
+  }
+
+  const [sourceGroups] = await connection.query(
+    schemaState.hasWorkoutLogDisplayOrder
+      ? `SELECT id, label, group_type, sort_order, workout_log_display_order
+         FROM workout_schedule_groups
+         WHERE workout_schedule_id = ?
+         ORDER BY sort_order ASC, id ASC`
+      : `SELECT id, label, group_type, sort_order
+         FROM workout_schedule_groups
+         WHERE workout_schedule_id = ?
+         ORDER BY sort_order ASC, id ASC`,
+    [featuredPlanId]
+  );
+
+  const groupIdBySourceId = new Map();
+  for (const group of sourceGroups) {
+    let insertedGroup;
+    if (schemaState.hasWorkoutLogDisplayOrder) {
+      [insertedGroup] = await connection.query(
+        `INSERT INTO workout_schedule_groups
+          (workout_schedule_id, label, group_type, sort_order, workout_log_display_order)
+         VALUES (?, ?, ?, ?, ?)`,
+        [
+          clonedPlanId,
+          sanitizeText(group?.label || '', 120),
+          sanitizeText(group?.group_type || 'day', 20) || 'day',
+          Number(group?.sort_order || 0) || 1,
+          Number(group?.workout_log_display_order || 0) || null,
+        ]
+      );
+    } else {
+      [insertedGroup] = await connection.query(
+        `INSERT INTO workout_schedule_groups
+          (workout_schedule_id, label, group_type, sort_order)
+         VALUES (?, ?, ?, ?)`,
+        [
+          clonedPlanId,
+          sanitizeText(group?.label || '', 120),
+          sanitizeText(group?.group_type || 'day', 20) || 'day',
+          Number(group?.sort_order || 0) || 1,
+        ]
+      );
+    }
+
+    groupIdBySourceId.set(Number(group?.id || 0), Number(insertedGroup.insertId || 0));
+  }
+
+  const [sourceExercises] = await connection.query(
+    schemaState.hasTargetDistanceMiles
+      ? `SELECT id, workout_schedule_group_id, exercise_id, exercise_name, exercise_image_url,
+               workout_type, muscle_group, equipment, sort_order, notes, target_sets, target_reps,
+               target_weight, target_duration_minutes, target_rest_seconds, target_distance_miles
+         FROM workout_schedule_exercises
+         WHERE workout_schedule_id = ?
+         ORDER BY sort_order ASC, id ASC`
+      : `SELECT id, workout_schedule_group_id, exercise_id, exercise_name, exercise_image_url,
+               workout_type, muscle_group, equipment, sort_order, notes, target_sets, target_reps,
+               target_weight, target_duration_minutes, target_rest_seconds
+         FROM workout_schedule_exercises
+         WHERE workout_schedule_id = ?
+         ORDER BY sort_order ASC, id ASC`,
+    [featuredPlanId]
+  );
+
+  if (!sourceExercises.length) {
+    throw createRegistrationError('Selected featured workout plan has no exercises to assign.', 400);
+  }
+
+  for (const exercise of sourceExercises) {
+    const destinationGroupId = groupIdBySourceId.get(Number(exercise?.workout_schedule_group_id || 0)) || null;
+    const insertColumns = [
+      'workout_schedule_id',
+      'workout_schedule_group_id',
+      'exercise_id',
+      'exercise_name',
+      'exercise_image_url',
+      'workout_type',
+      'muscle_group',
+      'equipment',
+      'sort_order',
+      'notes',
+      'target_sets',
+      'target_reps',
+      'target_weight',
+      'target_duration_minutes',
+      'target_rest_seconds',
+    ];
+
+    const insertValues = [
+      clonedPlanId,
+      destinationGroupId,
+      Number(exercise?.exercise_id || 0) || null,
+      sanitizeText(exercise?.exercise_name || '', 150),
+      sanitizeText(exercise?.exercise_image_url || '', 255),
+      sanitizeText(exercise?.workout_type || '', 50),
+      sanitizeText(exercise?.muscle_group || '', 80),
+      sanitizeText(exercise?.equipment || '', 80),
+      Number(exercise?.sort_order || 0) || 1,
+      sanitizeText(exercise?.notes || '', 500),
+      parseNumber(exercise?.target_sets),
+      parseNumber(exercise?.target_reps),
+      parseNumber(exercise?.target_weight, true),
+      parseNumber(exercise?.target_duration_minutes),
+      parseNumber(exercise?.target_rest_seconds),
+    ];
+
+    if (schemaState.hasTargetDistanceMiles) {
+      insertColumns.push('target_distance_miles');
+      insertValues.push(parseNumber(exercise?.target_distance_miles, true));
+    }
+
+    await connection.query(
+      `INSERT INTO workout_schedule_exercises (${insertColumns.join(', ')})
+       VALUES (${insertColumns.map(() => '?').join(', ')})`,
+      insertValues
+    );
+  }
+
+  return {
+    sourcePlanId: featuredPlanId,
+    assignedPlanId: clonedPlanId,
+  };
 };
 
 const normalizeTierValue = (value = '') => String(value || '').trim().toLowerCase();
@@ -1576,7 +1840,15 @@ router.post('/ext-register/complete', requireTrustedAuthOrigin, async (req, res)
 //Register
 router.post('/register', requireTrustedAuthOrigin, async (req, res) => {
   try {
-    const { firstName, lastName, username, password, membershipType, subscriptionTierId } = req.body;
+    const {
+      firstName,
+      lastName,
+      username,
+      password,
+      membershipType,
+      subscriptionTierId,
+      selectedFeaturedPlanId,
+    } = req.body;
 
     if (!firstName || !username || !password) {
       return res.status(400).json({ error: "First name, email, and password are required" });
@@ -1594,6 +1866,14 @@ router.post('/register', requireTrustedAuthOrigin, async (req, res) => {
     const safeSubscriptionTierId = Number.parseInt(subscriptionTierId, 10);
     if (!Number.isInteger(safeSubscriptionTierId) || safeSubscriptionTierId <= 0) {
       return res.status(400).json({ error: 'A valid subscription type is required.' });
+    }
+
+    const hasSelectedFeaturedPlanId = selectedFeaturedPlanId !== null && selectedFeaturedPlanId !== undefined && String(selectedFeaturedPlanId).trim() !== '';
+    const safeSelectedFeaturedPlanId = hasSelectedFeaturedPlanId
+      ? Number.parseInt(selectedFeaturedPlanId, 10)
+      : null;
+    if (hasSelectedFeaturedPlanId && (!Number.isInteger(safeSelectedFeaturedPlanId) || safeSelectedFeaturedPlanId <= 0)) {
+      return res.status(400).json({ error: 'Selected featured workout plan is invalid.' });
     }
 
     // Map membershipType (profile tier) → role slug (RBAC), tier, billing cycle
@@ -1625,6 +1905,7 @@ router.post('/register', requireTrustedAuthOrigin, async (req, res) => {
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
+      const workoutSchemaState = await getRegistrationWorkoutSchemaState(conn);
 
       // 1. Create the core user row (with membershipType column and default avatar)
       // membershipType is for billing/profile tier only. Role is assigned separately for RBAC.
@@ -1655,15 +1936,30 @@ router.post('/register', requireTrustedAuthOrigin, async (req, res) => {
         [newUserId, newUserId, typeConfig.roleSlug]
       );
 
+      let featuredPlanAssignment = null;
+      if (safeSelectedFeaturedPlanId) {
+        featuredPlanAssignment = await assignFeaturedPlanToNewUser({
+          connection: conn,
+          newUserId,
+          selectedFeaturedPlanId: safeSelectedFeaturedPlanId,
+          schemaState: workoutSchemaState,
+        });
+      }
+
       await conn.commit();
       res.status(201).json({
         message: "Registration successful",
         userId: newUserId,
         membershipType: safeType,
         subscriptionTier: selectedTier.name,
+        selectedFeaturedPlanId: featuredPlanAssignment?.sourcePlanId || null,
+        assignedWorkoutPlanId: featuredPlanAssignment?.assignedPlanId || null,
       });
     } catch (txErr) {
       await conn.rollback();
+      if (Number(txErr?.statusCode || 0) > 0) {
+        return res.status(Number(txErr.statusCode)).json({ error: txErr.message || 'Registration failed' });
+      }
       throw txErr;
     } finally {
       conn.release();

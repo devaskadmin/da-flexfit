@@ -1,5 +1,11 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.299 - Featured workout plan registration integration
+- Scope: complete registration-feature integration so guest-selected featured plans are copied into a new user's private plan library during account creation using existing personal-copy architecture and transactional safety.
+- Files changed: `backend/api/auth.js`, `frontend/src/views/Guest/register.vue`, `backend/tests/auth-register-featured-plan.integration.test.js`, `backend/tests/featured-plan-public-access.test.js`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
+- Verification: targeted registration/featured tests passed (8/8); full backend suite passed (151/151); frontend production build passed (`BUILD_OK`).
+- Browser evidence: registration flow remained responsive with no horizontal overflow at 320/375/430 and desktop widths on subscription and info steps; featured-card selection path is data-dependent and was not visually exercised because no featured plans were available in this local runtime dataset.
+
 ## 0.85.298 - Workout set persistence and history integrity hardening
 - Scope: audit and harden set edit/add/remove/completion persistence integrity by preserving 0.85.292 architecture and fixing a live-state gap where paused sessions could skip progress persistence.
 - Files changed: `frontend/src/views/Member/LogWorkout.vue`, `backend/tests/workout-log-session-persistence.test.js`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.

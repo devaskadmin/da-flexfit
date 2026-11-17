@@ -36,6 +36,7 @@ const form = reactive({
   membershipType: '',
   subscriptionPlanKey: '',
   subscriptionTierId: '',
+  selectedFeaturedPlanId: '',
   firstName: '',
   lastName: '',
   username: '',
@@ -78,6 +79,12 @@ const selectedSubscriptionLabel = computed(() => {
   }
 
   return 'Not selected';
+});
+
+const selectedFeaturedPlan = computed(() => {
+  const selectedId = Number(form.selectedFeaturedPlanId || 0);
+  if (!selectedId) return null;
+  return featuredPlans.value.find((plan) => Number(plan?.id || 0) === selectedId) || null;
 });
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -179,6 +186,7 @@ const restoreDraft = () => {
       membershipType: draft?.form?.membershipType ?? '',
       subscriptionPlanKey: draft?.form?.subscriptionPlanKey ?? '',
       subscriptionTierId: draft?.form?.subscriptionTierId ?? '',
+      selectedFeaturedPlanId: draft?.form?.selectedFeaturedPlanId ?? '',
       firstName: draft?.form?.firstName ?? '',
       lastName: draft?.form?.lastName ?? '',
       username: draft?.form?.username ?? '',
@@ -239,6 +247,19 @@ const selectSubscriptionTier = (value) => {
   if (!plan || !plan.available) return;
   form.subscriptionPlanKey = plan.key;
   form.subscriptionTierId = plan.tierId;
+  errorMsg.value = '';
+};
+
+const selectFeaturedPlan = (planId) => {
+  const normalizedPlanId = Number(planId || 0);
+  if (!normalizedPlanId) {
+    form.selectedFeaturedPlanId = '';
+    return;
+  }
+
+  form.selectedFeaturedPlanId = Number(form.selectedFeaturedPlanId || 0) === normalizedPlanId
+    ? ''
+    : String(normalizedPlanId);
   errorMsg.value = '';
 };
 
@@ -341,6 +362,7 @@ const register = async () => {
       password: form.password,
       membershipType: form.membershipType,
       subscriptionTierId: Number(form.subscriptionTierId),
+      selectedFeaturedPlanId: form.selectedFeaturedPlanId ? Number(form.selectedFeaturedPlanId) : null,
     });
 
     clearDraft();
@@ -566,7 +588,12 @@ onMounted(() => {
               <div v-if="featuredPlansError" class="alert alert-light mt-2 mb-0 small">{{ featuredPlansError }}</div>
 
               <div v-else-if="featuredPlans.length" class="featured-plans-grid">
-                <div v-for="plan in featuredPlans" :key="plan.id" class="featured-plan-card">
+                <div
+                  v-for="plan in featuredPlans"
+                  :key="plan.id"
+                  class="featured-plan-card"
+                  :class="{ 'featured-plan-card--selected': Number(form.selectedFeaturedPlanId || 0) === Number(plan.id || 0) }"
+                >
                   <div class="featured-plan-card__topline">
                     <span class="featured-plan-card__badge">Featured</span>
                     <span class="featured-plan-card__meta">{{ Math.max(1, Number(plan.exerciseCount || 0)) }} exercises</span>
@@ -577,6 +604,14 @@ onMounted(() => {
                     <span>{{ plan.estimatedDurationMinutes || plan.estimatedDuration || 45 }} min</span>
                     <span>{{ plan.type || 'Strength' }}</span>
                   </div>
+                  <button
+                    type="button"
+                    class="btn btn-sm featured-plan-select-btn"
+                    :class="Number(form.selectedFeaturedPlanId || 0) === Number(plan.id || 0) ? 'btn-primary' : 'btn-outline-primary'"
+                    @click="selectFeaturedPlan(plan.id)"
+                  >
+                    {{ Number(form.selectedFeaturedPlanId || 0) === Number(plan.id || 0) ? 'Selected' : 'Select Plan' }}
+                  </button>
                 </div>
               </div>
 
@@ -604,6 +639,10 @@ onMounted(() => {
               <div class="selected-account-pill mb-0">
                 <span class="selected-account-label">Subscription Type</span>
                 <span class="selected-account-value">{{ selectedSubscriptionLabel }}</span>
+              </div>
+              <div class="selected-account-pill mb-0" v-if="selectedFeaturedPlan">
+                <span class="selected-account-label">Featured Workout Plan</span>
+                <span class="selected-account-value">{{ selectedFeaturedPlan?.name || 'Selected' }}</span>
               </div>
             </div>
 
@@ -859,6 +898,11 @@ onMounted(() => {
   padding: 0.7rem 0.8rem;
 }
 
+.featured-plan-card--selected {
+  border-color: rgba(37, 99, 235, 0.9);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
+}
+
 .featured-plan-card__topline {
   display: flex;
   align-items: center;
@@ -905,6 +949,14 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+}
+
+.featured-plan-select-btn {
+  margin-top: 0.55rem;
+  width: 100%;
+  font-size: 0.74rem;
+  font-weight: 600;
+  border-radius: 999px;
 }
 
 .featured-plans-empty {
