@@ -758,6 +758,116 @@ const quickAdd = (exercise) => {
   border-color: #1d4ed8;
 }
 
+@media (max-width: 430px) {
+  .picker-overlay {
+    padding: 10px;
+  }
+
+  .picker-modal {
+    width: min(94vw, 420px);
+    max-height: 80vh;
+    border-radius: 14px;
+  }
+
+  .picker-head {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .picker-head h3 {
+    font-size: 0.96rem;
+  }
+
+  .picker-head p {
+    font-size: 0.74rem;
+    line-height: 1.35;
+  }
+
+  .picker-filters__inner {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .picker-filter-field:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .picker-filter-field label {
+    font-size: 0.68rem;
+  }
+
+  .picker-filters input,
+  .picker-filters select {
+    height: 34px;
+    font-size: 0.8rem;
+    padding: 6px 9px;
+  }
+
+  .picker-results {
+    padding-top: 8px;
+  }
+
+  .picker-card {
+    grid-template-columns: 44px 1fr auto;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .picker-card img {
+    width: 44px;
+    height: 44px;
+  }
+
+  .picker-card__meta h4 {
+    font-size: 0.8rem;
+  }
+
+  .picker-chip {
+    font-size: 0.62rem;
+    padding: 2px 6px;
+  }
+
+  .picker-card__actions {
+    gap: 5px;
+  }
+
+  .picker-icon-btn {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+  }
+
+  .picker-footer__inner {
+    gap: 8px;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .picker-footer__count,
+  .btn-add-selected {
+    width: 100%;
+  }
+
+  .btn-add-selected {
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+@media (max-width: 360px) {
+  .picker-modal {
+    width: min(92vw, 360px);
+  }
+
+  .picker-filters__inner {
+    grid-template-columns: 1fr;
+  }
+
+  .picker-filter-field:first-child {
+    grid-column: auto;
+  }
+}
+
 .picker-card__actions {
   display: flex;
   flex-direction: row;

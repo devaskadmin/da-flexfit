@@ -1,10 +1,16 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.291 — Compact mobile Exercise Picker layout
+- Scope: reduce the Add Exercise modal’s wasted vertical real estate and keep the Category/Equipment filters compact on narrow mobile widths without altering the picker’s exercise selection logic.
+- Files changed: `frontend/src/components/workout-builder/ExercisePickerModal.vue`, `CHANGELOG.md`, `frontend/package.json`, `backend/package.json`.
+- Verification: frontend production build passed; modal opened successfully at 375px and 430px in local browser checks; full authenticated workout-flow validation remains blocked by the local app’s auth/CORS issue.
+- Caveats: the Vite frontend currently redirects to login and cannot reach the backend at `http://localhost:5000` from the browser in this environment, so live active-session validation remains pending.
+
 ## 0.85.290 — Completion routes to Workout Log history
 - Scope: ensure successful Complete & End Workout navigates to the existing Workout Log history tab after backend completion instead of resetting to the overview tab.
 - Files changed: `frontend/src/views/Member/LogWorkout.vue`, `CHANGELOG.md`, `frontend/package.json`, `backend/package.json`.
-- Verification: pending full backend suite and frontend production build after the patch; final live iPhone confirmation still required.
-- Commit hash: pending until local git commit is created.
+- Verification: backend full suite passed (118/118); frontend production build passed; live iPhone confirmation still required.
+- Commit hash: `ca7dc832d140e6ba0a46b60abe4b9977763be731`.
 - Caveats: no production data or gateway changes; completion navigation is blocked until a successful backend completion response is returned.
 
 ## 0.85.289 — Session-aware Workout Timer Controls

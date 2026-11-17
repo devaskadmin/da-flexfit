@@ -6,6 +6,15 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.291] - 2026-11-14 - Compact mobile exercise picker layout
+
+- **Fixed:** The Add Exercise picker now keeps the search field full-width and pairs the Category and Equipment filters side by side on narrow viewports, reducing wasted space at 375px and 430px without changing the picker logic or the selection flow.
+- **Changed:** The responsive CSS in the exercise selection modal was tightened for compact mobile widths, preserving the existing filter behavior and the underlying add-to-workout action path.
+- **Safety:** This is a frontend-only UI adjustment. No workout-session lifecycle rules, backend APIs, or draft persistence logic were modified.
+- **Relevant source files:** `frontend/src/components/workout-builder/ExercisePickerModal.vue`; `CHANGELOG.md`; `frontend/package.json`; `backend/package.json`.
+- **Verification:** Frontend production build passed after the patch. The local browser validation reached the Add Exercise modal and confirmed the modal opens at 375px/430px, but the full live workout route remains blocked by the local auth/CORS stack because the app reloads to the login screen and backend calls to `http://localhost:5000` are not reachable from the dev server in this session.
+- **Known unresolved issues:** Complete in-browser workout validation on the authenticated route is still pending because the dev frontend is not currently able to reach the backend session APIs from the browser in this environment.
+
 ## [0.85.290] - 2026-11-14 - Completion routes to Workout Log history
 
 - **Fixed:** The successful `Complete & End Workout` flow now routes the user directly to the existing Workout Log history tab after the backend confirms the session completed, instead of resetting to the overview tab and leaving the completed session invisible.
