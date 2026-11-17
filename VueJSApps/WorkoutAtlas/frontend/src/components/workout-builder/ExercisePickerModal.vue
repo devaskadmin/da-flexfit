@@ -758,6 +758,32 @@ const quickAdd = (exercise) => {
   border-color: #1d4ed8;
 }
 
+@media (max-width: 800px) {
+  .picker-modal {
+    max-height: 80vh;
+  }
+
+  .picker-filters__inner {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: 7px;
+  }
+
+  .picker-filter-field {
+    min-width: 0;
+  }
+
+  .picker-filter-field label {
+    font-size: 0.68rem;
+  }
+
+  .picker-filters input,
+  .picker-filters select {
+    height: 34px;
+    font-size: 0.8rem;
+    padding: 6px 9px;
+  }
+}
+
 @media (max-width: 430px) {
   .picker-overlay {
     padding: 10px;
@@ -790,17 +816,6 @@ const quickAdd = (exercise) => {
 
   .picker-filter-field:first-child {
     grid-column: 1 / -1;
-  }
-
-  .picker-filter-field label {
-    font-size: 0.68rem;
-  }
-
-  .picker-filters input,
-  .picker-filters select {
-    height: 34px;
-    font-size: 0.8rem;
-    padding: 6px 9px;
   }
 
   .picker-results {
@@ -860,11 +875,11 @@ const quickAdd = (exercise) => {
   }
 
   .picker-filters__inner {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
   }
 
   .picker-filter-field:first-child {
-    grid-column: auto;
+    grid-column: 1 / -1;
   }
 }
 
