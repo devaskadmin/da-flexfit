@@ -58,6 +58,7 @@ const historyWorkouts        = ref([]);
 const historyLoading         = ref(false);
 const historyError           = ref('');
 const workoutHistoryUsername = ref('');
+const historyDailySummaryRaw = ref(null);
 
 /* ─── Delete History state ────────────────────────────────────────────── */
 const showDeleteHistoryModal  = ref(false);
@@ -495,6 +496,51 @@ const getHistorySessionDurationSeconds = (session) => {
 
   return Math.max(Math.floor((completedAtMs - startedAtMs) / 1000), 0);
 };
+
+const historyDailySummary = computed(() => {
+  const explicitTotal = Number(historyDailySummaryRaw.value?.totalDurationSeconds || 0);
+  const explicitCount = Number(historyDailySummaryRaw.value?.includedCompletedSessionCount || 0);
+
+  if (explicitTotal > 0 || explicitCount > 0) {
+    return {
+      totalDurationSeconds: Math.max(Math.floor(explicitTotal), 0),
+      includedCompletedSessionCount: Math.max(Math.floor(explicitCount), 0),
+    };
+  }
+
+  // Backward-compatible fallback if an older API response has no summary payload.
+  const seenSessionKeys = new Set();
+  let totalDurationSeconds = 0;
+  let includedCompletedSessionCount = 0;
+
+  for (const session of Array.isArray(historyWorkouts.value) ? historyWorkouts.value : []) {
+    const status = normalizeSessionStatus(session);
+    if (status !== 'completed') continue;
+
+    const persistedDuration = Number(session?.sessionDurationSeconds || 0);
+    if (!Number.isFinite(persistedDuration) || persistedDuration <= 0) continue;
+
+    const numericSessionId = Number(session?.sessionId || 0);
+    const sessionKey = Number.isInteger(numericSessionId) && numericSessionId > 0
+      ? `id:${numericSessionId}`
+      : `legacy:${String(session?.workoutDate || '').trim()}|${String(session?.sessionStartedAt || '').trim()}|${Math.floor(persistedDuration)}`;
+
+    if (seenSessionKeys.has(sessionKey)) continue;
+    seenSessionKeys.add(sessionKey);
+
+    includedCompletedSessionCount += 1;
+    totalDurationSeconds += Math.floor(persistedDuration);
+  }
+
+  return {
+    totalDurationSeconds,
+    includedCompletedSessionCount,
+  };
+});
+
+const historyDailyTotalLabel = computed(() =>
+  formatDurationHms(historyDailySummary.value.totalDurationSeconds)
+);
 
 const activeWorkoutElapsedSeconds = computed(() => {
   if (!hasActiveWorkout.value) return 0;
@@ -2806,6 +2852,7 @@ const loadWorkoutHistory = async () => {
   historyLoading.value  = true;
   clearFriendlyError('history');
   historyWorkouts.value = [];
+  historyDailySummaryRaw.value = null;
   try {
     const res = await fetch(
       `${API_BASE}/api/workout-log/history?date=${encodeURIComponent(selectedWorkoutDate.value)}`,
@@ -2817,6 +2864,9 @@ const loadWorkoutHistory = async () => {
     const data = await res.json();
     historyWorkouts.value        = Array.isArray(data.sessions) ? data.sessions : [];
     workoutHistoryUsername.value = data.username || '';
+    historyDailySummaryRaw.value = data?.dailySummary && typeof data.dailySummary === 'object'
+      ? data.dailySummary
+      : null;
   } catch (err) {
     console.error('[WorkoutHistory] load failed:', err);
     setFriendlyError('history', {
@@ -2828,6 +2878,7 @@ const loadWorkoutHistory = async () => {
       fallback: 'Unable to load workout history right now. Please try again.',
     });
     historyWorkouts.value = [];
+    historyDailySummaryRaw.value = null;
   } finally {
     historyLoading.value = false;
   }
@@ -3568,6 +3619,19 @@ onUnmounted(() => {
           <button type="button" class="wl-btn-preview" style="padding:7px 12px;font-size:0.8rem" @click="loadWorkoutHistory">
             <i class="fa-solid fa-arrows-rotate"></i> Refresh
           </button>
+        </div>
+
+        <div v-if="!historyLoading && !historyError" class="wl-history-total-card app-section-card">
+          <div class="wl-history-total-card__icon" aria-hidden="true">
+            <i class="fa-solid fa-clock"></i>
+          </div>
+          <div class="wl-history-total-card__content">
+            <p class="wl-history-total-card__label">Total Workout Time Today</p>
+            <p class="wl-history-total-card__value">{{ historyDailyTotalLabel }}</p>
+            <p class="wl-history-total-card__meta">
+              Completed sessions counted: {{ historyDailySummary.includedCompletedSessionCount }}
+            </p>
+          </div>
         </div>
 
         <!-- Error -->
@@ -5354,6 +5418,77 @@ onUnmounted(() => {
   color: #ffffff;
 }
 
+.wl-history-total-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: var(--panel-bg, #f8fafc);
+  margin-bottom: 12px;
+}
+
+.wl-history-total-card__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(37, 99, 235, 0.2);
+  color: #93c5fd;
+  flex-shrink: 0;
+}
+
+.wl-history-total-card__content {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.wl-history-total-card__label {
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #cbd5e1;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.wl-history-total-card__value {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.15;
+}
+
+.wl-history-total-card__meta {
+  margin: 0;
+  font-size: 0.74rem;
+  color: #94a3b8;
+}
+
+@media (max-width: 430px) {
+  .wl-history-total-card {
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 10px;
+    padding: 9px 11px;
+  }
+
+  .wl-history-total-card__icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+  }
+
+  .wl-history-total-card__value {
+    font-size: 1.1rem;
+  }
+}
+
 .wl-history-list { display: grid; gap: 14px; }
 
 .wl-history-group {
@@ -6032,6 +6167,7 @@ onUnmounted(() => {
 .wl-page .wl-day-card,
 .wl-page .wl-day-order-toolbar,
 .wl-page .wl-day-detail-header,
+.wl-page .wl-history-total-card,
 .wl-page .wl-history-datebar,
 .wl-page .wl-history-session,
 .wl-page .wl-history-session__header,
@@ -6050,6 +6186,7 @@ onUnmounted(() => {
 .wl-page .wl-hist-ex-thumb,
 .wl-page .wl-hist-sets-head--strength,
 .wl-page .wl-hist-sets-head--cardio,
+.wl-page .wl-history-total-card,
 .wl-page .wl-history-datebar,
 .wl-page .wl-day-detail-header,
 .wl-page .wl-modal__header,
@@ -6127,10 +6264,25 @@ onUnmounted(() => {
 .wl-page .wl-day-icon,
 .wl-page .wl-plan__meta i,
 .wl-page .wl-day-card__meta i,
+.wl-page .wl-history-total-card__icon i,
 .wl-page .wl-history-datebar i,
 .wl-page .wl-history-ex__stats i,
 .wl-page .wl-history-session__meta i {
   color: color-mix(in srgb, var(--wl-accent) 68%, var(--wl-text-secondary) 32%);
+}
+
+.wl-page .wl-history-total-card__label,
+.wl-page .wl-history-total-card__meta {
+  color: var(--wl-text-secondary);
+}
+
+.wl-page .wl-history-total-card__value {
+  color: var(--wl-text);
+}
+
+.wl-page .wl-history-total-card__icon {
+  background: color-mix(in srgb, var(--wl-accent) 20%, transparent 80%);
+  border: 1px solid color-mix(in srgb, var(--wl-accent) 36%, transparent 64%);
 }
 
 .wl-page .wl-tabs {

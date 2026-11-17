@@ -1,5 +1,12 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.294 — Daily cumulative workout time in Workout Log
+- Scope: add a daily cumulative `Total Workout Time Today` history summary above Workout Log results while preserving all existing history record rendering and controls.
+- Files changed: `backend/api/workout-log.js`, `backend/utils/workout-history-summary.js`, `backend/tests/workout-history-daily-summary.test.js`, `backend/tests/workout-log-history-visibility.test.js`, `frontend/src/views/Member/LogWorkout.vue`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`.
+- Verification: targeted regressions passed (17/17); full backend suite passed (134/134); frontend production build passed.
+- Browser evidence: authenticated Workout Log history tab rendered `Total Workout Time Today` with `00:00:00` and completed-session count; viewport checks at 320/375/430 reported no horizontal overflow.
+- Caveats: real iPhone device QA is still recommended to confirm production parity for all mobile typography/spacing nuances.
+
 ## 0.85.293 — Cardio workout history visibility restoration
 - Scope: fix local/UTC workout date drift that could make in-progress cardio entries appear in Current Workout but disappear from Workout Log for the selected local day.
 - Files changed: `frontend/src/views/Member/LogWorkout.vue`, `backend/api/workout-log.js`, `backend/tests/workout-log-history-visibility.test.js`, `backend/tests/workout-log-session-persistence.test.js`, `CHANGELOG.md`, `frontend/package.json`, `backend/package.json`.

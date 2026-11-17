@@ -6,6 +6,17 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.294] - 2026-11-17 - Daily cumulative workout time summary in Workout Log
+
+- **Added:** Workout Log history now shows a compact summary card above history records with a clock icon, label `Total Workout Time Today`, cumulative daily workout time in `HH:MM:SS`, and completed-session count.
+- **Added:** History API now returns a `dailySummary` payload with `totalDurationSeconds` and `includedCompletedSessionCount`, computed from session-level persisted durations.
+- **Changed:** Daily summary counting includes only `completed` sessions with valid persisted `sessionDurationSeconds`, deduplicates duplicate session data, and excludes cancelled/in-progress/ended records from totals.
+- **Preserved:** Existing Workout Log history cards, individual session durations, edit/delete controls, exercise details, completion indicators, and all session record rendering remain unchanged.
+- **Important behavior:** The summary recalculates per selected date, updates after history refresh, updates after successful workout completion flow, and displays `00:00:00` when no eligible completed durations exist.
+- **Relevant source files:** `backend/api/workout-log.js`; `backend/utils/workout-history-summary.js`; `backend/tests/workout-history-daily-summary.test.js`; `backend/tests/workout-log-history-visibility.test.js`; `frontend/src/views/Member/LogWorkout.vue`; `frontend/package.json`; `backend/package.json`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`.
+- **Verification:** Targeted regressions passed (17/17) for summary logic + history visibility + set persistence. Full backend suite passed (134/134). Frontend production build passed. Authenticated browser verification confirmed the summary card renders and remains non-overflowing at 320/375/430 viewport widths in this environment.
+- **Known unresolved issues:** Visual verification used local authenticated browser context only; real-device iPhone production parity still requires external QA confirmation.
+
 ## [0.85.293] - 2026-11-17 - Restore cardio workout history visibility
 
 - **Fixed:** Workout Log date normalization now uses local calendar date formatting for selected-day state, session resume date hydration, and date-picker max boundaries, preventing UTC day rollover mismatches that could hide in-progress cardio history entries under the wrong day.

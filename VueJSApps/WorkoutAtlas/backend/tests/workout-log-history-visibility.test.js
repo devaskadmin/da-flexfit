@@ -221,6 +221,12 @@ test('workout history includes in-progress, ended, completed, and cancelled sess
     const completedSession = res.body.sessions.find((session) => session.sessionStatus === 'completed');
     assert.ok(completedSession);
     assert.equal(completedSession.exercises[0].sets.length, 1);
+    assert.equal(completedSession.sessionDurationSeconds, 1200);
+
+    assert.deepEqual(res.body.dailySummary, {
+      totalDurationSeconds: 1200,
+      includedCompletedSessionCount: 1,
+    });
   } finally {
     restore();
   }
@@ -304,6 +310,163 @@ test('workout history keeps in-progress cardio sessions visible for the selected
     assert.equal(res.body.sessions[0].exercises[0].workoutType, 'Cardio');
     assert.equal(res.body.sessions[0].exercises[0].sets.length, 1);
     assert.equal(res.body.sessions[0].exercises[0].sets[0].duration, 30);
+    assert.deepEqual(res.body.dailySummary, {
+      totalDurationSeconds: 0,
+      includedCompletedSessionCount: 0,
+    });
+  } finally {
+    restore();
+  }
+});
+
+test('workout history summary follows the selected date and recalculates on refresh', async () => {
+  const seenRequestedDates = [];
+
+  const rowsByDate = {
+    '2026-11-17': [
+      {
+        workoutLogId: 4101,
+        sessionId: 9901,
+        workoutDate: '2026-11-17',
+        workoutType: 'Strength',
+        totalSets: 1,
+        avgReps: 6,
+        avgWeight: 135,
+        totalDuration: 0,
+        calories: null,
+        distance: null,
+        speed: null,
+        scheduleGroup: 'Tuesday',
+        sessionStatus: 'completed',
+        sessionStartedAt: '2026-11-17T10:00:00.000Z',
+        sessionEndedAt: '2026-11-17T10:35:05.000Z',
+        sessionDurationSeconds: 2105,
+        sessionCompletedAt: '2026-11-17T10:35:05.000Z',
+        sessionWorkoutDate: '2026-11-17',
+        planName: 'Chest & Biceps',
+        exerciseName: 'Bench Press',
+        exerciseImage: null,
+        muscleGroup: 'Chest',
+        equipment: 'Barbell',
+      },
+      {
+        workoutLogId: 4102,
+        sessionId: 9902,
+        workoutDate: '2026-11-17',
+        workoutType: 'Cardio',
+        totalSets: 1,
+        avgReps: 0,
+        avgWeight: 0,
+        totalDuration: 16,
+        calories: 180,
+        distance: 2.0,
+        speed: 7.5,
+        scheduleGroup: 'Tuesday',
+        sessionStatus: 'completed',
+        sessionStartedAt: '2026-11-17T11:00:00.000Z',
+        sessionEndedAt: '2026-11-17T11:16:33.000Z',
+        sessionDurationSeconds: 993,
+        sessionCompletedAt: '2026-11-17T11:16:33.000Z',
+        sessionWorkoutDate: '2026-11-17',
+        planName: 'Chest & Biceps',
+        exerciseName: 'Treadmill',
+        exerciseImage: null,
+        muscleGroup: 'Cardio',
+        equipment: 'Treadmill',
+      },
+    ],
+    '2026-11-18': [
+      {
+        workoutLogId: 5101,
+        sessionId: 9911,
+        workoutDate: '2026-11-18',
+        workoutType: 'Strength',
+        totalSets: 1,
+        avgReps: 8,
+        avgWeight: 95,
+        totalDuration: 0,
+        calories: null,
+        distance: null,
+        speed: null,
+        scheduleGroup: 'Wednesday',
+        sessionStatus: 'completed',
+        sessionStartedAt: '2026-11-18T09:00:00.000Z',
+        sessionEndedAt: '2026-11-18T09:20:00.000Z',
+        sessionDurationSeconds: 1200,
+        sessionCompletedAt: '2026-11-18T09:20:00.000Z',
+        sessionWorkoutDate: '2026-11-18',
+        planName: 'Leg Day',
+        exerciseName: 'Squat',
+        exerciseImage: null,
+        muscleGroup: 'Legs',
+        equipment: 'Barbell',
+      },
+    ],
+  };
+
+  const mockPool = {
+    query: async (sql, params = []) => {
+      const normalizedSql = String(sql || '').replace(/\s+/g, ' ').trim();
+
+      if (normalizedSql.includes('FROM workout_log wl')) {
+        const requestedDate = String(params[1] || '').trim();
+        seenRequestedDates.push(requestedDate);
+        return [rowsByDate[requestedDate] || [], []];
+      }
+
+      if (normalizedSql.includes('FROM workout_log_sets')) {
+        return [[
+          { workoutLogId: 4101, setNumber: 1, weight: 135, reps: 6, duration: null, caloriesBurned: null, distanceMiles: null, speedMph: null, completed: 1 },
+          { workoutLogId: 4102, setNumber: 1, weight: null, reps: null, duration: 16, caloriesBurned: 180, distanceMiles: 2.0, speedMph: 7.5, completed: 1 },
+          { workoutLogId: 5101, setNumber: 1, weight: 95, reps: 8, duration: null, caloriesBurned: null, distanceMiles: null, speedMph: null, completed: 1 },
+        ], []];
+      }
+
+      throw new Error(`Unhandled SQL: ${normalizedSql}`);
+    },
+  };
+
+  const { route, restore } = loadRouteWithMockPool(mockPool);
+
+  try {
+    const historyHandler = getBusinessHandler(route, 'get', '/history');
+
+    const firstRes = createResponseRecorder();
+    await historyHandler(
+      {
+        session: { user: { id: 88, username: 'tester' } },
+        query: { date: '2026-11-17' },
+      },
+      firstRes
+    );
+
+    const secondRes = createResponseRecorder();
+    await historyHandler(
+      {
+        session: { user: { id: 88, username: 'tester' } },
+        query: { date: '2026-11-18' },
+      },
+      secondRes
+    );
+
+    assert.equal(firstRes.statusCode, 200);
+    assert.equal(secondRes.statusCode, 200);
+
+    assert.deepEqual(seenRequestedDates, ['2026-11-17', '2026-11-18']);
+
+    assert.deepEqual(firstRes.body.dailySummary, {
+      totalDurationSeconds: 3098,
+      includedCompletedSessionCount: 2,
+    });
+    assert.deepEqual(secondRes.body.dailySummary, {
+      totalDurationSeconds: 1200,
+      includedCompletedSessionCount: 1,
+    });
+
+    // Individual session durations remain preserved in session payloads.
+    assert.equal(firstRes.body.sessions[0].sessionDurationSeconds, 2105);
+    assert.equal(firstRes.body.sessions[1].sessionDurationSeconds, 993);
+    assert.equal(secondRes.body.sessions[0].sessionDurationSeconds, 1200);
   } finally {
     restore();
   }

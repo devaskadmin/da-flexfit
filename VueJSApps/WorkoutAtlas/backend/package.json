@@ -1,6 +1,6 @@
 {
   "name": "backend",
-  "version": "0.85.293",
+  "version": "0.85.294",
   "main": "index.js",
   "scripts": {
     "test": "node --test",

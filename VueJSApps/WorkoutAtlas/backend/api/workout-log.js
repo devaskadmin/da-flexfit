@@ -5,6 +5,7 @@ const router = express.Router();
 const pool = require('../db.js');
 const { sanitizeText } = require('../utils/sanitize.js');
 const { WORKOUT_HISTORY_VISIBLE_STATUSES } = require('../utils/workout-session-status-policy.js');
+const { buildDailyWorkoutDurationSummary } = require('../utils/workout-history-summary.js');
 
 const toLocalDateInputValue = (value = new Date()) => {
   const parsed = value instanceof Date ? value : new Date(value);
@@ -897,6 +898,10 @@ router.get('/history', async (req, res) => {
         date,
         username: req.session.user.username || '',
         sessions: [],
+        dailySummary: {
+          totalDurationSeconds: 0,
+          includedCompletedSessionCount: 0,
+        },
       });
     }
 
@@ -968,11 +973,13 @@ router.get('/history', async (req, res) => {
     }
 
     const sessions = [...sessionMap.values()];
+    const dailySummary = buildDailyWorkoutDurationSummary(sessions);
 
     return res.status(200).json({
       date,
       username: req.session.user.username || '',
       sessions,
+      dailySummary,
     });
   } catch (err) {
     console.error('❌ History fetch error:', err);
