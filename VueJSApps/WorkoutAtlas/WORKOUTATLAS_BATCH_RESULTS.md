@@ -1,5 +1,12 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.295 — Mobile workout button layout fixes
+- Scope: stabilize Current Workout exercise-card action layout on mobile so Add Set and Complete Exercise remain consistently placed and readable across narrow breakpoints while preserving all workout behavior.
+- Files changed: `frontend/src/components/workout-session/ExerciseSessionCard.vue`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
+- Verification: full backend suite passed (134/134); frontend production build passed.
+- Browser evidence: authenticated Current Workout checks passed at 320/375/430/768/1024/1440 with no horizontal overflow; interactive checks confirmed Add Set, mark set complete, and expand/collapse still function after layout changes; screenshots captured at 375 and 430.
+- Caveats: real iPhone device QA is still recommended to confirm production parity for mobile spacing/typography nuances.
+
 ## 0.85.294 — Daily cumulative workout time in Workout Log
 - Scope: add a daily cumulative `Total Workout Time Today` history summary above Workout Log results while preserving all existing history record rendering and controls.
 - Files changed: `backend/api/workout-log.js`, `backend/utils/workout-history-summary.js`, `backend/tests/workout-history-daily-summary.test.js`, `backend/tests/workout-log-history-visibility.test.js`, `frontend/src/views/Member/LogWorkout.vue`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`.

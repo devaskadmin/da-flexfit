@@ -603,27 +603,31 @@ onUnmounted(() => {
 
     <!-- Add Set -->
     <div class="sec-footer">
-      <button type="button" class="add-set-btn" @click="emit('add-set', exercise.id)">
-        <i class="fa-solid fa-plus"></i> Add Set
-      </button>
+      <div class="sec-footer-info">
+        <span class="sec-summary">
+          {{ exercise.sessionSets.filter((s) => s.done).length }} /
+          {{ exercise.sessionSets.length }} sets completed
+        </span>
 
-      <span class="sec-summary">
-        {{ exercise.sessionSets.filter((s) => s.done).length }} /
-        {{ exercise.sessionSets.length }} sets completed
-      </span>
+        <span v-if="hasPrefilledValues" class="sec-prefill-note">
+          Prefilled from last workout
+        </span>
+      </div>
 
-      <span v-if="hasPrefilledValues" class="sec-prefill-note">
-        Prefilled from last workout
-      </span>
+      <div class="sec-footer-actions">
+        <button type="button" class="add-set-btn" @click="emit('add-set', exercise.id)">
+          <i class="fa-solid fa-plus"></i> Add Set
+        </button>
 
-      <button
-        type="button"
-        class="c3-finish-btn"
-        :class="{ 'c3-finish-btn--done': exercise.sessionSets.every((s) => s.done) }"
-        @click="completeExercise(exercise.id)"
-      >
-        <i class="fa-solid fa-flag-checkered"></i> Complete Exercise
-      </button>
+        <button
+          type="button"
+          class="c3-finish-btn"
+          :class="{ 'c3-finish-btn--done': exercise.sessionSets.every((s) => s.done) }"
+          @click="completeExercise(exercise.id)"
+        >
+          <i class="fa-solid fa-flag-checkered"></i> Complete Exercise
+        </button>
+      </div>
     </div>
 
     </div><!-- end sec-body -->
@@ -1345,6 +1349,26 @@ onUnmounted(() => {
   border-top: 1px solid var(--border-color, #f3f4f6);
 }
 
+.sec-footer-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.sec-footer-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
 .add-set-btn {
   background: none;
   border: 1px solid #3b82f6;
@@ -1367,6 +1391,71 @@ onUnmounted(() => {
 .sec-summary {
   font-size: 0.78rem;
   color: var(--text-color-secondary, #6b7280);
+}
+
+@media (max-width: 800px) {
+  .sec-footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    align-items: stretch;
+    padding-top: 8px;
+  }
+
+  .sec-footer-info {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    justify-items: start;
+  }
+
+  .sec-footer-actions {
+    width: 100%;
+    margin-left: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    justify-items: center;
+  }
+
+  .add-set-btn {
+    width: auto;
+    min-width: 124px;
+    min-height: 40px;
+    padding: 6px 12px;
+    margin: 0 auto;
+    justify-content: center;
+  }
+
+  .c3-finish-btn {
+    width: 100%;
+    max-width: 280px;
+    min-height: 42px;
+    justify-content: center;
+    margin: 0 auto;
+  }
+
+  .c3-inline-actions {
+    justify-content: flex-end;
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  .c3-row-done {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: center;
+    gap: 7px;
+  }
+
+  .c3-row-done .c3-rm-btn,
+  .c3-row-done .c3-complete-btn {
+    width: 100%;
+    min-height: 40px;
+    justify-content: center;
+  }
 }
 
 /* ─── v0.81.6 Mobile 768px — Exercise Card Compression ───────── */
@@ -1586,13 +1675,13 @@ onUnmounted(() => {
     gap: 6px;
     width: 100%;
     min-width: 0;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .c3-inline-actions {
     gap: 5px;
-    flex: 1 1 100%;
-    width: 100%;
+    flex: 0 0 auto;
+    width: auto;
     min-width: 0;
     justify-content: flex-end;
   }
@@ -1619,9 +1708,9 @@ onUnmounted(() => {
   /* §6 Set actions — action row spans both columns, 30px buttons */
   .c3-row-done {
     grid-column: 1 / -1;
-    flex-direction: row;
-    align-items: stretch;
-    justify-content: flex-start;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: center;
+    justify-content: stretch;
     gap: 6px;
     padding: 7px 8px;
     border-top: 0 !important;
@@ -1630,7 +1719,7 @@ onUnmounted(() => {
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .c3-info-action,
@@ -1639,6 +1728,10 @@ onUnmounted(() => {
     width: 100%;
     min-width: 0;
     justify-content: stretch;
+  }
+
+  .c3-info-action:empty {
+    display: none;
   }
 
   .c3-rm-btn {
@@ -1660,7 +1753,7 @@ onUnmounted(() => {
     min-width: 0;
     min-height: 34px;
     padding: 0 10px;
-    white-space: normal;
+    white-space: nowrap;
     text-align: center;
     line-height: 1.2;
     overflow-wrap: anywhere;
@@ -1682,13 +1775,17 @@ onUnmounted(() => {
     flex-wrap: nowrap;
   }
 
+  .sec-footer-info,
+  .sec-footer-actions,
   .sec-footer > * {
     min-width: 0;
   }
 
-  .add-set-btn,
-  .c3-finish-btn {
-    width: fit-content;
+  .add-set-btn {
+    font-size: 0.72rem;
+    padding: 5px 10px;
+    min-height: 44px;
+    width: auto;
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
@@ -1696,8 +1793,12 @@ onUnmounted(() => {
     margin: 0 auto;
   }
 
-  .add-set-btn { font-size: 0.72rem; padding: 5px 10px; min-height: 44px; }
-  .c3-finish-btn { font-size: 0.76rem; padding: 6px 12px; }
+  .c3-finish-btn {
+    font-size: 0.76rem;
+    padding: 6px 12px;
+    width: 100%;
+    max-width: 280px;
+  }
 
   .sec-summary   { font-size: 0.7rem; }
 
@@ -1732,8 +1833,8 @@ onUnmounted(() => {
 
 @media (max-width: 390px) {
   .strength-mobile-row {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px 36px;
-    gap: 4px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 40px 40px;
+    gap: 5px;
   }
 
   .sec-select-btn,
@@ -1746,8 +1847,8 @@ onUnmounted(() => {
   .strength-mobile-row .c3-icon-btn,
   .c3-rm-btn,
   .c3-complete-btn {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
   }
 
   .c3-rm-btn,

@@ -6,6 +6,17 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.295] - 2026-11-17 - Mobile workout button layout fixes in Current Workout
+
+- **Fixed:** Current Workout exercise footer actions are now structurally separated into info and action groups so `Add Set` and `Complete Exercise` no longer compete with summary/prefill text wrapping on narrow viewports.
+- **Fixed:** Mobile action layout at and below 800px now centers the compact `Add Set` button and keeps `Complete Exercise` on a stable full-width row, preventing inconsistent shifts between cards and avoiding overlap with notes text.
+- **Fixed:** Narrow-width set-action alignment in exercise rows was tightened to prevent clipping and inconsistent sizing around 390px and below, while preserving touch-target safety.
+- **Changed:** Footer/action CSS in the exercise session card now uses explicit mobile grid behavior for action placement and retains desktop flex behavior unchanged.
+- **Preserved:** Workout session logic, set persistence, exercise completion behavior, workout history behavior, and backend APIs were not changed in this release.
+- **Relevant source files:** `frontend/src/components/workout-session/ExerciseSessionCard.vue`; `frontend/package.json`; `backend/package.json`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`.
+- **Verification:** Full backend suite passed (134/134). Frontend production build passed. Authenticated browser checks confirmed no horizontal overflow at 320/375/430/768/1024/1440 and confirmed add-set, set-complete, and expand/collapse interactions remained functional after layout changes. Screenshots captured at 375 and 430.
+- **Known unresolved issues:** Real-device iPhone QA is still recommended to confirm production parity for all mobile typography and spacing edge cases.
+
 ## [0.85.294] - 2026-11-17 - Daily cumulative workout time summary in Workout Log
 
 - **Added:** Workout Log history now shows a compact summary card above history records with a clock icon, label `Total Workout Time Today`, cumulative daily workout time in `HH:MM:SS`, and completed-session count.
