@@ -6,6 +6,16 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.293] - 2026-11-17 - Restore cardio workout history visibility
+
+- **Fixed:** Workout Log date normalization now uses local calendar date formatting for selected-day state, session resume date hydration, and date-picker max boundaries, preventing UTC day rollover mismatches that could hide in-progress cardio history entries under the wrong day.
+- **Fixed:** Backend workout-session save fallback date generation now uses local date formatting instead of UTC ISO slicing when a save request omits `workoutDate`, preventing cardio session rows from being written to an unintended day during timezone boundary conditions.
+- **Added:** Regression test coverage for in-progress cardio visibility in Workout Log history results and for local-date fallback behavior in workout session persistence (including a guard against reintroducing UTC `Date#toISOString` fallback dependency).
+- **Preserved:** 0.85.292 set-edit persistence behavior remains intact; existing completed-set edit, rapid successive edit, remove-set cleanup, and two-active-session isolation tests continue passing.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `backend/api/workout-log.js`; `backend/tests/workout-log-history-visibility.test.js`; `backend/tests/workout-log-session-persistence.test.js`; `frontend/package.json`; `backend/package.json`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`.
+- **Verification:** Backend full suite passed (124/124). Frontend production build passed. No new failing tests introduced.
+- **Known unresolved issues:** Live authenticated iPhone replay remains environment-dependent in this local session because browser auth currently lands on login.
+
 ## [0.85.292] - 2026-11-17 - Persist edited set values before Workout Log history load
 
 - **Fixed:** Direct set-field edits (weight/reps and other set inputs) now trigger an explicit commit on input blur so corrected values are persisted immediately instead of waiting only on deferred autosave timing.

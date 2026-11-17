@@ -464,3 +464,49 @@ test('session save keeps values isolated across two active sessions', async () =
     restore();
   }
 });
+
+test('session save uses local date fallback without relying on Date#toISOString', async () => {
+  const { mockPool, state } = createSessionSaveHarness({
+    sessions: [{ id: 51, userId: 22, status: 'in_progress', workoutPlanId: null }],
+    existingLogs: [{ workoutLogId: 901, workoutLogSessionId: 51, userId: 22, exerciseId: 777, scheduleGroup: 'Cardio Day' }],
+  });
+
+  const { route, restore } = loadRouteWithMockPool(mockPool);
+  const originalToISOString = Date.prototype.toISOString;
+
+  try {
+    Date.prototype.toISOString = function patchedToISOString() {
+      throw new Error('UTC toISOString fallback should not be required for workout date defaults.');
+    };
+
+    const handler = getBusinessHandler(route, 'post', '/session');
+    const req = {
+      session: { user: { id: 22 } },
+      body: {
+        planId: null,
+        workoutSessionId: 51,
+        exercises: [
+          {
+            id: 'session-ex-local-date',
+            exerciseId: 777,
+            workoutType: 'Cardio',
+            scheduleGroup: 'Cardio Day',
+            sets: [{ setNum: 1, duration: 20, caloriesBurned: 160, distanceMiles: 2.2, speedMph: 6.6, done: true }],
+          },
+        ],
+      },
+    };
+    const res = createResponseRecorder();
+
+    await handler(req, res);
+
+    assert.equal(res.statusCode, 201);
+    const setRow = state.logSetsByLogId.get(901).get(1);
+    assert.equal(setRow.duration, 20);
+    assert.equal(setRow.calories, 160);
+    assert.equal(setRow.completed, 1);
+  } finally {
+    Date.prototype.toISOString = originalToISOString;
+    restore();
+  }
+});

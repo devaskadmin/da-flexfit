@@ -225,3 +225,86 @@ test('workout history includes in-progress, ended, completed, and cancelled sess
     restore();
   }
 });
+
+test('workout history keeps in-progress cardio sessions visible for the selected date', async () => {
+  let capturedHistoryStatuses = null;
+
+  const mockPool = {
+    query: async (sql, params = []) => {
+      const normalizedSql = String(sql || '').replace(/\s+/g, ' ').trim();
+
+      if (normalizedSql.includes('FROM workout_log wl')) {
+        capturedHistoryStatuses = params[2];
+        return [[
+          {
+            workoutLogId: 3101,
+            sessionId: 880,
+            workoutDate: '2026-11-16',
+            workoutType: 'Cardio',
+            totalSets: 1,
+            avgReps: 0,
+            avgWeight: 0,
+            totalDuration: 30,
+            calories: 260,
+            distance: 3.4,
+            speed: 6.8,
+            scheduleGroup: 'Monday',
+            sessionStatus: 'in_progress',
+            sessionStartedAt: '2026-11-16T05:30:00.000Z',
+            sessionEndedAt: null,
+            sessionDurationSeconds: 900,
+            sessionCompletedAt: null,
+            sessionWorkoutDate: '2026-11-16',
+            planName: 'Cardio Plan',
+            exerciseName: 'Treadmill',
+            exerciseImage: null,
+            muscleGroup: 'Cardio',
+            equipment: 'Treadmill',
+          },
+        ], []];
+      }
+
+      if (normalizedSql.includes('FROM workout_log_sets')) {
+        return [[
+          {
+            workoutLogId: 3101,
+            setNumber: 1,
+            weight: null,
+            reps: null,
+            duration: 30,
+            caloriesBurned: 260,
+            distanceMiles: 3.4,
+            speedMph: 6.8,
+            completed: 1,
+          },
+        ], []];
+      }
+
+      throw new Error(`Unhandled SQL: ${normalizedSql}`);
+    },
+  };
+
+  const { route, restore } = loadRouteWithMockPool(mockPool);
+
+  try {
+    const historyHandler = getBusinessHandler(route, 'get', '/history');
+    const req = {
+      session: { user: { id: 88, username: 'tester' } },
+      query: { date: '2026-11-16' },
+    };
+    const res = createResponseRecorder();
+
+    await historyHandler(req, res);
+
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(capturedHistoryStatuses, WORKOUT_HISTORY_VISIBLE_STATUSES);
+    assert.equal(res.body.sessions.length, 1);
+    assert.equal(res.body.sessions[0].sessionStatus, 'in_progress');
+    assert.equal(res.body.sessions[0].exercises.length, 1);
+    assert.equal(res.body.sessions[0].exercises[0].workoutType, 'Cardio');
+    assert.equal(res.body.sessions[0].exercises[0].sets.length, 1);
+    assert.equal(res.body.sessions[0].exercises[0].sets[0].duration, 30);
+  } finally {
+    restore();
+  }
+});

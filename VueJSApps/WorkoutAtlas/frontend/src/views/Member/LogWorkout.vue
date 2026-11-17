@@ -29,11 +29,29 @@ const router = useRouter();
 const route = useRoute();
 const WORKOUT_LOG_ACTIVE_BODY_CLASS = 'wa-workout-log-active';
 
+const toLocalDateInputValue = (value = new Date()) => {
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '';
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const normalizeDateInputValue = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw;
+  }
+  return toLocalDateInputValue(raw);
+};
+
 /* ─── Tab state ───────────────────────────────────────────────── */
 const activeTab = ref('overview'); // 'overview' | 'dayDetails' | 'workoutHistory'
 
 /* ─── Selected date (single date, used by all tabs) ───────────────────────── */
-const selectedWorkoutDate = ref(new Date().toISOString().split('T')[0]);
+const selectedWorkoutDate = ref(toLocalDateInputValue());
 
 /* ─── Workout History state ───────────────────────────────────────────── */
 const historyWorkouts        = ref([]);
@@ -743,7 +761,7 @@ const formatHistorySessionStatus = (session) => {
   return status ? status.replaceAll('_', ' ') : 'Unknown';
 };
 
-const today = () => new Date().toISOString().split('T')[0];
+const today = () => toLocalDateInputValue();
 
 /* ─── Summary stats (top cards) ─────────────────────────────────────────── */
 const summaryStats = computed(() => {
@@ -1950,10 +1968,8 @@ const continueExistingWorkoutSession = async (session, { activateTab = true } = 
   syncSessionTimerStateFor(session);
 
   if (session.workoutDate) {
-    const parsed = new Date(session.workoutDate);
-    if (!Number.isNaN(parsed.getTime())) {
-      selectedWorkoutDate.value = parsed.toISOString().split('T')[0];
-    }
+    const normalizedSessionDate = normalizeDateInputValue(session.workoutDate);
+    if (normalizedSessionDate) selectedWorkoutDate.value = normalizedSessionDate;
   }
 
   selectedDay.value = String(session.workoutDayName || '').trim();
@@ -3022,7 +3038,7 @@ onUnmounted(() => {
                 type="date"
                 v-model="selectedWorkoutDate"
                 class="wl-date-input"
-                :max="new Date().toISOString().split('T')[0]"
+                :max="today()"
               />
             </div>
           </div>

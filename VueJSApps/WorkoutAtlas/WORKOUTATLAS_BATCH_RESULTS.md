@@ -1,5 +1,11 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.293 — Cardio workout history visibility restoration
+- Scope: fix local/UTC workout date drift that could make in-progress cardio entries appear in Current Workout but disappear from Workout Log for the selected local day.
+- Files changed: `frontend/src/views/Member/LogWorkout.vue`, `backend/api/workout-log.js`, `backend/tests/workout-log-history-visibility.test.js`, `backend/tests/workout-log-session-persistence.test.js`, `CHANGELOG.md`, `frontend/package.json`, `backend/package.json`.
+- Verification: backend full suite passed (124/124); frontend production build passed; added regressions verify in-progress cardio history visibility and local-date fallback save semantics.
+- Caveats: authenticated live browser/iPhone replay remains dependent on local auth session availability in this environment.
+
 ## 0.85.292 — Existing set edit persistence and history integrity
 - Scope: ensure direct edits to existing set values persist without requiring add/remove/complete follow-up actions, and flush persistence before Workout Log history reload.
 - Files changed: `frontend/src/views/Member/LogWorkout.vue`, `frontend/src/components/workout-session/ExerciseSessionCard.vue`, `backend/tests/workout-log-session-persistence.test.js`, `CHANGELOG.md`, `frontend/package.json`, `backend/package.json`.

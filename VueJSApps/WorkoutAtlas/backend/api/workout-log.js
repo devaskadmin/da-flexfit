@@ -6,6 +6,17 @@ const pool = require('../db.js');
 const { sanitizeText } = require('../utils/sanitize.js');
 const { WORKOUT_HISTORY_VISIBLE_STATUSES } = require('../utils/workout-session-status-policy.js');
 
+const toLocalDateInputValue = (value = new Date()) => {
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return '';
+  }
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const buildNormalizedGroupOrder = (builderOrder = [], preferredOrder = []) => {
   const normalizedBuilder = Array.isArray(builderOrder)
     ? builderOrder.map((value) => String(value || '').trim()).filter(Boolean)
@@ -540,7 +551,7 @@ router.post('/session', async (req, res) => {
       return res.status(400).json({ error: 'exercises array is required.' });
     }
 
-    const date = workoutDate || new Date().toISOString().split('T')[0];
+    const date = workoutDate || toLocalDateInputValue();
     let sourceScheduleId = Number(planId || 0) || null;
     const requestedSessionId = Number(workoutSessionId || 0) || null;
     let createdSession = false;
