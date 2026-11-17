@@ -145,6 +145,7 @@ const exerciseEditDraft = ref({
 const sessionUserId = ref(null);
 
 let workoutTimerIntervalId = null;
+const workoutTimerSessionTransitionInFlight = ref(false);
 let workoutLogMountReady = false;
 let workoutLogSetPersistTimeoutId = null;
 let workoutLogSetPersistInFlight = false;
@@ -732,6 +733,140 @@ const syncWorkoutTimerState = () => {
     hasLiveWorkoutSession.value && activeSession.value?.startedAt && !workoutTimerPaused.value
   );
   setWorkoutTimerRunning(shouldRun);
+};
+
+const replaceSessionInActiveCollections = (nextSession) => {
+  const nextId = Number(nextSession?.id || 0);
+  if (!nextId) return;
+
+  if (Number(activeSession.value?.id || 0) === nextId) {
+    activeSession.value = {
+      ...activeSession.value,
+      ...nextSession,
+    };
+  }
+
+  const nextActiveSessions = Array.isArray(activeSessions.value) ? [...activeSessions.value] : [];
+  const index = nextActiveSessions.findIndex((session) => Number(session?.id || 0) === nextId);
+  if (index >= 0) {
+    nextActiveSessions[index] = {
+      ...nextActiveSessions[index],
+      ...nextSession,
+    };
+  } else {
+    nextActiveSessions.push(nextSession);
+  }
+  activeSessions.value = sortSessionsNewestFirst(nextActiveSessions);
+};
+
+const transitionWorkoutSessionTimerState = async (transition) => {
+  const sessionId = Number(activeSession.value?.id || 0);
+  if (!sessionId || !hasActiveWorkout.value || isPreviewMode.value) {
+    return false;
+  }
+
+  if (workoutTimerSessionTransitionInFlight.value) {
+    return false;
+  }
+
+  workoutTimerSessionTransitionInFlight.value = true;
+  clearFriendlyError('save');
+  try {
+    const response = await fetch(
+      `${API_BASE}/api/workout-sessions/${encodeURIComponent(sessionId)}/${transition}`,
+      {
+        method: 'POST',
+        credentials: 'include',
+      }
+    );
+
+    if (!response.ok) {
+      throw await parseResponseError(
+        response,
+        transition === 'pause' ? 'Failed to pause workout timer.' : 'Failed to resume workout timer.'
+      );
+    }
+
+    const payload = await response.json().catch(() => ({}));
+    if (payload?.session) {
+      replaceSessionInActiveCollections(payload.session);
+      syncSessionTimerStateFor(payload.session);
+    }
+    syncWorkoutTimerState();
+    return true;
+  } catch (err) {
+    setFriendlyError('save', {
+      status: err?.status,
+      code: err?.code,
+      requestId: err?.requestId,
+      service: err?.service,
+      rawMessage: err?.rawMessage || err?.message,
+      category: 'save',
+      fallback: transition === 'pause'
+        ? 'Unable to pause the workout timer right now. Please try again.'
+        : 'Unable to resume the workout timer right now. Please try again.',
+    });
+    return false;
+  } finally {
+    workoutTimerSessionTransitionInFlight.value = false;
+  }
+};
+
+const pauseActiveWorkoutSessionTimer = async ({ silent = false } = {}) => {
+  if (!hasActiveWorkout.value || !activeSession.value || isPreviewMode.value) {
+    return true;
+  }
+
+  const status = normalizeSessionStatus(activeSession.value);
+  if (status === 'paused') {
+    syncSessionTimerStateFor(activeSession.value);
+    syncWorkoutTimerState();
+    return true;
+  }
+
+  if (!isInProgressSessionStatus(status)) {
+    return true;
+  }
+
+  const paused = await transitionWorkoutSessionTimerState('pause');
+  if (!paused && silent) {
+    clearFriendlyError('save');
+  }
+  return paused;
+};
+
+const resumeActiveWorkoutSessionTimer = async ({ silent = false } = {}) => {
+  if (!hasActiveWorkout.value || !activeSession.value || isPreviewMode.value) {
+    return true;
+  }
+
+  const status = normalizeSessionStatus(activeSession.value);
+  if (isInProgressSessionStatus(status)) {
+    syncSessionTimerStateFor(activeSession.value);
+    syncWorkoutTimerState();
+    return true;
+  }
+
+  if (status !== 'paused') {
+    return true;
+  }
+
+  const resumed = await transitionWorkoutSessionTimerState('resume');
+  if (!resumed && silent) {
+    clearFriendlyError('save');
+  }
+  return resumed;
+};
+
+const toggleWorkoutTimerPlayback = async () => {
+  if (workoutTimerSessionTransitionInFlight.value) return;
+
+  if (workoutTimerPaused.value) {
+    await resumeActiveWorkoutSessionTimer();
+    return;
+  }
+
+  await pauseActiveWorkoutSessionTimer();
 };
 
 const formatConflictSessionDate = (value) => {
@@ -2000,6 +2135,7 @@ const openCurrentWorkout = async () => {
 
     clearFriendlyError('save');
     await continueExistingWorkoutSession(sessions[0], { activateTab: true });
+    await resumeActiveWorkoutSessionTimer({ silent: true });
   } catch (_) {
     // Keep Current Workout open so its existing error or empty state remains visible.
   }
@@ -2908,6 +3044,22 @@ watch(
   { immediate: true },
 );
 
+watch(
+  () => activeTab.value,
+  async (nextTab, previousTab) => {
+    if (nextTab === previousTab) return;
+
+    if (previousTab === 'dayDetails' && nextTab !== 'dayDetails') {
+      await pauseActiveWorkoutSessionTimer({ silent: true });
+      return;
+    }
+
+    if (nextTab === 'dayDetails' && previousTab !== 'dayDetails') {
+      await resumeActiveWorkoutSessionTimer({ silent: true });
+    }
+  }
+);
+
 const openHistoryTab = async () => {
   activeTab.value = 'workoutHistory';
   await flushWorkoutSetProgressPersistence();
@@ -3067,6 +3219,7 @@ onUnmounted(() => {
     workoutLogSetPersistTimeoutId = null;
   }
   void flushWorkoutSetProgressPersistence();
+  void pauseActiveWorkoutSessionTimer({ silent: true });
   void persistWorkoutDraft();
   setWorkoutTimerRunning(false);
   sessionTimerStateById.value = {};
@@ -3553,6 +3706,16 @@ onUnmounted(() => {
                   <i class="fa-solid fa-stopwatch"></i>
                   Workout Time: <strong>{{ activeWorkoutTimerLabel }}</strong>
                   <span v-if="workoutTimerPaused" class="wl-workout-time__paused">Paused</span>
+                  <button
+                    v-if="hasLiveWorkoutSession && !isPreviewMode"
+                    type="button"
+                    class="wl-workout-time__toggle"
+                    :disabled="workoutTimerSessionTransitionInFlight"
+                    @click="toggleWorkoutTimerPlayback"
+                  >
+                    <i :class="workoutTimerPaused ? 'fa-solid fa-play' : 'fa-solid fa-pause'"></i>
+                    {{ workoutTimerPaused ? 'Play' : 'Pause' }}
+                  </button>
                 </span>
               </div>
             </div>
@@ -5237,6 +5400,37 @@ onUnmounted(() => {
 }
 .wl-workout-time strong { color: #ffffff; }
 .wl-workout-time i { color: #2563eb; }
+
+.wl-workout-time__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: rgba(15, 23, 42, 0.72);
+  color: #e2e8f0;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 4px 9px;
+  line-height: 1;
+  min-height: 28px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.wl-workout-time__toggle i {
+  color: #86efac;
+  font-size: 0.66rem;
+}
+
+.wl-workout-time__toggle:hover:not(:disabled) {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(148, 163, 184, 0.75);
+}
+
+.wl-workout-time__toggle:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
 .wl-exercise-list  { display: grid; gap: 12px; }
 
 .wl-tab-session-count {
@@ -7008,6 +7202,12 @@ onUnmounted(() => {
 
   .wl-workout-time {
     color: #cbd5e1;
+  }
+
+  .wl-workout-time__toggle {
+    min-height: 26px;
+    font-size: 0.62rem;
+    padding: 3px 8px;
   }
 
   .wl-workout-time strong {

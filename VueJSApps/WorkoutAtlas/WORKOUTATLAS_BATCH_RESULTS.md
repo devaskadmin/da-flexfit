@@ -1,5 +1,12 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.296 — Workout timer and session persistence reliability
+- Scope: stabilize Current Workout timer/session reliability by adding explicit pause/resume lifecycle support, automatic tab leave/return timer control, and paused-session recovery while preserving existing history summary behavior.
+- Files changed: `backend/api/workout-sessions.js`, `backend/api/workout-log.js`, `backend/tests/workout-session-recovery.integration.test.js`, `frontend/src/views/Member/LogWorkout.vue`, `frontend/src/utils/workoutSessionTimer.test.mjs`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
+- Verification: frontend timer utility tests passed (11/11); targeted backend timer/session/history tests passed (30/30); full backend suite passed (136/136); frontend production build passed.
+- Browser evidence: authenticated Current Workout rendered with the new timer control at 320/375/430/768/1024/1440 with no horizontal overflow; mobile screenshots captured at 375 and 430 including the Pause/Play control beside Workout Time.
+- Caveats: live Pause/Play interaction against the long-running local backend process could not be fully validated in-browser because that already-running process returned 404 for newly added pause/resume routes until restart; no restart was performed per instruction.
+
 ## 0.85.295 — Mobile workout button layout fixes
 - Scope: stabilize Current Workout exercise-card action layout on mobile so Add Set and Complete Exercise remain consistently placed and readable across narrow breakpoints while preserving all workout behavior.
 - Files changed: `frontend/src/components/workout-session/ExerciseSessionCard.vue`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.

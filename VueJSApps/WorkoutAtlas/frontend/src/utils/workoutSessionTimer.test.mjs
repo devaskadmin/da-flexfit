@@ -134,6 +134,45 @@ test('Completed sessions do not continue accumulating', () => {
   assert.equal(second, first);
 });
 
+test('Paused sessions freeze at persisted duration baseline', () => {
+  const paused = createSession({
+    id: 82,
+    startedAtOffsetSeconds: 1600,
+    sessionStatus: 'paused',
+    durationSeconds: 915,
+  });
+
+  const snapshot = createSessionTimerSnapshot(null, paused, baseNow);
+  assert.equal(snapshot.isPaused, true);
+  assert.equal(snapshot.shouldTick, false);
+  assert.ok(snapshot.elapsedSeconds >= 915);
+});
+
+test('Resuming after pause continues from saved elapsed time without reset', () => {
+  const paused = createSession({
+    id: 83,
+    startedAtOffsetSeconds: 900,
+    sessionStatus: 'paused',
+    durationSeconds: 900,
+  });
+  const resumed = createSession({
+    id: 83,
+    startedAtOffsetSeconds: 900,
+    sessionStatus: 'in_progress',
+    durationSeconds: 900,
+  });
+
+  let state = {};
+  state = upsertSessionTimerState(state, paused, baseNow);
+  const pausedElapsed = state[83].elapsedSeconds;
+
+  state = upsertSessionTimerState(state, resumed, baseNow + 4000);
+  const resumedElapsed = state[83].elapsedSeconds;
+
+  assert.equal(state[83].isPaused, false);
+  assert.ok(resumedElapsed >= pausedElapsed + 4);
+});
+
 test('Prune keeps only expected session IDs', () => {
   const s1 = createSession({ id: 91, startedAtOffsetSeconds: 10 });
   const s2 = createSession({ id: 92, startedAtOffsetSeconds: 20 });

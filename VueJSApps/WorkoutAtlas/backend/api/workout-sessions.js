@@ -22,6 +22,7 @@ const getDraftExerciseCount = (notes) => {
 
 const normalizeSessionStatus = (session) => String(session?.sessionStatus || session?.status || '').trim().toLowerCase();
 const MAX_SIMULTANEOUS_ACTIVE_WORKOUT_SESSIONS = 2;
+const LIVE_SESSION_STATUSES = ['in_progress', 'in-progress', 'active', 'paused'];
 
 const isLiveSessionStatus = (status) =>
   status === 'in_progress' || status === 'in-progress' || status === 'active' || status === 'paused';
@@ -209,8 +210,8 @@ router.get('/workout-sessions/active', requireAuth, async (req, res) => {
          duration_seconds           AS durationSeconds,
          completed_at               AS completedAt,
          notes                      AS notes
-       FROM workout_log_sessions
-       WHERE user_id = ? AND status = 'in_progress'
+      FROM workout_log_sessions
+      WHERE user_id = ? AND status IN ('in_progress', 'in-progress', 'active', 'paused')
        ORDER BY started_at DESC
        LIMIT 1`,
       [userId]
@@ -252,8 +253,8 @@ router.get('/workout-sessions/in-progress', requireAuth, async (req, res) => {
          duration_seconds           AS durationSeconds,
          completed_at               AS completedAt,
          notes                      AS notes
-       FROM workout_log_sessions
-       WHERE user_id = ? AND status = 'in_progress'
+      FROM workout_log_sessions
+      WHERE user_id = ? AND status IN ('in_progress', 'in-progress', 'active', 'paused')
        ORDER BY started_at DESC, id DESC`,
       [userId]
     );
@@ -314,8 +315,8 @@ router.post('/workout-sessions/start', requireAuth, async (req, res) => {
          duration_seconds           AS durationSeconds,
          completed_at               AS completedAt,
          notes                      AS notes
-       FROM workout_log_sessions
-       WHERE user_id = ? AND status = 'in_progress'
+      FROM workout_log_sessions
+      WHERE user_id = ? AND status IN ('in_progress', 'in-progress', 'active', 'paused')
        ORDER BY started_at DESC, id DESC
        FOR UPDATE`,
       [userId]
@@ -526,7 +527,7 @@ router.put('/workout-sessions/:sessionId/draft', requireAuth, async (req, res) =
     const [result] = await pool.query(
       `UPDATE workout_log_sessions
        SET notes = ?
-       WHERE id = ? AND user_id = ? AND status = 'in_progress'`,
+       WHERE id = ? AND user_id = ? AND status IN ('in_progress', 'in-progress', 'active', 'paused')`,
       [draftNotes, sessionId, userId]
     );
 
@@ -564,7 +565,7 @@ router.post('/workout-sessions/active/add-exercise', requireAuth, async (req, re
              workout_day_name           AS workoutDayName,
              status
            FROM workout_log_sessions
-           WHERE id = ? AND user_id = ? AND status = 'in_progress'
+           WHERE id = ? AND user_id = ? AND status IN ('in_progress', 'in-progress', 'active', 'paused')
            LIMIT 1`,
           [sessionId, userId]
         )
@@ -576,7 +577,7 @@ router.post('/workout-sessions/active/add-exercise', requireAuth, async (req, re
              workout_day_name           AS workoutDayName,
              status
            FROM workout_log_sessions
-           WHERE user_id = ? AND status = 'in_progress'
+           WHERE user_id = ? AND status IN ('in_progress', 'in-progress', 'active', 'paused')
            ORDER BY started_at DESC
            LIMIT 1`,
           [userId]
@@ -931,6 +932,218 @@ router.post('/workout-sessions/cancel/:sessionId', requireAuth, async (req, res)
     }
     console.error('❌ POST /workout-sessions/cancel:', err);
     return res.status(500).json({ error: 'Failed to cancel workout session.' });
+  } finally {
+    connection.release();
+  }
+});
+
+// ─── POST /api/workout-sessions/:sessionId/pause ───────────────────────────
+// Freezes active elapsed time into duration_seconds and marks session paused.
+router.post('/workout-sessions/:sessionId/pause', requireAuth, async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    const userId = req.session.user.id;
+    const sessionId = Number(req.params.sessionId);
+
+    if (!sessionId) {
+      return res.status(400).json({ error: 'Invalid sessionId.' });
+    }
+
+    await connection.beginTransaction();
+
+    const [rows] = await connection.query(
+      `SELECT id, status
+       FROM workout_log_sessions
+       WHERE id = ? AND user_id = ?
+       LIMIT 1
+       FOR UPDATE`,
+      [sessionId, userId]
+    );
+
+    if (rows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ error: 'Session not found.' });
+    }
+
+    const currentStatus = normalizeSessionStatus(rows[0]);
+    if (currentStatus === 'paused') {
+      const [[existingPausedSession]] = await connection.query(
+        `SELECT
+           id,
+           user_id                    AS userId,
+           source_workout_schedule_id AS workoutPlanId,
+           workout_day_id             AS workoutDayId,
+           workout_day_name           AS workoutDayName,
+           workout_date               AS workoutDate,
+           status                     AS sessionStatus,
+           started_at                 AS startedAt,
+           ended_at                   AS endedAt,
+           duration_seconds           AS durationSeconds,
+           completed_at               AS completedAt
+         FROM workout_log_sessions
+         WHERE id = ? AND user_id = ?
+         LIMIT 1`,
+        [sessionId, userId]
+      );
+
+      await connection.commit();
+      return res.status(200).json({
+        message: 'Workout session already paused.',
+        alreadyPaused: true,
+        session: existingPausedSession,
+      });
+    }
+
+    if (!LIVE_SESSION_STATUSES.includes(currentStatus) || currentStatus === 'completed' || currentStatus === 'ended' || currentStatus === 'cancelled' || currentStatus === 'canceled') {
+      await connection.rollback();
+      return res.status(409).json({ error: 'Only active workout sessions can be paused.' });
+    }
+
+    await connection.query(
+      `UPDATE workout_log_sessions
+       SET status = 'paused',
+           duration_seconds = ${SESSION_DURATION_SECONDS_SQL}
+       WHERE id = ? AND user_id = ?
+         AND status IN ('in_progress', 'in-progress', 'active')`,
+      [sessionId, userId]
+    );
+
+    const [[session]] = await connection.query(
+      `SELECT
+         id,
+         user_id                    AS userId,
+         source_workout_schedule_id AS workoutPlanId,
+         workout_day_id             AS workoutDayId,
+         workout_day_name           AS workoutDayName,
+         workout_date               AS workoutDate,
+         status                     AS sessionStatus,
+         started_at                 AS startedAt,
+         ended_at                   AS endedAt,
+         duration_seconds           AS durationSeconds,
+         completed_at               AS completedAt
+       FROM workout_log_sessions
+       WHERE id = ? AND user_id = ?
+       LIMIT 1`,
+      [sessionId, userId]
+    );
+
+    await connection.commit();
+    return res.status(200).json({ message: 'Workout session paused.', session });
+  } catch (err) {
+    try {
+      await connection.rollback();
+    } catch (_) {
+      // ignore rollback errors
+    }
+    console.error('❌ POST /workout-sessions/:sessionId/pause:', err);
+    return res.status(500).json({ error: 'Failed to pause workout session.' });
+  } finally {
+    connection.release();
+  }
+});
+
+// ─── POST /api/workout-sessions/:sessionId/resume ──────────────────────────
+// Restores in-progress status and preserves elapsed baseline across pauses.
+router.post('/workout-sessions/:sessionId/resume', requireAuth, async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    const userId = req.session.user.id;
+    const sessionId = Number(req.params.sessionId);
+
+    if (!sessionId) {
+      return res.status(400).json({ error: 'Invalid sessionId.' });
+    }
+
+    await connection.beginTransaction();
+
+    const [rows] = await connection.query(
+      `SELECT id, status
+       FROM workout_log_sessions
+       WHERE id = ? AND user_id = ?
+       LIMIT 1
+       FOR UPDATE`,
+      [sessionId, userId]
+    );
+
+    if (rows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ error: 'Session not found.' });
+    }
+
+    const currentStatus = normalizeSessionStatus(rows[0]);
+    if (currentStatus === 'in_progress' || currentStatus === 'in-progress' || currentStatus === 'active') {
+      const [[existingInProgressSession]] = await connection.query(
+        `SELECT
+           id,
+           user_id                    AS userId,
+           source_workout_schedule_id AS workoutPlanId,
+           workout_day_id             AS workoutDayId,
+           workout_day_name           AS workoutDayName,
+           workout_date               AS workoutDate,
+           status                     AS sessionStatus,
+           started_at                 AS startedAt,
+           ended_at                   AS endedAt,
+           duration_seconds           AS durationSeconds,
+           completed_at               AS completedAt
+         FROM workout_log_sessions
+         WHERE id = ? AND user_id = ?
+         LIMIT 1`,
+        [sessionId, userId]
+      );
+
+      await connection.commit();
+      return res.status(200).json({
+        message: 'Workout session already in progress.',
+        alreadyResumed: true,
+        session: existingInProgressSession,
+      });
+    }
+
+    if (currentStatus !== 'paused') {
+      await connection.rollback();
+      return res.status(409).json({ error: 'Only paused workout sessions can be resumed.' });
+    }
+
+    await connection.query(
+      `UPDATE workout_log_sessions
+       SET status = 'in_progress',
+           started_at = DATE_SUB(NOW(), INTERVAL GREATEST(COALESCE(duration_seconds, 0), 0) SECOND),
+           ended_at = NULL,
+           completed_at = NULL
+       WHERE id = ? AND user_id = ?
+         AND status = 'paused'`,
+      [sessionId, userId]
+    );
+
+    const [[session]] = await connection.query(
+      `SELECT
+         id,
+         user_id                    AS userId,
+         source_workout_schedule_id AS workoutPlanId,
+         workout_day_id             AS workoutDayId,
+         workout_day_name           AS workoutDayName,
+         workout_date               AS workoutDate,
+         status                     AS sessionStatus,
+         started_at                 AS startedAt,
+         ended_at                   AS endedAt,
+         duration_seconds           AS durationSeconds,
+         completed_at               AS completedAt
+       FROM workout_log_sessions
+       WHERE id = ? AND user_id = ?
+       LIMIT 1`,
+      [sessionId, userId]
+    );
+
+    await connection.commit();
+    return res.status(200).json({ message: 'Workout session resumed.', session });
+  } catch (err) {
+    try {
+      await connection.rollback();
+    } catch (_) {
+      // ignore rollback errors
+    }
+    console.error('❌ POST /workout-sessions/:sessionId/resume:', err);
+    return res.status(500).json({ error: 'Failed to resume workout session.' });
   } finally {
     connection.release();
   }

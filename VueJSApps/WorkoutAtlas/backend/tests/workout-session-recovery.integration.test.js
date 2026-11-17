@@ -75,12 +75,12 @@ const createMockPool = (seedState = {}) => {
 
   const findLiveSessionForUser = (userId) =>
     state.sessions
-      .filter((session) => Number(session.user_id) === Number(userId) && session.status === 'in_progress')
+      .filter((session) => Number(session.user_id) === Number(userId) && ['in_progress', 'in-progress', 'active', 'paused'].includes(String(session.status || '').toLowerCase()))
       .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())[0] || null;
 
   const findLiveSessionsForUser = (userId) =>
     state.sessions
-      .filter((session) => Number(session.user_id) === Number(userId) && session.status === 'in_progress')
+      .filter((session) => Number(session.user_id) === Number(userId) && ['in_progress', 'in-progress', 'active', 'paused'].includes(String(session.status || '').toLowerCase()))
       .sort((a, b) => {
         const startedDiff = new Date(b.started_at).getTime() - new Date(a.started_at).getTime();
         if (startedDiff !== 0) {
@@ -133,19 +133,15 @@ const createMockPool = (seedState = {}) => {
 
     if (
       normalizedSql.includes('FROM workout_log_sessions') &&
-      normalizedSql.includes("WHERE user_id = ? AND status = 'in_progress'") &&
+      normalizedSql.includes('WHERE user_id = ?') &&
+      normalizedSql.includes('status IN') &&
       normalizedSql.includes('ORDER BY started_at DESC, id DESC')
     ) {
       const liveRows = findLiveSessionsForUser(params[0]).map(toActiveRow);
       return [liveRows, []];
     }
 
-    if (normalizedSql.includes('FROM workout_log_sessions') && normalizedSql.includes("WHERE user_id = ? AND status = 'in_progress'") && normalizedSql.includes('SELECT id,')) {
-      const active = findLiveSessionForUser(params[0]);
-      return [active ? [toActiveRow(active)] : [], []];
-    }
-
-    if (normalizedSql.includes('FROM workout_log_sessions') && normalizedSql.includes("WHERE user_id = ? AND status = 'in_progress'") && normalizedSql.startsWith('SELECT')) {
+    if (normalizedSql.includes('FROM workout_log_sessions') && normalizedSql.includes('WHERE user_id = ?') && normalizedSql.includes('status IN') && normalizedSql.includes('ORDER BY started_at DESC') && normalizedSql.includes('LIMIT 1')) {
       const active = findLiveSessionForUser(params[0]);
       return [active ? [toActiveRow(active)] : [], []];
     }
@@ -211,6 +207,53 @@ const createMockPool = (seedState = {}) => {
       target.ended_at = nowIso();
       target.completed_at = null;
       target.duration_seconds = Math.max(Number(target.duration_seconds || 0), 0);
+      return [{ affectedRows: 1 }, []];
+    }
+
+    if (normalizedSql.startsWith('UPDATE workout_log_sessions') && normalizedSql.includes("SET status = 'paused'")) {
+      if (typeof snapshotForRollbackIfNeeded === 'function') {
+        snapshotForRollbackIfNeeded();
+      }
+
+      const targetId = Number(params[0]);
+      const userId = Number(params[1]);
+      const target = state.sessions.find(
+        (session) =>
+          Number(session.id) === targetId &&
+          Number(session.user_id) === userId &&
+          ['in_progress', 'in-progress', 'active'].includes(String(session.status || '').toLowerCase())
+      );
+
+      if (!target) {
+        return [{ affectedRows: 0 }, []];
+      }
+
+      target.status = 'paused';
+      target.duration_seconds = Math.max(Number(target.duration_seconds || 0), 0);
+      return [{ affectedRows: 1 }, []];
+    }
+
+    if (normalizedSql.startsWith('UPDATE workout_log_sessions') && normalizedSql.includes("SET status = 'in_progress'")) {
+      if (typeof snapshotForRollbackIfNeeded === 'function') {
+        snapshotForRollbackIfNeeded();
+      }
+
+      const targetId = Number(params[0]);
+      const userId = Number(params[1]);
+      const target = state.sessions.find(
+        (session) =>
+          Number(session.id) === targetId &&
+          Number(session.user_id) === userId &&
+          String(session.status || '').toLowerCase() === 'paused'
+      );
+
+      if (!target) {
+        return [{ affectedRows: 0 }, []];
+      }
+
+      target.status = 'in_progress';
+      target.ended_at = null;
+      target.completed_at = null;
       return [{ affectedRows: 1 }, []];
     }
 
@@ -991,6 +1034,116 @@ test('ending one in-progress session does not alter other in-progress sessions f
     assert.equal(listRes.statusCode, 200);
     assert.equal(listRes.body.sessions.length, 1);
     assert.equal(listRes.body.sessions[0].id, 1502);
+  } finally {
+    restore();
+  }
+});
+
+test('pausing and resuming a session preserves independent session lifecycle state', async () => {
+  const mockPool = createMockPool({
+    sessions: [
+      {
+        id: 1601,
+        user_id: 45,
+        source_workout_schedule_id: 700,
+        workout_day_id: null,
+        workout_day_name: 'Thursday',
+        workout_date: '2026-11-12',
+        status: 'in_progress',
+        started_at: '2026-11-12T08:00:00.000Z',
+        ended_at: null,
+        duration_seconds: 122,
+        completed_at: null,
+        notes: '',
+      },
+      {
+        id: 1602,
+        user_id: 45,
+        source_workout_schedule_id: 701,
+        workout_day_id: null,
+        workout_day_name: 'Friday',
+        workout_date: '2026-11-12',
+        status: 'in_progress',
+        started_at: '2026-11-12T09:00:00.000Z',
+        ended_at: null,
+        duration_seconds: 88,
+        completed_at: null,
+        notes: '',
+      },
+    ],
+    workoutSchedules: [
+      { id: 700, user_id: 45, title: 'Plan 700' },
+      { id: 701, user_id: 45, title: 'Plan 701' },
+    ],
+  });
+
+  const { route, restore } = loadRouteWithMockPool(mockPool);
+  try {
+    const pauseSession = getBusinessHandler(route, 'post', '/workout-sessions/:sessionId/pause');
+    const resumeSession = getBusinessHandler(route, 'post', '/workout-sessions/:sessionId/resume');
+
+    const pauseRes = createResponseRecorder();
+    await pauseSession({ session: { user: { id: 45 } }, params: { sessionId: '1601' } }, pauseRes);
+    assert.equal(pauseRes.statusCode, 200);
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 1601).status, 'paused');
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 1602).status, 'in_progress');
+
+    const resumeRes = createResponseRecorder();
+    await resumeSession({ session: { user: { id: 45 } }, params: { sessionId: '1601' } }, resumeRes);
+    assert.equal(resumeRes.statusCode, 200);
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 1601).status, 'in_progress');
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 1602).status, 'in_progress');
+  } finally {
+    restore();
+  }
+});
+
+test('in-progress endpoint includes paused sessions for reliable recovery', async () => {
+  const mockPool = createMockPool({
+    sessions: [
+      {
+        id: 1701,
+        user_id: 46,
+        source_workout_schedule_id: 710,
+        workout_day_id: null,
+        workout_day_name: 'Monday',
+        workout_date: '2026-11-12',
+        status: 'paused',
+        started_at: '2026-11-12T11:00:00.000Z',
+        ended_at: null,
+        duration_seconds: 305,
+        completed_at: null,
+        notes: '',
+      },
+      {
+        id: 1702,
+        user_id: 46,
+        source_workout_schedule_id: 710,
+        workout_day_id: null,
+        workout_day_name: 'Tuesday',
+        workout_date: '2026-11-12',
+        status: 'in_progress',
+        started_at: '2026-11-12T12:00:00.000Z',
+        ended_at: null,
+        duration_seconds: 0,
+        completed_at: null,
+        notes: '',
+      },
+    ],
+    workoutSchedules: [{ id: 710, user_id: 46, title: 'Plan 710' }],
+  });
+
+  const { route, restore } = loadRouteWithMockPool(mockPool);
+  try {
+    const getInProgress = getBusinessHandler(route, 'get', '/workout-sessions/in-progress');
+    const res = createResponseRecorder();
+    await getInProgress({ session: { user: { id: 46 } } }, res);
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(Array.isArray(res.body.sessions), true);
+    assert.equal(res.body.sessions.length, 2);
+    const statuses = res.body.sessions.map((session) => String(session?.sessionStatus || '').toLowerCase()).sort();
+    assert.deepEqual(statuses, ['in_progress', 'paused']);
   } finally {
     restore();
   }

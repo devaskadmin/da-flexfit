@@ -579,7 +579,7 @@ router.post('/session', async (req, res) => {
         return res.status(403).json({ error: 'You do not have permission to save this session.' });
       }
 
-      if (!['in_progress', 'completed'].includes(String(existingSession.status || '').toLowerCase())) {
+      if (!['in_progress', 'paused', 'completed'].includes(String(existingSession.status || '').toLowerCase())) {
         await connection.rollback();
         return res.status(409).json({ error: 'This workout session is already closed.' });
       }

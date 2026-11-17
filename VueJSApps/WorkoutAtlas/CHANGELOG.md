@@ -6,6 +6,18 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.296] - 2026-11-17 - Workout timer and session persistence reliability stabilization
+
+- **Fixed:** Active workout-session lifecycle now supports explicit pause/resume transitions through backend endpoints, preserving `duration_seconds` when pausing and resuming from the saved elapsed baseline without schema changes.
+- **Fixed:** Active-session discovery and recovery now include paused sessions, so refresh/re-entry flows can reliably restore and continue the same session identity rather than dropping paused sessions from recovery lists.
+- **Fixed:** Current Workout now auto-pauses the active session when leaving the middle tab and auto-resumes when returning, preventing passive elapsed accumulation while outside the workout view.
+- **Added:** Compact Pause/Play control beside the Workout Time indicator in Current Workout, with duplicate-transition guardrails and status-aware icon/label behavior.
+- **Changed:** Workout session progress save paths now accept paused sessions in addition to in-progress/completed where session logging safety requires it.
+- **Preserved:** 0.85.294 daily summary behavior remains unchanged: `Total Workout Time Today` still aggregates persisted completed-session durations only and does not overwrite historical values.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `frontend/src/utils/workoutSessionTimer.test.mjs`; `backend/api/workout-sessions.js`; `backend/api/workout-log.js`; `backend/tests/workout-session-recovery.integration.test.js`; `frontend/package.json`; `backend/package.json`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`.
+- **Verification:** Frontend timer utility tests passed (11/11). Targeted backend timer/session/history tests passed (30/30). Full backend suite passed (136/136). Frontend production build passed.
+- **Known unresolved issues:** In this local browser session, the already-running backend process did not expose the newly added pause/resume routes until process restart (runtime returned 404), so live Pause/Play behavior could not be fully revalidated against the long-lived dev server instance without violating the no-restart instruction.
+
 ## [0.85.295] - 2026-11-17 - Mobile workout button layout fixes in Current Workout
 
 - **Fixed:** Current Workout exercise footer actions are now structurally separated into info and action groups so `Add Set` and `Complete Exercise` no longer compete with summary/prefill text wrapping on narrow viewports.
