@@ -6,6 +6,16 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.302] - 2026-11-17 - Mobile-only button placement corrections
+
+- **Fixed:** Current Workout bottom action bar buttons now maintain readable labels and safe spacing on narrow mobile widths, with adaptive wrapping/stacking that avoids text clipping and preserves in-flow behavior above the fixed mobile navigation.
+- **Fixed:** Exercise-card footer actions (`Add Set`, `Complete Exercise`) now use a stable mobile action grid that prevents oversized centering artifacts and avoids overlap/clipping at 320px while preserving touch-target sizing.
+- **Fixed:** Narrow-width fallback behavior now stacks action buttons only when required (very small widths), preventing unnecessary stacking at common mobile widths while keeping zero horizontal overflow.
+- **Changed:** CSS-only responsive layout tuning in Workout Log and exercise session card components; no workout session logic, timer behavior, API contracts, or backend persistence behavior changed.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `frontend/src/components/workout-session/ExerciseSessionCard.vue`; `frontend/package.json`; `backend/package.json`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`.
+- **Verification:** Frontend production build passed. Authenticated browser checks confirmed no horizontal overflow and no action-button overlap across 320/375/390/430/768/800/1024/1366 widths; bottom action bar remained unobstructed by the fixed mobile nav at mobile widths.
+- **Known unresolved issues:** Add Exercise modal footer clipping was not reproducible in this run because the modal did not open from the current session state during scripted replay; no modal CSS changes were applied in this release.
+
 ## [0.85.301] - 2026-11-17 - Workout completion timer shutdown and paused-duration freeze
 
 - **Fixed:** Completing a paused workout session now preserves the frozen `duration_seconds` baseline instead of recomputing from `started_at`, preventing paused idle time from being incorrectly added during completion.

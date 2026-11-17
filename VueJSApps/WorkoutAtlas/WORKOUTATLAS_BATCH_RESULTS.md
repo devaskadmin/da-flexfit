@@ -1,5 +1,15 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.302 - Mobile-only button placement corrections
+- Scope: apply mobile-only placement corrections for Current Workout and exercise-card action buttons at <=800px, preserving desktop layout and all workout behavior.
+- Files changed: `frontend/src/views/Member/LogWorkout.vue`, `frontend/src/components/workout-session/ExerciseSessionCard.vue`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
+- Verification:
+	- Frontend production build passed (`npm run build`).
+	- Authenticated browser geometry checks passed with no horizontal overflow and no action overlap at 320/375/390/430/768/800/1024/1366 widths.
+	- Mobile bottom action bar remained above fixed bottom navigation (not obscured) on 320/375/390/430 widths.
+- Browser evidence: before/after 320 screenshots captured for Current Workout action areas; Start My Workout day-card footer actions verified at 320 with no overlap.
+- Caveats: Add Exercise modal footer clipping could not be reproduced because the modal did not open from the current scripted session state in this run; modal CSS remained unchanged.
+
 ## 0.85.301 - Workout completion timer shutdown and session isolation
 - Scope: investigate and fix completion lifecycle integrity so completed workout sessions permanently stop timer progression, preserve final duration, and remain isolated from other unfinished sessions.
 - Root-cause evidence:

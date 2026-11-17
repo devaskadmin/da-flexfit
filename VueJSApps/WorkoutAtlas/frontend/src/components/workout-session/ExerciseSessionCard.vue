@@ -1414,26 +1414,31 @@ onUnmounted(() => {
     width: 100%;
     margin-left: 0;
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-    justify-items: center;
+    justify-items: stretch;
+    align-items: stretch;
   }
 
   .add-set-btn {
-    width: auto;
-    min-width: 124px;
+    width: 100%;
+    min-width: 0;
     min-height: 40px;
     padding: 6px 12px;
-    margin: 0 auto;
+    margin: 0;
     justify-content: center;
+    text-align: center;
   }
 
   .c3-finish-btn {
     width: 100%;
-    max-width: 280px;
+    max-width: none;
     min-height: 42px;
     justify-content: center;
-    margin: 0 auto;
+    margin: 0;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.15;
   }
 
   .c3-inline-actions {
@@ -1785,19 +1790,19 @@ onUnmounted(() => {
     font-size: 0.72rem;
     padding: 5px 10px;
     min-height: 44px;
-    width: auto;
+    width: 100%;
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
     justify-content: center;
-    margin: 0 auto;
+    margin: 0;
   }
 
   .c3-finish-btn {
     font-size: 0.76rem;
     padding: 6px 12px;
     width: 100%;
-    max-width: 280px;
+    max-width: 100%;
   }
 
   .sec-summary   { font-size: 0.7rem; }
@@ -1810,6 +1815,12 @@ onUnmounted(() => {
     box-sizing: border-box;
     white-space: normal;
     overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 360px) {
+  .sec-footer-actions {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
