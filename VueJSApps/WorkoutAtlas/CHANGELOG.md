@@ -6,6 +6,17 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.301] - 2026-11-17 - Workout completion timer shutdown and paused-duration freeze
+
+- **Fixed:** Completing a paused workout session now preserves the frozen `duration_seconds` baseline instead of recomputing from `started_at`, preventing paused idle time from being incorrectly added during completion.
+- **Fixed:** Workout completion update path is status-aware (`paused` vs `in_progress`/`active`) and keeps completion idempotency semantics for repeated completion requests.
+- **Fixed:** Frontend timer transition handlers now ignore stale/delayed pause-resume responses after completion teardown so completed sessions cannot be unintentionally revived by late callbacks.
+- **Fixed:** Completion flow now includes an explicit in-flight guard and deterministic timer interval shutdown for the completed session lifecycle.
+- **Added:** Regression coverage for paused-session completion duration freeze, repeated completion idempotency, and completed-session pause/resume rejection.
+- **Relevant source files:** `backend/api/workout-sessions.js`; `frontend/src/views/Member/LogWorkout.vue`; `backend/tests/workout-session-recovery.integration.test.js`; `frontend/package.json`; `backend/package.json`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`.
+- **Verification:** Targeted backend completion/session regressions passed (15/15). Targeted history summary regressions passed (12/12). Targeted persistence/status regressions passed (16/16). Frontend timer utility tests passed (11/11). Full backend suite passed (155/155). Frontend production build passed.
+- **Known unresolved issues:** Authenticated live browser replay for complete/pause/resume at all required breakpoints remains session-environment dependent in this run because `/workout-log` redirects to login without a seeded authenticated member session.
+
 ## [0.85.300] - 2026-11-17 - Resolve avatarPath session schema mismatch and auth reliability
 
 - **Fixed:** Session hydration no longer hard-selects `users.avatarPath`/`users.avatarName` on schemas where those columns do not exist, preventing `Unknown column 'avatarPath'` failures from being surfaced as role/session resolution errors.

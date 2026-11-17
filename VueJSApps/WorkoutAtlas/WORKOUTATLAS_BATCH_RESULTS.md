@@ -1,5 +1,20 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.301 - Workout completion timer shutdown and session isolation
+- Scope: investigate and fix completion lifecycle integrity so completed workout sessions permanently stop timer progression, preserve final duration, and remain isolated from other unfinished sessions.
+- Root-cause evidence:
+	- Backend completion used a single elapsed recomputation path (`TIMESTAMPDIFF(started_at, NOW())`) for all live statuses, so completing a paused session could absorb paused idle wall-clock time.
+	- Frontend completion/pause-resume path could accept delayed transition responses after teardown without an explicit stale-response guard.
+- Files changed: `backend/api/workout-sessions.js`, `frontend/src/views/Member/LogWorkout.vue`, `backend/tests/workout-session-recovery.integration.test.js`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
+- Verification:
+	- Targeted completion/session regressions passed (15/15).
+	- Targeted history/summary regressions passed (12/12).
+	- Targeted persistence/status regressions passed (16/16).
+	- Frontend timer utility tests passed (11/11).
+	- Full backend suite passed (155/155).
+	- Frontend production build passed (`BUILD_OK`).
+- Runtime/browser note: `/workout-log` currently redirects to `/login` in this environment without an authenticated member session, so full authenticated breakpoint replay for completion interactions (320/375/390/430/desktop) could not be executed in this run.
+
 ## 0.85.300 - avatarPath database error and session-role reliability
 - Scope: investigate and resolve `Unknown column 'avatarPath'` by validating live schema and applying compatibility-safe auth/session/avatar query behavior without schema mutation.
 - Root-cause evidence: read-only DB inspection confirmed active `users` table lacks `avatarPath` and `avatarName` columns (and snake_case variants), while auth/session code contained explicit avatar-column SQL.

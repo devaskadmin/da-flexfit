@@ -815,15 +815,30 @@ router.post('/workout-sessions/complete/:sessionId', requireAuth, async (req, re
       return res.status(409).json({ error: 'Only active workout sessions can be completed.' });
     }
 
-    await connection.query(
-      `UPDATE workout_log_sessions
-       SET status = 'completed',
-           ended_at = NOW(),
-           completed_at = NOW(),
-           duration_seconds = ${SESSION_DURATION_SECONDS_SQL}
-       WHERE id = ? AND user_id = ?`,
-      [sessionId, userId]
-    );
+    if (currentStatus === 'paused') {
+      // Preserve the frozen paused baseline so completion does not accumulate paused idle time.
+      await connection.query(
+        `UPDATE workout_log_sessions
+         SET status = 'completed',
+             ended_at = NOW(),
+             completed_at = NOW(),
+             duration_seconds = GREATEST(COALESCE(duration_seconds, 0), 0)
+         WHERE id = ? AND user_id = ?
+           AND status = 'paused'`,
+        [sessionId, userId]
+      );
+    } else {
+      await connection.query(
+        `UPDATE workout_log_sessions
+         SET status = 'completed',
+             ended_at = NOW(),
+             completed_at = NOW(),
+             duration_seconds = ${SESSION_DURATION_SECONDS_SQL}
+         WHERE id = ? AND user_id = ?
+           AND status IN ('in_progress', 'in-progress', 'active')`,
+        [sessionId, userId]
+      );
+    }
 
     const [[session]] = await connection.query(
       `SELECT

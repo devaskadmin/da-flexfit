@@ -146,6 +146,7 @@ const sessionUserId = ref(null);
 
 let workoutTimerIntervalId = null;
 const workoutTimerSessionTransitionInFlight = ref(false);
+const workoutCompletionInFlightSessionId = ref(null);
 let workoutLogMountReady = false;
 let workoutLogSetPersistTimeoutId = null;
 let workoutLogSetPersistInFlight = false;
@@ -759,6 +760,17 @@ const replaceSessionInActiveCollections = (nextSession) => {
   activeSessions.value = sortSessionsNewestFirst(nextActiveSessions);
 };
 
+const isStaleTimerTransitionRequest = (sessionId) => {
+  const normalizedSessionId = Number(sessionId || 0);
+  if (!normalizedSessionId) return true;
+
+  if (!hasActiveWorkout.value) return true;
+  if (Number(activeSession.value?.id || 0) !== normalizedSessionId) return true;
+  if (Number(workoutCompletionInFlightSessionId.value || 0) === normalizedSessionId) return true;
+  if (sessionHasTerminalState(activeSession.value)) return true;
+  return false;
+};
+
 const transitionWorkoutSessionTimerState = async (transition) => {
   const sessionId = Number(activeSession.value?.id || 0);
   if (!sessionId || !hasActiveWorkout.value || isPreviewMode.value) {
@@ -788,7 +800,11 @@ const transitionWorkoutSessionTimerState = async (transition) => {
     }
 
     const payload = await response.json().catch(() => ({}));
-    if (payload?.session) {
+    if (isStaleTimerTransitionRequest(sessionId)) {
+      return true;
+    }
+
+    if (payload?.session && Number(payload.session?.id || 0) === sessionId) {
       replaceSessionInActiveCollections(payload.session);
       syncSessionTimerStateFor(payload.session);
     }
@@ -806,6 +822,10 @@ const transitionWorkoutSessionTimerState = async (transition) => {
         ? 'Unable to pause the workout timer right now. Please try again.'
         : 'Unable to resume the workout timer right now. Please try again.',
     });
+    if (isStaleTimerTransitionRequest(sessionId)) {
+      clearFriendlyError('save');
+      return false;
+    }
     return false;
   } finally {
     workoutTimerSessionTransitionInFlight.value = false;
@@ -2597,7 +2617,21 @@ const startNewWorkoutAfterConflict = async () => {
 
 /* ─── Complete workout ───────────────────────────────────────────────────── */
 const completeWorkout = async () => {
+  if (saving.value) {
+    return false;
+  }
+
+  const completionSessionId = Number(activeSession.value?.id || 0);
+  if (!completionSessionId) {
+    setFriendlyError('save', {
+      rawMessage: 'No active workout session found to complete.',
+      fallback: 'No active workout session found to complete.',
+    });
+    return false;
+  }
+
   saving.value      = true;
+  workoutCompletionInFlightSessionId.value = completionSessionId;
   saveMessage.value = '';
   clearFriendlyError('save');
   clearWorkoutDraftSave();
@@ -2656,6 +2690,7 @@ const completeWorkout = async () => {
       (session) => Number(session?.id || 0) !== completedSessionId
     );
     removeSessionTimerStateById(completedSessionId);
+    setWorkoutTimerRunning(false);
     activeSession.value    = null;
     hasActiveWorkout.value = false;
 
@@ -2677,8 +2712,11 @@ const completeWorkout = async () => {
       category: 'save',
       fallback: 'Unable to complete this workout right now. Please try again.',
     });
+    syncActiveSessionTimerState();
+    syncWorkoutTimerState();
     return false;
   } finally {
+    workoutCompletionInFlightSessionId.value = null;
     saving.value = false;
   }
 };

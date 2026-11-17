@@ -1281,13 +1281,65 @@ test('completing and cancelling paused sessions are allowed and preserve lifecyc
     const completeRes = createResponseRecorder();
     await completeSession({ session: { user: { id: 48 } }, params: { sessionId: '1901' } }, completeRes);
     assert.equal(completeRes.statusCode, 200);
-    assert.equal(mockPool._state.sessions.find((session) => session.id === 1901).status, 'completed');
+    const completedSession = mockPool._state.sessions.find((session) => session.id === 1901);
+    assert.equal(completedSession.status, 'completed');
+    assert.equal(completedSession.duration_seconds, 240);
+
+    const repeatCompleteRes = createResponseRecorder();
+    await completeSession({ session: { user: { id: 48 } }, params: { sessionId: '1901' } }, repeatCompleteRes);
+    assert.equal(repeatCompleteRes.statusCode, 200);
+    assert.equal(repeatCompleteRes.body.alreadyCompleted, true);
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 1901).duration_seconds, 240);
 
     const cancelRes = createResponseRecorder();
     await cancelSession({ session: { user: { id: 48 } }, params: { sessionId: '1902' } }, cancelRes);
     assert.equal(cancelRes.statusCode, 200);
     assert.equal(mockPool._state.sessions.find((session) => session.id === 1902).status, 'cancelled');
     assert.equal(mockPool._state.sessions.find((session) => session.id === 1902).completed_at, null);
+  } finally {
+    restore();
+  }
+});
+
+test('completed sessions reject subsequent pause and resume transitions without mutating persisted duration', async () => {
+  const mockPool = createMockPool({
+    sessions: [
+      {
+        id: 1951,
+        user_id: 49,
+        source_workout_schedule_id: 735,
+        workout_day_id: null,
+        workout_day_name: 'Saturday',
+        workout_date: '2026-11-12',
+        status: 'completed',
+        started_at: '2026-11-12T11:00:00.000Z',
+        ended_at: '2026-11-12T11:20:00.000Z',
+        duration_seconds: 1200,
+        completed_at: '2026-11-12T11:20:00.000Z',
+        notes: '',
+      },
+    ],
+    workoutSchedules: [
+      { id: 735, user_id: 49, title: 'Plan 735' },
+    ],
+  });
+
+  const { route, restore } = loadRouteWithMockPool(mockPool);
+  try {
+    const pauseSession = getBusinessHandler(route, 'post', '/workout-sessions/:sessionId/pause');
+    const resumeSession = getBusinessHandler(route, 'post', '/workout-sessions/:sessionId/resume');
+
+    const pauseRes = createResponseRecorder();
+    await pauseSession({ session: { user: { id: 49 } }, params: { sessionId: '1951' } }, pauseRes);
+    assert.equal(pauseRes.statusCode, 409);
+
+    const resumeRes = createResponseRecorder();
+    await resumeSession({ session: { user: { id: 49 } }, params: { sessionId: '1951' } }, resumeRes);
+    assert.equal(resumeRes.statusCode, 409);
+
+    const completedSession = mockPool._state.sessions.find((session) => session.id === 1951);
+    assert.equal(completedSession.status, 'completed');
+    assert.equal(completedSession.duration_seconds, 1200);
   } finally {
     restore();
   }
