@@ -29,6 +29,7 @@ const emit = defineEmits([
   'add-set',
   'remove-set',
   'update-set',
+  'commit-set-edit',
   'select',
   'exercise-completed',
   'move-up',
@@ -305,6 +306,7 @@ onUnmounted(() => {
                 step="0.5"
                 placeholder="0"
                 @input="emit('update-set', exercise.id, idx, 'weight', $event.target.value)"
+                @blur="emit('commit-set-edit', exercise.id, idx)"
               />
             </div>
           </div>
@@ -320,6 +322,7 @@ onUnmounted(() => {
                 min="0"
                 placeholder="0"
                 @input="emit('update-set', exercise.id, idx, 'reps', $event.target.value)"
+                @blur="emit('commit-set-edit', exercise.id, idx)"
               />
               <div class="c3-inline-actions" role="group" aria-label="Set actions">
                 <button
@@ -366,6 +369,7 @@ onUnmounted(() => {
             step="0.5"
             placeholder="0"
             @input="emit('update-set', exercise.id, idx, 'weight', $event.target.value)"
+            @blur="emit('commit-set-edit', exercise.id, idx)"
           />
         </label>
 
@@ -378,6 +382,7 @@ onUnmounted(() => {
             min="0"
             placeholder="0"
             @input="emit('update-set', exercise.id, idx, 'reps', $event.target.value)"
+            @blur="emit('commit-set-edit', exercise.id, idx)"
           />
         </label>
 
@@ -431,6 +436,7 @@ onUnmounted(() => {
                 min="0"
                 placeholder="0"
                 @input="emit('update-set', exercise.id, idx, 'duration', $event.target.value)"
+                @blur="emit('commit-set-edit', exercise.id, idx)"
               />
             </div>
           </div>
@@ -445,6 +451,7 @@ onUnmounted(() => {
                 :value="set.notes ?? ''"
                 placeholder="Optional notes"
                 @input="emit('update-set', exercise.id, idx, 'notes', $event.target.value)"
+                @blur="emit('commit-set-edit', exercise.id, idx)"
               />
             </div>
           </div>
@@ -509,6 +516,7 @@ onUnmounted(() => {
               min="0"
               placeholder="0"
               @input="emit('update-set', exercise.id, idx, 'duration', $event.target.value)"
+              @blur="emit('commit-set-edit', exercise.id, idx)"
             />
           </div>
         </div>
@@ -524,6 +532,7 @@ onUnmounted(() => {
               min="0"
               placeholder="0"
               @input="emit('update-set', exercise.id, idx, 'caloriesBurned', $event.target.value)"
+              @blur="emit('commit-set-edit', exercise.id, idx)"
             />
           </div>
         </div>
@@ -540,6 +549,7 @@ onUnmounted(() => {
               step="0.01"
               placeholder="0.00"
               @input="emit('update-set', exercise.id, idx, 'distanceMiles', $event.target.value)"
+              @blur="emit('commit-set-edit', exercise.id, idx)"
             />
           </div>
         </div>
@@ -556,6 +566,7 @@ onUnmounted(() => {
               step="0.1"
               placeholder="0.0"
               @input="emit('update-set', exercise.id, idx, 'speedMph', $event.target.value)"
+              @blur="emit('commit-set-edit', exercise.id, idx)"
             />
           </div>
         </div>

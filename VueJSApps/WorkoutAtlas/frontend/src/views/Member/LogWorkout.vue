@@ -1632,6 +1632,31 @@ const queueWorkoutSetProgressPersistence = ({ immediate = false } = {}) => {
   }, immediate ? 0 : 450);
 };
 
+const flushWorkoutSetProgressPersistence = async () => {
+  if (!isWorkoutSessionActive.value || isPreviewMode.value || !activeSession.value?.id) {
+    return true;
+  }
+
+  if (workoutLogSetPersistTimeoutId != null) {
+    window.clearTimeout(workoutLogSetPersistTimeoutId);
+    workoutLogSetPersistTimeoutId = null;
+  }
+
+  let didPersist = true;
+  for (let pass = 0; pass < 4; pass += 1) {
+    const persisted = await persistWorkoutSetProgress();
+    didPersist = didPersist && Boolean(persisted);
+
+    if (!workoutLogSetPersistInFlight && !workoutLogSetPersistQueued && workoutLogSetPersistTimeoutId == null) {
+      break;
+    }
+
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+  }
+
+  return didPersist;
+};
+
 const persistWorkoutSetProgress = async ({ rollback } = {}) => {
   if (!isWorkoutSessionActive.value || isPreviewMode.value || !activeSession.value?.id) {
     return true;
@@ -1739,6 +1764,17 @@ const updateSet = (exerciseId, setIndex, field, value) => {
   }
 
   queueWorkoutSetProgressPersistence();
+};
+
+const commitSetEdit = (exerciseId, setIndex) => {
+  if (isPreviewMode.value) return;
+
+  const ex = sessionExercises.value.find((entry) => entry.id === exerciseId);
+  const setEntry = Array.isArray(ex?.sessionSets) ? ex.sessionSets[setIndex] : null;
+  if (!setEntry) return;
+
+  queueWorkoutDraftSave(true);
+  queueWorkoutSetProgressPersistence({ immediate: true });
 };
 
 /* ─── Load plan list ─────────────────────────────────────────────────────── */
@@ -2805,8 +2841,9 @@ watch(
   { immediate: true },
 );
 
-const openHistoryTab = () => {
+const openHistoryTab = async () => {
   activeTab.value = 'workoutHistory';
+  await flushWorkoutSetProgressPersistence();
   loadWorkoutHistory();
 };
 
@@ -2962,6 +2999,7 @@ onUnmounted(() => {
     window.clearTimeout(workoutLogSetPersistTimeoutId);
     workoutLogSetPersistTimeoutId = null;
   }
+  void flushWorkoutSetProgressPersistence();
   void persistWorkoutDraft();
   setWorkoutTimerRunning(false);
   sessionTimerStateById.value = {};
@@ -3467,6 +3505,7 @@ onUnmounted(() => {
               @add-set="addSet"
               @remove-set="removeSet"
               @update-set="updateSet"
+              @commit-set-edit="commitSetEdit"
               @exercise-completed="onExerciseCompleted"
               @move-up="moveActiveExercise($event, 'up')"
               @move-down="moveActiveExercise($event, 'down')"

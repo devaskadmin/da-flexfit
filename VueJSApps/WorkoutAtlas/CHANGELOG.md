@@ -6,6 +6,17 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.292] - 2026-11-17 - Persist edited set values before Workout Log history load
+
+- **Fixed:** Direct set-field edits (weight/reps and other set inputs) now trigger an explicit commit on input blur so corrected values are persisted immediately instead of waiting only on deferred autosave timing.
+- **Fixed:** Switching to the Workout Log history tab now flushes queued/in-flight set persistence before loading history, preventing stale values from being read when users navigate immediately after correcting a set.
+- **Changed:** Current Workout unmount cleanup now flushes pending set-progress persistence before teardown to reduce lost updates during quick navigation and session transitions.
+- **Preserved:** Existing Add Set, Remove Set, Complete Set, and completed-set deletion protection behavior remains unchanged.
+- **Added:** Regression coverage for session save persistence semantics, including corrected completed-set edits, rapid successive updates, remove-set persistence cleanup, and two-active-session isolation.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `frontend/src/components/workout-session/ExerciseSessionCard.vue`; `backend/tests/workout-log-session-persistence.test.js`; `frontend/package.json`; `backend/package.json`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`.
+- **Verification:** Backend test suite passed (118/118) plus new session-persistence regression tests. Frontend production build passed. Authenticated live modal/session verification remains environment-limited when local auth/backend routing is unavailable.
+- **Known unresolved issues:** Full live iPhone authenticated flow replay still depends on local auth/backend availability in the browser environment.
+
 ## [0.85.291] - 2026-11-14 - Compact mobile exercise picker layout
 
 - **Fixed:** The Add Exercise picker now keeps the search field full-width and pairs the Category and Equipment filters side by side on narrow viewports, reducing wasted space at 375px and 430px without changing the picker logic or the selection flow.
