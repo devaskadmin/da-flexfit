@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS workout_log_sessions (
   user_id INT(11) NOT NULL,
   source_workout_schedule_id BIGINT UNSIGNED DEFAULT NULL,
   workout_date DATE NOT NULL,
-  status ENUM('in_progress', 'completed', 'cancelled') NOT NULL DEFAULT 'completed',
+  status ENUM('in_progress', 'paused', 'completed', 'ended', 'cancelled') NOT NULL DEFAULT 'in_progress',
   started_at DATETIME DEFAULT NULL,
   completed_at DATETIME DEFAULT NULL,
   notes TEXT DEFAULT NULL,

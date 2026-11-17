@@ -1,5 +1,11 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.297 - Timer paused-status schema compatibility
+- Scope: make Workout Timer paused-session lifecycle fully schema-compatible by adding paused enum migration support, aligning canonical schema defaults/statuses, and closing paused-active query gaps in plan/session cleanup paths.
+- Files changed: `backend/api/users.js`, `backend/api/workout-sessions.js`, `backend/schema/workout_schedule_schema.sql`, `backend/migrations/workout/20261117_workout_session_status_paused.sql`, `backend/tests/workout-session-recovery.integration.test.js`, `backend/tests/workout-session-status-schema.test.js`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
+- Verification: targeted paused/schema/session regressions passed (18/18); full backend suite passed (142/142); frontend production build passed; `git diff --check` passed.
+- Caveats: long-running local backend processes may continue serving pre-patch route wiring until restart, so local 404 behavior for newly introduced endpoints can persist in stale process instances when restart is deferred.
+
 ## 0.85.296 — Workout timer and session persistence reliability
 - Scope: stabilize Current Workout timer/session reliability by adding explicit pause/resume lifecycle support, automatic tab leave/return timer control, and paused-session recovery while preserving existing history summary behavior.
 - Files changed: `backend/api/workout-sessions.js`, `backend/api/workout-log.js`, `backend/tests/workout-session-recovery.integration.test.js`, `frontend/src/views/Member/LogWorkout.vue`, `frontend/src/utils/workoutSessionTimer.test.mjs`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.

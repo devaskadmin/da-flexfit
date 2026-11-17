@@ -169,7 +169,7 @@ const createMockPool = (seedState = {}) => {
         (session) =>
           Number(session.id) === targetId &&
           Number(session.user_id) === userId &&
-          session.status === 'in_progress'
+          ['in_progress', 'in-progress', 'active', 'paused'].includes(String(session.status || '').toLowerCase())
       );
 
       if (!target) {
@@ -195,7 +195,7 @@ const createMockPool = (seedState = {}) => {
         (session) =>
           Number(session.id) === targetId &&
           Number(session.user_id) === userId &&
-          session.status === 'in_progress'
+          ['in_progress', 'in-progress', 'active', 'paused'].includes(String(session.status || '').toLowerCase())
       );
 
       if (!target) {
@@ -206,6 +206,31 @@ const createMockPool = (seedState = {}) => {
       target.status = 'cancelled';
       target.ended_at = nowIso();
       target.completed_at = null;
+      target.duration_seconds = Math.max(Number(target.duration_seconds || 0), 0);
+      return [{ affectedRows: 1 }, []];
+    }
+
+    if (normalizedSql.startsWith('UPDATE workout_log_sessions') && normalizedSql.includes("SET status = 'completed'")) {
+      if (typeof snapshotForRollbackIfNeeded === 'function') {
+        snapshotForRollbackIfNeeded();
+      }
+
+      const targetId = Number(params[0]);
+      const userId = Number(params[1]);
+      const target = state.sessions.find(
+        (session) =>
+          Number(session.id) === targetId &&
+          Number(session.user_id) === userId &&
+          ['in_progress', 'in-progress', 'active', 'paused'].includes(String(session.status || '').toLowerCase())
+      );
+
+      if (!target) {
+        return [{ affectedRows: 0 }, []];
+      }
+
+      target.status = 'completed';
+      target.ended_at = nowIso();
+      target.completed_at = target.ended_at;
       target.duration_seconds = Math.max(Number(target.duration_seconds || 0), 0);
       return [{ affectedRows: 1 }, []];
     }
@@ -1144,6 +1169,125 @@ test('in-progress endpoint includes paused sessions for reliable recovery', asyn
     assert.equal(res.body.sessions.length, 2);
     const statuses = res.body.sessions.map((session) => String(session?.sessionStatus || '').toLowerCase()).sort();
     assert.deepEqual(statuses, ['in_progress', 'paused']);
+  } finally {
+    restore();
+  }
+});
+
+test('paused sessions count toward the two-active-session limit when starting a third workout', async () => {
+  const mockPool = createMockPool({
+    sessions: [
+      {
+        id: 1801,
+        user_id: 47,
+        source_workout_schedule_id: 720,
+        workout_day_id: null,
+        workout_day_name: 'Monday',
+        workout_date: '2026-11-12',
+        status: 'paused',
+        started_at: '2026-11-12T10:00:00.000Z',
+        ended_at: null,
+        duration_seconds: 125,
+        completed_at: null,
+        notes: '',
+      },
+      {
+        id: 1802,
+        user_id: 47,
+        source_workout_schedule_id: 721,
+        workout_day_id: null,
+        workout_day_name: 'Tuesday',
+        workout_date: '2026-11-12',
+        status: 'in_progress',
+        started_at: '2026-11-12T11:00:00.000Z',
+        ended_at: null,
+        duration_seconds: 0,
+        completed_at: null,
+        notes: '',
+      },
+    ],
+    workoutSchedules: [
+      { id: 720, user_id: 47, title: 'Plan 720' },
+      { id: 721, user_id: 47, title: 'Plan 721' },
+      { id: 722, user_id: 47, title: 'Plan 722' },
+    ],
+  });
+
+  const { route, restore } = loadRouteWithMockPool(mockPool);
+  try {
+    const start = getBusinessHandler(route, 'post', '/workout-sessions/start');
+    const res = createResponseRecorder();
+    await start({
+      session: { user: { id: 47 } },
+      body: {
+        workoutPlanId: 722,
+        workoutDayName: 'Wednesday',
+        workoutDate: '2026-11-12',
+      },
+    }, res);
+
+    assert.equal(res.statusCode, 409);
+    assert.equal(res.body.code, 'WORKOUT_SESSION_LIMIT_REACHED');
+    assert.equal(Array.isArray(res.body.activeSessions), true);
+    assert.equal(res.body.activeSessions.length, 2);
+  } finally {
+    restore();
+  }
+});
+
+test('completing and cancelling paused sessions are allowed and preserve lifecycle semantics', async () => {
+  const mockPool = createMockPool({
+    sessions: [
+      {
+        id: 1901,
+        user_id: 48,
+        source_workout_schedule_id: 730,
+        workout_day_id: null,
+        workout_day_name: 'Thursday',
+        workout_date: '2026-11-12',
+        status: 'paused',
+        started_at: '2026-11-12T10:00:00.000Z',
+        ended_at: null,
+        duration_seconds: 240,
+        completed_at: null,
+        notes: '',
+      },
+      {
+        id: 1902,
+        user_id: 48,
+        source_workout_schedule_id: 731,
+        workout_day_id: null,
+        workout_day_name: 'Friday',
+        workout_date: '2026-11-12',
+        status: 'paused',
+        started_at: '2026-11-12T11:00:00.000Z',
+        ended_at: null,
+        duration_seconds: 180,
+        completed_at: null,
+        notes: '',
+      },
+    ],
+    workoutSchedules: [
+      { id: 730, user_id: 48, title: 'Plan 730' },
+      { id: 731, user_id: 48, title: 'Plan 731' },
+    ],
+  });
+
+  const { route, restore } = loadRouteWithMockPool(mockPool);
+  try {
+    const completeSession = getBusinessHandler(route, 'post', '/workout-sessions/complete/:sessionId');
+    const cancelSession = getBusinessHandler(route, 'post', '/workout-sessions/cancel/:sessionId');
+
+    const completeRes = createResponseRecorder();
+    await completeSession({ session: { user: { id: 48 } }, params: { sessionId: '1901' } }, completeRes);
+    assert.equal(completeRes.statusCode, 200);
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 1901).status, 'completed');
+
+    const cancelRes = createResponseRecorder();
+    await cancelSession({ session: { user: { id: 48 } }, params: { sessionId: '1902' } }, cancelRes);
+    assert.equal(cancelRes.statusCode, 200);
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 1902).status, 'cancelled');
+    assert.equal(mockPool._state.sessions.find((session) => session.id === 1902).completed_at, null);
   } finally {
     restore();
   }

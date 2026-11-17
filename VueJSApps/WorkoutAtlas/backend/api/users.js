@@ -3507,7 +3507,7 @@ const listActiveSessionsForPlan = async ({ connection, scheduleId, userId }) => 
      FROM workout_log_sessions
      WHERE user_id = ?
        AND source_workout_schedule_id = ?
-       AND status = 'in_progress'
+       AND status IN ('in_progress', 'in-progress', 'active', 'paused')
      ORDER BY started_at DESC, id DESC`,
     [userId, scheduleId]
   );
@@ -3540,7 +3540,7 @@ const cancelActiveSessionsForPlan = async ({ connection, scheduleId, userId }) =
          duration_seconds = ${SESSION_CLEANUP_DURATION_SQL}
      WHERE user_id = ?
        AND source_workout_schedule_id = ?
-       AND status = 'in_progress'`,
+       AND status IN ('in_progress', 'in-progress', 'active', 'paused')`,
     [userId, scheduleId]
   );
 

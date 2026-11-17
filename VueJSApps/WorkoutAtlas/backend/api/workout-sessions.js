@@ -153,7 +153,7 @@ const cancelInvalidActiveSession = async ({ connection, sessionId, userId }) => 
          duration_seconds = ${SESSION_DURATION_SECONDS_SQL}
      WHERE id = ?
        AND user_id = ?
-       AND status = 'in_progress'`,
+       AND status IN ('in_progress', 'in-progress', 'active', 'paused')`,
     [sessionId, userId]
   );
 };

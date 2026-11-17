@@ -6,6 +6,18 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.297] - 2026-11-17 - Timer paused-status database schema compatibility
+
+- **Fixed:** Added a forward-only, idempotent workout migration to safely add `paused` to `workout_log_sessions.status` enum values while preserving existing enum values and existing session rows.
+- **Fixed:** Canonical workout schema for new installs now defines `workout_log_sessions.status` with paused-compatible lifecycle values (`in_progress`, `paused`, `completed`, `ended`, `cancelled`) and correct default (`in_progress`).
+- **Fixed:** Workout-plan active-session impact and cancellation queries now consistently treat paused sessions as unfinished active sessions alongside in-progress/legacy active aliases.
+- **Fixed:** Workout-session orphan cleanup paths now include paused unfinished sessions in safety cancellation conditions.
+- **Added:** Regression coverage for paused compatibility and schema artifacts, including active-session cap behavior when paused sessions exist and paused complete/cancel lifecycle transitions.
+- **Added:** Static schema/migration compatibility test coverage to guard canonical enum values and migration idempotency expectations.
+- **Relevant source files:** `backend/api/users.js`; `backend/api/workout-sessions.js`; `backend/schema/workout_schedule_schema.sql`; `backend/migrations/workout/20261117_workout_session_status_paused.sql`; `backend/tests/workout-session-recovery.integration.test.js`; `backend/tests/workout-session-status-schema.test.js`; `frontend/package.json`; `backend/package.json`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`.
+- **Verification:** Targeted paused/schema/session regressions passed (18/18). Full backend suite passed (142/142). Frontend production build passed. `git diff --check` passed.
+- **Known unresolved issues:** The currently running local backend process on port 5000 can continue serving pre-patch route wiring until restarted, so in-session 404 observations for newly added endpoints remain attributable to stale process state when restart is intentionally deferred.
+
 ## [0.85.296] - 2026-11-17 - Workout timer and session persistence reliability stabilization
 
 - **Fixed:** Active workout-session lifecycle now supports explicit pause/resume transitions through backend endpoints, preserving `duration_seconds` when pausing and resuming from the saved elapsed baseline without schema changes.
