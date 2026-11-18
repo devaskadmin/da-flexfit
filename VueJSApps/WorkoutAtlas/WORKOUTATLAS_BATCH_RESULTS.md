@@ -1,5 +1,38 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.305.a1 - Add Set solid blue corrective attempt #1
+- Scope: corrective subversion for 0.85.305 to fix user-reported Add Set visual mismatch (dark interior + blue outline) without changing placement or workout behavior.
+- Root cause (verified in live browser): Workout Log deep scope selector in `frontend/src/views/Member/LogWorkout.vue` overrode Add Set fill from `ExerciseSessionCard.vue` with `background: var(--wl-surface-2)`.
+- Files changed: `frontend/src/views/Member/LogWorkout.vue`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
+- Browser computed evidence (before -> after):
+	- `background-color`: `rgb(45, 54, 82)` -> `rgb(37, 99, 235)`.
+	- `background-image`: `none` -> `none`.
+	- `border-color`: `color(srgb 0.271257 0.466628 0.951205 / 0.581569)` -> `rgb(29, 78, 216)`.
+	- `color`: `rgb(255, 255, 255)` -> `rgb(255, 255, 255)`.
+	- `opacity`: `1` -> `1`.
+	- `box-shadow`: `rgba(37, 99, 235, 0.28) 0px 1px 3px 0px` (preserved).
+- Responsive verification (authenticated browser, Current Workout):
+	- Widths checked: 320, 375, 390, 430, 650, 768, 800, 1024, 1366.
+	- Computed Add Set background at all widths: `rgb(37, 99, 235)`.
+	- Text color at all widths: white (`rgb(255, 255, 255)`).
+	- No horizontal overflow, no Add/Complete overlap, no bottom-nav interference.
+	- Alignment: Add Set and Complete Exercise are side-by-side at 375+; existing <=360 fallback stacks at 320 by prior-design mobile rule.
+- Screenshot evidence:
+	- `.artifacts/0.85.305.a1-add-set-320.png`
+	- `.artifacts/0.85.305.a1-add-set-390.png`
+	- `.artifacts/0.85.305.a1-add-set-800.png`
+	- `.artifacts/0.85.305.a1-add-set-1366.png`
+- Functional verification:
+	- Current Workout: Add Set increased first exercise set total (`0/3` -> `0/4`), rendered new inputs, and retained editable weight/reps input behavior.
+	- Preview state: Add Set did not mutate set rows in preview-only mode during this run (`delta: 0` in click probes), and no preview editing enablement changes were introduced.
+	- Pause/resume controls remained functional and unchanged (`Pause/Play` state transitions preserved).
+- Automated checks:
+	- Frontend build: passed (`BUILD_OK`).
+	- Frontend timer/session tests: 11/11 passing.
+	- Backend full suite: 155/155 passing.
+	- Vue diagnostics on touched frontend files: no errors.
+- Caveats: This corrective patch intentionally avoids changing button placement/layout rules and does not modify backend/business logic, plan schema, or protected plan identifiers.
+
 ## 0.85.305 - Exercise scope ordering, plan preview action, and Add Set button styling
 - Scope: complete targeted 0.85.305 fixes for Exercise Scope ordering/default behavior, My Plans preview action responsiveness, and Add Set blue styling while preserving 0.85.302-0.85.304 behavior and avoiding migrations/restarts.
 - Files changed: `frontend/src/views/Member/exercises.vue`, `frontend/src/views/Member/WorkoutBuilder.vue`, `frontend/src/components/workout-session/ExerciseSessionCard.vue`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.

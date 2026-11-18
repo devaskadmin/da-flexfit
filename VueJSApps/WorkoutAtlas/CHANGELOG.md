@@ -6,6 +6,22 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.305.a1] - 2026-11-18 - Add Set solid-blue corrective fix
+
+- **Corrective target:** Follow-up to `0.85.305` after user acceptance failed because Add Set still rendered as dark-surface + blue-outline instead of solid blue.
+- **Root cause:** A later-scoped Workout Log deep selector in `LogWorkout.vue` overrode `ExerciseSessionCard.vue` Add Set styles in runtime:
+  - ` .wl-page :deep(.sec-select-btn), .wl-page :deep(.set-input), .wl-page :deep(.add-set-btn), ... { background: var(--wl-surface-2); ... }`
+  - This post-component cascade set Add Set computed `background-color` to `rgb(45, 54, 82)` in both Current Workout and preview contexts.
+- **Fixed:** Removed Add Set from the shared dark-surface deep selector and added explicit Workout Log-scoped Add Set states (`default`, `hover`, `active`, `focus-visible`, `disabled`) with blue primary fill (`#2563EB`) and white text.
+- **Preserved:** Existing mobile placement logic, spacing, icon, dimensions, adjacent green `Complete Exercise`, and session behavior were unchanged.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`.
+- **Verification:**
+  - Browser computed styles before fix: `background-color: rgb(45, 54, 82)`, `background-image: none`, `border-color: color(srgb 0.271257 0.466628 0.951205 / 0.581569)`, `color: rgb(255, 255, 255)`, `opacity: 1`.
+  - Browser computed styles after fix: `background-color: rgb(37, 99, 235)`, `background-image: none`, `border-color: rgb(29, 78, 216)`, `color: rgb(255, 255, 255)`, `opacity: 1`.
+  - Responsive matrix revalidated at `320/375/390/430/650/768/800/1024/1366` with no horizontal overflow and no button overlap.
+  - Automated checks passed: frontend build (`BUILD_OK`), frontend timer/session tests (11/11), backend suite (155/155), Vue diagnostics clean for touched files.
+- **Known unresolved issues:** At 320px, the existing <=360 fallback stacks Add Set and Complete Exercise vertically by design from prior mobile work; this corrective patch intentionally did not alter placement rules.
+
 ## [0.85.305] - 2026-11-18 - Exercise scope ordering, plan preview action, and Add Set styling
 
 - **Fixed:** Exercise Scope dropdown ordering now follows role-aware expected order with `Custom Exercise` first while preserving role restrictions (admin: Custom/Shared/System; trainer: Custom/Shared; member: Custom).

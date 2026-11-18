@@ -6733,7 +6733,6 @@ onUnmounted(() => {
 
 .wl-page :deep(.sec-select-btn),
 .wl-page :deep(.set-input),
-.wl-page :deep(.add-set-btn),
 .wl-page :deep(.c3-rm-btn),
 .wl-page :deep(.c3-complete-btn),
 .wl-page :deep(.c3-finish-btn) {
@@ -6747,6 +6746,32 @@ onUnmounted(() => {
 .wl-page :deep(.add-set-btn) {
   border-color: color-mix(in srgb, var(--wl-accent) 45%, var(--wl-border) 55%);
   color: #ffffff;
+}
+
+.wl-page :deep(.add-set-btn) {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+
+.wl-page :deep(.add-set-btn:hover) {
+  background: #1d4ed8;
+  border-color: #1e40af;
+}
+
+.wl-page :deep(.add-set-btn:active) {
+  background: #1e40af;
+  border-color: #1e3a8a;
+}
+
+.wl-page :deep(.add-set-btn:focus-visible) {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28);
+}
+
+.wl-page :deep(.add-set-btn:disabled) {
+  background: #93c5fd;
+  border-color: #93c5fd;
+  color: #eff6ff;
 }
 
 .wl-page :deep(.set-input),
