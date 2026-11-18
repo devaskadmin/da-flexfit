@@ -6,6 +6,17 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.303] - 2026-11-18 - Plan save, publish, and status reliability
+
+- **Fixed:** Workout Builder now uses plan-type-aware publication transition rules so personal plans can use backend-supported status transitions (`active -> archived`) while Global/Featured/Community Shared plans continue honoring stricter global transition constraints.
+- **Fixed:** First-save Global/Featured/Community Shared publish requests are no longer forcibly downgraded to draft; selected publish intent is sent to persistence and validated by backend rules.
+- **Fixed:** Save/publish success feedback now displays only after the persisted status is returned from the backend, and explicitly distinguishes successful publish/draft/archive outcomes from status-mismatch notices.
+- **Added:** Consistent post-save result modal (matching existing WorkoutAtlas success-modal visual language) for draft save, publish, archive, and status-notice outcomes in Workout Builder.
+- **Changed:** Workout Builder save pipeline now centralizes persisted-status feedback messages through a single helper, reducing split-path messaging drift between Global and non-Global plan saves.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`; `frontend/package.json`; `backend/package.json`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`.
+- **Verification:** Full backend suite passed (155/155). Frontend production build passed.
+- **Known unresolved issues:** Full authenticated live browser replay across 320/375/390/430/768/800/1024/1366 for the end-to-end save/publish UX remains environment/session dependent in this run.
+
 ## [0.85.302] - 2026-11-17 - Mobile-only button placement corrections
 
 - **Fixed:** Current Workout bottom action bar buttons now maintain readable labels and safe spacing on narrow mobile widths, with adaptive wrapping/stacking that avoids text clipping and preserves in-flow behavior above the fixed mobile navigation.

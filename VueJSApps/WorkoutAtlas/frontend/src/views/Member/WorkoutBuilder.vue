@@ -10,6 +10,7 @@ import { refreshWorkoutStatus, setUserWorkoutStatus } from '@/composable/workout
 import { DEFAULT_EXERCISE_IMAGE, getExerciseImage } from '@/utils/exerciseImage';
 import { DEFAULT_WORKOUT_PLAN_IMAGE, buildWorkoutPlanCoverImageUrl, applyWorkoutPlanImageFallback } from '@/utils/workoutPlanImage';
 import { countUniqueWorkoutPlanExercises } from '@/utils/workoutPlanExerciseCount';
+import Swal from 'sweetalert2';
 import { showConfirmDialog } from '@/utils/browserDialogs';
 import {
   buildDiagnosticsPayload,
@@ -2433,11 +2434,23 @@ const isDraftGlobalPlan = computed(() => isAdminGlobalPlanDraftFlow.value && pla
 const isPublishedGlobalPlan = computed(() => isAdminGlobalPlanDraftFlow.value && planPublicationStatus.value === 'active');
 const isArchivedGlobalPlan = computed(() => isAdminGlobalPlanDraftFlow.value && planPublicationStatus.value === 'archived');
 
-const backendSupportedPublicationTransitions = {
+const globalPublicationTransitions = {
   draft: ['draft', 'active'],
   active: ['active', 'draft'],
   archived: ['draft'],
 };
+
+const standardPublicationTransitions = {
+  draft: ['draft', 'active'],
+  active: ['active', 'draft', 'archived'],
+  archived: ['draft', 'archived'],
+};
+
+const supportedPublicationTransitions = computed(() => (
+  isGlobalWorkflowPlanType.value
+    ? globalPublicationTransitions
+    : standardPublicationTransitions
+));
 
 const normalizePlanPublicationStatus = (statusValue) => {
   const normalized = String(statusValue || '').trim().toLowerCase();
@@ -2478,7 +2491,7 @@ const publicationStatusOptions = computed(() => {
   }
 
   const currentStatus = normalizePlanPublicationStatus(planPublicationStatus.value);
-  const allowedTargets = backendSupportedPublicationTransitions[currentStatus] || [];
+  const allowedTargets = supportedPublicationTransitions.value[currentStatus] || [];
   const baseOptions = [
     { value: 'draft', label: 'Draft' },
     { value: 'active', label: 'Published' },
@@ -2507,6 +2520,101 @@ const publicationStatusDisplayLabel = (statusValue) => {
     return 'Archived';
   }
   return 'Draft';
+};
+
+const buildPersistSuccessFeedback = ({
+  planLabel = 'Workout plan',
+  requestedStatus = 'draft',
+  persistedStatus = 'draft',
+  previousStatus = 'draft',
+} = {}) => {
+  const safeLabel = String(planLabel || 'Workout plan').trim() || 'Workout plan';
+  const requested = normalizePlanPublicationStatus(requestedStatus);
+  const persisted = normalizePlanPublicationStatus(persistedStatus);
+  const previous = normalizePlanPublicationStatus(previousStatus);
+
+  if (persisted !== requested) {
+    const persistedLabel = publicationStatusDisplayLabel(persisted);
+    return {
+      icon: 'warning',
+      title: `${safeLabel} Saved with Status Notice`,
+      inlineMessage: `${safeLabel} saved, but status remains ${persistedLabel}.`,
+      modalMessage: `${safeLabel} was saved, but the persisted publication status is still ${persistedLabel}. Refresh the plan list if this does not update automatically.`,
+    };
+  }
+
+  if (persisted === 'active' && previous === 'active') {
+    return {
+      icon: 'success',
+      title: `${safeLabel} Changes Saved Successfully`,
+      inlineMessage: `${safeLabel} changes saved successfully.`,
+      modalMessage: `${safeLabel} changes were saved and the plan remains Published.`,
+    };
+  }
+
+  if (persisted === 'active') {
+    return {
+      icon: 'success',
+      title: `${safeLabel} Published Successfully`,
+      inlineMessage: `${safeLabel} published successfully.`,
+      modalMessage: `${safeLabel} is now Published and visible to eligible users.`,
+    };
+  }
+
+  if (persisted === 'archived') {
+    return {
+      icon: 'success',
+      title: `${safeLabel} Archived Successfully`,
+      inlineMessage: `${safeLabel} archived successfully.`,
+      modalMessage: `${safeLabel} has been archived and is no longer publicly available.`,
+    };
+  }
+
+  return {
+    icon: 'success',
+    title: `${safeLabel} Draft Saved Successfully`,
+    inlineMessage: `${safeLabel} draft saved successfully.`,
+    modalMessage: `${safeLabel} draft was saved and is ready for future edits or publishing.`,
+  };
+};
+
+const showWorkoutPlanResultModal = async ({ title, message, icon = 'success' } = {}) => {
+  const normalizedIcon = String(icon || '').trim().toLowerCase() === 'warning' ? 'warning' : 'success';
+  const modalVariantClass = normalizedIcon === 'warning'
+    ? 'wa-plan-result-modal--warning'
+    : 'wa-plan-result-modal--success';
+
+  await Swal.fire({
+    title: String(title || 'Workout Plan Updated'),
+    text: String(message || ''),
+    icon: normalizedIcon,
+    confirmButtonText: 'OK',
+    showCloseButton: true,
+    allowOutsideClick: false,
+    allowEscapeKey: true,
+    customClass: {
+      popup: `wa-plan-result-modal ${modalVariantClass}`,
+      confirmButton: 'wa-plan-result-modal__ok',
+      closeButton: 'wa-plan-result-modal__close',
+    },
+    didOpen: (popup) => {
+      // Route the red X through the same acknowledge path as the OK button.
+      const closeButton = popup.querySelector('.swal2-close');
+      const confirmButton = popup.querySelector('.swal2-confirm');
+
+      if (confirmButton) {
+        confirmButton.style.setProperty('color', '#ffffff', 'important');
+      }
+
+      if (closeButton && confirmButton) {
+        closeButton.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          confirmButton.click();
+        }, { capture: true });
+      }
+    },
+  });
 };
 
 const savePlanModalSummary = computed(() => {
@@ -3897,7 +4005,7 @@ const persistWorkout = async (status = 'draft') => {
           ? 'featured'
           : 'global';
       const payloadFeatured = isNewUnsavedGlobal ? false : Boolean(isGlobalPlanFeatured.value);
-      const targetGlobalStatus = isNewUnsavedGlobal ? 'draft' : normalizedTargetStatus;
+      const targetGlobalStatus = normalizedTargetStatus;
       const displayPlanLabel = payloadPlanType === 'featured' ? 'Featured' : (payloadPlanType === 'community_shared' ? 'Community Shared' : 'Global');
       const globalDraftPayload = buildGlobalPlanDraftPayload({
         title: metadata.value.name,
@@ -3975,19 +4083,20 @@ const persistWorkout = async (status = 'draft') => {
       const persistedGlobalStatus = normalizePlanPublicationStatus(scheduleData?.planner?.status || targetGlobalStatus);
       planPublicationStatus.value = persistedGlobalStatus;
       selectedPublicationStatus.value = persistedGlobalStatus;
-      if (persistedGlobalStatus !== targetGlobalStatus) {
-        saveMessage.value = `${displayPlanLabel} workout plan saved, but status remains ${publicationStatusDisplayLabel(persistedGlobalStatus)}.`;
-      } else if (persistedGlobalStatus === 'active' && previousStatus === 'active') {
-        saveMessage.value = `${displayPlanLabel} workout plan changes saved successfully.`;
-      } else if (persistedGlobalStatus === 'active') {
-        saveMessage.value = `${displayPlanLabel} workout plan published successfully.`;
-      } else if (persistedGlobalStatus === 'archived') {
-        saveMessage.value = `${displayPlanLabel} workout plan archived successfully.`;
-      } else {
-        saveMessage.value = `${displayPlanLabel} workout plan draft saved successfully.`;
-      }
+      const feedback = buildPersistSuccessFeedback({
+        planLabel: `${displayPlanLabel} workout plan`,
+        requestedStatus: targetGlobalStatus,
+        persistedStatus: persistedGlobalStatus,
+        previousStatus,
+      });
+      saveMessage.value = feedback.inlineMessage;
       markPlannerStateCommitted();
       await syncEditorContextAfterSuccessfulSave();
+      await showWorkoutPlanResultModal({
+        title: feedback.title,
+        message: feedback.modalMessage,
+        icon: feedback.icon,
+      });
       return;
     }
 
@@ -4024,17 +4133,20 @@ const persistWorkout = async (status = 'draft') => {
     hasSavedWorkoutExerciseList.value = Boolean(data?.hasSavedWorkoutExerciseList);
     setUserWorkoutStatus(hasSavedWorkoutExerciseList.value);
     await refreshWorkoutStatus();
-    if (persistedStatus !== normalizedTargetStatus) {
-      saveMessage.value = `Workout plan saved, but publication status remains ${publicationStatusDisplayLabel(persistedStatus)}.`;
-    } else if (persistedStatus === 'active') {
-      saveMessage.value = 'Workout plan published successfully.';
-    } else if (persistedStatus === 'archived') {
-      saveMessage.value = 'Workout plan archived successfully.';
-    } else {
-      saveMessage.value = 'Workout plan draft saved successfully.';
-    }
+    const feedback = buildPersistSuccessFeedback({
+      planLabel: 'Workout plan',
+      requestedStatus: normalizedTargetStatus,
+      persistedStatus,
+      previousStatus,
+    });
+    saveMessage.value = feedback.inlineMessage;
     markPlannerStateCommitted();
     await syncEditorContextAfterSuccessfulSave();
+    await showWorkoutPlanResultModal({
+      title: feedback.title,
+      message: feedback.modalMessage,
+      icon: feedback.icon,
+    });
   } catch (error) {
     saveMessage.value = error.message || 'Failed to save workout planner.';
   } finally {
@@ -4057,7 +4169,7 @@ const saveGlobalWorkoutWithSelectedStatus = async () => {
   }
 
   const currentStatus = normalizePlanPublicationStatus(planPublicationStatus.value);
-  const supportedTargets = backendSupportedPublicationTransitions[currentStatus] || [];
+  const supportedTargets = supportedPublicationTransitions.value[currentStatus] || [];
 
   if (!supportedTargets.includes(selectedStatus)) {
     const selectedOption = publicationStatusOptions.value.find((option) => option.value === selectedStatus);
@@ -9072,6 +9184,50 @@ watch(
   border: 1px solid #64748b;
   background: #64748b;
   color: #ffffff;
+}
+
+:deep(.wa-plan-result-modal.swal2-popup) {
+  border-radius: 14px;
+  padding-top: 1.6em;
+}
+
+:deep(.wa-plan-result-modal .wa-plan-result-modal__ok) {
+  min-width: 108px;
+  border: 0;
+  border-radius: 10px;
+  background: #2563eb !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: none !important;
+}
+
+:deep(.wa-plan-result-modal .wa-plan-result-modal__ok:hover),
+:deep(.wa-plan-result-modal .wa-plan-result-modal__ok:focus-visible) {
+  background: #1d4ed8 !important;
+}
+
+:deep(.wa-plan-result-modal .wa-plan-result-modal__close) {
+  top: 8px;
+  right: 10px;
+  width: 2rem;
+  height: 2rem;
+  color: #dc2626 !important;
+  font-size: 1.6rem !important;
+  font-weight: 800;
+  line-height: 1;
+  transition: transform 0.14s ease, color 0.14s ease;
+}
+
+:deep(.wa-plan-result-modal .wa-plan-result-modal__close:hover),
+:deep(.wa-plan-result-modal .wa-plan-result-modal__close:focus-visible) {
+  color: #b91c1c !important;
+  transform: scale(1.05);
+  outline: none;
+}
+
+:deep(.wa-plan-result-modal--warning .swal2-warning) {
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.45) !important;
 }
 
 .plan-type-conversion-modal .modal-btn--cancel:hover {

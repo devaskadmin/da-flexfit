@@ -1,5 +1,17 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.303 - Plan save, publish, and status reliability
+- Scope: close Workout Builder reliability gaps for Save as Draft / Publish / Save Changes flows by confirming persisted status before success feedback, aligning transition options with backend behavior, and preventing first-save global publish downgrades.
+- Files changed: `frontend/src/views/Member/WorkoutBuilder.vue`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
+- Verification:
+	- Full backend suite passed (`npm test`): 155/155 passing.
+	- Frontend production build passed (`npm run build`).
+- Behavioral outcomes:
+	- Global workflow no longer forces first-save publish intent to draft.
+	- Publication status options now respect plan type (global workflow vs personal workflow transitions).
+	- Success/notice feedback now reflects backend-persisted status and displays via standardized result modal.
+- Caveats: authenticated end-to-end browser replay for the full save/publish UX across all required breakpoints remains session-environment dependent in this run.
+
 ## 0.85.302 - Mobile-only button placement corrections
 - Scope: apply mobile-only placement corrections for Current Workout and exercise-card action buttons at <=800px, preserving desktop layout and all workout behavior.
 - Files changed: `frontend/src/views/Member/LogWorkout.vue`, `frontend/src/components/workout-session/ExerciseSessionCard.vue`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
