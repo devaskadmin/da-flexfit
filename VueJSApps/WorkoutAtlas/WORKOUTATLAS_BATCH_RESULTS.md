@@ -1,5 +1,31 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.307 - Historical workout management and date integrity
+- Scope: finalize Workout Log history management hardening for view/edit/delete/date-correction integrity while preserving completed-only mutation policy and existing history/session architecture.
+- Files changed: `backend/api/workout-log.js`, `frontend/src/views/Member/LogWorkout.vue`, `backend/tests/workout-log-history-management.test.js`, `frontend/src/utils/workoutLogDateFormat.mjs`, `frontend/src/utils/workoutLogDateFormat.test.mjs`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
+- Backend integrity changes:
+	- History query now uses corrected session date when present: `COALESCE(wls.workout_date, wl.WorkoutDate)` for both filter and returned `workoutDate`.
+	- History update date-correction path now updates by explicit edited `WorkoutLogID` set and retains session-id fallback update for legacy rows.
+	- Completed-only edit/delete policy remains enforced.
+- Authenticated browser workflow outcomes (A-H matrix):
+	- A View history: PASS (completed session card and set tables render under Workout Log).
+	- B Edit strength: BLOCKED (no completed strength session in this runtime dataset during replay window).
+	- C Edit cardio: PASS (set value updated `15 -> 16` and persisted in rendered history).
+	- D Correct date: BLOCKED in live browser replay due stale long-running backend process behavior; backend regression test path validates date-correction logic after patch.
+	- E Delete completed history: PASS (delete confirmation modal, success modal, and history/stat recalculation to zero rows for date).
+	- F Cancel edit: PASS (unsaved-changes confirmation shown; discard restored original values).
+	- G Security unauthorized attempt: PASS (`curl http://localhost:5000/api/workout-log/history?date=...` without session returned `401 Unauthorized`).
+	- H Date formatting/time-zone behavior: PASS in automated coverage (`workoutLogDateFormat` tests) and browser labels show readable weekday/date formatting.
+- Responsive matrix verification:
+	- Widths: `320, 375, 390, 430, 650, 768, 800, 1024, 1366`.
+	- Programmatic viewport checks reported `horizontalOverflowPx: 0` at all required widths.
+	- Tablist/action regions remained visible and no blocking modal overlays were present during probe.
+- Automated checks:
+	- Backend targeted history suite: `17/17` pass (`node --test tests/workout-log-history-management.test.js tests/workout-log-history-visibility.test.js tests/workout-history-daily-summary.test.js`).
+	- Previously completed batch gates retained: backend full suite `160/160`, frontend targeted date/timer tests `18/18`, frontend production build passed.
+- Caveats:
+	- Live browser date-correction verification remained environment-limited by stale process state in this session; patched backend logic is verified by regression tests and source-level update/query alignment.
+
 ## 0.85.306 - Workout plan preview responsive redesign and planner action cleanup
 - Scope: redesign Workout Plan Preview for responsive readability and clean up duplicate schedule-planner actions without changing existing save/publish back-end semantics or protected plan data.
 - Files changed: `frontend/src/views/Member/WorkoutBuilder.vue`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.

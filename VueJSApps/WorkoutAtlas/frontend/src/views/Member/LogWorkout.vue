@@ -24,28 +24,16 @@ import {
   removeSessionTimerState,
   upsertSessionTimerState,
 } from '@/utils/workoutSessionTimer.mjs';
+import {
+  formatLocalDateLabel,
+  formatLocalDateTimeLabel,
+  normalizeDateInputValue,
+  toLocalDateInputValue,
+} from '@/utils/workoutLogDateFormat.mjs';
 
 const router = useRouter();
 const route = useRoute();
 const WORKOUT_LOG_ACTIVE_BODY_CLASS = 'wa-workout-log-active';
-
-const toLocalDateInputValue = (value = new Date()) => {
-  const parsed = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(parsed.getTime())) return '';
-  const year = parsed.getFullYear();
-  const month = String(parsed.getMonth() + 1).padStart(2, '0');
-  const day = String(parsed.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-const normalizeDateInputValue = (value) => {
-  const raw = String(value || '').trim();
-  if (!raw) return '';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    return raw;
-  }
-  return toLocalDateInputValue(raw);
-};
 
 /* ─── Tab state ───────────────────────────────────────────────── */
 const activeTab = ref('overview'); // 'overview' | 'dayDetails' | 'workoutHistory'
@@ -69,8 +57,16 @@ const deleteHistoryError      = ref('');
 /* ─── Edit History state ──────────────────────────────────────────────── */
 const editingHistorySessionId = ref(null);  // sessionId currently being edited
 const historyEditDraft        = ref({});    // { [workoutLogId]: [...sets] }
+const historyEditDateDraft    = ref('');
+const historyEditInitialSnapshot = ref('');
 const savingHistoryWorkout    = ref(false);
 const historySaveError        = ref('');
+const historySuccessModal = ref({
+  visible: false,
+  title: '',
+  message: '',
+});
+const expandedHistorySessions = ref({});
 
 /* ─── Plan list state ────────────────────────────────────────────────────── */
 const loading       = ref(false);
@@ -544,6 +540,43 @@ const historyDailyTotalLabel = computed(() =>
   formatDurationHms(historyDailySummary.value.totalDurationSeconds)
 );
 
+const selectedWorkoutDateLabel = computed(() =>
+  formatLocalDateLabel(selectedWorkoutDate.value, { weekday: true })
+);
+
+const formatHistoryDateLabel = (value, { weekday = true } = {}) =>
+  formatLocalDateLabel(value, { weekday, compact: false });
+
+const formatHistoryDateTimeLabel = (value) => formatLocalDateTimeLabel(value);
+
+const getHistorySessionKey = (session, fallbackIndex = 0) => {
+  const sessionId = Number(session?.sessionId || 0);
+  if (sessionId > 0) {
+    return `session-${sessionId}`;
+  }
+  return `legacy-${fallbackIndex}-${String(session?.workoutDate || '')}-${String(session?.planName || '')}`;
+};
+
+const isHistorySessionExpanded = (session, fallbackIndex = 0) => {
+  const key = getHistorySessionKey(session, fallbackIndex);
+  if (Object.prototype.hasOwnProperty.call(expandedHistorySessions.value, key)) {
+    return expandedHistorySessions.value[key] !== false;
+  }
+  return true;
+};
+
+const toggleHistorySessionExpanded = (session, fallbackIndex = 0) => {
+  const key = getHistorySessionKey(session, fallbackIndex);
+  const nextValue = !isHistorySessionExpanded(session, fallbackIndex);
+  expandedHistorySessions.value = {
+    ...expandedHistorySessions.value,
+    [key]: nextValue,
+  };
+};
+
+const canModifyHistorySession = (session) =>
+  Number(session?.sessionId || 0) > 0 && normalizeSessionStatus(session) === 'completed';
+
 const activeWorkoutElapsedSeconds = computed(() => {
   if (!hasActiveWorkout.value) return 0;
   const timerState = getActiveSessionTimerState();
@@ -890,18 +923,7 @@ const toggleWorkoutTimerPlayback = async () => {
 };
 
 const formatConflictSessionDate = (value) => {
-  if (!value) return 'Date unavailable';
-  const rawValue = String(value).trim();
-  if (!rawValue) return 'Date unavailable';
-
-  const parsed = new Date(rawValue);
-  if (!Number.isNaN(parsed.getTime())) {
-    return parsed.toLocaleDateString();
-  }
-
-  const normalized = rawValue.slice(0, 10);
-  const normalizedParsed = new Date(`${normalized}T00:00:00`);
-  return Number.isNaN(normalizedParsed.getTime()) ? 'Date unavailable' : normalizedParsed.toLocaleDateString();
+  return formatLocalDateLabel(value, { weekday: false, compact: true });
 };
 
 const getConflictSessionPlanName = (session) => {
@@ -3041,6 +3063,14 @@ const loadWorkoutHistory = async () => {
     historyDailySummaryRaw.value = data?.dailySummary && typeof data.dailySummary === 'object'
       ? data.dailySummary
       : null;
+    const nextExpandedState = {};
+    historyWorkouts.value.forEach((session, index) => {
+      const key = getHistorySessionKey(session, index);
+      nextExpandedState[key] = Object.prototype.hasOwnProperty.call(expandedHistorySessions.value, key)
+        ? expandedHistorySessions.value[key]
+        : true;
+    });
+    expandedHistorySessions.value = nextExpandedState;
   } catch (err) {
     console.error('[WorkoutHistory] load failed:', err);
     setFriendlyError('history', {
@@ -3059,7 +3089,21 @@ const loadWorkoutHistory = async () => {
 };
 
 // Auto-reload history when the date picker changes while history tab is open
-watch(selectedWorkoutDate, () => {
+watch(selectedWorkoutDate, async (nextValue, previousValue) => {
+  if (activeTab.value === 'workoutHistory' && editingHistorySessionId.value != null) {
+    const editingSession = getEditingHistorySession();
+    if (hasPendingHistoryEditChanges(editingSession)) {
+      const confirmDiscard = await showConfirmDialog(
+        'You have unsaved workout history changes. Switching dates will discard them. Continue?'
+      );
+      if (!confirmDiscard) {
+        selectedWorkoutDate.value = previousValue;
+        return;
+      }
+    }
+    await cancelEditHistoryWorkout({ force: true });
+  }
+
   if (activeTab.value === 'workoutHistory') {
     loadWorkoutHistory();
   }
@@ -3104,6 +3148,22 @@ const openHistoryTab = async () => {
   loadWorkoutHistory();
 };
 
+const openHistorySuccessModal = (title, message) => {
+  historySuccessModal.value = {
+    visible: true,
+    title,
+    message,
+  };
+};
+
+const closeHistorySuccessModal = () => {
+  historySuccessModal.value = {
+    visible: false,
+    title: '',
+    message: '',
+  };
+};
+
 /* ─── Delete history session ─────────────────────────────────────────── */
 const openDeleteHistoryModal = (session) => {
   workoutHistoryToDelete.value = {
@@ -3141,8 +3201,13 @@ const confirmDeleteHistoryWorkout = async () => {
     if (!res.ok) {
       throw await parseResponseError(res, `Server error ${res.status}`);
     }
+    const deletedLabel = formatHistoryDateLabel(workoutHistoryToDelete.value.workoutDate, { weekday: true });
     closeDeleteHistoryModal();
     await loadWorkoutHistory();
+    openHistorySuccessModal(
+      'Workout Log Deleted Successfully',
+      `The selected completed workout was removed from ${deletedLabel}.`
+    );
   } catch (err) {
     console.error('[DeleteHistory]', err);
     setFriendlyError('deleteHistory', {
@@ -3158,42 +3223,151 @@ const confirmDeleteHistoryWorkout = async () => {
   }
 };
 /* ─── Edit history session ──────────────────────────────────────────────── */
+
+const sanitizeHistorySetValue = (value, fallback = 0) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return fallback;
+  }
+  return parsed;
+};
+
+const buildHistorySetDraft = (set = {}, setNumber = 1) => ({
+  setNumber,
+  weight: sanitizeHistorySetValue(set.weight, 0),
+  reps: sanitizeHistorySetValue(set.reps, 0),
+  duration: sanitizeHistorySetValue(set.duration, 0),
+  caloriesBurned: sanitizeHistorySetValue(set.caloriesBurned, 0),
+  distanceMiles: sanitizeHistorySetValue(set.distanceMiles, 0),
+  speedMph: sanitizeHistorySetValue(set.speedMph, 0),
+  completed: Boolean(set.completed),
+});
+
+const buildHistorySessionSnapshot = (session, draft, workoutDate) => {
+  const normalized = {
+    sessionId: Number(session?.sessionId || 0),
+    workoutDate: normalizeDateInputValue(workoutDate),
+    exercises: (Array.isArray(session?.exercises) ? session.exercises : []).map((exercise) => {
+      const sourceSets = Array.isArray(draft?.[exercise.workoutLogId])
+        ? draft[exercise.workoutLogId]
+        : Array.isArray(exercise.sets) ? exercise.sets : [];
+      return {
+        workoutLogId: Number(exercise?.workoutLogId || 0),
+        sets: sourceSets.map((set, index) => buildHistorySetDraft(set, index + 1)),
+      };
+    }),
+  };
+  return JSON.stringify(normalized);
+};
+
+const getEditingHistorySession = () => {
+  const sessionId = Number(editingHistorySessionId.value || 0);
+  if (!sessionId) return null;
+  return historyWorkouts.value.find((session) => Number(session?.sessionId || 0) === sessionId) || null;
+};
+
+const hasPendingHistoryEditChanges = (session = getEditingHistorySession()) => {
+  if (!session || !historyEditInitialSnapshot.value) return false;
+  const current = buildHistorySessionSnapshot(session, historyEditDraft.value, historyEditDateDraft.value);
+  return current !== historyEditInitialSnapshot.value;
+};
+
 const startEditHistoryWorkout = (session) => {
   clearFriendlyError('historySave');
+  if (!canModifyHistorySession(session)) {
+    return;
+  }
   editingHistorySessionId.value = session.sessionId;
   const draft = {};
   for (const ex of session.exercises) {
-    draft[ex.workoutLogId] = ex.sets.map((s) => ({ ...s }));
+    const sourceSets = Array.isArray(ex?.sets) && ex.sets.length > 0
+      ? ex.sets
+      : [buildHistorySetDraft({}, 1)];
+    draft[ex.workoutLogId] = sourceSets.map((set, index) => buildHistorySetDraft(set, index + 1));
   }
   historyEditDraft.value = draft;
+  historyEditDateDraft.value = normalizeDateInputValue(session?.workoutDate || selectedWorkoutDate.value || today());
+  historyEditInitialSnapshot.value = buildHistorySessionSnapshot(session, draft, historyEditDateDraft.value);
 };
 
-const cancelEditHistoryWorkout = () => {
+const cancelEditHistoryWorkout = async ({ force = false } = {}) => {
+  if (!force) {
+    const editingSession = getEditingHistorySession();
+    if (hasPendingHistoryEditChanges(editingSession)) {
+      const confirmDiscard = await showConfirmDialog(
+        'You have unsaved workout history changes. Discard them?'
+      );
+      if (!confirmDiscard) {
+        return;
+      }
+    }
+  }
   editingHistorySessionId.value = null;
   historyEditDraft.value        = {};
+  historyEditDateDraft.value = '';
+  historyEditInitialSnapshot.value = '';
   clearFriendlyError('historySave');
 };
 
 const updateHistoryDraft = (workoutLogId, setIdx, field, value) => {
   const sets = historyEditDraft.value[workoutLogId];
   if (!sets || !sets[setIdx]) return;
-  sets[setIdx][field] = Number(value) || 0;
+  sets[setIdx][field] = sanitizeHistorySetValue(value, 0);
+};
+
+const updateHistorySetCount = (workoutLogId, nextCount, fallbackSets = []) => {
+  const safeCount = Math.max(1, Math.min(50, Number(nextCount) || 1));
+  const existingSets = Array.isArray(historyEditDraft.value[workoutLogId])
+    ? [...historyEditDraft.value[workoutLogId]]
+    : (Array.isArray(fallbackSets) ? fallbackSets.map((set, index) => buildHistorySetDraft(set, index + 1)) : []);
+
+  const adjusted = existingSets.slice(0, safeCount);
+  while (adjusted.length < safeCount) {
+    const nextSetNumber = adjusted.length + 1;
+    adjusted.push(buildHistorySetDraft({}, nextSetNumber));
+  }
+
+  adjusted.forEach((set, index) => {
+    set.setNumber = index + 1;
+  });
+
+  historyEditDraft.value = {
+    ...historyEditDraft.value,
+    [workoutLogId]: adjusted,
+  };
 };
 
 const saveHistoryWorkout = async (session) => {
+  if (!canModifyHistorySession(session)) {
+    setFriendlyError('historySave', {
+      rawMessage: 'Only completed workouts can be edited.',
+      fallback: 'Only completed workouts can be edited.',
+    });
+    return;
+  }
+
+  const normalizedWorkoutDate = normalizeDateInputValue(historyEditDateDraft.value || session?.workoutDate || selectedWorkoutDate.value);
+  if (!normalizedWorkoutDate) {
+    setFriendlyError('historySave', {
+      rawMessage: 'A valid workout date is required.',
+      fallback: 'A valid workout date is required.',
+    });
+    return;
+  }
+
   savingHistoryWorkout.value = true;
   clearFriendlyError('historySave');
   try {
     const exercises = session.exercises.map((ex) => ({
       workoutLogId: ex.workoutLogId,
-      sets: (historyEditDraft.value[ex.workoutLogId] || ex.sets).map((s) => ({
-        setNumber:      s.setNumber,
-        weight:         s.weight,
-        reps:           s.reps,
-        duration:       s.duration,
-        caloriesBurned: s.caloriesBurned,
-        distanceMiles:  s.distanceMiles,
-        speedMph:       s.speedMph,
+      sets: (historyEditDraft.value[ex.workoutLogId] || ex.sets || []).map((s, index) => ({
+        setNumber:      index + 1,
+        weight:         sanitizeHistorySetValue(s.weight, 0),
+        reps:           sanitizeHistorySetValue(s.reps, 0),
+        duration:       sanitizeHistorySetValue(s.duration, 0),
+        caloriesBurned: sanitizeHistorySetValue(s.caloriesBurned, 0),
+        distanceMiles:  sanitizeHistorySetValue(s.distanceMiles, 0),
+        speedMph:       sanitizeHistorySetValue(s.speedMph, 0),
       })),
     }));
     const res = await fetch(
@@ -3201,15 +3375,20 @@ const saveHistoryWorkout = async (session) => {
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ exercises }),
+        body: JSON.stringify({ exercises, workoutDate: normalizedWorkoutDate }),
         credentials: 'include',
       }
     );
     if (!res.ok) {
       throw await parseResponseError(res, `Server error ${res.status}`);
     }
-    cancelEditHistoryWorkout();
+    await cancelEditHistoryWorkout({ force: true });
+    selectedWorkoutDate.value = normalizedWorkoutDate;
     await loadWorkoutHistory();
+    openHistorySuccessModal(
+      'Workout Log Updated Successfully',
+      'Your workout corrections have been saved.'
+    );
   } catch (err) {
     console.error('[SaveHistory]', err);
     setFriendlyError('historySave', {
@@ -3816,7 +3995,7 @@ onUnmounted(() => {
 
         <!-- Date context bar -->
         <div class="wl-history-datebar">
-          <span><i class="fa-solid fa-calendar-day"></i> Workouts started on <strong>{{ selectedWorkoutDate }}</strong></span>
+          <span><i class="fa-solid fa-calendar-day"></i> Workouts started on <strong>{{ selectedWorkoutDateLabel }}</strong></span>
           <button type="button" class="wl-btn-preview" style="padding:7px 12px;font-size:0.8rem" @click="loadWorkoutHistory">
             <i class="fa-solid fa-arrows-rotate"></i> Refresh
           </button>
@@ -3863,9 +4042,9 @@ onUnmounted(() => {
           <i class="fa-solid fa-calendar-xmark wl-empty-icon"></i>
           <h6>No exercises recorded</h6>
           <p v-if="workoutHistoryUsername">
-            No recorded workouts found for <strong>{{ workoutHistoryUsername }}</strong> started on <strong>{{ selectedWorkoutDate }}</strong>.
+            No recorded workouts found for <strong>{{ workoutHistoryUsername }}</strong> started on <strong>{{ selectedWorkoutDateLabel }}</strong>.
           </p>
-          <p v-else>No recorded workouts started on <strong>{{ selectedWorkoutDate }}</strong>.</p>
+          <p v-else>No recorded workouts started on <strong>{{ selectedWorkoutDateLabel }}</strong>.</p>
         </div>
 
         <!-- Session list -->
@@ -3887,13 +4066,21 @@ onUnmounted(() => {
                   <i class="fa-solid fa-signal"></i>
                   Status: {{ formatHistorySessionStatus(session) }}
                 </span>
+                <span>
+                  <i class="fa-solid fa-list-check"></i>
+                  Exercises: {{ Array.isArray(session.exercises) ? session.exercises.length : 0 }}
+                </span>
+                <span>
+                  <i class="fa-solid fa-calendar-day"></i>
+                  Workout Date: {{ formatHistoryDateLabel(session.workoutDate, { weekday: true }) }}
+                </span>
                 <span v-if="session.sessionStartedAt">
                   <i class="fa-solid fa-play"></i>
-                  Started: {{ new Date(session.sessionStartedAt).toLocaleString() }}
+                  Started: {{ formatHistoryDateTimeLabel(session.sessionStartedAt) }}
                 </span>
                 <span v-if="session.sessionCompletedAt">
                   <i class="fa-solid fa-flag-checkered"></i>
-                  Completed: {{ new Date(session.sessionCompletedAt).toLocaleString() }}
+                  Completed: {{ formatHistoryDateTimeLabel(session.sessionCompletedAt) }}
                 </span>
                 <span v-if="getHistorySessionDurationSeconds(session) > 0">
                   <i class="fa-solid fa-stopwatch"></i>
@@ -3901,6 +4088,15 @@ onUnmounted(() => {
                 </span>
                 <!-- Edit mode: Save + Cancel -->
                 <template v-if="editingHistorySessionId === session.sessionId">
+                  <label class="wl-hist-edit-date">
+                    <span>Workout Date</span>
+                    <input
+                      type="date"
+                      class="wl-hist-set-input"
+                      :max="today()"
+                      v-model="historyEditDateDraft"
+                    />
+                  </label>
                   <span v-if="historySaveError" class="wl-hist-save-error">
                     <i class="fa-solid fa-circle-xmark"></i> {{ historySaveError }}
                     <button
@@ -3929,17 +4125,26 @@ onUnmounted(() => {
                   <button
                     type="button"
                     class="wl-hist-save-btn"
-                    :disabled="savingHistoryWorkout"
+                    :disabled="savingHistoryWorkout || !hasPendingHistoryEditChanges(session)"
                     @click="saveHistoryWorkout(session)"
                   >
                     <i v-if="savingHistoryWorkout" class="fa-solid fa-spinner fa-spin"></i>
                     <i v-else class="fa-solid fa-floppy-disk"></i>
-                    {{ savingHistoryWorkout ? 'Saving\u2026' : 'Save' }}
+                    {{ savingHistoryWorkout ? 'Saving\u2026' : 'Save Changes' }}
                   </button>
                 </template>
                 <!-- Read-only mode: Edit + Delete -->
                 <template v-else>
                   <button
+                    type="button"
+                    class="wl-hist-view-btn"
+                    @click="toggleHistorySessionExpanded(session, sidx)"
+                  >
+                    <i :class="isHistorySessionExpanded(session, sidx) ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+                    {{ isHistorySessionExpanded(session, sidx) ? 'Hide' : 'View' }}
+                  </button>
+                  <button
+                    v-if="canModifyHistorySession(session)"
                     type="button"
                     class="wl-hist-edit-btn"
                     :disabled="editingHistorySessionId !== null"
@@ -3948,6 +4153,7 @@ onUnmounted(() => {
                     <i class="fa-solid fa-pen-to-square"></i> Edit
                   </button>
                   <button
+                    v-if="canModifyHistorySession(session)"
                     type="button"
                     class="wl-hist-delete-btn"
                     title="Delete this workout record"
@@ -3960,7 +4166,7 @@ onUnmounted(() => {
             </div>
 
             <!-- Exercises in this session -->
-            <div class="wl-history-exercises wl-history-exercises--detailed">
+            <div v-if="isHistorySessionExpanded(session, sidx)" class="wl-history-exercises wl-history-exercises--detailed">
               <div
                 v-for="(ex, eidx) in session.exercises"
                 :key="ex.workoutLogId != null ? ex.workoutLogId : eidx"
@@ -3990,6 +4196,22 @@ onUnmounted(() => {
 
                 <!-- Per-set table -->
                 <template v-if="ex.sets && ex.sets.length > 0">
+                  <div
+                    v-if="editingHistorySessionId === session.sessionId"
+                    class="wl-hist-set-count"
+                  >
+                    <label>
+                      <span>Number of Sets</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="50"
+                        class="wl-hist-set-input"
+                        :value="(historyEditDraft[ex.workoutLogId] || ex.sets || []).length"
+                        @input="updateHistorySetCount(ex.workoutLogId, $event.target.value, ex.sets || [])"
+                      />
+                    </label>
+                  </div>
                   <!-- Strength -->
                   <template v-if="String(ex.workoutType || '').toLowerCase() === 'strength'">
                     <div class="wl-hist-sets-table">
@@ -4368,16 +4590,16 @@ onUnmounted(() => {
       <div v-if="showDeleteHistoryModal" class="wl-modal-overlay" @click.self="closeDeleteHistoryModal">
         <div class="wl-modal" role="dialog" aria-modal="true" aria-labelledby="del-hist-title">
           <div class="wl-modal__header">
-            <h5 id="del-hist-title"><i class="fa-solid fa-trash"></i> Delete Exercise</h5>
+            <h5 id="del-hist-title"><i class="fa-solid fa-trash"></i> Delete Workout Log?</h5>
             <button type="button" class="wl-modal__close" @click="closeDeleteHistoryModal" aria-label="Close">&times;</button>
           </div>
           <div class="wl-modal__body">
             <p v-if="workoutHistoryToDelete">
-              Are you sure you want to delete
-              <strong>&ldquo;{{ workoutHistoryToDelete.planName }}&rdquo;</strong>
-              from <strong>{{ workoutHistoryToDelete.workoutDate }}</strong>?
+              Are you sure you want to delete this completed workout? This will remove its recorded exercise results from your workout history and update your statistics. This action cannot be undone.
             </p>
-            <p class="wl-modal__sub">This will permanently remove all exercises and sets recorded in this session.</p>
+            <p class="wl-modal__sub" v-if="workoutHistoryToDelete">
+              Target: <strong>{{ workoutHistoryToDelete.planName }}</strong> on <strong>{{ formatHistoryDateLabel(workoutHistoryToDelete.workoutDate, { weekday: true }) }}</strong>.
+            </p>
             <div v-if="deleteHistoryError" class="wl-banner wl-banner--error" style="margin-top:10px">
               <i class="fa-solid fa-circle-xmark"></i> {{ deleteHistoryError }}
               <div
@@ -4401,8 +4623,25 @@ onUnmounted(() => {
             <button type="button" class="wl-btn-preview" @click="closeDeleteHistoryModal" :disabled="deleteHistoryLoading">Cancel</button>
             <button type="button" class="wl-btn-delete" @click="confirmDeleteHistoryWorkout" :disabled="deleteHistoryLoading">
               <i class="fa-solid fa-trash"></i>
-              {{ deleteHistoryLoading ? 'Deleting…' : 'Delete' }}
+              {{ deleteHistoryLoading ? 'Deleting…' : 'Delete Workout' }}
             </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div v-if="historySuccessModal.visible" class="wl-modal-overlay" @click.self="closeHistorySuccessModal">
+        <div class="wl-modal" role="dialog" aria-modal="true" aria-labelledby="history-success-title">
+          <div class="wl-modal__header">
+            <h5 id="history-success-title"><i class="fa-solid fa-circle-check"></i> {{ historySuccessModal.title }}</h5>
+            <button type="button" class="wl-modal__close" @click="closeHistorySuccessModal" aria-label="Close">&times;</button>
+          </div>
+          <div class="wl-modal__body">
+            <p>{{ historySuccessModal.message }}</p>
+          </div>
+          <div class="wl-modal__footer">
+            <button type="button" class="wl-btn-start" @click="closeHistorySuccessModal">OK</button>
           </div>
         </div>
       </div>
@@ -5868,6 +6107,16 @@ onUnmounted(() => {
 .wl-hist-delete-btn:hover { background: #fee2e2; border-color: #f87171; }
 
 /* ── History edit / save / cancel buttons ────────────────────────────── */
+.wl-hist-view-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 6px;
+  border: 1px solid #cbd5e1; background: #f8fafc;
+  color: #1e293b; font-size: 0.76rem; font-weight: 600;
+  cursor: pointer; transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap; flex-shrink: 0;
+}
+.wl-hist-view-btn:hover { background: #f1f5f9; border-color: #94a3b8; }
+
 .wl-hist-edit-btn {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 4px 10px; border-radius: 6px;
@@ -5905,6 +6154,34 @@ onUnmounted(() => {
   font-size: 0.76rem; color: #dc2626;
   display: inline-flex; align-items: center; gap: 4px;
   flex-shrink: 1; min-width: 0; word-break: break-word;
+}
+
+.wl-hist-edit-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.wl-hist-edit-date .wl-hist-set-input {
+  max-width: 165px;
+}
+
+.wl-hist-set-count {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.wl-hist-set-count label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
 }
 
 /* ── History set edit input ──────────────────────────────────────────── */
@@ -6552,6 +6829,7 @@ onUnmounted(() => {
 .wl-page .wl-order-btn,
 .wl-page .wl-btn-edit,
 .wl-page .wl-btn-preview,
+.wl-page .wl-hist-view-btn,
 .wl-page .wl-hist-edit-btn,
 .wl-page .wl-hist-cancel-btn,
 .wl-page .wl-hist-set-input,
@@ -6566,6 +6844,7 @@ onUnmounted(() => {
 .wl-page .wl-order-btn:hover,
 .wl-page .wl-btn-edit:hover,
 .wl-page .wl-btn-preview:hover,
+.wl-page .wl-hist-view-btn:hover,
 .wl-page .wl-hist-edit-btn:hover:not(:disabled),
 .wl-page .wl-hist-cancel-btn:hover:not(:disabled) {
   background: var(--wl-surface-3);
@@ -7311,6 +7590,11 @@ onUnmounted(() => {
   .wl-hist-ex-card    { padding: 8px; gap: 6px; border-radius: 9px; }
   .wl-hist-ex-thumb   { width: 30px; height: 30px; font-size: 0.74rem; }
   .wl-hist-ex-name    { font-size: 0.7rem; }
+  .wl-hist-edit-date { width: 100%; justify-content: flex-end; }
+  .wl-hist-set-count { justify-content: flex-start; }
+  .wl-hist-set-count label { width: 100%; justify-content: space-between; }
+  .wl-hist-set-count .wl-hist-set-input { max-width: 96px; }
+  .wl-hist-view-btn,
   .wl-hist-edit-btn,
   .wl-hist-save-btn,
   .wl-hist-cancel-btn,

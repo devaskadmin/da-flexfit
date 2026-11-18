@@ -7,6 +7,8 @@ const { sanitizeText } = require('../utils/sanitize.js');
 const { WORKOUT_HISTORY_VISIBLE_STATUSES } = require('../utils/workout-session-status-policy.js');
 const { buildDailyWorkoutDurationSummary } = require('../utils/workout-history-summary.js');
 
+const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
 const toLocalDateInputValue = (value = new Date()) => {
   const parsed = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(parsed.getTime())) {
@@ -834,7 +836,7 @@ router.post('/session', async (req, res) => {
 });
 
 // ─── GET /history ── Completed workout sessions for user on a given STARTED date
-// Filters by wl.WorkoutDate (= the date the user intended/started the workout).
+// Filters by corrected session workout date when available, otherwise legacy wl.WorkoutDate.
 // Returns a structured sessions array with exercises and per-set details.
 router.get('/history', async (req, res) => {
   if (!req.session?.user?.id) {
@@ -859,7 +861,7 @@ router.get('/history', async (req, res) => {
         wl.WorkoutLogID                   AS workoutLogId,
         wl.ExerciseID                     AS exerciseId,
         wl.workout_log_session_id         AS sessionId,
-        wl.WorkoutDate                    AS workoutDate,
+        COALESCE(wls.workout_date, wl.WorkoutDate) AS workoutDate,
         wl.WorkoutType                    AS workoutType,
         wl.Sets                           AS totalSets,
         wl.Reps                           AS avgReps,
@@ -885,7 +887,7 @@ router.get('/history', async (req, res) => {
       LEFT JOIN workout_schedules    ws  ON ws.id = wls.source_workout_schedule_id
       LEFT JOIN exercises            ex  ON ex.ExerciseID = wl.ExerciseID
       WHERE wl.UserID = ?
-        AND wl.WorkoutDate = ?
+        AND COALESCE(wls.workout_date, wl.WorkoutDate) = ?
         AND (
           wl.workout_log_session_id IS NULL
           OR wls.status IN (?)
@@ -1000,9 +1002,19 @@ router.put('/history/session/:sessionId', async (req, res) => {
     return res.status(400).json({ error: 'Invalid sessionId.' });
   }
 
-  const { exercises } = req.body;
+  const { exercises, workoutDate } = req.body;
   if (!Array.isArray(exercises) || exercises.length === 0) {
     return res.status(400).json({ error: 'exercises array is required.' });
+  }
+
+  const normalizedWorkoutDate = String(workoutDate || '').trim();
+  if (normalizedWorkoutDate && !DATE_ONLY_PATTERN.test(normalizedWorkoutDate)) {
+    return res.status(400).json({ error: 'workoutDate must use YYYY-MM-DD format.' });
+  }
+
+  const maxAllowedWorkoutDate = toLocalDateInputValue();
+  if (normalizedWorkoutDate && normalizedWorkoutDate > maxAllowedWorkoutDate) {
+    return res.status(400).json({ error: 'workoutDate cannot be in the future.' });
   }
 
   const userId = req.session.user.id;
@@ -1012,7 +1024,11 @@ router.put('/history/session/:sessionId', async (req, res) => {
 
     // Verify ownership and completed status
     const [[session]] = await connection.query(
-      `SELECT id, user_id, status FROM workout_log_sessions WHERE id = ? LIMIT 1`,
+      `SELECT id, user_id, status, workout_date
+       FROM workout_log_sessions
+       WHERE id = ?
+       LIMIT 1
+       FOR UPDATE`,
       [sessionId]
     );
     if (!session) {
@@ -1023,12 +1039,23 @@ router.put('/history/session/:sessionId', async (req, res) => {
       await connection.rollback();
       return res.status(403).json({ error: 'You do not have permission to edit this session.' });
     }
-    if (session.status === 'in_progress') {
+    if (String(session.status || '').toLowerCase() !== 'completed') {
       await connection.rollback();
-      return res.status(409).json({ error: 'Cannot edit an in-progress workout.' });
+      return res.status(409).json({ error: 'Only completed workouts can be edited.' });
     }
 
+    const parseNonNegative = (value, fieldLabel) => {
+      const numericValue = Number(value ?? 0);
+      if (!Number.isFinite(numericValue) || numericValue < 0) {
+        const error = new Error(`${fieldLabel} must be a non-negative number.`);
+        error.status = 400;
+        throw error;
+      }
+      return numericValue;
+    };
+
     let updatedExercises = 0;
+    const updatedWorkoutLogIds = [];
     for (const ex of exercises) {
       const workoutLogId = Number(ex.workoutLogId);
       if (!workoutLogId) continue;
@@ -1043,53 +1070,77 @@ router.put('/history/session/:sessionId', async (req, res) => {
       if (!logRow) continue;
 
       const sets = Array.isArray(ex.sets) ? ex.sets : [];
-      for (const s of sets) {
-        const setNumber = Number(s.setNumber);
+      const normalizedSets = [];
+      for (let index = 0; index < sets.length; index += 1) {
+        const s = sets[index] || {};
+        const setNumber = Number(s.setNumber || index + 1);
         if (!setNumber) continue;
+
+        normalizedSets.push({
+          setNumber,
+          reps: parseNonNegative(s.reps, `Set ${setNumber} reps`),
+          weight: parseNonNegative(s.weight, `Set ${setNumber} weight`),
+          duration: parseNonNegative(s.duration, `Set ${setNumber} duration`),
+          caloriesBurned: parseNonNegative(s.caloriesBurned, `Set ${setNumber} calories`),
+          distanceMiles: parseNonNegative(s.distanceMiles, `Set ${setNumber} distance`),
+          speedMph: parseNonNegative(s.speedMph, `Set ${setNumber} speed`),
+        });
+      }
+
+      for (const s of normalizedSets) {
         await connection.query(
-          `UPDATE workout_log_sets
-           SET reps             = ?,
-               weight           = ?,
-               duration_minutes = ?,
-               calories_burned  = ?,
-               distance_miles   = ?,
-               speed_mph        = ?,
-               updated_at       = CURRENT_TIMESTAMP
-           WHERE workout_log_id = ? AND set_number = ?`,
+          `INSERT INTO workout_log_sets
+            (workout_log_id, set_number, reps, weight, duration_minutes, calories_burned, distance_miles, speed_mph, completed)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+           ON DUPLICATE KEY UPDATE
+             reps             = VALUES(reps),
+             weight           = VALUES(weight),
+             duration_minutes = VALUES(duration_minutes),
+             calories_burned  = VALUES(calories_burned),
+             distance_miles   = VALUES(distance_miles),
+             speed_mph        = VALUES(speed_mph),
+             updated_at       = CURRENT_TIMESTAMP`,
           [
-            Number(s.reps  || 0) || null,
-            Number(s.weight || 0) || null,
-            Number(s.duration || 0) || null,
-            Number(s.caloriesBurned || 0) || null,
-            Number(s.distanceMiles || 0) || null,
-            Number(s.speedMph || 0) || null,
             workoutLogId,
-            setNumber,
+            s.setNumber,
+            s.reps || null,
+            s.weight || null,
+            s.duration || null,
+            s.caloriesBurned || null,
+            s.distanceMiles || null,
+            s.speedMph || null,
           ]
         );
       }
 
+      await connection.query(
+        `DELETE FROM workout_log_sets
+         WHERE workout_log_id = ?
+           AND set_number > ?`,
+        [workoutLogId, normalizedSets.length]
+      );
+
       // Update workout_log summary aggregates from the new set values
-      if (sets.length > 0) {
-        const n          = sets.length;
-        const avgWeight  = sets.reduce((a, s) => a + Number(s.weight  || 0), 0) / n;
-        const avgReps    = sets.reduce((a, s) => a + Number(s.reps    || 0), 0) / n;
-        const totalDur   = sets.reduce((a, s) => a + Number(s.duration       || 0), 0);
-        const totalCals  = sets.reduce((a, s) => a + Number(s.caloriesBurned || 0), 0);
-        const avgDist    = sets.reduce((a, s) => a + Number(s.distanceMiles  || 0), 0) / n;
-        const avgSpeed   = sets.reduce((a, s) => a + Number(s.speedMph       || 0), 0) / n;
+      if (normalizedSets.length > 0) {
+        const n          = normalizedSets.length;
+        const avgWeight  = normalizedSets.reduce((a, s) => a + Number(s.weight || 0), 0) / n;
+        const avgReps    = normalizedSets.reduce((a, s) => a + Number(s.reps || 0), 0) / n;
+        const totalDur   = normalizedSets.reduce((a, s) => a + Number(s.duration || 0), 0);
+        const totalCals  = normalizedSets.reduce((a, s) => a + Number(s.caloriesBurned || 0), 0);
+        const avgDist    = normalizedSets.reduce((a, s) => a + Number(s.distanceMiles || 0), 0) / n;
+        const avgSpeed   = normalizedSets.reduce((a, s) => a + Number(s.speedMph || 0), 0) / n;
         await connection.query(
           `UPDATE workout_log
-           SET Weight   = ?,
-               Reps     = ?,
-               Duration = ?,
-               Calories = ?,
-               Distance = ?,
-               Speed    = ?
+           SET Reps     = ?,
+             Weight   = ?,
+             Duration = ?,
+             Calories = ?,
+             Distance = ?,
+             Speed    = ?
            WHERE WorkoutLogID = ? AND UserID = ?`,
           [
-            Math.round(avgWeight),
             Math.round(avgReps),
+            Number(avgWeight.toFixed(2)),
             Math.round(totalDur),
             Math.round(totalCals),
             Number(avgDist.toFixed(3)),
@@ -1099,13 +1150,47 @@ router.put('/history/session/:sessionId', async (req, res) => {
           ]
         );
       }
+      updatedWorkoutLogIds.push(workoutLogId);
       updatedExercises++;
     }
 
+    if (normalizedWorkoutDate) {
+      await connection.query(
+        `UPDATE workout_log_sessions
+         SET workout_date = ?,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND user_id = ?`,
+        [normalizedWorkoutDate, sessionId, userId]
+      );
+
+      await connection.query(
+        `UPDATE workout_log
+         SET WorkoutDate = ?
+         WHERE WorkoutLogID IN (?) AND UserID = ?`,
+        [normalizedWorkoutDate, updatedWorkoutLogIds, userId]
+      );
+
+      // Fallback for legacy rows not represented in the payload but still tied to this session.
+      await connection.query(
+        `UPDATE workout_log
+         SET WorkoutDate = ?
+         WHERE workout_log_session_id = ? AND UserID = ?`,
+        [normalizedWorkoutDate, sessionId, userId]
+      );
+    }
+
     await connection.commit();
-    return res.status(200).json({ message: 'Session updated successfully.', sessionId, updatedExercises });
+    return res.status(200).json({
+      message: 'Session updated successfully.',
+      sessionId,
+      updatedExercises,
+      workoutDate: normalizedWorkoutDate || toLocalDateInputValue(session.workout_date),
+    });
   } catch (err) {
     try { await connection.rollback(); } catch (_) {}
+    if (err?.status) {
+      return res.status(err.status).json({ error: err.message });
+    }
     console.error('\u274c History update error:', err);
     return res.status(500).json({ error: 'Failed to update workout history.' });
   } finally {
@@ -1115,7 +1200,7 @@ router.put('/history/session/:sessionId', async (req, res) => {
 
 // ─── DELETE /history/session/:sessionId ──────────────────────────────────
 // Deletes a completed workout session owned by the logged-in user:
-//   1. Verifies session exists, belongs to user, and is NOT in_progress.
+//   1. Verifies session exists, belongs to user, and status is completed.
 //   2. Deletes workout_log_sets rows for all workout_log rows in this session.
 //   3. Deletes workout_log rows for this session.
 //   4. Deletes the workout_log_sessions row.
@@ -1148,9 +1233,9 @@ router.delete('/history/session/:sessionId', async (req, res) => {
       await connection.rollback();
       return res.status(403).json({ error: 'You do not have permission to delete this session.' });
     }
-    if (session.status === 'in_progress') {
+    if (String(session.status || '').toLowerCase() !== 'completed') {
       await connection.rollback();
-      return res.status(409).json({ error: 'Cannot delete an in-progress workout. Please complete or end it first.' });
+      return res.status(409).json({ error: 'Only completed workouts can be deleted from history.' });
     }
 
     // Get all workout_log IDs for this session

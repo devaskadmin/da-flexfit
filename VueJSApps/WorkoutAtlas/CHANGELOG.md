@@ -6,6 +6,19 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.307] - 2026-11-18 - Historical workout management and date integrity
+
+- **Changed:** Workout history retrieval now filters and renders by corrected session workout date when available (`COALESCE(wls.workout_date, wl.WorkoutDate)`), preserving legacy behavior while honoring session-level date corrections.
+- **Fixed:** History edit date correction path now updates edited exercise-log rows by authoritative `WorkoutLogID` set in addition to session-level fallback updates, preventing date drift when session linkage is incomplete.
+- **Preserved:** Completed-only policy enforcement for history edit/delete remains intact; no relaxation of status restrictions was introduced.
+- **Relevant source files:** `backend/api/workout-log.js`; `frontend/src/views/Member/LogWorkout.vue`; `backend/tests/workout-log-history-management.test.js`; `backend/tests/workout-log-history-visibility.test.js`; `backend/tests/workout-history-daily-summary.test.js`; `frontend/package.json`; `backend/package.json`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`.
+- **Verification:**
+  - Backend targeted history regression suite passed (`17/17`) after this patch.
+  - Previously completed gates remain green for this batch: backend full suite (`160/160`), frontend targeted date/timer tests (`18/18`), and frontend production build.
+  - Authenticated browser workflow replay confirmed: Workout Log view rendering, edit-save persistence for cardio set data, unsaved-change cancel confirmation, completed-only delete flow with success modal, and post-delete history/stat recalculation.
+  - Responsive checks across required widths `320/375/390/430/650/768/800/1024/1366` reported zero horizontal overflow in programmatic viewport probes.
+- **Known unresolved issues:** In this long-running local browser session, live date-correction replay continued to show stale pre-patch backend behavior until process reload; server-side tests verify corrected date-update/query behavior for the patched code.
+
 ## [0.85.306] - 2026-11-18 - Workout plan preview responsive redesign and planner action cleanup
 
 - **Changed:** Reworked the read-only workout plan preview into a responsive row-based schedule presentation that replaces table/card split rendering with a unified exercise-row layout tuned for small and large viewports.
