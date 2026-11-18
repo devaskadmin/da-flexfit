@@ -6,6 +6,27 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.308] - 2026-11-18 - Mobile workout preview readability and metadata compaction
+
+- **Changed:** Workout Plan read-only preview description now uses mobile-only progressive disclosure at widths `<=800px`.
+  - Collapsed state truncates to approximately `140` characters at word boundary with ellipsis.
+  - Toggle uses accessible text-link button behavior (`Show Details` / `Show Less`) with keyboard and screen-reader state support.
+  - Description expansion resets when switching plans, closing/reopening preview, or moving to desktop widths.
+- **Changed:** Mobile preview metadata now renders compact inline `Label: Value` rows in a dense two-column layout where space allows, with adaptive single-column fallback on narrow widths.
+- **Changed:** Empty preview descriptions are now omitted entirely (no placeholder paragraph rendered).
+- **Fixed:** Added mobile-safe bottom padding for read-only preview so fixed mobile navigation does not obstruct bottom preview actions after deep scrolling.
+- **Preserved:** Desktop preview keeps full description visibility with existing metadata/schedule layout; no planner save/publish/convert/edit/delete handlers were changed.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`; `frontend/src/utils/workoutPreviewDescription.mjs`; `frontend/src/utils/workoutPreviewDescription.test.mjs`; `frontend/src/views/Member/WorkoutBuilder.preview-mobile-contract.test.mjs`; `frontend/package.json`; `backend/package.json`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`.
+- **Verification:**
+  - Frontend targeted test suite passed (`29/29`) including new mobile preview tests.
+  - Frontend production build passed.
+  - Backend plan-management regressions passed (`38/38`) for template/cover/conversion paths.
+  - Live authenticated browser checks passed across `320/375/390/430/600/650/768/800/1024/1366` with no page overflow and no internal exercise-list horizontal scroll.
+  - Mobile checks confirmed: collapsed long description, `Show Details` expansion, `Show Less` collapse, compact metadata on `<=800`, and bottom action controls clear of fixed mobile navigation.
+- **Known unresolved issues:**
+  - Current runtime data has no non-empty short-description global plan and no visible community/personal-published preview record in this session; short-description no-toggle behavior is covered by new utility tests.
+  - Existing non-blocking i18n missing-key console warnings remain unchanged and out of scope.
+
 ## [0.85.307.a1] - 2026-11-18 - Workout Log HTTP 400 corrective repair
 
 - **Corrective target:** Eliminate Workout Log history-path `HTTP 400` failures (`exercises array is required.`) without weakening backend validation and without mutating protected paused session state.

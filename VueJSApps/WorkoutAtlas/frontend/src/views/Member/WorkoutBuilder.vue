@@ -10,6 +10,7 @@ import { refreshWorkoutStatus, setUserWorkoutStatus } from '@/composable/workout
 import { DEFAULT_EXERCISE_IMAGE, getExerciseImage } from '@/utils/exerciseImage';
 import { DEFAULT_WORKOUT_PLAN_IMAGE, buildWorkoutPlanCoverImageUrl, applyWorkoutPlanImageFallback } from '@/utils/workoutPlanImage';
 import { countUniqueWorkoutPlanExercises } from '@/utils/workoutPlanExerciseCount';
+import { getPreviewDescriptionDisplay } from '@/utils/workoutPreviewDescription.mjs';
 import Swal from 'sweetalert2';
 import { showConfirmDialog } from '@/utils/browserDialogs';
 import {
@@ -183,6 +184,8 @@ const globalLibraryViewLoading = ref(false);
 const globalLibraryViewError = ref('');
 const globalLibraryViewPlan = ref(null);
 const globalLibraryViewDaySchedules = ref([]);
+const previewDescriptionExpanded = ref(false);
+const isPreviewMobileViewport = ref(false);
 const globalLibraryPreviewContext = ref('marketplace');
 const globalLibraryPreviewReturnSourceTab = ref('marketplace');
 const errorDiagnosticsByArea = ref({
@@ -2162,6 +2165,60 @@ const openGlobalLibraryViewModal = async (plan) => {
 
 const closeGlobalLibraryInlinePreview = () => {
   closeGlobalLibraryViewModal();
+};
+
+const PREVIEW_MOBILE_BREAKPOINT = 800;
+const PREVIEW_DESCRIPTION_MAX_CHARS = 140;
+
+const updatePreviewViewportState = () => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  isPreviewMobileViewport.value = window.innerWidth <= PREVIEW_MOBILE_BREAKPOINT;
+};
+
+const previewDescriptionDisplay = computed(() => {
+  return getPreviewDescriptionDisplay({
+    description: globalLibraryViewPlan.value?.description,
+    isMobile: isPreviewMobileViewport.value,
+    isExpanded: previewDescriptionExpanded.value,
+    maxChars: PREVIEW_DESCRIPTION_MAX_CHARS,
+  });
+});
+
+const previewDescriptionContentId = computed(() => {
+  const planId = String(globalLibraryViewPlan.value?.planId || 'unknown').trim() || 'unknown';
+  return `preview-description-${planId.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+});
+
+const compactPreviewMetadataEntries = computed(() => {
+  const plan = globalLibraryViewPlan.value || {};
+  const entries = [];
+
+  const category = String(plan?.category || plan?.type || '').trim();
+  const planType = String(plan?.planTypeLabel || '').trim();
+  const publicationStatus = String(plan?.publicationStatusLabel || '').trim();
+  const difficulty = String(plan?.difficulty || '').trim();
+  const duration = Number(plan?.estimatedDuration || 0);
+  const totalExercises = Number(plan?.exerciseCount || 0);
+  const workoutDays = Number(plan?.dayCount || 0);
+
+  if (category) entries.push({ key: 'category', label: 'Category / Goal', value: category });
+  if (planType) entries.push({ key: 'planType', label: 'Plan Type', value: planType });
+  if (publicationStatus) entries.push({ key: 'publicationStatus', label: 'Publication', value: publicationStatus });
+  if (difficulty) entries.push({ key: 'difficulty', label: 'Difficulty', value: difficulty });
+  if (Number.isFinite(duration) && duration > 0) entries.push({ key: 'duration', label: 'Duration', value: `${duration} min` });
+  if (Number.isFinite(totalExercises) && totalExercises > 0) entries.push({ key: 'exerciseCount', label: 'Exercises', value: String(totalExercises) });
+  if (Number.isFinite(workoutDays) && workoutDays > 0) entries.push({ key: 'dayCount', label: 'Workout Days', value: String(workoutDays) });
+
+  return entries;
+});
+
+const togglePreviewDescription = () => {
+  if (!previewDescriptionDisplay.value?.showToggle) {
+    return;
+  }
+  previewDescriptionExpanded.value = !previewDescriptionExpanded.value;
 };
 
 const hasValue = (value) => {
@@ -4957,6 +5014,7 @@ const deleteWorkoutSchedule = async (schedule) => {
 };
 
 onMounted(async () => {
+  updatePreviewViewportState();
   const restoredDraft = restoreUnsavedBuilderDraft();
   const requestedPlanId = String(route.query?.planId || '').trim();
   if (requestedPlanId) {
@@ -4973,13 +5031,41 @@ onMounted(async () => {
   }
   document.addEventListener('click', closeDayMenu);
   document.addEventListener('keydown', handleGlobalSaveModalEscape);
+  window.addEventListener('resize', updatePreviewViewportState);
 });
 
 onUnmounted(() => {
   document.removeEventListener('click', closeDayMenu);
   document.removeEventListener('keydown', handleGlobalSaveModalEscape);
+  window.removeEventListener('resize', updatePreviewViewportState);
   clearPendingCoverSelection();
 });
+
+watch(
+  () => globalLibraryViewPlan.value?.planId,
+  () => {
+    previewDescriptionExpanded.value = false;
+  }
+);
+
+watch(
+  () => showGlobalLibraryViewModal.value,
+  (isOpen) => {
+    if (isOpen) {
+      updatePreviewViewportState();
+    }
+    previewDescriptionExpanded.value = false;
+  }
+);
+
+watch(
+  () => isPreviewMobileViewport.value,
+  (isMobile) => {
+    if (!isMobile) {
+      previewDescriptionExpanded.value = false;
+    }
+  }
+);
 
 watch(
   () => route.query?.planId,
@@ -5772,7 +5858,13 @@ watch(
           </div>
 
           <div v-show="planSourceTab === 'marketplace'" class="plan-source-panel" aria-live="polite">
-            <section v-if="showGlobalLibraryViewModal" class="global-library-inline-preview" aria-label="Workout plan preview" aria-live="polite">
+            <section
+              v-if="showGlobalLibraryViewModal"
+              class="global-library-inline-preview"
+              :class="{ 'global-library-inline-preview--mobile': isPreviewMobileViewport }"
+              aria-label="Workout plan preview"
+              aria-live="polite"
+            >
               <div class="global-library-inline-preview__actions global-library-inline-preview__actions--top">
                 <button
                   type="button"
@@ -5829,9 +5921,35 @@ watch(
 
                   <div class="global-library-inline-preview__summary">
                     <h4 class="global-library-inline-preview__name">{{ globalLibraryViewPlan?.name || 'Untitled Workout' }}</h4>
-                    <p class="global-library-inline-preview__description">{{ formatPreviewText(globalLibraryViewPlan?.description, 'No description provided.') }}</p>
+                    <div v-if="previewDescriptionDisplay.shouldRender" class="global-library-inline-preview__description-wrap">
+                      <p :id="previewDescriptionContentId" class="global-library-inline-preview__description">{{ previewDescriptionDisplay.text }}</p>
+                      <button
+                        v-if="previewDescriptionDisplay.showToggle"
+                        type="button"
+                        class="global-library-inline-preview__description-toggle"
+                        :aria-controls="previewDescriptionContentId"
+                        :aria-expanded="String(previewDescriptionDisplay.isExpanded)"
+                        :aria-label="previewDescriptionDisplay.isExpanded ? 'Show Less workout plan description' : 'Show Details for workout plan description'"
+                        @click="togglePreviewDescription"
+                      >
+                        {{ previewDescriptionDisplay.toggleLabel }}
+                      </button>
+                    </div>
 
-                    <div class="global-library-inline-preview__meta-grid">
+                    <div v-if="isPreviewMobileViewport" class="global-library-inline-preview__meta-grid global-library-inline-preview__meta-grid--compact">
+                      <div
+                        v-for="entry in compactPreviewMetadataEntries"
+                        :key="entry.key"
+                        class="global-library-inline-preview__meta-item"
+                      >
+                        <p class="global-library-inline-preview__meta-inline">
+                          <span class="global-library-inline-preview__meta-label">{{ entry.label }}:</span>
+                          <span class="global-library-inline-preview__meta-value">{{ entry.value }}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div v-else class="global-library-inline-preview__meta-grid">
                       <div>
                         <span>Category / Goal</span>
                         <strong>{{ formatPreviewText(globalLibraryViewPlan?.category || globalLibraryViewPlan?.type) }}</strong>
@@ -10875,6 +10993,11 @@ watch(
   min-width: 0;
 }
 
+.global-library-inline-preview__description-wrap {
+  display: grid;
+  gap: 4px;
+}
+
 .global-library-inline-preview__name {
   margin: 0;
   color: #f8fbff;
@@ -10891,10 +11014,68 @@ watch(
   overflow-wrap: anywhere;
 }
 
+.global-library-inline-preview__description-toggle {
+  justify-self: start;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  color: #60a5fa;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-decoration: underline;
+  text-underline-offset: 0.14em;
+  cursor: pointer;
+}
+
+.global-library-inline-preview__description-toggle:hover {
+  color: #93c5fd;
+}
+
+.global-library-inline-preview__description-toggle:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, 0.9);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .global-library-inline-preview__meta-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
   gap: 8px;
+}
+
+.global-library-inline-preview__meta-grid--compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.global-library-inline-preview__meta-item {
+  min-width: 0;
+}
+
+.global-library-inline-preview__meta-inline {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+
+.global-library-inline-preview__meta-label {
+  color: rgba(225, 234, 247, 0.72);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.global-library-inline-preview__meta-value {
+  color: #f8fbff;
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.32;
+  overflow-wrap: anywhere;
 }
 
 .global-library-inline-preview__meta-grid > div {
@@ -11068,6 +11249,43 @@ watch(
   font-size: 0.66rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
+}
+
+@media (max-width: 800px) {
+  .global-library-inline-preview--mobile {
+    padding-bottom: 72px;
+  }
+
+  .global-library-inline-preview--mobile .global-library-inline-preview__meta-grid--compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .global-library-inline-preview--mobile .global-library-inline-preview__meta-grid--compact > .global-library-inline-preview__meta-item {
+    background: rgba(15, 23, 42, 0.26);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 5px;
+    padding: 6px 7px;
+  }
+
+  .global-library-inline-preview--mobile .global-library-inline-preview__focus-block {
+    margin-top: 0;
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .global-library-inline-preview--mobile .global-library-inline-preview__focus-item {
+    padding: 6px 7px;
+  }
+
+  .global-library-inline-preview--mobile .global-library-inline-preview__exercise-row {
+    gap: 7px;
+  }
+}
+
+@media (max-width: 360px) {
+  .global-library-inline-preview--mobile .global-library-inline-preview__meta-grid--compact {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 768px) {

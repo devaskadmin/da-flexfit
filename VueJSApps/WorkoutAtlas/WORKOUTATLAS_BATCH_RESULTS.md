@@ -1,5 +1,44 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.308 - Mobile workout plan preview compaction and readability polish
+- Scope: deliver mobile UX improvements for read-only Workout Plan preview without changing planner management workflows or backend contracts.
+- Files changed: `frontend/src/views/Member/WorkoutBuilder.vue`, `frontend/src/utils/workoutPreviewDescription.mjs`, `frontend/src/utils/workoutPreviewDescription.test.mjs`, `frontend/src/views/Member/WorkoutBuilder.preview-mobile-contract.test.mjs`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
+- Description toggle behavior:
+	- Mobile (`<=800px`): description collapses to approx. 140 chars with word-boundary truncation and ellipsis.
+	- Toggle is an accessible text-link button (`Show Details` / `Show Less`) with `aria-expanded` and `aria-controls`.
+	- Desktop (`>800px`): full description shown, no toggle.
+	- Empty description: description section omitted.
+	- Toggle reset: on plan switch, preview open/close transition, and viewport transition back to desktop.
+- Mobile metadata behavior:
+	- Compact `Label: Value` layout rendered in `.global-library-inline-preview__meta-grid--compact`.
+	- Two-column compact grid on typical mobile/tablet widths with adaptive single-column fallback at very narrow widths.
+	- Empty optional fields (for example Difficulty) are omitted from compact rendering.
+- Schedule/readability behavior:
+	- Exercise image + name alignment preserved.
+	- No page-level horizontal overflow in tested viewports.
+	- No internal exercise-list or exercise-row horizontal scrolling in tested viewports.
+	- Added mobile-safe preview bottom padding so fixed bottom navigation does not overlap bottom preview actions after deep scrolling.
+- Authenticated browser verification:
+	- Viewports validated: `320, 375, 390, 430, 600, 650, 768, 800, 1024, 1366`.
+	- Browser scale telemetry during validation: `devicePixelRatio=1`, `visualViewport.scale=1` (100% scale).
+	- Long-description plan (`Maintain Health – Total Body Wellness`) validated for collapsed and expanded states.
+	- Empty-description plan (`Muscle Building - Beginner Full Body`) validated to render no description section and no toggle.
+	- Entry points validated: My Plans view action and Find Plans global preview action both open the same read-only preview surface.
+- Screenshot evidence:
+	- `.artifacts/0.85.308-preview-collapsed-320.png`
+	- `.artifacts/0.85.308-preview-collapsed-390.png`
+	- `.artifacts/0.85.308-preview-collapsed-600.png`
+	- `.artifacts/0.85.308-preview-collapsed-800.png`
+	- `.artifacts/0.85.308-preview-collapsed-1366.png`
+	- `.artifacts/0.85.308-preview-expanded-390.png`
+- Automated checks:
+	- Frontend targeted tests: `29/29` pass.
+	- Frontend production build: pass.
+	- Backend plan-management regressions: `38/38` pass (`workout-plan-template`, `workout-plan-conversion-engine`, `workout-plan-cover-service`, `workout-plan-cover-storage`).
+- Caveats:
+	- Current dataset did not expose a non-empty short-description plan or a visible community/personal-published preview entry in this session; short-description no-toggle behavior is covered by utility tests.
+	- Existing non-blocking i18n missing-key warnings remain unchanged.
+
 ## 0.85.307.a1 - Workout Log HTTP 400 corrective repair
 - Scope: complete corrective follow-up for Workout Log history-path `HTTP 400` failures while preserving strict backend contract validation and protected paused-session integrity.
 - Files changed: `frontend/src/views/Member/LogWorkout.vue`, `frontend/src/views/Member/LogWorkout.history-contract.test.mjs`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
