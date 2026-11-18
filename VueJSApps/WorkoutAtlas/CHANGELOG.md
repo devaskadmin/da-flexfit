@@ -6,6 +6,17 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.305] - 2026-11-18 - Exercise scope ordering, plan preview action, and Add Set styling
+
+- **Fixed:** Exercise Scope dropdown ordering now follows role-aware expected order with `Custom Exercise` first while preserving role restrictions (admin: Custom/Shared/System; trainer: Custom/Shared; member: Custom).
+- **Fixed:** Create Exercise defaults continue to initialize to `Custom Exercise`, and Edit Exercise keeps persisted scope selections (`System`, `Shared`, `Custom`) intact instead of being remapped.
+- **Fixed:** The My Plans table View/Preview (blue eye) action now opens the existing read-only preview surface with schedule details and metadata, replacing the prior non-obvious nonresponsive behavior.
+- **Changed:** Preview context handling now tracks source tab and limits `Use Plan` action availability to marketplace/global preview context only.
+- **Fixed:** Current Workout `Add Set` button styling now uses a solid blue visual treatment (with hover/focus/disabled states) while preserving the mobile placement corrections delivered in 0.85.302.
+- **Relevant source files:** `frontend/src/views/Member/exercises.vue`; `frontend/src/views/Member/WorkoutBuilder.vue`; `frontend/src/components/workout-session/ExerciseSessionCard.vue`; `frontend/package.json`; `backend/package.json`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`.
+- **Verification:** Full backend suite passed (155/155). Frontend workout timer tests passed (11/11). Frontend production build passed. Authenticated browser verification confirmed Exercise Scope create/edit behavior and ordering on `/exercises`.
+- **Known unresolved issues:** In this run's authenticated admin dataset, `My Plans` in Workout Builder had no saved rows to click in the live table, so blue-eye preview validation in that tab remains data-dependent. Find-plans/global preview surface wiring and all automated checks remained green.
+
 ## [0.85.304] - 2026-11-18 - Edit save/publish and conversion repair
 
 - **Fixed:** `Edit Workout Plan -> Save Changes` now persists personal/community draft-to-published transitions instead of dead-ending in the global-only publish confirmation path.

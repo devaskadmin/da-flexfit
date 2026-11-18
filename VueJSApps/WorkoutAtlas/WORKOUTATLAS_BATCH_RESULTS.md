@@ -1,5 +1,22 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.305 - Exercise scope ordering, plan preview action, and Add Set button styling
+- Scope: complete targeted 0.85.305 fixes for Exercise Scope ordering/default behavior, My Plans preview action responsiveness, and Add Set blue styling while preserving 0.85.302-0.85.304 behavior and avoiding migrations/restarts.
+- Files changed: `frontend/src/views/Member/exercises.vue`, `frontend/src/views/Member/WorkoutBuilder.vue`, `frontend/src/components/workout-session/ExerciseSessionCard.vue`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
+- Verification:
+	- Full backend suite passed (`npm test` in backend): 155/155 passing.
+	- Frontend timer utility tests passed (`node --test src/utils/workoutSessionTimer.test.mjs`): 11/11 passing.
+	- Frontend production build passed (`npm run build`).
+	- Authenticated browser checks passed for Exercise Scope behavior on `/exercises`:
+		- Create Exercise scope options order: Custom -> Shared -> System.
+		- Create default selected scope: Custom.
+		- Edit System exercise preserved selected scope: System.
+- Behavioral outcomes:
+	- Role-aware scope option ordering now matches expected hierarchy with Custom first.
+	- My Plans blue-eye action now routes through existing read-only preview flow with preview context metadata and proper source-tab restoration behavior.
+	- Add Set button now renders as a solid blue primary action while keeping the previously corrected mobile position and sizing behavior.
+- Caveats: this authenticated admin dataset had no saved My Plans rows visible in the live table during verification, so direct row-level blue-eye click evidence in that tab is data-dependent in this run.
+
 ## 0.85.304 - Edit save/publish and conversion repair
 - Scope: resolve P1 edit-flow regressions where Save Changes could silently no-op for personal draft-to-published transitions and Convert & Copy could appear non-responsive.
 - Files changed: `frontend/src/views/Member/WorkoutBuilder.vue`, `backend/api/users.js`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.

@@ -220,16 +220,16 @@
   const exerciseScopeOptions = computed(() => {
     if (isAdminUser.value) {
       return [
-        { value: EXERCISE_SCOPE.SYSTEM, label: 'System Exercise' },
-        { value: EXERCISE_SCOPE.SHARED, label: 'Shared Exercise' },
         { value: EXERCISE_SCOPE.CUSTOM, label: 'Custom Exercise' },
+        { value: EXERCISE_SCOPE.SHARED, label: 'Shared Exercise' },
+        { value: EXERCISE_SCOPE.SYSTEM, label: 'System Exercise' },
       ];
     }
 
     if (isTrainerUser.value) {
       return [
-        { value: EXERCISE_SCOPE.SHARED, label: 'Shared Exercise' },
         { value: EXERCISE_SCOPE.CUSTOM, label: 'Custom Exercise' },
+        { value: EXERCISE_SCOPE.SHARED, label: 'Shared Exercise' },
       ];
     }
 

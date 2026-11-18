@@ -183,6 +183,8 @@ const globalLibraryViewLoading = ref(false);
 const globalLibraryViewError = ref('');
 const globalLibraryViewPlan = ref(null);
 const globalLibraryViewDaySchedules = ref([]);
+const globalLibraryPreviewContext = ref('marketplace');
+const globalLibraryPreviewReturnSourceTab = ref('marketplace');
 const errorDiagnosticsByArea = ref({
   conversion: null,
   ai: null,
@@ -1868,9 +1870,139 @@ const closeGlobalLibraryViewModal = () => {
     return;
   }
   showGlobalLibraryViewModal.value = false;
+  const returnTab = String(globalLibraryPreviewReturnSourceTab.value || '').trim();
+  if (returnTab === 'my' || returnTab === 'marketplace') {
+    planSourceTab.value = returnTab;
+  }
   clearAreaError('globalLibraryView');
   globalLibraryViewPlan.value = null;
   globalLibraryViewDaySchedules.value = [];
+  globalLibraryPreviewContext.value = 'marketplace';
+  globalLibraryPreviewReturnSourceTab.value = 'marketplace';
+};
+
+const buildPreviewDaySchedulesFromPlanner = ({ planner = {}, exercises = [] } = {}) => {
+  const normalizedExercises = (Array.isArray(exercises) ? exercises : []).map((exercise) => ({
+    ...exercise,
+    scheduleGroup: String(exercise?.scheduleGroup || '').trim(),
+  }));
+
+  const explicitDayGroups = Array.isArray(planner?.dayGroups)
+    ? planner.dayGroups.map((group) => String(group || '').trim()).filter(Boolean)
+    : [];
+
+  const exerciseDayGroups = Array.from(
+    new Set(normalizedExercises.map((exercise) => String(exercise?.scheduleGroup || '').trim()).filter(Boolean))
+  );
+
+  const mergedDayGroups = [...explicitDayGroups, ...exerciseDayGroups]
+    .filter((group, index, source) => source.findIndex((entry) => entry.toLowerCase() === group.toLowerCase()) === index);
+
+  const resolvedDayGroups = mergedDayGroups.length ? mergedDayGroups : ['Unscheduled'];
+  return resolvedDayGroups.map((groupLabel) => {
+    const dayExercises = normalizedExercises.filter((exercise) => {
+      const group = String(exercise?.scheduleGroup || '').trim();
+      if (!groupLabel || groupLabel === 'Unscheduled') {
+        return !group;
+      }
+      return group.toLowerCase() === groupLabel.toLowerCase();
+    });
+
+    return {
+      name: groupLabel,
+      exercises: dayExercises,
+    };
+  });
+};
+
+const openUserPlanPreview = async (schedule = {}) => {
+  const planId = String(schedule?.planId || '').trim();
+  if (!planId) {
+    await showWorkoutPlanFailureModal({
+      title: 'Unable to Open Workout Plan Preview',
+      message: 'This workout plan could not be opened because no plan identifier was provided.',
+    });
+    return;
+  }
+
+  globalLibraryPreviewContext.value = 'user-plan';
+  globalLibraryPreviewReturnSourceTab.value = String(planSourceTab.value || 'my').trim() || 'my';
+  planSourceTab.value = 'marketplace';
+  showGlobalLibraryViewModal.value = true;
+  globalLibraryViewLoading.value = true;
+  clearAreaError('globalLibraryView');
+  globalLibraryViewDaySchedules.value = [];
+  globalLibraryViewPlan.value = {
+    planId,
+    name: String(schedule?.name || 'Untitled Workout').trim() || 'Untitled Workout',
+    description: String(schedule?.description || '').trim(),
+    type: String(schedule?.type || '').trim() || 'General Fitness',
+    category: String(schedule?.category ?? schedule?.goalCategory ?? '').trim() || 'Uncategorized',
+    difficulty: String(schedule?.difficulty || '').trim(),
+    estimatedDuration: Number(schedule?.estimatedDuration || 0),
+    exerciseCount: Number(schedule?.exerciseCount || 0),
+    dayCount: Number(schedule?.dayCount || 0),
+    objective: String(schedule?.objective || schedule?.planObjective || '').trim(),
+    goal: String(schedule?.goal || schedule?.planGoal || '').trim(),
+    planTypeLabel: formatMarketplacePlanTypeLabel({ planType: schedule?.planType }),
+    publicationStatusLabel: publicationStatusDisplayLabel(schedule?.status || schedule?.publicationStatus || schedule?.planStatus),
+    coverImageUrl: String(schedule?.coverImageUrl || buildPlanCoverImageUrl(planId)).trim(),
+  };
+
+  try {
+    const response = await fetch(`${API_BASE}/api/workout-planner?planId=${encodeURIComponent(planId)}`, {
+      credentials: 'include',
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data?.error || 'Failed to load workout plan preview details.');
+    }
+
+    const planner = data?.planner || {};
+    const metadata = planner?.metadata || {};
+    const exercises = Array.isArray(planner?.exercises) ? planner.exercises : [];
+    const daySchedules = buildPreviewDaySchedulesFromPlanner({ planner, exercises });
+
+    const numericMetaDayCount = Number(metadata?.workoutDays || metadata?.dayCount || metadata?.numberOfWorkoutDays || 0);
+    const resolvedDayCount = daySchedules.some((entry) => entry.exercises.length)
+      ? daySchedules.filter((entry) => entry.exercises.length).length
+      : (numericMetaDayCount > 0 ? numericMetaDayCount : Number(schedule?.dayCount || 0));
+
+    const resolvedGoalFromContext = (metadata?.goalContext && typeof metadata.goalContext === 'object')
+      ? formatGoalContextOptionLabel(metadata.goalContext)
+      : '';
+
+    const resolvedGoalFromGoalsArray = (Array.isArray(metadata?.goals) && metadata.goals.length)
+      ? metadata.goals.map((entry) => String(entry || '').trim()).filter(Boolean).join(', ')
+      : '';
+
+    globalLibraryViewPlan.value = {
+      planId: String(planner?.planId || planId).trim(),
+      name: String(metadata?.name || schedule?.name || 'Untitled Workout').trim() || 'Untitled Workout',
+      description: String(metadata?.description || schedule?.description || '').trim(),
+      type: String(metadata?.type || schedule?.type || schedule?.workoutType || 'General Fitness').trim() || 'General Fitness',
+      category: String(metadata?.category || metadata?.goalType || metadata?.fitnessGoal || schedule?.category || schedule?.type || '').trim(),
+      difficulty: String(metadata?.difficulty || metadata?.level || metadata?.fitnessLevel || schedule?.difficulty || '').trim(),
+      estimatedDuration: Number(metadata?.estimatedDuration || schedule?.estimatedDuration || 0),
+      exerciseCount: Number(countUniqueWorkoutPlanExercises(exercises) || schedule?.exerciseCount || 0),
+      dayCount: Number(resolvedDayCount || 0),
+      objective: String(metadata?.objective || metadata?.planObjective || metadata?.trainingObjective || metadata?.focus || schedule?.objective || '').trim(),
+      goal: String(metadata?.goal || metadata?.planGoal || metadata?.goalSummary || metadata?.targetGoal || '').trim() || resolvedGoalFromContext || resolvedGoalFromGoalsArray,
+      planTypeLabel: formatMarketplacePlanTypeLabel({ planType: metadata?.planType || schedule?.planType }),
+      publicationStatusLabel: publicationStatusDisplayLabel(planner?.status || schedule?.status || schedule?.publicationStatus || schedule?.planStatus),
+      coverImageUrl: String(schedule?.coverImageUrl || buildPlanCoverImageUrl(String(planner?.planId || planId).trim())).trim(),
+    };
+
+    globalLibraryViewDaySchedules.value = daySchedules;
+  } catch (error) {
+    setFriendlyAreaError('globalLibraryView', {
+      rawMessage: error?.message || 'Failed to load workout plan preview details.',
+      fallback: 'Unable to load workout plan preview right now.',
+    });
+  } finally {
+    globalLibraryViewLoading.value = false;
+  }
 };
 
 const openGlobalLibraryViewModal = async (plan) => {
@@ -1879,6 +2011,8 @@ const openGlobalLibraryViewModal = async (plan) => {
     return;
   }
 
+  globalLibraryPreviewContext.value = 'marketplace';
+  globalLibraryPreviewReturnSourceTab.value = String(planSourceTab.value || 'marketplace').trim() || 'marketplace';
   globalLibraryViewLoading.value = true;
   clearAreaError('globalLibraryView');
   showGlobalLibraryViewModal.value = true;
@@ -1895,6 +2029,8 @@ const openGlobalLibraryViewModal = async (plan) => {
     dayCount: Number(plan?.dayCount || 0),
     objective: String(plan?.objective || plan?.planObjective || '').trim(),
     goal: String(plan?.goal || plan?.planGoal || '').trim(),
+    planTypeLabel: formatMarketplacePlanTypeLabel(plan),
+    publicationStatusLabel: formatMarketplaceStatusLabel(plan),
     coverImageUrl: String(plan?.coverImageUrl || buildPlanCoverImageUrl(templatePlanId)).trim(),
   };
 
@@ -2007,6 +2143,8 @@ const openGlobalLibraryViewModal = async (plan) => {
       dayCount: Number(resolvedDayCount || 0),
       objective: resolvedObjective,
       goal: resolvedGoal || resolvedGoalFromContext || resolvedGoalFromGoalsArray,
+      planTypeLabel: formatMarketplacePlanTypeLabel({ planType: metadata?.planType || plan?.planType }),
+      publicationStatusLabel: publicationStatusDisplayLabel(planner?.status || plan?.status || plan?.publicationStatus || plan?.planStatus),
       accessLevel: String(data?.accessLevel || '').trim(),
       coverImageUrl: String(plan?.coverImageUrl || buildPlanCoverImageUrl(String(planner?.planId || templatePlanId).trim())).trim(),
     };
@@ -2095,7 +2233,9 @@ const previewDayHasCardioFields = (dayExercises = []) => {
 };
 
 const canUsePlanFromPreview = computed(() => {
-  return !showManagedMarketplacePlans.value && Boolean(String(globalLibraryViewPlan.value?.planId || '').trim());
+  return globalLibraryPreviewContext.value === 'marketplace'
+    && !showManagedMarketplacePlans.value
+    && Boolean(String(globalLibraryViewPlan.value?.planId || '').trim());
 });
 
 const triggerUsePlanFromPreview = () => {
@@ -5730,7 +5870,7 @@ watch(
                       :schedule="schedule"
                       :selected="selectedWorkoutId === schedule.planId"
                       :deleting="deletingWorkoutId === schedule.planId"
-                      @open="selectWorkoutSchedule"
+                      @open="openUserPlanPreview"
                       @edit="editWorkoutSchedule"
                       @delete="deleteWorkoutSchedule"
                     />
@@ -5804,6 +5944,14 @@ watch(
                       <div>
                         <span>Category / Goal</span>
                         <strong>{{ formatPreviewText(globalLibraryViewPlan?.category || globalLibraryViewPlan?.type) }}</strong>
+                      </div>
+                      <div>
+                        <span>Plan Type</span>
+                        <strong>{{ formatPreviewText(globalLibraryViewPlan?.planTypeLabel) }}</strong>
+                      </div>
+                      <div>
+                        <span>Publication Status</span>
+                        <strong>{{ formatPreviewText(globalLibraryViewPlan?.publicationStatusLabel) }}</strong>
                       </div>
                       <div>
                         <span>Difficulty</span>

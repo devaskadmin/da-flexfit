@@ -1370,9 +1370,9 @@ onUnmounted(() => {
 }
 
 .add-set-btn {
-  background: none;
-  border: 1px solid #3b82f6;
-  color: #2563eb;
+  background: #2563eb;
+  border: 1px solid #1d4ed8;
+  color: #ffffff;
   border-radius: 8px;
   padding: 6px 12px;
   font-size: 0.78rem;
@@ -1381,11 +1381,31 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.28);
 }
 
 .add-set-btn:hover {
-  background: #eff6ff;
+  background: #1d4ed8;
+  border-color: #1e40af;
+}
+
+.add-set-btn:active {
+  background: #1e40af;
+  border-color: #1e3a8a;
+}
+
+.add-set-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28);
+}
+
+.add-set-btn:disabled {
+  background: #93c5fd;
+  border-color: #93c5fd;
+  color: #eff6ff;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .sec-summary {
