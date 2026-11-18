@@ -6,6 +6,20 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.304] - 2026-11-18 - Edit save/publish and conversion repair
+
+- **Fixed:** `Edit Workout Plan -> Save Changes` now persists personal/community draft-to-published transitions instead of dead-ending in the global-only publish confirmation path.
+- **Fixed:** Unsupported publication transitions now surface a blocking warning modal so save actions cannot fail silently.
+- **Fixed:** Save/publish request failures now trigger explicit failure modals (`Unable to Save Workout Plan` / `Unable to Publish Workout Plan`) with actionable status text.
+- **Fixed:** Conversion create flow now pre-validates authoritative persisted source status and blocks draft conversion with required warning copy:
+  - `Workout Plan Must Be Published`
+  - `This workout plan is currently saved as a Draft. Please publish the plan before converting it to another plan type.`
+- **Added:** Backend conversion endpoint now enforces the source published prerequisite server-side and returns `SOURCE_PLAN_NOT_PUBLISHED` when source status is not active.
+- **Changed:** Conversion modal no longer keeps `Convert & Copy Plan` disabled until a manual preview call, preventing the previous click-with-no-effect UX.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`; `backend/api/users.js`; `frontend/package.json`; `backend/package.json`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`.
+- **Verification:** Targeted backend conversion-engine tests passed (11/11). Frontend production build passed. Authenticated live browser replay confirmed: (1) publish edit path issues a real `PUT /api/workout-planner` and persists to `active`; (2) direct Convert & Copy executes conversion for active source; (3) draft-source conversion is blocked with required warning and no conversion POST call.
+- **Known unresolved issues:** Full responsive matrix replay at `320/390/430/768/800/1024/1366` was not fully re-executed in this cycle; core repaired paths were validated in authenticated live flow.
+
 ## [0.85.303] - 2026-11-18 - Plan save, publish, and status reliability
 
 - **Fixed:** Workout Builder now uses plan-type-aware publication transition rules so personal plans can use backend-supported status transitions (`active -> archived`) while Global/Featured/Community Shared plans continue honoring stricter global transition constraints.

@@ -1,5 +1,21 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.304 - Edit save/publish and conversion repair
+- Scope: resolve P1 edit-flow regressions where Save Changes could silently no-op for personal draft-to-published transitions and Convert & Copy could appear non-responsive.
+- Files changed: `frontend/src/views/Member/WorkoutBuilder.vue`, `backend/api/users.js`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
+- Verification:
+	- Targeted backend conversion engine tests passed (`node --test tests/workout-plan-conversion-engine.test.js`): 11/11 passing.
+	- Frontend production build passed (`npm run build`).
+	- Authenticated browser evidence captured:
+		- Edit draft plan -> set Published -> Save Changes now issues `PUT /api/workout-planner` (200) and persisted status reads `active` via `GET /api/workout-schedules/:id`.
+		- Convert modal `Convert & Copy Plan` is actionable without mandatory pre-preview and creates converted copy for active source.
+		- Draft source conversion now opens required warning modal (`Workout Plan Must Be Published`) and network log confirms no conversion POST (`postConvertCalls: 0`).
+- Behavioral outcomes:
+	- Personal/community edit publish path now persists instead of dead-ending in global-only confirmation logic.
+	- Save/transition failures are visible via warning modals instead of silent inline-only text.
+	- Conversion path enforces published prerequisite in both frontend preflight and backend endpoint guardrail (`SOURCE_PLAN_NOT_PUBLISHED`).
+- Caveats: full breakpoint matrix (320/390/430/768/800/1024/1366) was not fully replayed in this cycle; repaired save/publish and conversion behaviors were validated in live authenticated flow.
+
 ## 0.85.303 - Plan save, publish, and status reliability
 - Scope: close Workout Builder reliability gaps for Save as Draft / Publish / Save Changes flows by confirming persisted status before success feedback, aligning transition options with backend behavior, and preventing first-save global publish downgrades.
 - Files changed: `frontend/src/views/Member/WorkoutBuilder.vue`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.

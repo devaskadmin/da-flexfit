@@ -1629,6 +1629,7 @@ const loadOwnedScheduleRowWithCover = async (connection, scheduleId, userId) => 
       id,
       user_id,
       workout_plan_type,
+      status,
       cover_image_storage_key,
       cover_image_content_type,
       cover_image_updated_at
@@ -2655,6 +2656,14 @@ router.post('/workout-schedules/:id/plan-type-conversion-preview', async (req, r
     const sourceSchedule = await loadOwnedScheduleRowWithCover(connection, sourcePlanId, userId);
     if (!sourceSchedule) {
       return res.status(404).json({ error: 'Workout schedule not found' });
+    }
+
+    const sourceScheduleStatus = normalizeWorkoutPlanPublicationStatus(sourceSchedule?.status, 'draft');
+    if (sourceScheduleStatus !== 'active') {
+      return res.status(409).json({
+        error: 'This workout plan is currently saved as a Draft. Please publish the plan before converting it to another plan type.',
+        code: 'SOURCE_PLAN_NOT_PUBLISHED',
+      });
     }
 
     if (isRawGlobalWorkoutPlanType(sourceSchedule.workout_plan_type)) {

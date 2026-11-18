@@ -550,6 +550,10 @@ const requestPlanTypeConversionPreview = async () => {
 };
 
 const confirmPlanTypeConversion = async () => {
+  if (conversionCreateLoading.value || conversionPreviewLoading.value) {
+    return;
+  }
+
   const sourcePlanId = String(currentPlanId.value || '').trim();
   const targetPlanType = String(conversionTargetPlanType.value || '').trim();
   const destinationTitle = String(conversionDestinationTitle.value || '').trim();
@@ -570,6 +574,25 @@ const confirmPlanTypeConversion = async () => {
   clearAreaError('conversion');
 
   try {
+    const persistedSourceStatus = await loadPersistedPlanStatus(sourcePlanId);
+    if (persistedSourceStatus !== 'active') {
+      const draftWarningMessage = 'This workout plan is currently saved as a Draft. Please publish the plan before converting it to another plan type.';
+      conversionError.value = draftWarningMessage;
+      await showWorkoutPlanResultModal({
+        title: 'Workout Plan Must Be Published',
+        message: draftWarningMessage,
+        icon: 'warning',
+      });
+      return;
+    }
+
+    if (!conversionPreview.value || !conversionPreview.value.canProceed) {
+      await requestPlanTypeConversionPreview();
+      if (!conversionPreview.value || !conversionPreview.value.canProceed) {
+        return;
+      }
+    }
+
     const response = await fetch(`${API_BASE}/api/workout-schedules/${encodeURIComponent(sourcePlanId)}/plan-type-conversion`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -603,6 +626,11 @@ const confirmPlanTypeConversion = async () => {
 
     saveMessage.value = 'Workout plan copied successfully.';
     showPlanTypeConversionModal.value = false;
+    await showWorkoutPlanResultModal({
+      title: 'Workout Plan Converted Successfully',
+      message: 'A converted workout plan copy has been created successfully.',
+      icon: 'success',
+    });
   } catch (error) {
     setFriendlyAreaError('conversion', {
       status: error?.status,
@@ -612,6 +640,10 @@ const confirmPlanTypeConversion = async () => {
       rawMessage: error?.rawMessage || error?.message,
       fallback: 'Unable to convert this workout plan right now. Please try again.',
       preserveValidation: true,
+    });
+    await showWorkoutPlanFailureModal({
+      title: 'Unable to Convert Workout Plan',
+      message: conversionError.value || 'Unable to convert this workout plan right now. Please try again.',
     });
   } finally {
     conversionCreateLoading.value = false;
@@ -2528,53 +2560,57 @@ const buildPersistSuccessFeedback = ({
   persistedStatus = 'draft',
   previousStatus = 'draft',
 } = {}) => {
-  const safeLabel = String(planLabel || 'Workout plan').trim() || 'Workout plan';
   const requested = normalizePlanPublicationStatus(requestedStatus);
   const persisted = normalizePlanPublicationStatus(persistedStatus);
   const previous = normalizePlanPublicationStatus(previousStatus);
 
   if (persisted !== requested) {
     const persistedLabel = publicationStatusDisplayLabel(persisted);
+    const attemptedPublish = requested === 'active';
     return {
       icon: 'warning',
-      title: `${safeLabel} Saved with Status Notice`,
-      inlineMessage: `${safeLabel} saved, but status remains ${persistedLabel}.`,
-      modalMessage: `${safeLabel} was saved, but the persisted publication status is still ${persistedLabel}. Refresh the plan list if this does not update automatically.`,
+      title: attemptedPublish ? 'Unable to Publish Workout Plan' : 'Workout Plan Saved with Status Notice',
+      inlineMessage: attemptedPublish
+        ? `Unable to publish workout plan. Persisted status remains ${persistedLabel}.`
+        : `Workout plan saved, but status remains ${persistedLabel}.`,
+      modalMessage: attemptedPublish
+        ? `Your workout plan could not be published. The persisted status remains ${persistedLabel}.`
+        : `Your workout plan was saved, but the persisted publication status is still ${persistedLabel}.`,
+    };
+  }
+
+  if (persisted === 'active' && previous !== 'active') {
+    return {
+      icon: 'success',
+      title: 'Workout Plan Published Successfully',
+      inlineMessage: 'Workout plan published successfully.',
+      modalMessage: 'Your workout plan has been published.',
     };
   }
 
   if (persisted === 'active' && previous === 'active') {
     return {
       icon: 'success',
-      title: `${safeLabel} Changes Saved Successfully`,
-      inlineMessage: `${safeLabel} changes saved successfully.`,
-      modalMessage: `${safeLabel} changes were saved and the plan remains Published.`,
-    };
-  }
-
-  if (persisted === 'active') {
-    return {
-      icon: 'success',
-      title: `${safeLabel} Published Successfully`,
-      inlineMessage: `${safeLabel} published successfully.`,
-      modalMessage: `${safeLabel} is now Published and visible to eligible users.`,
+      title: 'Workout Plan Updated Successfully',
+      inlineMessage: 'Workout plan updated successfully.',
+      modalMessage: 'Your changes have been saved.',
     };
   }
 
   if (persisted === 'archived') {
     return {
       icon: 'success',
-      title: `${safeLabel} Archived Successfully`,
-      inlineMessage: `${safeLabel} archived successfully.`,
-      modalMessage: `${safeLabel} has been archived and is no longer publicly available.`,
+      title: 'Workout Plan Updated Successfully',
+      inlineMessage: 'Workout plan archived successfully.',
+      modalMessage: 'Your changes have been saved.',
     };
   }
 
   return {
     icon: 'success',
-    title: `${safeLabel} Draft Saved Successfully`,
-    inlineMessage: `${safeLabel} draft saved successfully.`,
-    modalMessage: `${safeLabel} draft was saved and is ready for future edits or publishing.`,
+    title: 'Workout Plan Updated Successfully',
+    inlineMessage: 'Workout plan draft saved successfully.',
+    modalMessage: 'Your changes have been saved.',
   };
 };
 
@@ -2615,6 +2651,32 @@ const showWorkoutPlanResultModal = async ({ title, message, icon = 'success' } =
       }
     },
   });
+};
+
+const showWorkoutPlanFailureModal = async ({ title, message } = {}) => {
+  await showWorkoutPlanResultModal({
+    title: String(title || 'Unable to Save Workout Plan').trim() || 'Unable to Save Workout Plan',
+    message: String(message || 'The request could not be completed. Please try again.').trim() || 'The request could not be completed. Please try again.',
+    icon: 'warning',
+  });
+};
+
+const loadPersistedPlanStatus = async (planId) => {
+  const normalizedPlanId = String(planId || '').trim();
+  if (!normalizedPlanId) {
+    return null;
+  }
+
+  const response = await fetch(`${API_BASE}/api/workout-schedules/${encodeURIComponent(normalizedPlanId)}`, {
+    credentials: 'include',
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data?.error || 'Unable to verify latest workout plan status.');
+  }
+
+  return normalizePlanPublicationStatus(data?.planner?.status || 'draft');
 };
 
 const savePlanModalSummary = computed(() => {
@@ -4148,7 +4210,12 @@ const persistWorkout = async (status = 'draft') => {
       icon: feedback.icon,
     });
   } catch (error) {
-    saveMessage.value = error.message || 'Failed to save workout planner.';
+    const failureMessage = error?.message || 'Failed to save workout planner.';
+    saveMessage.value = failureMessage;
+    await showWorkoutPlanFailureModal({
+      title: normalizedTargetStatus === 'active' ? 'Unable to Publish Workout Plan' : 'Unable to Save Workout Plan',
+      message: failureMessage,
+    });
   } finally {
     saving.value = false;
     publishing.value = false;
@@ -4173,7 +4240,12 @@ const saveGlobalWorkoutWithSelectedStatus = async () => {
 
   if (!supportedTargets.includes(selectedStatus)) {
     const selectedOption = publicationStatusOptions.value.find((option) => option.value === selectedStatus);
-    saveMessage.value = selectedOption?.reason || 'Selected publication status transition is not supported.';
+    const transitionError = selectedOption?.reason || 'Selected publication status transition is not supported.';
+    saveMessage.value = transitionError;
+    await showWorkoutPlanFailureModal({
+      title: 'Unable to Save Workout Plan',
+      message: transitionError,
+    });
     return;
   }
 
@@ -4183,7 +4255,12 @@ const saveGlobalWorkoutWithSelectedStatus = async () => {
   }
 
   if (currentStatus === 'draft' && selectedStatus === 'active') {
-    openPublishPlanConfirmation();
+    if (isAdminGlobalPlanDraftFlow.value) {
+      openPublishPlanConfirmation();
+      return;
+    }
+
+    await persistWorkout('active');
     return;
   }
 
@@ -4227,6 +4304,10 @@ const saveGlobalWorkoutWithSelectedStatus = async () => {
   }
 
   saveMessage.value = 'Selected publication status transition is not supported.';
+  await showWorkoutPlanFailureModal({
+    title: 'Unable to Save Workout Plan',
+    message: 'Selected publication status transition is not supported.',
+  });
 };
 
 const publishPlanSummary = computed(() => {
@@ -6552,7 +6633,7 @@ watch(
             <button
               type="button"
               class="modal-btn modal-btn--draft"
-              :disabled="conversionCreateLoading || conversionPreviewLoading || !conversionPreview || !conversionPreview.canProceed"
+              :disabled="conversionCreateLoading || conversionPreviewLoading || !conversionTargetPlanType"
               @click="confirmPlanTypeConversion"
             >
               {{ conversionCreateLoading ? 'Converting...' : 'Convert & Copy Plan' }}
