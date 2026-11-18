@@ -6,6 +6,23 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.307.a1] - 2026-11-18 - Workout Log HTTP 400 corrective repair
+
+- **Corrective target:** Eliminate Workout Log history-path `HTTP 400` failures (`exercises array is required.`) without weakening backend validation and without mutating protected paused session state.
+- **Root cause:** History-tab open behavior previously triggered a write flush path (`openHistoryTab -> flushWorkoutSetProgressPersistence -> persistWorkoutSetProgress -> POST /api/workout-log/session`) in a read-only workflow, allowing malformed/no-exercise session writes to hit strict backend contract validation.
+- **Fixed:** History-tab open path is now read-only and no longer triggers persistence flush; it only switches tab and loads history.
+- **Fixed:** Selected workout date normalization now enforces local `YYYY-MM-DD` semantics when activating/completing sessions, preventing ISO timestamp date drift in subsequent history queries.
+- **Added:** Frontend contract regression test to prevent reintroduction of history-tab write side effects.
+- **Preserved:** Backend session-write validation remains strict (`exercises` required) and was not relaxed.
+- **Relevant source files:** `frontend/src/views/Member/LogWorkout.vue`; `frontend/src/views/Member/LogWorkout.history-contract.test.mjs`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`.
+- **Verification:**
+  - Frontend contract regression test passed (`1/1`) after corrective patch.
+  - Previously completed batch gates remained green in this session context: frontend targeted tests (`19/19`), backend targeted suites (`32/32`), backend full suite (`160/160`), and frontend production build.
+  - Live authenticated replay validated: disposable workout completion, history rendering, date correction move (`11/18 -> 11/17`) with no duplication, cancel-no-change behavior, delete confirmation/success behavior, and protected paused Monday session still `In Progress` with `Resume Workout` intact.
+  - Network evidence after log reset for corrective replay: workout-log calls had no `400` responses (`200/201` only), with history/edit/delete endpoints behaving as expected.
+  - Responsive probes at `320/375/390/430/650/768/800/1024/1366` reported no horizontal overflow.
+- **Known unresolved issues:** Existing non-blocking i18n missing-key console warnings are unchanged and outside this corrective scope.
+
 ## [0.85.307] - 2026-11-18 - Historical workout management and date integrity
 
 - **Changed:** Workout history retrieval now filters and renders by corrected session workout date when available (`COALESCE(wls.workout_date, wl.WorkoutDate)`), preserving legacy behavior while honoring session-level date corrections.

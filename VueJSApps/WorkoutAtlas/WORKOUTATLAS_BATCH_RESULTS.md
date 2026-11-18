@@ -1,5 +1,32 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.307.a1 - Workout Log HTTP 400 corrective repair
+- Scope: complete corrective follow-up for Workout Log history-path `HTTP 400` failures while preserving strict backend contract validation and protected paused-session integrity.
+- Files changed: `frontend/src/views/Member/LogWorkout.vue`, `frontend/src/views/Member/LogWorkout.history-contract.test.mjs`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
+- Root-cause evidence:
+	- History-tab transition previously invoked write path (`openHistoryTab -> flushWorkoutSetProgressPersistence -> persistWorkoutSetProgress -> POST /api/workout-log/session`) in a read-only interaction.
+	- Backend correctly rejected malformed write payloads missing `exercises` with `400 { "error": "exercises array is required." }`.
+- Corrective behavior changes:
+	- Removed history-tab write flush side effect; opening Workout Log now stays read-only (`activeTab` switch + `loadWorkoutHistory`).
+	- Normalized selected workout date state to `YYYY-MM-DD` during session activation/completion to avoid ISO timestamp drift in history query date parameters.
+	- Added source-contract regression guard (`LogWorkout.history-contract.test.mjs`) asserting history-tab logic does not call persistence flush.
+- Live authenticated verification outcomes:
+	- Disposable Tuesday cardio session completed and immediately rendered in Workout Log for selected date.
+	- Date correction edit moved a completed entry from `2026-11-18` to `2026-11-17` with no duplicate remaining on the original date.
+	- Cancel edit path reverted to view state without save modal or unintended data mutation.
+	- Delete flow showed confirmation modal, executed delete, showed success modal, and recalculated date summary/history to zero records for `2026-11-18`.
+	- Protected paused Monday session remained `In Progress` with `Resume Workout` entry intact after corrective replay.
+- Network evidence after clean log reset:
+	- Workout-log API calls: `total=13`, statuses `200=8`, `201=5`, `400=0`.
+	- Endpoint mix observed: `POST /api/workout-log/session` (5), `GET /api/workout-log/history` (6), `PUT /api/workout-log/history/session/:id` (1), `DELETE /api/workout-log/history/session/:id` (1).
+- Responsive matrix verification:
+	- Widths checked: `320, 375, 390, 430, 650, 768, 800, 1024, 1366`.
+	- Programmatic viewport checks reported no horizontal overflow at all required widths; tablist/date/start controls remained discoverable.
+- Automated checks:
+	- Frontend corrective regression test: `1/1` pass (`node --test src/views/Member/LogWorkout.history-contract.test.mjs`).
+	- Previously completed batch checks retained in session context: frontend targeted tests `19/19`, backend targeted suites `32/32`, backend full suite `160/160`, frontend build passed.
+- Caveats: Existing i18n missing-key console warnings remain non-blocking and unchanged by this corrective patch.
+
 ## 0.85.307 - Historical workout management and date integrity
 - Scope: finalize Workout Log history management hardening for view/edit/delete/date-correction integrity while preserving completed-only mutation policy and existing history/session architecture.
 - Files changed: `backend/api/workout-log.js`, `frontend/src/views/Member/LogWorkout.vue`, `backend/tests/workout-log-history-management.test.js`, `frontend/src/utils/workoutLogDateFormat.mjs`, `frontend/src/utils/workoutLogDateFormat.test.mjs`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.

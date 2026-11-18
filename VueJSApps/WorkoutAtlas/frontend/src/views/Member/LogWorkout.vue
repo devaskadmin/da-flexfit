@@ -2305,7 +2305,7 @@ const selectWorkoutConflictSession = (sessionId) => {
 const activateStartedWorkout = async ({ session, pendingStart }) => {
   activeSession.value = session;
   hasActiveWorkout.value = true;
-  selectedWorkoutDate.value = pendingStart.workoutStartDate;
+  selectedWorkoutDate.value = normalizeDateInputValue(pendingStart.workoutStartDate) || today();
   selectedDay.value = pendingStart.dayName;
   isPreviewMode.value = false;
   syncSessionTimerStateFor(session);
@@ -2707,7 +2707,9 @@ const completeWorkout = async () => {
       : '✓ Workout complete! Great work!';
 
     const completedSessionId = Number(activeSession.value?.id || 0);
-    const completedWorkoutDate = String(activeSession.value?.workoutDate || selectedWorkoutDate.value || today()).trim();
+    const completedWorkoutDate = normalizeDateInputValue(
+      activeSession.value?.workoutDate || selectedWorkoutDate.value || today()
+    ) || today();
     activeSessions.value = activeSessions.value.filter(
       (session) => Number(session?.id || 0) !== completedSessionId
     );
@@ -2716,9 +2718,7 @@ const completeWorkout = async () => {
     activeSession.value    = null;
     hasActiveWorkout.value = false;
 
-    if (completedWorkoutDate) {
-      selectedWorkoutDate.value = completedWorkoutDate;
-    }
+    selectedWorkoutDate.value = completedWorkoutDate;
     activeTab.value = 'workoutHistory';
     selectedDay.value = '';
     saveMessage.value = '';
@@ -3144,7 +3144,6 @@ watch(
 
 const openHistoryTab = async () => {
   activeTab.value = 'workoutHistory';
-  await flushWorkoutSetProgressPersistence();
   loadWorkoutHistory();
 };
 
