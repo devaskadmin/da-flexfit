@@ -5209,14 +5209,6 @@ watch(
                 <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
                 <span>Back to Plans</span>
               </button>
-              <button
-                type="button"
-                class="btn-save plan-info-action-row__save"
-                :disabled="saving || publishing"
-                @click="handlePrimarySave"
-              >
-                Save Changes
-              </button>
             </div>
 
             <WorkoutMetadataForm
@@ -5361,24 +5353,6 @@ watch(
                 </div>
               </div>
 
-              <div class="planner-quick-save-actions" role="group" aria-label="Planner quick actions">
-                <button
-                  type="button"
-                  class="planner-quick-save-btn planner-quick-save-btn--draft wa-blue-action-btn"
-                  :disabled="saving || publishing || loadingPlanner"
-                  @click="saveCurrentPlanAsDraft"
-                >
-                  Save as Draft
-                </button>
-                <button
-                  type="button"
-                  class="planner-quick-save-btn planner-quick-save-btn--publish wa-green-action-btn"
-                  :disabled="saving || publishing || loadingPlanner"
-                  @click="publishCurrentPlan"
-                >
-                  Publish
-                </button>
-              </div>
             </div>
 
               <div class="planner-group-editor">
@@ -5595,104 +5569,21 @@ watch(
                             </button>
                           </div>
 
-                          <div v-if="canModifyScheduleDayActions" class="day-footer-actions" @click.stop>
+                          <div v-if="canModifyScheduleDayActions && day.exercises.length > 1" class="day-footer-actions day-footer-actions--contextual" @click.stop>
                             <button
                               type="button"
                               class="btn-add-exercise-day btn-add-exercise-day--bottom wa-blue-action-btn"
                               @click="setActiveDay(day.name); openPicker({ insertPosition: 'bottom' })"
                             >
                               <span class="btn-add-exercise__icon">＋</span>
-                              <span>Add Exercise</span>
+                              <span>Add Exercise to End</span>
                             </button>
-
-                            <div class="day-kebab-wrap" @click.stop>
-                              <button
-                                type="button"
-                                class="day-kebab-btn"
-                                :aria-expanded="openMenuDay === day.name && openMenuAnchor === 'bottom'"
-                                @click.stop="toggleDayMenu(day.name, $event, 'bottom')"
-                              >
-                                <i class="fa-solid fa-ellipsis-vertical"></i>
-                              </button>
-                              <div
-                                v-if="openMenuDay === day.name && openMenuAnchor === 'bottom'"
-                                :class="['day-kebab-menu', `day-kebab-menu--${openMenuPlacement}`]"
-                              >
-                                <button
-                                  type="button"
-                                  class="day-kebab-item"
-                                  @click="startInlineDayNameEdit(day.name); openMenuDay = null"
-                                >
-                                  <i class="fa-regular fa-pen-to-square"></i>
-                                  ✏️ Rename Day
-                                </button>
-                                <button
-                                  type="button"
-                                  class="day-kebab-item"
-                                  @click="duplicateScheduleGroup(day.name); openMenuDay = null"
-                                >
-                                  <i class="fa-solid fa-copy"></i>
-                                  Duplicate Day
-                                </button>
-                                <button
-                                  v-if="hasMultipleScheduleGroups && !isFirstScheduleGroup(day.name)"
-                                  type="button"
-                                  class="day-kebab-item"
-                                  @click="moveScheduleGroupUp(day.name); openMenuDay = null"
-                                >
-                                  <i class="fa-solid fa-arrow-up"></i>
-                                  Move Up
-                                </button>
-                                <button
-                                  v-if="hasMultipleScheduleGroups && !isLastScheduleGroup(day.name)"
-                                  type="button"
-                                  class="day-kebab-item"
-                                  @click="moveScheduleGroupDown(day.name); openMenuDay = null"
-                                >
-                                  <i class="fa-solid fa-arrow-down"></i>
-                                  Move Down
-                                </button>
-                                <button
-                                  v-if="canRemoveScheduleGroup(day.name)"
-                                  type="button"
-                                  class="day-kebab-item day-kebab-item--delete"
-                                  @click="requestDeleteDay(day.name); openMenuDay = null"
-                                >
-                                  <i class="fa-solid fa-trash"></i>
-                                  Delete Day
-                                </button>
-                              </div>
-                            </div>
                           </div>
                         </div>
                       </div>
                     </transition>
                   </div>
                 </transition-group>
-
-                <div class="planner-bottom-group-actions">
-                  <div class="planner-bottom-group-actions__editor">
-                    <label class="planner-group-editor__label" for="planner-add-day-input-bottom">{{ scheduleGroupEditorLabel }}</label>
-                    <input
-                      id="planner-add-day-input-bottom"
-                      v-model="newScheduleGroupNameBottom"
-                      type="text"
-                      :maxlength="WORKOUT_DAY_NAME_MAX_LENGTH"
-                      :placeholder="scheduleGroupInputPlaceholder"
-                      @input="clearScheduleGroupEditorError('bottom')"
-                    />
-                    <button
-                      type="button"
-                      class="planner-group-add wa-blue-action-btn planner-group-add--bottom"
-                      @click="addScheduleGroupBottom"
-                    >
-                      {{ scheduleGroupAddButtonLabel }}
-                    </button>
-                    <p v-if="scheduleGroupBottomEditorError" class="planner-group-editor__error">
-                      {{ scheduleGroupBottomEditorError }}
-                    </p>
-                  </div>
-                </div>
               </div>
 
               <p v-if="plannerMessage" class="planner-feedback planner-feedback--error">
@@ -5971,12 +5862,12 @@ watch(
                       </div>
                     </div>
 
-                    <div class="global-library-inline-preview__focus-block">
-                      <div class="global-library-inline-preview__focus-item">
+                    <div v-if="hasValue(globalLibraryViewPlan?.objective) || hasValue(globalLibraryViewPlan?.goal)" class="global-library-inline-preview__focus-block">
+                      <div v-if="hasValue(globalLibraryViewPlan?.objective)" class="global-library-inline-preview__focus-item">
                         <h5>Objective</h5>
                         <p>{{ formatPreviewText(globalLibraryViewPlan?.objective) }}</p>
                       </div>
-                      <div class="global-library-inline-preview__focus-item">
+                      <div v-if="hasValue(globalLibraryViewPlan?.goal)" class="global-library-inline-preview__focus-item">
                         <h5>Goal</h5>
                         <p>{{ formatPreviewText(globalLibraryViewPlan?.goal) }}</p>
                       </div>
@@ -5997,72 +5888,34 @@ watch(
                       <span>{{ day.exercises.length }} exercise{{ day.exercises.length === 1 ? '' : 's' }}</span>
                     </header>
 
-                    <div v-if="day.exercises.length" class="global-library-inline-preview__day-table-wrap">
-                      <table class="table align-middle mb-0 global-library-inline-preview__day-table">
-                        <thead>
-                          <tr>
-                            <th class="global-library-inline-preview__image-col">Image</th>
-                            <th>Exercise</th>
-                            <th v-if="previewDayHasStrengthFields(day.exercises)">Sets</th>
-                            <th v-if="previewDayHasStrengthFields(day.exercises)">Reps</th>
-                            <th v-if="previewDayHasStrengthFields(day.exercises)">Weight</th>
-                            <th v-if="previewDayHasStrengthFields(day.exercises)">Rest</th>
-                            <th v-if="previewDayHasCardioFields(day.exercises)">Duration</th>
-                            <th v-if="previewDayHasCardioFields(day.exercises)">Distance</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr v-for="(exercise, index) in day.exercises" :key="`preview-exercise-${day.name}-${exercise.id || exercise.exerciseId || index}`">
-                            <td class="global-library-inline-preview__image-cell">
-                              <img
-                                :src="resolveExerciseImage(exercise)"
-                                class="global-library-inline-preview__exercise-thumb"
-                                :alt="`${exercise.name || exercise.ExerciseTitle || 'Exercise'} image`"
-                                loading="lazy"
-                                decoding="async"
-                                @error="onPreviewExerciseImageError"
-                              />
-                            </td>
-                            <td class="global-library-inline-preview__exercise-cell">
-                              <span class="global-library-inline-preview__exercise-name">{{ exercise.name || exercise.ExerciseTitle || 'Unnamed Exercise' }}</span>
-                            </td>
-                            <td v-if="previewDayHasStrengthFields(day.exercises)">{{ resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.sets) ? Number(exercise.sets) : '—' }}</td>
-                            <td v-if="previewDayHasStrengthFields(day.exercises)">{{ resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.reps) ? Number(exercise.reps) : '—' }}</td>
-                            <td v-if="previewDayHasStrengthFields(day.exercises)">{{ resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.weight) ? `${Number(exercise.weight)} lb` : '—' }}</td>
-                            <td v-if="previewDayHasStrengthFields(day.exercises)">{{ resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.restTime) ? `${Number(exercise.restTime)} sec` : '—' }}</td>
-                            <td v-if="previewDayHasCardioFields(day.exercises)">{{ resolvePreviewExerciseType(exercise) === 'cardio' && hasValue(exercise.duration) ? `${Number(exercise.duration)} min` : '—' }}</td>
-                            <td v-if="previewDayHasCardioFields(day.exercises)">{{ resolvePreviewExerciseType(exercise) === 'cardio' && hasValue(exercise.distance) ? `${Number(exercise.distance)} mi` : '—' }}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
+                    <p v-if="!day.exercises.length" class="global-library-inline-preview__empty-day">No exercises assigned to this day.</p>
 
-                    <p v-else class="global-library-inline-preview__empty-day">No exercises assigned to this day.</p>
-
-                    <div v-if="day.exercises.length" class="global-library-inline-preview__day-cards">
+                    <div v-if="day.exercises.length" class="global-library-inline-preview__exercise-list">
                       <article
                         v-for="(exercise, index) in day.exercises"
-                        :key="`preview-card-${day.name}-${exercise.id || exercise.exerciseId || index}`"
-                        class="global-library-inline-preview__exercise-card"
+                        :key="`preview-row-${day.name}-${exercise.id || exercise.exerciseId || index}`"
+                        class="global-library-inline-preview__exercise-row"
                       >
-                        <div class="global-library-inline-preview__exercise-card-head">
-                          <img
-                            :src="resolveExerciseImage(exercise)"
-                            class="global-library-inline-preview__exercise-thumb"
-                            :alt="`${exercise.name || exercise.ExerciseTitle || 'Exercise'} image`"
-                            loading="lazy"
-                            decoding="async"
-                            @error="onPreviewExerciseImageError"
-                          />
-                          <h6>{{ exercise.name || exercise.ExerciseTitle || 'Unnamed Exercise' }}</h6>
-                        </div>
-                        <div class="global-library-inline-preview__exercise-card-grid">
-                          <span v-if="resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.sets)"><strong>Sets:</strong> {{ Number(exercise.sets) }}</span>
-                          <span v-if="resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.reps)"><strong>Reps:</strong> {{ Number(exercise.reps) }}</span>
-                          <span v-if="resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.weight)"><strong>Weight:</strong> {{ Number(exercise.weight) }} lb</span>
-                          <span v-if="resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.restTime)"><strong>Rest:</strong> {{ Number(exercise.restTime) }} sec</span>
-                          <span v-if="resolvePreviewExerciseType(exercise) === 'cardio' && hasValue(exercise.duration)"><strong>Duration:</strong> {{ Number(exercise.duration) }} min</span>
-                          <span v-if="resolvePreviewExerciseType(exercise) === 'cardio' && hasValue(exercise.distance)"><strong>Distance:</strong> {{ Number(exercise.distance) }} mi</span>
+                        <img
+                          :src="resolveExerciseImage(exercise)"
+                          class="global-library-inline-preview__exercise-thumb"
+                          :alt="`${exercise.name || exercise.ExerciseTitle || 'Exercise'} image`"
+                          loading="lazy"
+                          decoding="async"
+                          @error="onPreviewExerciseImageError"
+                        />
+
+                        <div class="global-library-inline-preview__exercise-main">
+                          <h6 class="global-library-inline-preview__exercise-name">{{ exercise.name || exercise.ExerciseTitle || 'Unnamed Exercise' }}</h6>
+
+                          <div class="global-library-inline-preview__exercise-stats">
+                            <span v-if="resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.sets)" class="global-library-inline-preview__exercise-stat"><strong>Sets</strong>{{ Number(exercise.sets) }}</span>
+                            <span v-if="resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.reps)" class="global-library-inline-preview__exercise-stat"><strong>Reps</strong>{{ Number(exercise.reps) }}</span>
+                            <span v-if="resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.weight)" class="global-library-inline-preview__exercise-stat"><strong>Weight</strong>{{ Number(exercise.weight) }} lb</span>
+                            <span v-if="resolvePreviewExerciseType(exercise) === 'strength' && hasValue(exercise.restTime)" class="global-library-inline-preview__exercise-stat"><strong>Rest</strong>{{ Number(exercise.restTime) }} sec</span>
+                            <span v-if="resolvePreviewExerciseType(exercise) === 'cardio' && hasValue(exercise.duration)" class="global-library-inline-preview__exercise-stat"><strong>Duration</strong>{{ Number(exercise.duration) }} min</span>
+                            <span v-if="resolvePreviewExerciseType(exercise) === 'cardio' && hasValue(exercise.distance)" class="global-library-inline-preview__exercise-stat"><strong>Distance</strong>{{ Number(exercise.distance) }} mi</span>
+                          </div>
                         </div>
                       </article>
                     </div>
@@ -9018,6 +8871,11 @@ watch(
   margin-left: auto;
 }
 
+.day-footer-actions--contextual {
+  width: 100%;
+  justify-content: flex-end;
+}
+
 .empty-day-state {
   border: 1px dashed #c7d2e3;
   border-radius: 8px;
@@ -10954,10 +10812,10 @@ watch(
   width: 100%;
   background: #0f1b32;
   border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 6px;
-  padding: 12px;
+  border-radius: 8px;
+  padding: 14px;
   display: grid;
-  gap: 10px;
+  gap: 12px;
   overflow: hidden;
 }
 
@@ -10992,19 +10850,20 @@ watch(
 
 .global-library-inline-preview__body {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .global-library-inline-preview__overview {
   display: grid;
-  grid-template-columns: minmax(0, 230px) minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
 }
 
 .global-library-inline-preview__cover {
   width: 100%;
-  height: 168px;
-  border-radius: 6px;
+  height: 174px;
+  border-radius: 8px;
   border: 1px solid rgba(148, 163, 184, 0.3);
   object-fit: cover;
   background: #1f2937;
@@ -11012,7 +10871,7 @@ watch(
 
 .global-library-inline-preview__summary {
   display: grid;
-  gap: 7px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -11034,7 +10893,7 @@ watch(
 
 .global-library-inline-preview__meta-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
   gap: 8px;
 }
 
@@ -11063,6 +10922,7 @@ watch(
 .global-library-inline-preview__focus-block {
   margin-top: 2px;
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 8px;
 }
 
@@ -11094,9 +10954,9 @@ watch(
 
 .global-library-inline-preview__schedule {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   border-top: 1px solid rgba(148, 163, 184, 0.24);
-  padding-top: 10px;
+  padding-top: 12px;
 }
 
 .global-library-inline-preview__schedule-title {
@@ -11108,11 +10968,11 @@ watch(
 
 .global-library-inline-preview__day {
   border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 5px;
+  border-radius: 8px;
   background: #101f3a;
-  padding: 9px;
+  padding: 10px;
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .global-library-inline-preview__day-head {
@@ -11135,63 +10995,46 @@ watch(
   font-weight: 700;
 }
 
-.global-library-inline-preview__day-table-wrap {
-  overflow-x: auto;
+.global-library-inline-preview__exercise-list {
+  display: grid;
+  gap: 8px;
+}
+
+.global-library-inline-preview__exercise-row {
   border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 5px;
-}
-
-.global-library-inline-preview__day-table {
-  --bs-table-bg: transparent;
-  --bs-table-color: #e7eefc;
-  --bs-table-border-color: rgba(148, 163, 184, 0.2);
-  margin: 0;
-  min-width: 660px;
-}
-
-.global-library-inline-preview__day-table thead th {
-  background: rgba(30, 58, 138, 0.22);
-  color: #f8fbff;
-  font-size: 0.74rem;
-  white-space: nowrap;
-  padding: 7px 8px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.24);
-}
-
-.global-library-inline-preview__day-table tbody td {
-  color: #e7eefc;
-  font-size: 0.74rem;
-  padding: 7px 8px;
-  white-space: nowrap;
-  border-top: 1px solid rgba(148, 163, 184, 0.16);
-}
-
-.global-library-inline-preview__image-col {
-  width: 52px;
-}
-
-.global-library-inline-preview__image-cell {
-  width: 52px;
-  min-width: 52px;
-  max-width: 52px;
+  border-radius: 7px;
+  background: rgba(15, 23, 42, 0.38);
+  padding: 8px 9px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
 }
 
 .global-library-inline-preview__exercise-thumb {
-  width: 40px;
-  height: 40px;
-  border-radius: 4px;
+  width: 46px;
+  height: 46px;
+  border-radius: 6px;
   object-fit: cover;
   border: 1px solid rgba(148, 163, 184, 0.3);
   background: #1f2937;
   display: block;
+  flex: 0 0 auto;
 }
 
-.global-library-inline-preview__exercise-cell {
-  min-width: 190px;
+.global-library-inline-preview__exercise-main {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
 }
 
 .global-library-inline-preview__exercise-name {
-  display: inline-block;
+  margin: 0;
+  color: #f8fbff;
+  font-size: 0.83rem;
+  font-weight: 750;
+  line-height: 1.3;
+  display: block;
   overflow-wrap: anywhere;
 }
 
@@ -11201,47 +11044,30 @@ watch(
   font-size: 0.78rem;
 }
 
-.global-library-inline-preview__day-cards {
-  display: none;
-}
-
-.global-library-inline-preview__exercise-card {
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 5px;
-  background: rgba(15, 23, 42, 0.4);
-  padding: 8px;
-  display: grid;
+.global-library-inline-preview__exercise-stats {
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
-.global-library-inline-preview__exercise-card h6 {
-  margin: 0;
-  color: #f8fbff;
-  font-size: 0.79rem;
-  font-weight: 800;
-  overflow-wrap: anywhere;
-}
-
-.global-library-inline-preview__exercise-card-head {
-  display: flex;
+.global-library-inline-preview__exercise-stat {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-width: 0;
+  gap: 5px;
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  color: #dbeafe;
+  background: rgba(29, 78, 216, 0.2);
+  white-space: nowrap;
 }
 
-.global-library-inline-preview__exercise-card-head h6 {
-  min-width: 0;
-}
-
-.global-library-inline-preview__exercise-card-grid {
-  display: grid;
-  gap: 3px;
-  color: #d7e4fb;
-  font-size: 0.73rem;
-}
-
-.global-library-inline-preview__exercise-card-grid strong {
+.global-library-inline-preview__exercise-stat strong {
   color: #ffffff;
+  font-size: 0.66rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 @media (max-width: 768px) {
@@ -11415,8 +11241,8 @@ watch(
   }
 
   .global-library-inline-preview {
-    padding: 9px;
-    gap: 8px;
+    padding: 10px;
+    gap: 10px;
   }
 
   .global-library-inline-preview__actions {
@@ -11431,32 +11257,49 @@ watch(
 
   .global-library-inline-preview__overview {
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: 9px;
   }
 
   .global-library-inline-preview__cover {
-    height: 158px;
+    height: 150px;
   }
 
   .global-library-inline-preview__meta-grid {
-    grid-template-columns: repeat(1, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .global-library-inline-preview__day-table-wrap {
-    display: none;
+  .global-library-inline-preview__day {
+    padding: 9px;
+    gap: 8px;
   }
 
-  .global-library-inline-preview__day-cards {
-    display: grid;
-    gap: 7px;
-  }
-
-  .global-library-inline-preview__exercise-card-head {
-    align-items: flex-start;
+  .global-library-inline-preview__exercise-row {
+    padding: 7px 8px;
+    gap: 8px;
   }
 
   .global-library-inline-preview__exercise-thumb {
-    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+  }
+
+  .global-library-inline-preview__exercise-name {
+    font-size: 0.79rem;
+  }
+
+  .global-library-inline-preview__exercise-stats {
+    gap: 5px;
+  }
+
+  .global-library-inline-preview__exercise-stat {
+    font-size: 0.67rem;
+    padding: 2px 7px;
+  }
+}
+
+@media (max-width: 420px) {
+  .global-library-inline-preview__meta-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

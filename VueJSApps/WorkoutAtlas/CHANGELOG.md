@@ -6,6 +6,25 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.306] - 2026-11-18 - Workout plan preview responsive redesign and planner action cleanup
+
+- **Changed:** Reworked the read-only workout plan preview into a responsive row-based schedule presentation that replaces table/card split rendering with a unified exercise-row layout tuned for small and large viewports.
+- **Changed:** Preview metadata and focus blocks were compacted and made conditional so empty Objective/Goal values are hidden while populated values remain visible.
+- **Fixed:** Removed duplicate planner actions in edit/create flows to enforce a clearer hierarchy:
+  - Removed duplicate top `Save Changes` action from the edit header row (primary save remains in the existing footer action group).
+  - Removed duplicated quick-save controls near planner header (`Save as Draft`, `Publish`) to avoid conflicting action clusters.
+  - Removed duplicated bottom add-day editor and duplicate bottom day kebab action menu.
+- **Changed:** Day-level bottom add-exercise control is now contextual and appears only when a day already has more than one exercise, labeled `Add Exercise to End`.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`; `frontend/package.json`; `backend/package.json`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`.
+- **Verification:**
+  - Authenticated browser checks confirmed preview and planner behavior at `320/375/390/430/650/768/800/1024/1366` with no horizontal overflow or clipping in the redesigned preview container.
+  - Live planner checks confirmed consolidated actions: single primary `Save Changes`, single top add-day control, no bottom duplicate kebab menu, and contextual bottom `Add Exercise to End` rendering.
+  - Frontend timer/session regression tests passed (`11/11`).
+  - Frontend production build passed.
+  - Full backend test suite passed (`155/155`).
+  - Vue diagnostics for touched file were clean.
+- **Known unresolved issues:** Existing locale-key warnings observed in runtime console are unchanged by this release and remain outside this scope.
+
 ## [0.85.305.a1] - 2026-11-18 - Add Set solid-blue corrective fix
 
 - **Corrective target:** Follow-up to `0.85.305` after user acceptance failed because Add Set still rendered as dark-surface + blue-outline instead of solid blue.

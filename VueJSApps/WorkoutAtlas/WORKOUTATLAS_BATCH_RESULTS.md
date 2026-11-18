@@ -1,5 +1,25 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.306 - Workout plan preview responsive redesign and planner action cleanup
+- Scope: redesign Workout Plan Preview for responsive readability and clean up duplicate schedule-planner actions without changing existing save/publish back-end semantics or protected plan data.
+- Files changed: `frontend/src/views/Member/WorkoutBuilder.vue`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
+- Behavioral outcomes:
+	- Replaced preview table/card split with unified responsive exercise rows (`global-library-inline-preview__exercise-row` family) to eliminate clipping and horizontal overflow at narrow widths.
+	- Objective/Goal preview blocks now render only when populated.
+	- Planner actions consolidated: removed header duplicate Save Changes, removed planner quick-save duplicates, removed bottom duplicate add-day editor, and removed bottom duplicate kebab action menu.
+	- Bottom day-level add exercise is now contextual (`day.exercises.length > 1`) and relabeled `Add Exercise to End`.
+- Responsive/browser verification (authenticated session):
+	- Width matrix verified: 320, 375, 390, 430, 650, 768, 800, 1024, 1366.
+	- Programmatic geometry checks reported preview and schedule containers with `scrollWidth == clientWidth` and page overflow `0` at all tested widths.
+	- Required screenshots captured for 320, 390, 800, 1366 during live validation.
+	- Planner cleanup checks confirmed: `plannerQuickSaveActions=0`, `plannerBottomGroupActions=0`, single visible add-day control, single primary Save Changes action, and no bottom kebab anchor duplication.
+- Automated checks:
+	- Frontend timer/session tests: 11/11 passing (`node --test src/utils/workoutSessionTimer.test.mjs`).
+	- Frontend production build: passed (`npm run build`).
+	- Backend full suite: 155/155 passing (`npm test`).
+	- Vue diagnostics on touched file: no errors.
+- Caveats: Existing i18n missing-key warnings appeared in console and are pre-existing/non-blocking for this release scope.
+
 ## 0.85.305.a1 - Add Set solid blue corrective attempt #1
 - Scope: corrective subversion for 0.85.305 to fix user-reported Add Set visual mismatch (dark interior + blue outline) without changing placement or workout behavior.
 - Root cause (verified in live browser): Workout Log deep scope selector in `frontend/src/views/Member/LogWorkout.vue` overrode Add Set fill from `ExerciseSessionCard.vue` with `background: var(--wl-surface-2)`.
