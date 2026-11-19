@@ -1,5 +1,53 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.309 - Final functional QA and release-readiness investigation
+- Scope: verification-first 0.85 final acceptance audit without feature changes, server restarts, migrations, production mutations, deployment, or protected-data changes.
+- Repository baseline:
+	- Branch: `BETA`
+	- HEAD: `ecb2b654ec40d1211bcec53f79fb61ac33bc1ada`
+	- Backend version: `0.85.308`
+	- Frontend version: `0.85.308`
+	- Branch relationship: ahead 2 commits from `origin/BETA`
+	- Tracked working-tree changes: none
+	- Preserved untracked `.artifacts/` QA screenshots and existing unrelated untracked state.
+- Runtime availability:
+	- Existing backend listener on port `5000`: not reachable
+	- Existing frontend listener on port `5173`: not reachable
+	- Existing API probe on `http://localhost:3000/api/config`: HTTP unavailable
+	- No server restart was performed and no database migration or production-data mutation was executed.
+	- Browser pages were not shared, so live authenticated browser replay was not possible in this audit.
+- Automated regression evidence:
+	- Backend full suite: `160/160` passed, `0` failed.
+	- Project-owned frontend Node tests: `29/29` passed, `0` failed.
+	- A broad recursive frontend command accidentally discovered third-party `node_modules/html-to-md` tests and reported `46` dependency failures due to missing package source-module resolution; this was excluded from the project result and not treated as an application defect.
+	- Frontend production build: passed.
+	- Vue diagnostics: no errors found.
+- Existing implementation evidence retained in repository records:
+	- Featured-registration tests cover selected-plan copy, source preservation, no-selection registration, invalid/ineligible plans, and rollback.
+	- Session recovery tests cover two simultaneous unfinished sessions, third-session blocking, paused-session counting, independent pause/resume/completion, and orphan-plan recovery.
+	- History tests cover completed editing/deletion/date correction, strict HTTP validation, and local date-only formatting.
+	- Plan conversion tests cover source preservation, authorization, and blocked draft conversion.
+	- ExerciseScope tests cover CUSTOM defaulting, scope visibility, role authorization, and image/media safety.
+	- Prior live authenticated evidence covers mobile preview and multiple responsive breakpoints, but several live workflows remain environment-dependent.
+- Pending live verification:
+	- Disposable Plan Builder create/edit/publish/unpublish/convert/copy actions.
+	- Live featured-plan registration, retry duplicate prevention, and owner/PlanID confirmation.
+	- Live role/authorization matrix for trainer/admin/member Global and ExerciseScope operations.
+	- Real authenticated start/pause/resume/complete/session-limit/orphan cleanup flows.
+	- Live 320–1366 mobile matrices for all critical screens.
+	- Gateway exercise/plan cover delivery and missing-image fallbacks with a live authenticated runtime.
+- Protected data:
+	- PlanID `5` — `Stephen K – Lean Muscle` was not modified.
+	- The existing paused Monday Cardio session was not mutated or ended.
+- Manual content checklist remains separately outstanding: finish At-Home Full Body no-equipment and dumbbell variants, add missing exercises, add/approve Assisted Pull-Up Machine SYSTEM exercise and image, finish and publish approved remaining Global plans.
+- Classification:
+	- Confirmed software BLOCKER: none confirmed in this audit.
+	- PENDING VERIFICATION: live authenticated workflows and Gateway browser verification due unavailable runtime/browser context.
+	- CONTENT: workout-plan/exercise content checklist items.
+	- NON-BLOCKING: none newly confirmed; existing i18n missing-key warnings are already recorded in prior release entries.
+- Release verdict: `PENDING`; 0.85 is not claimed ready or user accepted until the live authenticated acceptance matrix is completed in an authorized runtime.
+- Exact next action: start or expose an authorized local/staging runtime and authenticated disposable test identities/browser context, without resetting services or modifying production data; then rerun the live acceptance matrix. If no blocker is found, perform final acceptance and document 0.85.309 before any later commit or deployment decision.
+
 ## 0.85.308 - Mobile workout plan preview compaction and readability polish
 - Scope: deliver mobile UX improvements for read-only Workout Plan preview without changing planner management workflows or backend contracts.
 - Files changed: `frontend/src/views/Member/WorkoutBuilder.vue`, `frontend/src/utils/workoutPreviewDescription.mjs`, `frontend/src/utils/workoutPreviewDescription.test.mjs`, `frontend/src/views/Member/WorkoutBuilder.preview-mobile-contract.test.mjs`, `frontend/package.json`, `backend/package.json`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
@@ -300,3 +348,29 @@
 - Verification: targeted workout-session backend regressions + frontend build (see terminal logs), manual live-browser check still recommended on iPhone-sized viewport and real active session flow.
 - Commit hash: `63727a9fea5a50a08909ef530d5e070649a1aa83`.
 - Caveats: no gateway or production-data changes; no destructive session-ending request is sent for the second active session.
+
+## 0.85.309 Live Acceptance Continuation - 2026-11-18
+- Runtime: frontend listener `http://localhost:5173` and backend listener `http://localhost:5000` were reachable. Frontend configured API base was `http://localhost:5000`; demo member, trainer, and admin browser sessions authenticated successfully.
+- PASS - disposable Plan Builder create: created `QA309 Disposable Plan` as PlanID `135`, added `QA Monday`, added `3/4 Sit-Up`, configured 3 sets and 10 reps, saved, and received the success modal. Refresh returned to the same Draft plan and preserved data.
+- PASS - Plan Builder exercise and day controls: live browser verified adding a named day, adding an exercise, Sets/Reps editing, and consolidated save behavior.
+- PASS - live Global discovery: Find Plans showed 5 published Global plans. All 5 were labeled Published and Source Global/Plan Type Global in the live 390px and 800px layouts.
+- PASS - live Plan Preview: `Maintain Health – Total Body Wellness` opened read-only at 390px. It showed full schedule exercise names and compact metadata, `Show Details`/`Show Less` worked, and `documentElement.scrollWidth === clientWidth` was 390/390.
+- PASS - live Global copy: authorized member copied `Maintain Health – Total Body Wellness` and received PlanID `136` plus `Workout Plan Added!`; the copy remained independently editable and appeared in My Plans.
+- PASS - 390px/800px mobile geometry: no horizontal overflow was observed in Workout Planner Find Plans, Plan Preview, Workout Log, Exercise search, and bottom-navigation surfaces.
+- PASS - workout lifecycle start: PlanID `135` started successfully and loaded `QA Monday`, `3/4 Sit-Up`, and set controls. The live timer displayed `00:00:00`/running values and increased during verification.
+- PASS - pause/resume: live `/workouts` and `/workouts/135` surfaces exposed Pause and Play controls; Pause changed to Play, resume restored Pause, and timer progressed without duplicate timer rendering.
+- PASS - set/exercise/completion: completing the disposable set/exercise/workout created a completed session. History displayed the completed session, `00:01:07`, one exercise, status Completed, and readable `Wednesday, November 18, 2026` date text.
+- PASS - historical date correction: edited disposable workout date from `2026-11-18` to `2026-11-17`; save moved the record to the corrected date with no duplicate and recalculated the summary.
+- PASS - historical deletion: confirmed deletion removed only the disposable QA309 record. The 11/17 summary became 0 completed sessions and `00:00:00`.
+- PASS - HTTP 400 history regression: opening and switching Workout Log tabs generated no POST `/api/workout-log/session`; no `exercises array is required.` response appeared.
+- PASS - ExerciseScope search visibility: member `/exercises` at 390px and 800px rendered System Exercise results with complete names and no overflow. Existing exercise card/preview images displayed in browser surfaces.
+- PASS - role visibility: member Create Plan did not expose Global Plan; trainer and admin Create Plan views displayed `Global Plan (Shown to All)`.
+- PASS - Gateway media fallback: `GET /api/media/default-workout-plan-image` returned HTTP 200 and valid JPEG content. Live `/api/media/workout-plans/135/cover` returned HTTP 401 without an authenticated media session, as required for protected access.
+- BLOCKED - publish/unpublish live replay: controls loaded for the disposable plan but stale-loading/navigation behavior prevented a reliable live persisted status transition in this run. This is not treated as a confirmed defect and no live user acceptance is claimed.
+- BLOCKED - two-session limit: only one independent disposable live session was created and completed. A separate second session and subsequent third-start rejection could not be safely exercised with available disposable records.
+- BLOCKED - Featured registration: live `/api/featured-workout-plans` returned an empty `workoutLists` array. No safe uncontrolled registration account or Featured source was available, so live selected-plan copy/ownership/retry verification remains blocked.
+- BLOCKED - trainer/admin live mutation: trainer and admin UI visibility passed, but no disposable server mutation or Featured mark/unmark mutation was performed.
+- BLOCKED - ExerciseScope mutation: no shared-data disposable create/edit mutation was performed. Live search visibility and role UI visibility passed.
+- NON-BLOCKING - localhost Google sign-in: origin/client-ID 403 warning; demo login remained functional.
+- NON-BLOCKING - nutrition unrelated API failures: unrelated nutrition calls returned HTTP 500 during browser navigation; outside requested acceptance scope and not repaired.
+- Protected data: PlanID 5 — Stephen K – Lean Muscle and the existing paused Monday Cardio session were not modified. Existing personal history was not edited or deleted except for the disposable QA309 record.
