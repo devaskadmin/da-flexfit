@@ -18,5 +18,6 @@
 | WA-CONTENT-003 | Assisted Pull-Up Machine SYSTEM exercise and image | CONTENT | 0.85 | P2 | PROPOSED | Manual content checklist | User approval |
 | WA-CONTENT-004 | Remaining Global plans and publication | CONTENT | 0.85 | P2 | PROPOSED | Manual content checklist | User approval |
 | WA-DOCS-001 | Enterprise documentation and AI governance | DOCUMENTATION | 0.85.309 | P0 | CLOSED | DEVOPS-DOCS-001; documentation inventory, canonical docs, agent instructions, prompts, link validation completed | No remaining documentation implementation task |
+| WA-UI-TABLET-001 | Find Plans tablet table has internal horizontal scrolling and potentially clipped actions | UI REGRESSION | 0.85.309 acceptance review | P2 | USER-REPORTED / IMPLEMENTATION PENDING | 800px browser viewport, 60% visual preview scale; evidence reports desktop-style table, internal horizontal scrollbar, cramped metadata, and potentially clipped action buttons; page/component overflow was not independently replayed under this task | Next task: Tablet Find Plans responsiveness; escalate P1 if action accessibility is confirmed blocked |
 
 Older implementation reports are evidence sources, not user acceptance. Do not duplicate a corrective task because it appears in multiple release entries.

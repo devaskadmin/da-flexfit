@@ -11,3 +11,5 @@
 | History correction/deletion | Existing coverage | Live-tested disposable record | No | LIVE TESTED |
 | HTTP 400 regression | Passed | Live-tested | No | LIVE TESTED |
 | 390/800 mobile | Existing coverage | Live-tested | No | LIVE TESTED |
+| WA-UI-TABLET-001 page-level overflow | Targeted browser test required | Pending | No | USER-REPORTED / IMPLEMENTATION PENDING |
+| WA-UI-TABLET-001 internal table overflow and action access | Test at 768/800/820/1024px | Pending | No | USER-REPORTED / IMPLEMENTATION PENDING |
