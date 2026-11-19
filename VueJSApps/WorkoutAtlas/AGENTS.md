@@ -26,3 +26,19 @@ WorkoutAtlas is a Vue 3/Vite frontend and Node.js/Express/MySQL application for 
 
 ## Change Control
 Read `docs/governance/CHANGE-CONTROL.md` and `docs/ai-development/AI-SAFETY-GUARDRAILS.md` before actions. Update canonical docs in place; do not create duplicate reports.
+
+## Repository Publication Security
+
+Before every local commit:
+- Review staged paths and staged diff.
+- Verify `.local-only/`, `.artifacts/`, environment overrides, certificates, and private-key patterns are excluded.
+- Confirm no credentials or private infrastructure details are included.
+
+Before every GitHub push:
+- Explicit user authorization is mandatory.
+- Pass the local `scripts/security/security_check.ps1` gate.
+- Review all unpublished commits against origin/BETA.
+- Confirm no unresolved critical finding remains.
+- Never infer push safety from a passing build or clean working tree.
+
+Secrets must not be copied into prompts, handoffs, reports, or documentation. Gitignore is not privacy against external AI or chat systems.

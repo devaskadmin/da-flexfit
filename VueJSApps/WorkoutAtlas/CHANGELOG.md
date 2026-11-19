@@ -3958,7 +3958,7 @@ All notable changes to **FlexFit** are documented in this file.
 ### Infrastructure
 - Frontend static site: `https://flex-fit-lkzh.onrender.com`
 - Backend web service: `https://dev-asterisks-github.onrender.com`
-- DB host: `65.181.116.252` (Hosting.com/cPanel, remote access enabled for Render IPs)
+- DB host: private and maintained in the local-only infrastructure reference
 
 ---
 

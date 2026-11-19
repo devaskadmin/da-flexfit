@@ -26,3 +26,9 @@ A request to “test the application” is not blanket destructive authorization
 - Existing production accounts.
 
 If disposal cannot be proven, do not delete or mutate the record.
+
+## Repository publication safeguards
+
+Before commit: review staged paths/diff, secret patterns, private paths, `.local-only/`, `.artifacts/`, and environment overrides.
+
+Before push: explicit user authorization is mandatory. Review unpublished commits, pass the local security gate, and remediate unresolved critical findings. Gitignore and passing application tests do not prove repository publication safety.

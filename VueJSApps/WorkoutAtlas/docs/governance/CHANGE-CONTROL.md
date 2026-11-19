@@ -14,3 +14,7 @@
 - Review source diff and test evidence.
 - Obtain user approval for HIGH/CRITICAL work.
 - Treat user acceptance separately from automated pass.
+
+## Git publication gate
+
+CRITICAL Git publication requires explicit approval. Before push, review staged content, all unpublished commits, local-only exclusions, secret patterns, and private infrastructure references. A local commit or passing build does not authorize push.
