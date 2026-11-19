@@ -11,5 +11,5 @@
 | History correction/deletion | Existing coverage | Live-tested disposable record | No | LIVE TESTED |
 | HTTP 400 regression | Passed | Live-tested | No | LIVE TESTED |
 | 390/800 mobile | Existing coverage | Live-tested | No | LIVE TESTED |
-| WA-UI-TABLET-001 page-level overflow | Targeted browser test required | Pending | No | USER-REPORTED / IMPLEMENTATION PENDING |
-| WA-UI-TABLET-001 internal table overflow and action access | Test at 768/800/820/1024px | Pending | No | USER-REPORTED / IMPLEMENTATION PENDING |
+| WA-UI-TABLET-001 page-level overflow | Passed at 320/390/768/800/820/1024/1366px | Read-only browser-tested; no mutation | No | USER ACCEPTANCE PENDING |
+| WA-UI-TABLET-001 internal table overflow and action access | Passed at 768/800/820/1024px; cards replace table | Read-only browser-tested; all card actions visible | No | USER ACCEPTANCE PENDING |

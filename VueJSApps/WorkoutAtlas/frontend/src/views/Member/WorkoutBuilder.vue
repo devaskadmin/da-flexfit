@@ -11515,6 +11515,47 @@ watch(
   }
 }
 
+@media (min-width: 769px) and (max-width: 1024px) {
+  .global-library-table-wrap {
+    display: none;
+  }
+
+  .global-library-mobile-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .global-library-mobile-card {
+    min-width: 0;
+  }
+
+  .global-library-mobile-card__cover {
+    height: 160px;
+  }
+
+  .global-library-mobile-card__name {
+    overflow-wrap: anywhere;
+  }
+
+  .global-library-mobile-card__meta {
+    min-width: 0;
+  }
+
+  .global-library-mobile-card__actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .global-library-mobile-card__actions--manage {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .global-library-mobile-card__actions .global-plans-table__btn {
+    min-width: 0;
+    min-height: 36px;
+  }
+}
+
 @media (max-width: 420px) {
   .global-library-inline-preview__meta-grid {
     grid-template-columns: minmax(0, 1fr);

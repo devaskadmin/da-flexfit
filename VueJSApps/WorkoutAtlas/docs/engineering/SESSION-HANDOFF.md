@@ -55,3 +55,11 @@ No implementation action is authorized until scoped approval is provided. The ex
 - No server restart or infrastructure changes.
 - No package-version bump.
 - No credential, cookie, or secret recording.
+
+## WA-UI-TABLET-001 closeout
+
+- Implementation complete in `frontend/src/views/Member/WorkoutBuilder.vue`.
+- Focused contract tests and Vite build passed.
+- Live browser checks passed at 320, 390, 768, 800, 820, 1024, and 1366px.
+- Search, no-match/empty behavior, and read-only preview were verified without persistent mutation.
+- Status: USER ACCEPTANCE PENDING.

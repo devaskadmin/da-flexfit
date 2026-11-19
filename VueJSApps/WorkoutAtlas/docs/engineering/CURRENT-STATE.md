@@ -50,3 +50,9 @@ Current evidence: implementation and automated coverage exist for many areas. Li
 - Architecture: [../architecture/SYSTEM-ARCHITECTURE.md](../architecture/SYSTEM-ARCHITECTURE.md)
 - Database: [../database/SCHEMA.md](../database/SCHEMA.md)
 - Product history: [../../CHANGELOG.md](../../CHANGELOG.md)
+
+## UI corrective closeout
+
+- `WA-UI-TABLET-001` implementation is code complete and automated/browser verification passed.
+- Find Plans uses cards at 769–1024px and preserves the desktop table above 1024px.
+- Automated and live read-only viewport evidence does not replace explicit user acceptance.
