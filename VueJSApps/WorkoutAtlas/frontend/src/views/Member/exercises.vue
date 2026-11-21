@@ -5,6 +5,7 @@
    import DateDropDown from "@/components/DropDownDate.vue"; // not template folder
   import { API_BASE } from '@/config/env';
   import { DEFAULT_EXERCISE_IMAGE, getExerciseImage, isDefaultExerciseImageReference } from '@/utils/exerciseImage';
+  import { getRecordingFieldGroups, getRecordingFieldLabels } from '@/utils/exerciseRecordingFields';
   import { useExerciseFiltering } from '@/composable/exerciseFilters';
   import { showAlertDialog, showConfirmDialog } from '@/utils/browserDialogs';
   import Swal from 'sweetalert2';
@@ -1221,6 +1222,22 @@ const normalizedSelectedRecordingType = computed(() => {
   const normalizedWorkoutType = String(selectedExerciseDetails.value?.WorkoutType || '').trim().toLowerCase();
   return normalizedWorkoutType === 'strength' ? 'Sets & Reps' : 'Time & Distance';
 });
+
+const logShowAdditionalFields = ref(false);
+const logFieldLabels = getRecordingFieldLabels();
+const logRecordingFieldGroups = computed(() => getRecordingFieldGroups(selectedExerciseDetails.value || { RecordingType: normalizedSelectedRecordingType.value }));
+
+const logPrimaryFields = computed(() => logRecordingFieldGroups.value.primary.map((key) => ({
+  key,
+  label: logFieldLabels[key],
+  shortLabel: key === 'weight' ? 'LBS' : key === 'duration' ? 'Time' : key === 'calories' ? 'Cal' : key === 'distance' ? 'Dist' : key === 'reps' ? 'Reps' : 'Sets',
+})));
+
+const logAdditionalFields = computed(() => logRecordingFieldGroups.value.secondary.map((key) => ({
+  key,
+  label: logFieldLabels[key],
+  shortLabel: key === 'weight' ? 'LBS' : key === 'duration' ? 'Time' : key === 'calories' ? 'Cal' : key === 'distance' ? 'Dist' : key === 'reps' ? 'Reps' : 'Sets',
+})));
 
 const usesSetsAndRepsLogging = computed(() => {
   const normalized = normalizedSelectedRecordingType.value.toLowerCase();
@@ -4743,42 +4760,42 @@ const toggleAdminGlobalExercises = async () => {
                     </a>
                   </section>
 
-                  <div class="log-selected-panel__grid">
-                    <div v-if="usesSetsAndRepsLogging" class="log-field">
-                      <label class="form-label log-field__label">Weight (lbs)</label>
-                      <input v-model.number="exercise.weight" type="number" class="form-control log-field__input" min="1" />
+                  <div class="log-recording-fields">
+                    <div class="recording-primary-row log-recording-primary-row" aria-label="Primary exercise fields">
+                      <label v-for="field in logPrimaryFields" :key="field.key" class="recording-field log-recording-field">
+                        <span class="recording-field-label-full">{{ field.label }}:</span>
+                        <span class="recording-field-label-short" aria-hidden="true">{{ field.shortLabel }}:</span>
+                        <input v-model.number="exercise[field.key]" type="number" class="form-control log-field__input" min="0" :aria-label="field.label" />
+                      </label>
+                      <button
+                        type="button"
+                        class="recording-fields-toggle"
+                        :aria-label="logShowAdditionalFields ? 'Hide Additional Fields' : 'Show Additional Fields'"
+                        :title="logShowAdditionalFields ? 'Hide Additional Fields' : 'Show Additional Fields'"
+                        :aria-expanded="logShowAdditionalFields ? 'true' : 'false'"
+                        aria-controls="log-additional-fields"
+                        @click="logShowAdditionalFields = !logShowAdditionalFields"
+                      >
+                        <i :class="logShowAdditionalFields ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'" aria-hidden="true"></i>
+                        <span class="recording-fields-toggle-label">{{ logShowAdditionalFields ? 'Less' : 'More' }}</span>
+                      </button>
                     </div>
-                    <div v-if="usesSetsAndRepsLogging" class="log-field">
-                      <label class="form-label log-field__label">Reps</label>
-                      <input v-model.number="exercise.reps" type="number" class="form-control log-field__input" min="1" />
-                    </div>
-                    <div v-if="usesSetsAndRepsLogging" class="log-field">
-                      <label class="form-label log-field__label">Sets</label>
-                      <input v-model.number="exercise.sets" type="number" class="form-control log-field__input" min="1" />
-                    </div>
-                    <div v-if="usesTimeDistanceLogging" class="log-field">
-                      <label class="form-label log-field__label">Distance (mi)</label>
-                      <input v-model.number="exercise.distance" type="number" class="form-control log-field__input" min="0" step="0.01" />
-                    </div>
-                    <div v-if="usesTimeDistanceLogging" class="log-field">
-                      <label class="form-label log-field__label">Laps / Rep</label>
-                      <input v-model.number="exercise.lapsRep" type="number" class="form-control log-field__input" min="0" />
-                    </div>
-                    <div v-if="usesTimeDistanceLogging" class="log-field">
-                      <label class="form-label log-field__label">Calories</label>
-                      <input v-model.number="exercise.calories" type="number" class="form-control log-field__input" min="0" />
-                    </div>
-                    <div v-if="usesTimeDistanceLogging" class="log-field">
-                      <label class="form-label log-field__label">Speed (mph)</label>
-                      <input v-model.number="exercise.speed" type="number" class="form-control log-field__input" min="0" step="0.01" />
+
+                    <div
+                      v-if="logShowAdditionalFields"
+                      id="log-additional-fields"
+                      class="recording-additional-row log-recording-additional-row"
+                      aria-label="Additional exercise fields"
+                    >
+                      <label v-for="field in logAdditionalFields" :key="field.key" class="recording-field log-recording-field">
+                        <span class="recording-field-label-full">{{ field.label }}:</span>
+                        <span class="recording-field-label-short" aria-hidden="true">{{ field.shortLabel }}:</span>
+                        <input v-model.number="exercise[field.key]" type="number" class="form-control log-field__input" min="0" :aria-label="field.label" />
+                      </label>
                     </div>
                   </div>
 
                   <div v-if="usesTimeDistanceLogging" class="log-timer-row">
-                    <div class="log-field log-field--duration">
-                      <label class="form-label log-field__label">Duration (min)</label>
-                      <input v-model.number="exercise.duration" type="number" class="form-control log-field__input" min="0" step="0.01" />
-                    </div>
                     <div class="log-timer-row__controls">
                       <button class="btn btn-outline-secondary" type="button" @click="toggleStopwatch">{{ stopwatchRunning ? 'Stop' : 'Start' }}</button>
                       <div class="log-timer-row__elapsed" aria-live="polite">{{ formattedStopwatch }}</div>
@@ -7033,6 +7050,62 @@ Please Select an excerise
 .log-selected-panel__body {
   display: grid;
   gap: 16px;
+}
+
+/* Universal workout recording field layout */
+.log-recording-fields {
+  width: 100%;
+  min-width: 0;
+}
+
+.log-recording-primary-row,
+.log-recording-additional-row {
+  width: 100%;
+  min-width: 0;
+}
+
+.log-recording-primary-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 44px;
+}
+
+.log-recording-field,
+.log-recording-field label {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 4px;
+  min-width: 0;
+}
+
+.log-recording-field input {
+  flex: 1 1 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.log-recording-fields .recording-field-label-short,
+.log-recording-fields .recording-fields-toggle-label-short {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .log-recording-primary-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 44px;
+    gap: 6px;
+  }
+
+  .log-recording-additional-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .log-recording-fields .recording-field-label-full {
+    display: none;
+  }
+
+  .log-recording-fields .recording-field-label-short {
+    display: inline;
+  }
 }
 
 .exercise-video-panel {

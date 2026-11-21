@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { DEFAULT_EXERCISE_IMAGE, getExerciseImage } from '@/utils/exerciseImage';
+import { getRecordingFieldGroups } from '@/utils/exerciseRecordingFields';
 
 const props = defineProps({
   exercise: {
@@ -20,6 +21,10 @@ const props = defineProps({
     default: false,
   },
   canMoveDown: {
+    type: Boolean,
+    default: false,
+  },
+  readOnly: {
     type: Boolean,
     default: false,
   },
@@ -61,31 +66,30 @@ function completeExercise(exerciseId) {
   emit('exercise-completed', exerciseId);
 }
 
-const workoutType = computed(() => {
-  const raw = String(
-    props.exercise.WorkoutType ||
-    props.exercise.workoutType ||
-    ''
-  ).trim().toLowerCase();
-  if (raw === 'cardio') return 'cardio';
-  if (raw === 'other') return 'other';
-  if (raw === 'strength') return 'strength';
-  // Legacy fallback: honour the isCardio prop, default to strength
-  if (props.isCardio) return 'cardio';
-  return 'strength';
-});
+const recordingFields = computed(() => getRecordingFieldGroups(props.exercise));
+const showAdditionalFields = ref(false);
+const workoutTypeBadgeLabel = computed(() => normalizeWorkoutTypeBadge(props.exercise));
 
-const completedSets = computed(() =>
-  props.exercise.sessionSets.filter((s) => s.done).length
-);
-const totalSets = computed(() => props.exercise.sessionSets.length);
-const allDone = computed(() => completedSets.value === totalSets.value && totalSets.value > 0);
+const sessionFieldDefinitions = {
+  weight: { key: 'weight', label: 'Weight (lbs)', shortLabel: 'LBS' },
+  reps: { key: 'reps', label: 'Reps', shortLabel: 'Reps' },
+  sets: { key: 'sets', label: 'Sets', shortLabel: 'Sets' },
+  duration: { key: 'duration', label: 'Target Time (min)', shortLabel: 'Time' },
+  calories: { key: 'calories', label: 'Target Calories', shortLabel: 'Cal' },
+  distance: { key: 'distance', label: 'Distance (mi)', shortLabel: 'Dist' },
+};
 
-const hasPrefilledValues = computed(() =>
-  (props.exercise.sessionSets || []).some((set) => Boolean(set?.prefilledFromLastWorkout))
-);
+const sessionPrimaryFields = computed(() => recordingFields.value.primary.map((key) => sessionFieldDefinitions[key]).filter(Boolean));
+const sessionAdditionalFields = computed(() => recordingFields.value.secondary.map((key) => sessionFieldDefinitions[key]).filter(Boolean));
 
-const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input--prefilled' : '');
+const sessionFieldValue = (field) => {
+  const exercise = props.exercise || {};
+  if (field.key === 'sets') return Number(exercise.sets ?? exercise.sessionSets?.length ?? 0);
+  if (field.key === 'duration') return Number(exercise.duration ?? 0);
+  if (field.key === 'calories') return Number(exercise.calories ?? 0);
+  if (field.key === 'distance') return Number(exercise.distance ?? 0);
+  return Number(exercise[field.key] ?? 0);
+};
 
 const resolveExerciseImage = (exercise) => {
   const safeExercise = exercise && typeof exercise === 'object' ? exercise : {};
@@ -173,6 +177,18 @@ onUnmounted(() => {
   document.removeEventListener('pointerdown', onDocumentPointerDown);
   document.removeEventListener('keydown', onDocumentKeyDown);
 });
+
+const workoutType = computed(() => {
+  const recordingType = recordingFields.value.recordingType;
+  if (recordingType === 'time-distance') return 'cardio';
+  if (recordingType === 'sets-reps' || recordingType === 'custom') return 'strength';
+
+  if (props.isCardio) return 'cardio';
+  const raw = String(props.exercise.WorkoutType || props.exercise.workoutType || '').trim().toLowerCase();
+  if (raw === 'cardio') return 'cardio';
+  if (raw === 'other') return 'other';
+  return 'strength';
+});
 </script>
 
 <template>
@@ -198,7 +214,7 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="sec-header-actions">
-        <span class="sec-type-chip">{{ exercise.workoutType || 'Strength' }}</span>
+        <span class="sec-type-chip">{{ workoutTypeBadgeLabel || 'Strength' }}</span>
         <span class="sec-sets-summary" :class="{ 'sec-sets-summary--done': allDone }">
           <i v-if="allDone" class="fa-solid fa-circle-check"></i>
           <i v-else class="fa-regular fa-circle"></i>
@@ -279,6 +295,53 @@ onUnmounted(() => {
     <!-- ── Collapsible body ─────────────────────────────────────────────── -->
     <div v-show="isExpanded" class="sec-body">
 
+    <div class="session-recording-fields">
+      <div class="recording-primary-row session-recording-primary-row" aria-label="Primary exercise fields">
+        <label v-for="field in sessionPrimaryFields" :key="field.key" class="recording-field">
+          <span class="recording-field-label-full">{{ field.label }}</span>
+          <span class="recording-field-label-short" aria-hidden="true">{{ field.shortLabel }}</span>
+          <input
+            :value="sessionFieldValue(field)"
+            type="number"
+            min="0"
+            :readonly="readOnly"
+            :disabled="readOnly"
+          />
+        </label>
+        <button
+          type="button"
+          class="recording-fields-toggle"
+          :aria-label="showAdditionalFields ? 'Hide Additional Fields' : 'Show Additional Fields'"
+          :title="showAdditionalFields ? 'Hide Additional Fields' : 'Show Additional Fields'"
+          :aria-expanded="showAdditionalFields ? 'true' : 'false'"
+          aria-controls="session-additional-fields"
+          @click="showAdditionalFields = !showAdditionalFields"
+        >
+          <i :class="showAdditionalFields ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'" aria-hidden="true"></i>
+          <span class="recording-fields-toggle-label">{{ showAdditionalFields ? 'Less' : 'More' }}</span>
+        </button>
+      </div>
+
+      <div
+        v-if="showAdditionalFields"
+        id="session-additional-fields"
+        class="recording-additional-row session-recording-additional-row"
+        aria-label="Additional exercise fields"
+      >
+        <label v-for="field in sessionAdditionalFields" :key="field.key" class="recording-field">
+          <span class="recording-field-label-full">{{ field.label }}</span>
+          <span class="recording-field-label-short" aria-hidden="true">{{ field.shortLabel }}</span>
+          <input
+            :value="sessionFieldValue(field)"
+            type="number"
+            min="0"
+            :readonly="readOnly"
+            :disabled="readOnly"
+          />
+        </label>
+      </div>
+    </div>
+
     <!-- ── STRENGTH Sets Table ─────────────────────────────────────────── -->
     <div v-if="workoutType === 'strength'" class="cardio-table-wrap strength-table strength-table--desktop">
       <div class="cardio-3col-table">
@@ -307,6 +370,7 @@ onUnmounted(() => {
                 placeholder="0"
                 @input="emit('update-set', exercise.id, idx, 'weight', $event.target.value)"
                 @blur="emit('commit-set-edit', exercise.id, idx)"
+                :disabled="props.readOnly"
               />
             </div>
           </div>
@@ -323,6 +387,7 @@ onUnmounted(() => {
                 placeholder="0"
                 @input="emit('update-set', exercise.id, idx, 'reps', $event.target.value)"
                 @blur="emit('commit-set-edit', exercise.id, idx)"
+                :disabled="props.readOnly"
               />
               <div class="c3-inline-actions" role="group" aria-label="Set actions">
                 <button
@@ -370,6 +435,7 @@ onUnmounted(() => {
             placeholder="0"
             @input="emit('update-set', exercise.id, idx, 'weight', $event.target.value)"
             @blur="emit('commit-set-edit', exercise.id, idx)"
+            :disabled="props.readOnly"
           />
         </label>
 
@@ -383,6 +449,7 @@ onUnmounted(() => {
             placeholder="0"
             @input="emit('update-set', exercise.id, idx, 'reps', $event.target.value)"
             @blur="emit('commit-set-edit', exercise.id, idx)"
+            :disabled="props.readOnly"
           />
         </label>
 
@@ -437,6 +504,7 @@ onUnmounted(() => {
                 placeholder="0"
                 @input="emit('update-set', exercise.id, idx, 'duration', $event.target.value)"
                 @blur="emit('commit-set-edit', exercise.id, idx)"
+                :disabled="props.readOnly"
               />
             </div>
           </div>
@@ -452,6 +520,7 @@ onUnmounted(() => {
                 placeholder="Optional notes"
                 @input="emit('update-set', exercise.id, idx, 'notes', $event.target.value)"
                 @blur="emit('commit-set-edit', exercise.id, idx)"
+                :disabled="props.readOnly"
               />
             </div>
           </div>
@@ -517,6 +586,7 @@ onUnmounted(() => {
               placeholder="0"
               @input="emit('update-set', exercise.id, idx, 'duration', $event.target.value)"
               @blur="emit('commit-set-edit', exercise.id, idx)"
+              :disabled="props.readOnly"
             />
           </div>
         </div>
@@ -533,6 +603,7 @@ onUnmounted(() => {
               placeholder="0"
               @input="emit('update-set', exercise.id, idx, 'caloriesBurned', $event.target.value)"
               @blur="emit('commit-set-edit', exercise.id, idx)"
+              :disabled="props.readOnly"
             />
           </div>
         </div>
@@ -550,6 +621,7 @@ onUnmounted(() => {
               placeholder="0.00"
               @input="emit('update-set', exercise.id, idx, 'distanceMiles', $event.target.value)"
               @blur="emit('commit-set-edit', exercise.id, idx)"
+              :disabled="props.readOnly"
             />
           </div>
         </div>
@@ -567,6 +639,7 @@ onUnmounted(() => {
               placeholder="0.0"
               @input="emit('update-set', exercise.id, idx, 'speedMph', $event.target.value)"
               @blur="emit('commit-set-edit', exercise.id, idx)"
+              :disabled="props.readOnly"
             />
           </div>
         </div>
@@ -1038,6 +1111,198 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
+/* ─── Recording field summary */
+.session-recording-fields {
+  display: block;
+  min-width: 0;
+  width: 100%;
+  padding: 10px 12px 0;
+  box-sizing: border-box;
+}
+
+.session-recording-primary-row,
+.session-recording-additional-row {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
+
+.session-recording-primary-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 44px;
+  align-items: end;
+}
+
+.session-recording-additional-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 12px;
+}
+
+.session-recording-fields .recording-field {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.session-recording-fields .recording-field input {
+  flex: 1 1 0;
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  box-sizing: border-box;
+}
+
+.recording-fields-toggle {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  gap: 1px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.recording-fields-toggle i {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  background: #2563EB;
+  color: #FFFFFF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.recording-fields-toggle-label {
+  display: block;
+  width: 44px;
+  text-align: center;
+  font-size: 0.62rem;
+  line-height: 1;
+}
+
+@media (max-width: 768px) {
+  .session-recording-fields .recording-field,
+  .session-recording-fields label.recording-field {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .session-recording-fields .recording-field input {
+    flex: 1 1 0;
+    width: 100%;
+    min-width: 0;
+    height: 36px;
+    box-sizing: border-box;
+  }
+
+  .recording-fields-toggle {
+    display: inline-flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    gap: 1px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #475569;
+    cursor: pointer;
+    padding: 0;
+    white-space: nowrap;
+  }
+
+  .recording-fields-toggle i {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 50%;
+    background: #2563EB;
+    color: #FFFFFF;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .recording-fields-toggle-label {
+    display: block;
+    width: 44px;
+    text-align: center;
+    font-size: 0.62rem;
+    line-height: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .session-recording-primary-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 44px;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .session-recording-additional-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .session-recording-fields .recording-field {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .recording-field-label-full,
+  .recording-fields-toggle-label-full { display: none; }
+  .recording-field-label-short,
+  .recording-fields-toggle-label-short { display: inline; }
+
+  .recording-fields-toggle {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+  }
+
+  .recording-fields-toggle i {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+  }
+
+  .recording-fields-toggle-label { font-size: 0.62rem; line-height: 1; }
+}
+
+@media (max-width: 480px) {
+  .session-recording-primary-row,
+  .session-recording-additional-row { gap: 4px; }
+  .session-recording-fields .recording-field { gap: 2px; }
+  .session-recording-fields .recording-field input { padding-inline: 4px !important; }
+  .recording-field-label-short { font-size: 0.62rem !important; }
+}
+
 /* ─── Cardio Table Wrapper — full width, no cap */
 .cardio-table-wrap {
   width: 100%;
@@ -1243,7 +1508,6 @@ onUnmounted(() => {
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
   white-space: nowrap;
-  flex-shrink: 0;
 }
 
 .c3-rm-btn:hover {
@@ -1312,30 +1576,6 @@ onUnmounted(() => {
 
 .c3-finish-btn--done:hover {
   background: #166534;
-}
-
-/* ─── Remove Set ──────────────────────────── */
-.remove-set-btn {
-  background: none;
-  border: none;
-  color: #d1d5db;
-  font-size: 0.75rem;
-  padding: 4px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: color 0.15s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.remove-set-btn:hover:not(:disabled) {
-  color: #ef4444;
-}
-
-.remove-set-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
 }
 
 /* ─── Footer ──────────────────────────────── */
@@ -1654,8 +1894,6 @@ onUnmounted(() => {
     width: 30px;
     min-width: 30px;
     height: 30px;
-    font-size: 12px;
-    border-radius: 7px;
   }
 
   /* §5 Cardio set layout — 2-column grid (Duration|Calories / Distance|Speed) */
@@ -1812,10 +2050,6 @@ onUnmounted(() => {
     min-height: 44px;
     width: 100%;
     max-width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-    justify-content: center;
-    margin: 0;
   }
 
   .c3-finish-btn {
@@ -1894,5 +2128,50 @@ onUnmounted(() => {
     height: 38px;
     font-size: 0.78rem;
   }
+}
+
+/* Final specificity guards for recording layout */
+@media (max-width: 768px) {
+  .session-recording-primary-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 44px;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .session_recording-additional-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .session-recording-fields .recording-field {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .recording-field-label-full,
+  .recording-fields-toggle-label-full { display: none; }
+  .recording-field-label-short,
+  .recording-fields-toggle-label-short { display: inline; }
+
+  .recording-fields-toggle {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+  }
+
+  .recording-fields-toggle i {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+  }
+
+  .recording-fields-toggle-label { font-size: 0.62rem; line-height: 1; }
 }
 </style>

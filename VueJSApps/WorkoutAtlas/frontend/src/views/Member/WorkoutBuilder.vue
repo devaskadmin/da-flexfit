@@ -11,6 +11,7 @@ import { DEFAULT_EXERCISE_IMAGE, getExerciseImage } from '@/utils/exerciseImage'
 import { DEFAULT_WORKOUT_PLAN_IMAGE, buildWorkoutPlanCoverImageUrl, applyWorkoutPlanImageFallback } from '@/utils/workoutPlanImage';
 import { countUniqueWorkoutPlanExercises } from '@/utils/workoutPlanExerciseCount';
 import { getPreviewDescriptionDisplay } from '@/utils/workoutPreviewDescription.mjs';
+import { normalizeRecordingType } from '@/utils/exerciseRecordingFields';
 import Swal from 'sweetalert2';
 import { showConfirmDialog } from '@/utils/browserDialogs';
 import {
@@ -2245,19 +2246,31 @@ const formatPreviewText = (value, fallback = '—') => {
 };
 
 const resolvePreviewExerciseType = (exercise = {}) => {
+  const recordingType = normalizeRecordingType(exercise);
+
+  if (recordingType === 'time-distance') {
+    return 'cardio';
+  }
+  if (recordingType === 'sets-reps' || recordingType === 'custom') {
+    return 'strength';
+  }
+
+  const normalizedRecordingType = String(
+    normalizeRecordingType(exercise?.recordingType || exercise?.RecordingType || '')
+  ).trim().toLowerCase();
   const workoutType = String(exercise?.workoutType || exercise?.WorkoutType || '').trim().toLowerCase();
-  const recordingType = String(exercise?.recordingType || exercise?.RecordingType || '').trim().toLowerCase();
+
+  if (['time_distance', 'time & distance', 'time and distance', 'cardio'].includes(normalizedRecordingType)) {
+    return 'cardio';
+  }
+  if (['sets_reps', 'sets & reps', 'sets and reps', 'strength'].includes(normalizedRecordingType)) {
+    return 'strength';
+  }
 
   if (workoutType === 'cardio') {
     return 'cardio';
   }
   if (workoutType === 'strength') {
-    return 'strength';
-  }
-  if (recordingType === 'time & distance') {
-    return 'cardio';
-  }
-  if (recordingType === 'sets & reps') {
     return 'strength';
   }
 

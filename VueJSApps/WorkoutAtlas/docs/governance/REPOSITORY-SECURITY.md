@@ -39,6 +39,12 @@ Passing tests or a clean working tree does not establish publication safety.
 
 Future GitLab publication must use the same classifications, branch protection, review gates, secret scanning, and local-only exclusions.
 
+## DEVOPS-SEC-002 preparation status
+
+Local BETA is five commits ahead of `origin/BETA`. The outgoing-history gate passes known path and signature checks, but history remediation is not approved or complete. Remote BETA already contains private absolute-path and private infrastructure references that the sanitized history must address.
+
+The parent-repository pre-push hook invokes the WorkoutAtlas scanner and fails closed if the scanner is unavailable or exits unsuccessfully. The hook is a defensive safeguard, not proof that every secret or credential is absent. No push, history rewrite, branch deletion, credential rotation, or remote modification was performed for this preparation task.
+
 ## Incident response
 
 - Stop publication attempts.

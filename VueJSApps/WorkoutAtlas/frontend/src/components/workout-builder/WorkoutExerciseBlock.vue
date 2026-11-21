@@ -1,6 +1,7 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { DEFAULT_EXERCISE_IMAGE, getExerciseImage } from '@/utils/exerciseImage';
+import { getRecordingFieldGroups, normalizeRecordingType, getRecordingFieldLabels, normalizeWorkoutTypeBadge } from '@/utils/exerciseRecordingFields';
 
 const props = defineProps({
   exercise: {
@@ -38,45 +39,47 @@ const handleImageError = (event) => {
 };
 
 const normalizedWorkoutType = computed(() =>
-  String(props.exercise.workoutType || props.exercise.WorkoutType || '').trim().toLowerCase()
+  String(
+    props.exercise.workoutType ||
+    props.exercise.WorkoutType ||
+    props.exercise.workout_type ||
+    props.exercise.type ||
+    ''
+  ).trim().toLowerCase()
 );
-const normalizedRecordingType = computed(() =>
-  String(props.exercise.recordingType || props.exercise.RecordingType || '').trim().toLowerCase()
-);
-const isCardio   = computed(() => normalizedWorkoutType.value === 'cardio');
-const isStrength = computed(() => normalizedWorkoutType.value === 'strength' || normalizedWorkoutType.value === '');
-const isOther    = computed(() => !isCardio.value && !isStrength.value);
 
-const usesSetsAndReps = computed(() => {
-  if (isStrength.value) return true;
-  if (normalizedRecordingType.value === 'sets & reps') return true;
-  return isOther.value && !normalizedRecordingType.value;
-});
+const workoutTypeBadgeLabel = computed(() => normalizeWorkoutTypeBadge(props.exercise));
 
-const usesTimeAndDistance = computed(() => {
-  if (isCardio.value) return true;
-  return isOther.value && (normalizedRecordingType.value === 'time & distance' || normalizedRecordingType.value === 'custom');
-});
+const normalizedRecordingType = computed(() => normalizeRecordingType(props.exercise));
+const recordingFieldGroups = computed(() => getRecordingFieldGroups(props.exercise));
+const fieldLabels = getRecordingFieldLabels();
+const showAdditionalFields = ref(false);
 
-const supportsTargetedCalories = computed(() => {
-  if (!usesTimeAndDistance.value) return false;
-  return normalizedRecordingType.value !== 'sets & reps';
-});
+const fieldDefinitions = {
+  weight: { key: 'weight', type: 'number', placeholder: '0', shortLabel: 'LBS' },
+  reps: { key: 'reps', type: 'number', placeholder: '0', shortLabel: 'Reps' },
+  sets: { key: 'sets', type: 'number', placeholder: '0', shortLabel: 'Sets' },
+  duration: { key: 'duration', type: 'number', placeholder: '0', shortLabel: 'Time' },
+  calories: { key: 'calories', type: 'number', placeholder: '0', shortLabel: 'Cal' },
+  distance: { key: 'distance', type: 'number', placeholder: '0', shortLabel: 'Dist' },
+};
 
-const showStrengthFields = computed(() => usesSetsAndReps.value && !isCardio.value);
-const showCardioFields = computed(() => usesTimeAndDistance.value);
+const primaryFields = computed(() => recordingFieldGroups.value.primary.map((key) => ({
+  ...fieldDefinitions[key],
+  label: fieldLabels[key],
+})));
+const secondaryFields = computed(() => recordingFieldGroups.value.secondary.map((key) => ({
+  ...fieldDefinitions[key],
+  label: fieldLabels[key],
+})));
 
-const workoutTypeBadgeLabel = computed(() => {
-  if (isCardio.value)   return 'Cardio';
-  if (isOther.value)    return 'Other';
-  return 'Strength';
-});
 const workoutTypeBadgeClass = computed(() => {
-  if (isCardio.value) return 'type-badge--cardio';
-  if (isOther.value)  return 'type-badge--other';
+  if (normalizedWorkoutType.value === 'cardio') return 'type-badge--cardio';
+  if (normalizedWorkoutType.value === 'other')  return 'type-badge--other';
   return 'type-badge--strength';
 });
 
+const activeFieldGroup = ref('primary');
 const updateField = (field, value, isNumeric = false) => {
   emit('update-field', {
     id: props.exercise.id,
@@ -142,15 +145,7 @@ const updateField = (field, value, isNumeric = false) => {
       </div>
     </header>
 
-    <div
-      :class="[
-        'exercise-block__fields',
-        {
-          'exercise-block__fields--strength-desktop': showStrengthFields,
-          'exercise-block__fields--cardio-desktop': isCardio,
-        }
-      ]"
-    >
+    <div class="exercise-block__fields">
       <!-- Schedule group (always visible) -->
       <label class="field-full exercise-config-field">
         <span>{{ scheduleMode === 'week' ? 'Week Group' : 'Day Group' }}</span>
@@ -158,87 +153,55 @@ const updateField = (field, value, isNumeric = false) => {
           :value="exercise.scheduleGroup"
           @change="updateField('scheduleGroup', $event.target.value)"
         >
-          <option
-            v-for="group in scheduleGroups"
-            :key="group"
-            :value="group"
-          >
-            {{ group }}
-          </option>
+          <option v-for="group in scheduleGroups" :key="group" :value="group">{{ group }}</option>
         </select>
       </label>
 
-      <!-- Strength fields -->
-      <template v-if="showStrengthFields">
-        <label class="field-full exercise-config-field strength-field-group strength-field--weight">
-          <span>Weight (lbs)</span>
+      <div class="recording-primary-row" aria-label="Primary exercise fields">
+        <label v-for="field in primaryFields" :key="field.key" class="recording-field">
+          <span class="recording-field-label-full">{{ field.label }}</span>
+          <span class="recording-field-label-short" aria-hidden="true">{{ field.shortLabel }}</span>
           <input
-            :value="exercise.weight"
-            type="number"
-            min="0"
-            placeholder="0"
-            @input="updateField('weight', $event.target.value, true)"
+            :value="exercise[field.key]"
+            :type="field.type"
+            :min="field.type === 'number' ? 0 : undefined"
+            :placeholder="field.placeholder"
+            @input="updateField(field.key, $event.target.value, field.type === 'number')"
           />
         </label>
 
-        <label class="field-half exercise-config-field strength-field-group strength-field--reps">
-          <span>Reps</span>
-          <input
-            :value="exercise.reps"
-            type="number"
-            min="0"
-            placeholder="0"
-            @input="updateField('reps', $event.target.value, true)"
-          />
-        </label>
+        <button
+          type="button"
+          class="recording-fields-toggle"
+          :aria-label="showAdditionalFields ? 'Hide Additional Fields' : 'Show Additional Fields'"
+          :title="showAdditionalFields ? 'Hide Additional Fields' : 'Show Additional Fields'"
+          :aria-expanded="showAdditionalFields ? 'true' : 'false'"
+          aria-controls="exercise-additional-fields"
+          @click="showAdditionalFields = !showAdditionalFields"
+        >
+          <i :class="showAdditionalFields ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'" aria-hidden="true"></i>
+          <span class="recording-fields-toggle-label">{{ showAdditionalFields ? 'Less' : 'More' }}</span>
+        </button>
+      </div>
 
-        <label class="field-half exercise-config-field strength-field-group strength-field--sets">
-          <span>Sets</span>
+      <div
+        v-if="showAdditionalFields"
+        id="exercise-additional-fields"
+        class="recording-additional-row"
+        aria-label="Additional exercise fields"
+      >
+        <label v-for="field in secondaryFields" :key="field.key" class="recording-field">
+          <span class="recording-field-label-full">{{ field.label }}</span>
+          <span class="recording-field-label-short" aria-hidden="true">{{ field.shortLabel }}</span>
           <input
-            :value="exercise.sets"
-            type="number"
-            min="0"
-            placeholder="0"
-            @input="updateField('sets', $event.target.value, true)"
+            :value="exercise[field.key]"
+            :type="field.type"
+            :min="field.type === 'number' ? 0 : undefined"
+            :placeholder="field.placeholder"
+            @input="updateField(field.key, $event.target.value, field.type === 'number')"
           />
         </label>
-      </template>
-
-      <!-- Cardio fields -->
-      <template v-if="showCardioFields">
-        <label class="field-full exercise-config-field cardio-field-group cardio-field--duration">
-          <span>Target Time (min)</span>
-          <input
-            :value="exercise.duration"
-            type="number"
-            min="0"
-            placeholder="0"
-            @input="updateField('duration', $event.target.value, true)"
-          />
-        </label>
-
-        <label v-if="supportsTargetedCalories" class="field-full exercise-config-field cardio-field-group cardio-field--calories">
-          <span>Target Calories</span>
-          <input
-            :value="exercise.calories"
-            type="number"
-            min="0"
-            placeholder="0"
-            @input="updateField('calories', $event.target.value, true)"
-          />
-        </label>
-
-        <label class="field-full exercise-config-field cardio-field-group cardio-field--distance">
-          <span>Distance (mi)</span>
-          <input
-            :value="exercise.distance"
-            type="number"
-            min="0"
-            placeholder="0"
-            @input="updateField('distance', $event.target.value, true)"
-          />
-        </label>
-      </template>
+      </div>
 
       <!-- Notes (always full width) -->
       <label class="field-notes field-full exercise-config-field">
@@ -489,98 +452,101 @@ const updateField = (field, value, isNumeric = false) => {
   grid-column: span 1;
 }
 
-@media (min-width: 700px) {
-  .exercise-block__fields {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .field-half {
-    min-width: 0;
-  }
-
-  .field-notes,
-  .field-full {
-    grid-column: span 2;
-  }
+.toggle-field-group-btn {
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  line-height: 1;
+  width: 100%;
+  text-align: center;
 }
 
-@media (min-width: 1024px) {
-  .exercise-block__fields {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .field-notes,
-  .field-full {
-    grid-column: span 3;
-  }
+.toggle-field-group-btn:hover {
+  background: #1d4ed8;
 }
 
-@media (min-width: 801px) {
-  .exercise-block__fields.exercise-block__fields--strength-desktop {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+.recording-primary-row,
+.recording-additional-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  grid-column: 1 / -1;
+}
 
-  .exercise-block__fields.exercise-block__fields--strength-desktop .field-full {
-    grid-column: 1 / -1;
-  }
+.recording-primary-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 44px;
+  align-items: end;
+}
 
-  .exercise-block__fields.exercise-block__fields--strength-desktop > .field-full:not(.field-notes):not(.strength-field-group) {
-    order: 0;
-  }
+.recording-additional-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  margin-top: 12px;
+}
 
-  .exercise-block__fields.exercise-block__fields--strength-desktop .strength-field-group {
-    grid-column: span 1;
-    min-width: 0;
-  }
+.recording-field {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  min-width: 0;
+  gap: 4px;
+}
 
-  .exercise-block__fields.exercise-block__fields--strength-desktop .strength-field--weight {
-    order: 1;
-  }
+.recording-field input {
+  flex: 1 1 0;
+  width: 100%;
+  min-width: 0;
+}
 
-  .exercise-block__fields.exercise-block__fields--strength-desktop .strength-field--reps {
-    order: 2;
-  }
+.recording-field-label-short,
+.recording-fields-toggle-label-short {
+  display: none;
+}
 
-  .exercise-block__fields.exercise-block__fields--strength-desktop .strength-field--sets {
-    order: 3;
-  }
+.recording-fields-toggle {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  gap: 1px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  white-space: nowrap;
+}
 
-  .exercise-block__fields.exercise-block__fields--strength-desktop .field-notes {
-    order: 4;
-  }
+.recording-fields-toggle i {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  background: #2563EB;
+  color: #FFFFFF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 
-  .exercise-block__fields.exercise-block__fields--cardio-desktop {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .exercise-block__fields.exercise-block__fields--cardio-desktop .field-full {
-    grid-column: 1 / -1;
-  }
-
-  .exercise-block__fields.exercise-block__fields--cardio-desktop > .field-full:not(.field-notes):not(.cardio-field-group) {
-    order: 0;
-  }
-
-  .exercise-block__fields.exercise-block__fields--cardio-desktop .cardio-field-group {
-    grid-column: span 1;
-    min-width: 0;
-  }
-
-  .exercise-block__fields.exercise-block__fields--cardio-desktop .cardio-field--duration {
-    order: 1;
-  }
-
-  .exercise-block__fields.exercise-block__fields--cardio-desktop .cardio-field--calories {
-    order: 2;
-  }
-
-  .exercise-block__fields.exercise-block__fields--cardio-desktop .cardio-field--distance {
-    order: 3;
-  }
-
-  .exercise-block__fields.exercise-block__fields--cardio-desktop .field-notes {
-    order: 4;
-  }
+.recording-fields-toggle-label {
+  display: block;
+  width: 44px;
+  text-align: center;
+  font-size: 0.62rem;
+  line-height: 1;
 }
 
 @media (max-width: 768px) {
@@ -658,6 +624,75 @@ const updateField = (field, value, isNumeric = false) => {
     font-size: 0.82rem;
     border-radius: 8px;
     box-sizing: border-box;
+  }
+
+  .recording-primary-row,
+  .session-recording-primary-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 44px;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .recording-additional-row,
+  .session-recording-additional-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .recording-field {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    min-width: 0;
+    gap: 3px;
+  }
+
+  .recording-field-label-full,
+  .recording-fields-toggle-label-full {
+    display: none;
+  }
+
+  .recording-field-label-short,
+  .recording-fields-toggle-label-short {
+    display: inline;
+  }
+
+  .recording-fields-toggle {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+  }
+
+  .recording-fields-toggle i {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+  }
+
+  .recording-fields-toggle-label {
+    font-size: 0.62rem;
+    line-height: 1;
+  }
+
+  .exercise-block__fields .recording-field,
+  .exercise-block__fields label.recording-field,
+  .recording-field {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+  }
+
+  .exercise-block__fields .recording-fields-toggle,
+  .recording-fields-toggle {
+    display: inline-flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 }
 

@@ -5,6 +5,7 @@ import ExerciseSessionCard from '@/components/workout-session/ExerciseSessionCar
 import ExercisePickerModal from '@/components/workout-builder/ExercisePickerModal.vue';
 import { API_BASE } from '@/config/env';
 import { DEFAULT_EXERCISE_IMAGE, getExerciseImage } from '@/utils/exerciseImage';
+import { normalizeRecordingType } from '@/utils/exerciseRecordingFields';
 import { useWorkoutSessionDraft } from '@/composable/useWorkoutSessionDraft';
 import {
   buildDiagnosticsPayload,
@@ -1496,6 +1497,10 @@ const isCardio = (exercise) =>
   (Number(exercise.duration || 0) > 0 && Number(exercise.reps || 0) === 0);
 
 const normalizeExerciseWorkoutType = (exercise) => {
+  const recordingType = normalizeRecordingType(exercise);
+  if (recordingType === 'time-distance') return 'cardio';
+  if (recordingType === 'sets-reps' || recordingType === 'custom') return 'strength';
+
   const normalized = String(exercise?.workoutType || exercise?.WorkoutType || '').trim().toLowerCase();
   if (normalized === 'cardio') return 'cardio';
   if (normalized === 'other') return 'other';
@@ -3945,6 +3950,7 @@ onUnmounted(() => {
               :exercise="exercise"
               :is-cardio="isCardio(exercise)"
               :is-expanded="activeExerciseId === exercise.id"
+              :read-only="isPreviewMode"
               :can-move-up="exerciseIndex > 0"
               :can-move-down="exerciseIndex < dayExercises.length - 1"
               @select="selectExercise"
