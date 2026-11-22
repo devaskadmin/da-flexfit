@@ -87,6 +87,50 @@ export const buildNextWeekName = (weekGroups = []) => {
 };
 
 /**
+ * Rename one week in place. The week keeps its position in the list, every day assigned to it
+ * stays assigned to it (under the new name), and no other week, day or exercise is touched.
+ * Another week with the same name (case-insensitive) is a duplicate; the renamed week itself is
+ * not, so changing only the capitalisation is allowed. Inputs are never mutated.
+ * Returns { ok, changed, weekGroups, assignments } or { ok: false, message }.
+ */
+export const renameWeekInPlan = ({
+  weekGroups = [],
+  assignments = {},
+  oldWeek = '',
+  newWeek = '',
+} = {}) => {
+  const weeks = Array.isArray(weekGroups) ? weekGroups : [];
+  const oldKey = groupKey(oldWeek);
+  const label = String(newWeek ?? '').trim();
+  const newKey = groupKey(label);
+  const current = assignments && typeof assignments === 'object' ? assignments : {};
+
+  if (!oldKey || !weeks.some((week) => groupKey(week) === oldKey)) {
+    return { ok: false, message: 'Workout week was not found.' };
+  }
+  if (!newKey) {
+    return { ok: false, message: 'Workout week name cannot be empty.' };
+  }
+  if (newKey !== oldKey && weeks.some((week) => groupKey(week) === newKey)) {
+    return { ok: false, message: `${label} already exists.` };
+  }
+
+  const currentLabel = weeks.find((week) => groupKey(week) === oldKey);
+  if (currentLabel === label) {
+    return { ok: true, changed: false, weekGroups: weeks, assignments: current };
+  }
+
+  return {
+    ok: true,
+    changed: true,
+    weekGroups: weeks.map((week) => (groupKey(week) === oldKey ? label : week)),
+    assignments: Object.fromEntries(
+      Object.entries(current).map(([day, week]) => [day, groupKey(week) === oldKey ? label : week])
+    ),
+  };
+};
+
+/**
  * In-memory day-to-week mapping: { [normalized day name]: week label }.
  * Each day appears at most once, so a day can never be assigned twice.
  * Valid assignments (day and week both still exist) are kept; entries for

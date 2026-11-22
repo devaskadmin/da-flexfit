@@ -96,4 +96,9 @@ No release should be marked released or accepted merely because automated tests 
 ## 0.85.313.a6 Add Week (Stage 7/10)
 
 - Frontend only (`WorkoutBuilder.vue`, `workoutDayWeekAssignment.mjs`): `+ Add Week` beside the Week dropdown. No backend, migration, deploy or package change; save payload unchanged.
-- Release gates: user acceptance in the browser (button disabled/enabled rule, Week 2/Week 3 naming and auto-selection, new week empty, switching weeks keeps unsaved edits, save and reopen keeps the new week). No UI assigns days to weeks yet, so a new week stays empty; confirm that is acceptable for any interim release, and verify empty-week persistence on a non-production database. a6 uncommitted; not release-ready until accepted.
+- Release gates: user acceptance in the browser (button disabled/enabled rule, Week 2/Week 3 naming and auto-selection, new week empty, switching weeks keeps unsaved edits, save and reopen keeps the new week). No UI assigns days to weeks yet, so a new week stays empty; confirm that is acceptable for any interim release, and verify empty-week persistence on a non-production database. a6 committed and pushed as `a222c3228`; not release-ready until accepted.
+
+## 0.85.313.a7 Rename Week (Stage 8/10)
+
+- Frontend only (`WorkoutBuilder.vue`, `workoutDayWeekAssignment.mjs`): Rename Week in a three-dot menu beside the Week dropdown. No backend, migration, deploy or package change; save payload unchanged.
+- Release gates: user acceptance in the browser (menu and editor layout, valid and invalid names, dropdown and selection update, assigned days and exercises intact, save and reopen shows the new name). Because persistence matches weeks by label, a saved rename recreates the week's group row with a new id; verify on a non-production database that nothing keyed on the old week group id is lost before any release that relies on week renames. a7 uncommitted; not release-ready until accepted.

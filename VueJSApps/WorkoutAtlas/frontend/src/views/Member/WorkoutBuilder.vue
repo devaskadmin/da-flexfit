@@ -23,6 +23,7 @@ import {
   resolveSelectedWeek,
   weekHasDayWithExercise,
   buildNextWeekName,
+  renameWeekInPlan,
 } from '@/utils/workoutDayWeekAssignment.mjs';
 import { normalizeRecordingType } from '@/utils/exerciseRecordingFields';
 import Swal from 'sweetalert2';
@@ -116,6 +117,10 @@ const closeDayMenu = (e) => {
     saveInlineDayNameEdit();
   }
 
+  if (!e.target.closest('.planner-week-menu-wrap')) {
+    isWeekMenuOpen.value = false;
+  }
+
   if (!e.target.closest('.day-kebab-wrap')) {
     openMenuDay.value = null;
     openMenuPlacement.value = 'down';
@@ -156,6 +161,12 @@ const dayWeekAssignments = ref({});
 // 0.85.313.a5: week shown in the Schedule Planner dropdown. UI state only: not saved, not sent to the API,
 // not part of unsaved-change detection, and it does not filter or change any day, week or assignment.
 const selectedWeek = ref('');
+// 0.85.313.a7: Rename Week editor state (UI only). The menu and editor act on the selected week.
+const isWeekMenuOpen = ref(false);
+const isRenamingWeek = ref(false);
+const weekRenameTarget = ref('');
+const weekRenameDraft = ref('');
+const weekRenameError = ref('');
 const selectedScheduleGroup = ref(null);
 const expandedGroupIdByMode = ref({ day: null, week: null });
 const dayGroupIdentityMap = ref([]);
@@ -2612,13 +2623,14 @@ const toggleScheduleGroupAccordion = (groupName) => {
   plannerMessage.value = '';
 };
 
-const validateWorkoutDayName = (rawValue) => {
+// `noun` defaults to the active schedule label ('day'); Rename Week passes 'week' so it shares these rules.
+const validateWorkoutDayName = (rawValue, noun = scheduleModeLabelLower.value) => {
   const typedValue = String(rawValue ?? '');
 
   if (typedValue.length > WORKOUT_DAY_NAME_MAX_LENGTH) {
     return {
       ok: false,
-      message: `Workout ${scheduleModeLabelLower.value} names can be at most ${WORKOUT_DAY_NAME_MAX_LENGTH} characters.`,
+      message: `Workout ${noun} names can be at most ${WORKOUT_DAY_NAME_MAX_LENGTH} characters.`,
     };
   }
 
@@ -2626,7 +2638,7 @@ const validateWorkoutDayName = (rawValue) => {
   if (!trimmedValue) {
     return {
       ok: false,
-      message: `Workout ${scheduleModeLabelLower.value} name cannot be empty.`,
+      message: `Workout ${noun} name cannot be empty.`,
     };
   }
 
@@ -3241,6 +3253,11 @@ const resetPlannerDraft = ({ preserveSaveMessage = false } = {}) => {
   weekGroupOrders.value = [];
   dayWeekAssignments.value = {};
   selectedWeek.value = '';
+  isWeekMenuOpen.value = false;
+  isRenamingWeek.value = false;
+  weekRenameTarget.value = '';
+  weekRenameDraft.value = '';
+  weekRenameError.value = '';
   selectedScheduleGroup.value = null;
   expandedGroupIdByMode.value = { day: null, week: null };
   dayGroupIdentityMap.value = [];
@@ -3425,6 +3442,11 @@ const hydratePlanner = (planner = {}, {
   dayWeekAssignments.value = readSavedDayWeekAssignments(planner);
   reconcileDayWeekAssignmentState();
   selectedWeek.value = resolveSelectedWeek(weekGroups.value);
+  isWeekMenuOpen.value = false;
+  isRenamingWeek.value = false;
+  weekRenameTarget.value = '';
+  weekRenameDraft.value = '';
+  weekRenameError.value = '';
 
   hasSavedWorkoutDetails.value = markSaved;
   inlineEditingDayName.value = '';
@@ -4162,6 +4184,78 @@ const addWeek = () => {
   weekGroups.value = [...weekGroups.value, name];
   syncGroupOrders('week', weekGroups.value);
   selectedWeek.value = name;
+  plannerMessage.value = '';
+};
+
+// 0.85.313.a7: Rename Week. The menu sits beside the Week dropdown and renames the selected week in place.
+const canRenameWeek = computed(() => canModifyScheduleDayActions.value && Boolean(selectedWeek.value));
+
+const toggleWeekMenu = () => {
+  if (!canRenameWeek.value) {
+    return;
+  }
+  openMenuDay.value = null;
+  isWeekMenuOpen.value = !isWeekMenuOpen.value;
+};
+
+const cancelWeekRename = () => {
+  isRenamingWeek.value = false;
+  weekRenameTarget.value = '';
+  weekRenameDraft.value = '';
+  weekRenameError.value = '';
+};
+
+const startWeekRename = () => {
+  isWeekMenuOpen.value = false;
+  if (!canRenameWeek.value) {
+    return;
+  }
+  weekRenameTarget.value = selectedWeek.value;
+  weekRenameDraft.value = selectedWeek.value;
+  weekRenameError.value = '';
+  isRenamingWeek.value = true;
+  plannerMessage.value = '';
+};
+
+const handleWeekRenameInput = () => {
+  if (weekRenameError.value && validateWorkoutDayName(weekRenameDraft.value, 'week').ok) {
+    weekRenameError.value = '';
+  }
+};
+
+const saveWeekRename = () => {
+  const oldName = weekRenameTarget.value;
+  if (!isRenamingWeek.value || !oldName) {
+    return;
+  }
+
+  const validation = validateWorkoutDayName(weekRenameDraft.value, 'week');
+  if (!validation.ok) {
+    weekRenameError.value = validation.message;
+    return;
+  }
+
+  const result = renameWeekInPlan({
+    weekGroups: weekGroups.value,
+    assignments: dayWeekAssignments.value,
+    oldWeek: oldName,
+    newWeek: validation.value,
+  });
+  if (!result.ok) {
+    weekRenameError.value = result.message;
+    return;
+  }
+
+  if (result.changed) {
+    // Same week, new label: keep its identity entry, position, assignments and selection. Days and exercises are not touched.
+    transferScheduleGroupIdentity('week', oldName, validation.value);
+    weekGroups.value = result.weekGroups;
+    dayWeekAssignments.value = result.assignments;
+    syncGroupOrders('week', weekGroups.value);
+    selectedWeek.value = validation.value;
+  }
+
+  cancelWeekRename();
   plannerMessage.value = '';
 };
 
@@ -5559,6 +5653,50 @@ watch(
                 >
                   + Add Week
                 </button>
+                <div class="day-kebab-wrap planner-week-menu-wrap">
+                  <button
+                    type="button"
+                    class="day-kebab-btn planner-week-menu-btn"
+                    aria-label="Week actions"
+                    aria-haspopup="menu"
+                    :aria-expanded="isWeekMenuOpen"
+                    :disabled="!canRenameWeek"
+                    @click.stop="toggleWeekMenu"
+                  >
+                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                  </button>
+                  <div v-if="isWeekMenuOpen" class="day-kebab-menu" role="menu">
+                    <button type="button" class="day-kebab-item" role="menuitem" @click="startWeekRename">
+                      <i class="fa-regular fa-pen-to-square"></i>
+                      Rename Week
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="isRenamingWeek" class="planner-week-rename">
+                <label class="planner-week-select__label" for="planner-week-rename-input">Rename Week</label>
+                <input
+                  id="planner-week-rename-input"
+                  v-model="weekRenameDraft"
+                  class="day-title-inline-input planner-week-rename__input"
+                  type="text"
+                  :maxlength="WORKOUT_DAY_NAME_MAX_LENGTH"
+                  @input="handleWeekRenameInput"
+                  @keydown.esc.prevent="cancelWeekRename"
+                  @keydown.enter.prevent="saveWeekRename"
+                />
+                <div class="day-title-inline-actions">
+                  <button type="button" class="day-title-inline-btn day-title-inline-btn--save" @click="saveWeekRename">
+                    Save
+                  </button>
+                  <button type="button" class="day-title-inline-btn day-title-inline-btn--cancel" @click="cancelWeekRename">
+                    Cancel
+                  </button>
+                </div>
+                <p v-if="weekRenameError" class="day-title-inline-error planner-week-rename__error">
+                  {{ weekRenameError }}
+                </p>
               </div>
 
               <div class="planner-group-editor">
@@ -8491,7 +8629,7 @@ watch(
 
 .planner-week-select {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr) auto;
+  grid-template-columns: max-content minmax(0, 1fr) auto auto;
   align-items: center;
   column-gap: 8px;
   min-width: 0;
@@ -8602,6 +8740,30 @@ watch(
 .planner-week-add:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.planner-week-menu-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.planner-week-rename {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 4px;
+  min-width: 0;
+}
+
+.planner-week-rename__input {
+  max-width: none;
+  min-height: 36px;
+}
+
+.planner-week-rename__error {
+  grid-column: 2 / 4;
+  margin: 0;
 }
 
 .planner-group-save {

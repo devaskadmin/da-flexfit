@@ -71,8 +71,8 @@ test('existing controls and the unsaved-change handling are unchanged', () => {
   );
   assert.match(script, /dayWeekAssignments: serializeDayWeekAssignments\(dayWeekAssignments\.value\),/);
   assert.match(script, /settings: buildDayWeekAssignmentsSettings\(dayWeekAssignments\.value\),/);
-  assert.equal(/Rename Week/i.test(template), false);
   assert.equal(/Day View|Week View/.test(template), false);
+  assert.equal(template.indexOf('Rename Week') > template.indexOf('</WorkoutMetadataForm>'), true);
 });
 
 test('nothing above Workout Plan Information is touched by the dropdown', () => {

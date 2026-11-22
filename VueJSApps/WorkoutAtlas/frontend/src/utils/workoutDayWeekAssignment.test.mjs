@@ -16,6 +16,7 @@ import {
   resolveSelectedWeek,
   weekHasDayWithExercise,
   buildNextWeekName,
+  renameWeekInPlan,
 } from './workoutDayWeekAssignment.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -261,4 +262,79 @@ test('adding a week leaves existing weeks, days, exercises and assignments alone
   assert.deepEqual(result.assignments, { monday: 'Week 1' });
   assert.equal(weekHasDayWithExercise({ week: 'Week 2', dayGroups: ['Monday'], assignments: result.assignments, exercises }), false);
   assert.deepEqual(weeks, ['Week 1']);
+});
+
+test('renaming a week keeps its position and every day assigned to it', () => {
+  const weeks = ['Week 1', 'Week 2', 'Week 3'];
+  const assignments = { monday: 'Week 1', tuesday: 'Week 2', wednesday: 'week 2', friday: 'Week 3' };
+  const result = renameWeekInPlan({ weekGroups: weeks, assignments, oldWeek: 'Week 2', newWeek: "Stephen's Heavy-Week" });
+  assert.equal(result.ok, true);
+  assert.equal(result.changed, true);
+  assert.deepEqual(result.weekGroups, ['Week 1', "Stephen's Heavy-Week", 'Week 3']);
+  assert.deepEqual(result.assignments, {
+    monday: 'Week 1',
+    tuesday: "Stephen's Heavy-Week",
+    wednesday: "Stephen's Heavy-Week",
+    friday: 'Week 3',
+  });
+  // Inputs are not mutated; the original weeks and assignments are untouched.
+  assert.deepEqual(weeks, ['Week 1', 'Week 2', 'Week 3']);
+  assert.equal(assignments.tuesday, 'Week 2');
+});
+
+test('a renamed week is still a valid, non-duplicated week for reconcile', () => {
+  const result = renameWeekInPlan({
+    weekGroups: ['Week 1', 'Week 2'],
+    assignments: { monday: 'Week 1', tuesday: 'Week 2' },
+    oldWeek: 'Week 2',
+    newWeek: 'Deload',
+  });
+  const reconciled = reconcileDayWeekAssignments({
+    dayGroups: ['Monday', 'Tuesday'],
+    weekGroups: result.weekGroups,
+    assignments: result.assignments,
+  });
+  assert.equal(reconciled.changed, false);
+  assert.equal(result.weekGroups.length, 2);
+  assert.equal(result.assignments.tuesday, 'Deload');
+});
+
+test('renaming rejects empty names and duplicates of another week, in any case', () => {
+  const base = { weekGroups: ['Week 1', 'Week 2'], assignments: { monday: 'Week 1' } };
+  assert.equal(renameWeekInPlan({ ...base, oldWeek: 'Week 2', newWeek: '   ' }).ok, false);
+  const duplicate = renameWeekInPlan({ ...base, oldWeek: 'Week 2', newWeek: 'week 1' });
+  assert.equal(duplicate.ok, false);
+  assert.equal(duplicate.message, 'week 1 already exists.');
+  assert.equal(renameWeekInPlan({ ...base, oldWeek: 'Week 2', newWeek: ' WEEK 1 ' }).ok, false);
+  assert.equal(renameWeekInPlan({ ...base, oldWeek: 'Missing', newWeek: 'Deload' }).ok, false);
+  assert.equal(renameWeekInPlan({ ...base, oldWeek: '', newWeek: 'Deload' }).ok, false);
+});
+
+test('renaming a week to its own name is a no-op and a capitalisation change is allowed', () => {
+  const base = { weekGroups: ['Week 1', 'Week 2'], assignments: { monday: 'Week 2' }, oldWeek: 'Week 2' };
+  const same = renameWeekInPlan({ ...base, newWeek: 'Week 2' });
+  assert.equal(same.ok, true);
+  assert.equal(same.changed, false);
+  assert.deepEqual(same.weekGroups, ['Week 1', 'Week 2']);
+  const caseOnly = renameWeekInPlan({ ...base, newWeek: 'WEEK 2' });
+  assert.equal(caseOnly.ok, true);
+  assert.equal(caseOnly.changed, true);
+  assert.deepEqual(caseOnly.weekGroups, ['Week 1', 'WEEK 2']);
+  assert.deepEqual(caseOnly.assignments, { monday: 'WEEK 2' });
+});
+
+test('renaming the default Week 1 keeps its assignments and the dropdown follows the new name', () => {
+  const result = renameWeekInPlan({
+    weekGroups: ['Week 1', 'Week 2'],
+    assignments: { monday: 'Week 1' },
+    oldWeek: 'Week 1',
+    newWeek: 'Base',
+  });
+  assert.deepEqual(result.weekGroups, ['Base', 'Week 2']);
+  assert.deepEqual(result.assignments, { monday: 'Base' });
+  assert.deepEqual(buildWeekOptions(result.weekGroups), [
+    { value: 'Base', label: 'Base' },
+    { value: 'Week 2', label: 'Week 2' },
+  ]);
+  assert.equal(resolveSelectedWeek(result.weekGroups, 'Base'), 'Base');
 });

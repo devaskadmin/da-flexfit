@@ -42,8 +42,8 @@ test('Add Day, Add Exercise and the bottom controls are preserved', () => {
   assert.match(script, /const showBottomScheduleGroupControls = computed/);
 });
 
-test('no Rename Week control is added (Add Week arrives in a6)', () => {
-  assert.equal(/Rename Week/i.test(template), false);
+test('Rename Week (a7) lives only in the planner, below the Workout Plan Information form', () => {
+  assert.equal(template.indexOf('Rename Week') > template.indexOf('</WorkoutMetadataForm>'), true);
 });
 
 test('the builder never leaves day mode, so day cards are always shown', () => {

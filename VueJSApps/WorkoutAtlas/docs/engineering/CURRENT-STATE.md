@@ -203,4 +203,11 @@ Current evidence: implementation and automated coverage exist for many areas. Li
 
 - A `+ Add Week` button sits beside the Week dropdown. It is enabled only when the selected week has at least one workout day with at least one exercise (selected week's assignments only). It appends the next unused `Week N` (from Week 2), selects it, and the new week starts empty. Existing weeks, days, exercises, assignments and unsaved changes are untouched; switching weeks is never gated. Frontend only (`WorkoutBuilder.vue`, `workoutDayWeekAssignment.mjs`); no backend, DB or package change. No Rename Week or day filtering yet.
 - Tests: new contract suite `8/8`, util suite `24/24`, all 10 frontend test files pass (95 tests), Vite build passed. PlanID 5 untouched.
-- Open: no browser check; no UI assigns days to weeks, so a new week stays empty and Add Week is disabled while it is selected; empty-week persistence unverified on a live DB; a6 uncommitted. Acceptance PENDING; do not begin Stage 8.
+- Open: no browser check; no UI assigns days to weeks, so a new week stays empty and Add Week is disabled while it is selected; empty-week persistence unverified on a live DB; a6 committed and pushed as `a222c3228`. Acceptance PENDING.
+
+## 0.85.313.a7 Rename Week (Stage 8/10) - 2026-11-21
+
+- A three-dot menu beside the Week dropdown has **Rename Week**, which opens an inline editor (same styling and validator as the day inline rename; there is no Rename Day modal). Names may contain spaces, apostrophes and hyphens (day character rules, max 60); empty and case-insensitive duplicate names are rejected. The renamed week keeps its position, assigned days, in-builder identity and selection; exercises and days are untouched; no duplicate is created. Frontend only (`WorkoutBuilder.vue`, `workoutDayWeekAssignment.mjs`); no backend, DB or package change. No day filtering yet.
+- Identity limitation: week identity is not persisted. The backend matches week rows by label, so a saved rename replaces the week's group row with a new one (new group id); contents are re-linked in the same save. Unverified on a live DB.
+- Tests: new contract suite `9/9`, util suite `29/29`, all 11 frontend test files pass (109 tests), Vite build passed. PlanID 5 untouched.
+- Open: no browser check; group-id behavior on a saved rename unverified; no UI assigns days to weeks; a7 uncommitted. Acceptance PENDING; do not begin Stage 9.

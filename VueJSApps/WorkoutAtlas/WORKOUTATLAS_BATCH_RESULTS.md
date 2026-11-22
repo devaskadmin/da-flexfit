@@ -565,7 +565,7 @@
 
 ## 0.85.313.a6 - Add Week, Stage 7/10 (2026-11-21)
 
-- Checkpoint: a5 reviewed, committed and pushed first (`317087e56`, branch `0.85.113`; browser acceptance recorded as pending). a6 is uncommitted.
+- Checkpoint: a5 reviewed, committed and pushed first (`317087e56`, branch `0.85.113`; browser acceptance recorded as pending). a6 was committed and pushed as `a222c3228`.
 - Goal: add an Add Week button beside the Week dropdown. Frontend only.
 - Change: `WorkoutBuilder.vue` (`+ Add Week` button, `canAddWeek`, `addWeek`, CSS) and `workoutDayWeekAssignment.mjs` (`weekHasDayWithExercise`, `buildNextWeekName`). Enabled only when the selected week has a day with at least one exercise (selected week's assignments only). Creates the next unused `Week N` (from Week 2, smallest free number), appends it to the weeks, and selects it. The new week is empty. Switching existing weeks is never gated.
 - Behavior: existing weeks, days, exercises, assignments and unsaved changes are preserved. No Rename Week, no day filtering.
@@ -573,3 +573,15 @@
 - Safety: PlanID 5 untouched (no data access); no backend, DB, schema, package or above-Workout-Plan-Information change.
 - Limitations: source-contract and pure-function tests only, no browser check; no UI yet assigns days to weeks, so a new week stays empty and Add Week is disabled while it is selected; days added while a new week is selected default to the default week; saving an empty added week relies on the existing group-row save and is not verified on a live DB; day cards are not filtered; selection not remembered across reloads.
 - User acceptance: PENDING. STOP; Stage 8 not started.
+
+## 0.85.313.a7 - Rename Week, Stage 8/10 (2026-11-21)
+
+- Checkpoint: a6 reviewed (staged-file and secret review clean), committed and pushed first (`a222c3228`, branch `0.85.113`; browser acceptance recorded as pending). a7 is uncommitted.
+- Goal: a three-dot menu with Rename Week beside the Week dropdown. Frontend only.
+- Change: `WorkoutBuilder.vue` (menu, inline rename editor, `saveWeekRename` and related handlers, CSS; `validateWorkoutDayName` gained an optional noun) and `workoutDayWeekAssignment.mjs` (`renameWeekInPlan`). There is no Rename Day modal in this builder (it is an inline title editor), so Rename Week reuses that editor's styling and the same name validator.
+- Behavior: custom names with spaces, apostrophes and hyphens are accepted (same character rules as days, max 60); empty names and case-insensitive duplicates of another week are rejected with a message; the week keeps its position, its assigned days (assignments rewritten to the new name), its identity entry in the builder and the selection; exercises and days are untouched; no duplicate week is created. No day filtering.
+- Identity limitation: the save payload has no stable week id and the backend matches week rows by case-insensitive label, so a saved rename replaces the old week group row with a new one (new group id). Exercises are re-linked in the same save and assignments are stored by label; anything keyed on the old week group id elsewhere is not carried over. Not changed (frontend only) and not verified on a live DB.
+- Tests: new `WorkoutBuilder.rename-week-contract.test.mjs` `9/9`; `workoutDayWeekAssignment.test.mjs` `29/29` (+5); a4/a5/a6 contract tests updated (Rename Week now exists, only below the metadata form) and pass; all 11 frontend test files pass (109 tests); Vite build passed; CRLF kept. Backend not re-run (no backend change).
+- Safety: PlanID 5 untouched (no data access); no backend, DB, schema, package or above-Workout-Plan-Information change.
+- Limitations: source-contract and pure-function tests only, no browser check of the menu/editor layout; the group-id behavior above; no UI assigns days to weeks; day cards are not filtered; selection not remembered across reloads.
+- User acceptance: PENDING. STOP; Stage 9 not started.

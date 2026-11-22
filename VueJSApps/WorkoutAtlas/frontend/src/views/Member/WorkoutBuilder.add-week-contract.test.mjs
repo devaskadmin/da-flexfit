@@ -69,8 +69,8 @@ test('the new week is part of the unsaved-change snapshot and the save payload t
   assert.match(dirty, /weekGroups: Array\.isArray\(weekGroups\.value\)/);
 });
 
-test('Rename Week and day filtering are not added; earlier controls remain', () => {
-  assert.equal(/Rename Week/i.test(template), false);
+test('day filtering is not added; earlier controls remain', () => {
+  assert.equal(template.indexOf('Rename Week') > template.indexOf('</WorkoutMetadataForm>'), true);
   const cardsStart = script.indexOf('const accordionGroupsWithExercises');
   assert.equal(script.slice(cardsStart, cardsStart + 1500).includes('selectedWeek'), false);
   assert.equal(script.includes('const changeScheduleMode'), false);

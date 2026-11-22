@@ -229,3 +229,18 @@ Stage 1/10 re-verification (2026-11-21): branch name FAIL; 0.85.312 baseline PAS
 | Nothing above Workout Plan Information; no backend/DB/package change; PlanID 5 | Diff hunks all below the metadata form (plus import and CSS); no data access | PASS |
 | Regression | 10 frontend test files, 95 tests; Vite build passed | PASS |
 | Browser: disabled/enabled states, Week 2/Week 3 creation and selection, empty new week, switching, unsaved edits kept, save and reopen keeps the new week | Not performed | PENDING USER ACCEPTANCE |
+
+## 0.85.313.a7 Rename Week, Stage 8/10 (2026-11-21)
+
+| Check | Evidence | Status |
+| --- | --- | --- |
+| Three-dot menu with Rename Week beside the Week dropdown, below Workout Plan Information; disabled outside create/edit mode | Contract suite `9/9` (source position, disabled binding) | PASS (automated, source contract) |
+| Editor reuses the inline day-rename look and the day name validator; Enter saves, Escape cancels | Contract | PASS (automated, source contract) |
+| Custom names with spaces, apostrophes and hyphens accepted | Util tests `29/29` (`renameWeekInPlan`), validator pattern contract | PASS (automated) |
+| Empty and duplicate names rejected, including different case; own name and capitalisation-only change allowed | Util tests | PASS (automated) |
+| Day-to-week assignments, week position, selection, exercises and days preserved; no duplicate week created; inputs not mutated | Util tests, contract (handler touches no days or exercises) | PASS (automated) |
+| Rename state not in payload, dirty snapshot or draft; reset on load/reset; menu closes on outside click | Contract | PASS (automated, source contract) |
+| Week identity independent of name | Builder keeps its identity entry on rename (contract). Persistence has no stable week id: a saved rename replaces the week's group row (new group id); backend not changed | LIMITATION (reported; unverified on a live DB) |
+| Day filtering not added; nothing above Workout Plan Information; no backend/DB/package change; PlanID 5 | Contract; diff hunks all below the metadata form (plus import, helper state and CSS); no data access | PASS |
+| Regression | 11 frontend test files, 109 tests; Vite build passed | PASS |
+| Browser: menu placement and styling, rename flow, error messages, dropdown and selection update, assigned days intact, save and reopen shows the new name | Not performed | PENDING USER ACCEPTANCE |
