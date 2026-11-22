@@ -12,6 +12,8 @@ import {
   readSavedDayWeekAssignments,
   buildDayWeekAssignmentsSettings,
   serializeDayWeekAssignments,
+  buildWeekOptions,
+  resolveSelectedWeek,
 } from './workoutDayWeekAssignment.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -143,4 +145,51 @@ test('0.85.313.a3 builder sends assignments in the payload and tracks them for u
   const dirtyStart = source.indexOf('return JSON.stringify({', source.indexOf('const buildPlannerDirtyState'));
   const dirtyBlock = source.slice(dirtyStart, source.indexOf('const markPlannerStateCommitted', dirtyStart));
   assert.match(dirtyBlock, /dayWeekAssignments: serializeDayWeekAssignments\(dayWeekAssignments\.value\),/);
+});
+
+test('week options come from existing weeks only and label Week 1 as the default', () => {
+  assert.deepEqual(buildWeekOptions(['Week 1', 'Week 2']), [
+    { value: 'Week 1', label: 'Week 1 (Default)' },
+    { value: 'Week 2', label: 'Week 2' },
+  ]);
+  assert.deepEqual(buildWeekOptions(['Phase A', 'Phase B']), [
+    { value: 'Phase A', label: 'Phase A' },
+    { value: 'Phase B', label: 'Phase B' },
+  ]);
+  assert.deepEqual(buildWeekOptions(['Week 1', ' week 1 ', '', 'Week 2']).map((o) => o.value), ['Week 1', 'Week 2']);
+  assert.deepEqual(buildWeekOptions([]), []);
+  assert.deepEqual(buildWeekOptions(undefined), []);
+});
+
+test('the stored week name stays "Week 1"; only the label changes', () => {
+  const [option] = buildWeekOptions(['Week 1']);
+  assert.equal(option.value, 'Week 1');
+  assert.equal(option.label, 'Week 1 (Default)');
+  const weeks = ['Week 1'];
+  buildWeekOptions(weeks);
+  assert.deepEqual(weeks, ['Week 1']);
+});
+
+test('selected week is Week 1, else the first week, and an existing choice is kept', () => {
+  assert.equal(resolveSelectedWeek(['Week 2', 'Week 1']), 'Week 1');
+  assert.equal(resolveSelectedWeek(['Phase B', 'Phase A']), 'Phase B');
+  assert.equal(resolveSelectedWeek(['Week 1', 'Week 2'], 'Week 2'), 'Week 2');
+  assert.equal(resolveSelectedWeek(['Week 1', 'Week 2'], 'week 2'), 'Week 2');
+  assert.equal(resolveSelectedWeek(['Week 1', 'Week 2'], 'Gone'), 'Week 1');
+  assert.equal(resolveSelectedWeek(['Phase A'], 'Week 1'), 'Phase A');
+  assert.equal(resolveSelectedWeek([], 'Week 1'), '');
+});
+
+test('0.85.313.a5 builder keeps the week selection as UI-only state', () => {
+  assert.match(source, /const selectedWeek = ref\(''\)/);
+  assert.match(source, /const weekOptions = computed\(\(\) => buildWeekOptions\(weekGroups\.value\)\)/);
+  const payloadStart = source.indexOf('const plannerPayload = computed');
+  const payloadBlock = source.slice(payloadStart, source.indexOf('}));', payloadStart));
+  assert.equal(payloadBlock.includes('selectedWeek'), false);
+  const dirtyStart = source.indexOf('const buildPlannerDirtyState');
+  const dirtyBlock = source.slice(dirtyStart, source.indexOf('const markPlannerStateCommitted', dirtyStart));
+  assert.equal(dirtyBlock.includes('selectedWeek'), false);
+  const storeStart = source.indexOf('const storeUnsavedBuilderDraft');
+  const storeBlock = source.slice(storeStart, source.indexOf('const restoreUnsavedBuilderDraft', storeStart));
+  assert.equal(storeBlock.includes('selectedWeek'), false);
 });

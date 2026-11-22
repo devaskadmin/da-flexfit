@@ -86,4 +86,9 @@ No release should be marked released or accepted merely because automated tests 
 ## 0.85.313.a4 Unified Schedule Planner (Stage 5/10)
 
 - Frontend only (`WorkoutBuilder.vue`): Day View / Week View tabs removed; one Schedule Planner of day cards. No backend, migration, deploy or package change; save payload unchanged.
-- Release gates: user acceptance in the browser (planner layout after the tab removal, Add Day / Add Exercise / Save, reopen a plan with weeks and a legacy week-mode plan); week assignments are not editable in the UI until the dropdown stage, so confirm that is acceptable for any interim release. a4 uncommitted; not release-ready until accepted.
+- Release gates: user acceptance in the browser (planner layout after the tab removal, Add Day / Add Exercise / Save, reopen a plan with weeks and a legacy week-mode plan); week assignments are not editable in the UI until the dropdown stage, so confirm that is acceptable for any interim release. a4 committed and pushed as `5ffa3132b`; not release-ready until accepted.
+
+## 0.85.313.a5 Week Selection Dropdown (Stage 6/10)
+
+- Frontend only (`WorkoutBuilder.vue`, `workoutDayWeekAssignment.mjs`): Week dropdown above the day cards. No backend, migration, deploy or package change; save payload unchanged.
+- Release gates: user acceptance in the browser (dropdown label and layout, default selection, switching weeks keeps unsaved edits, save and reopen unchanged). The dropdown has no visible effect until day filtering lands, so confirm that is acceptable for any interim release. a5 uncommitted; not release-ready until accepted.

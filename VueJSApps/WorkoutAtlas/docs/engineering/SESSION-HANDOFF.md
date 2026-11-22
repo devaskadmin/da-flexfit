@@ -196,7 +196,14 @@ No implementation action is authorized until scoped approval is provided. The ex
 
 ## 0.85.313.a4 Unified Schedule Planner closeout (Stage 5/10) - 2026-11-21
 
-- a3.4 pushed first (`f34e9eab1`, branch `0.85.113`, live acceptance pending). a4 is uncommitted; do not commit or push unless asked.
+- a3.4 pushed first (`f34e9eab1`, branch `0.85.113`, live acceptance pending). a4 was committed and pushed as `5ffa3132b`; do not commit or push a5 unless asked.
 - Frontend only (`WorkoutBuilder.vue`): Day View / Week View tabs and `changeScheduleMode` removed; one Schedule Planner of workout day cards. Add Day, Add Exercise, bottom controls and Save unchanged. The builder was already always in day mode, so the payload (both group sets, orders, `settings.dayWeekAssignments`, exercises) is unchanged. Nothing above Workout Plan Information, no backend/DB/package change, PlanID 5 untouched.
 - Verification: new contract suite `8/8`, all 8 frontend test files pass (70 tests), Vite build passed, CRLF kept.
 - Still open: browser check (tabs gone, day cards and Add Day/Add Exercise/Save work, a plan with weeks reopens with its week assignments intact after save, a legacy week-mode plan still opens); layout spacing after the tab removal is unverified; inert `.planner-mode-*` CSS remains; no week dropdown or Rename Week yet. STOP; await acceptance. Do not begin Stage 6.
+
+## 0.85.313.a5 Week Selection Dropdown closeout (Stage 6/10) - 2026-11-21
+
+- a4 pushed first (`5ffa3132b`, branch `0.85.113`, browser acceptance pending). a5 is uncommitted; do not commit or push unless asked.
+- Frontend only: a Week dropdown at the top of the Schedule Planner (below Workout Plan Information, above Add Day and the day cards). Options = existing weeks; `Week 1` displays as `Week 1 (Default)` and stays stored as `Week 1`; default selection Week 1, else the first week. Helpers `buildWeekOptions` / `resolveSelectedWeek` in `workoutDayWeekAssignment.mjs`; `selectedWeek` is UI state only (not in payload, dirty snapshot or draft) and does not filter or edit anything. No day filtering, Add Week or Rename Week.
+- Verification: new contract suite `7/7`, util suite `18/18`, a4 contract `8/8`, all 9 frontend test files pass (81 tests), Vite build passed, CRLF kept. No backend/DB/package change; PlanID 5 untouched.
+- Still open: browser check (dropdown renders above the day cards with `Week 1 (Default)` first; switching weeks changes nothing else and keeps unsaved edits; a plan with custom weeks and a plan without Week 1 select the first week; save and reopen unchanged); selection has no visible effect until day filtering; no Add Week / Rename Week. STOP; await acceptance. Do not begin Stage 7.

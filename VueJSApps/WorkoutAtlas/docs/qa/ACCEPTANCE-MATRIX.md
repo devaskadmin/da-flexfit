@@ -201,3 +201,17 @@ Stage 1/10 re-verification (2026-11-21): branch name FAIL; 0.85.312 baseline PAS
 | Nothing above Workout Plan Information, no backend/DB/package change; PlanID 5 | Diff limited to the planner section of `WorkoutBuilder.vue`; no data access | PASS |
 | Regression | 8 frontend test files, 70 tests; Vite build passed | PASS |
 | Browser: tabs gone, layout spacing, Add Day/Add Exercise/Save work, reopen a plan with weeks and a legacy week-mode plan | Not performed | PENDING USER ACCEPTANCE |
+
+## 0.85.313.a5 Week Selection Dropdown, Stage 6/10 (2026-11-21)
+
+| Check | Evidence | Status |
+| --- | --- | --- |
+| Week dropdown inside the Schedule Planner, above Add Day and the day cards, below Workout Plan Information | Contract suite `7/7` (source position) | PASS (automated, source contract) |
+| Options come from existing saved weeks; `Week 1` shown as `Week 1 (Default)`, stored as `Week 1` | Util tests `18/18` (`buildWeekOptions`), contract | PASS (automated) |
+| Default selection Week 1, else the first existing week; kept while the week exists; reset on load/reset | Util tests, contract | PASS (automated) |
+| Switching weeks does not lose unsaved changes, edit data, save or filter cards | Contract: selection not in payload, dirty snapshot, draft, card loop or any data write | PASS (automated, source contract) |
+| Day filtering, Add Week, Rename Week not added | Contract | PASS |
+| Existing controls, assignments and save behavior preserved | Contract plus unchanged payload/dirty assertions; a4 contract `8/8` | PASS (automated) |
+| Nothing above Workout Plan Information; no backend/DB/package change; PlanID 5 | Diff hunks all below the metadata form; no data access | PASS |
+| Regression | 9 frontend test files, 81 tests; Vite build passed | PASS |
+| Browser: dropdown renders with `Week 1 (Default)`, switching weeks keeps unsaved edits, plan without Week 1 selects its first week, save and reopen unchanged | Not performed | PENDING USER ACCEPTANCE |

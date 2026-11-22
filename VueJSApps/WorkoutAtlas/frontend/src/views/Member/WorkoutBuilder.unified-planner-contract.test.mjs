@@ -7,9 +7,11 @@ import { fileURLToPath } from 'node:url';
 // 0.85.313.a4: Schedule Planner is unified (no Day View / Week View tabs). Source-contract checks only.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const source = fs.readFileSync(path.join(__dirname, 'WorkoutBuilder.vue'), 'utf8');
-const templateEnd = source.indexOf('<script setup');
-const template = source.slice(0, templateEnd > 0 ? templateEnd : source.indexOf('<style'));
-const script = source.slice(source.indexOf('<script setup'), source.indexOf('<style'));
+const scriptStart = source.indexOf('<script setup');
+const scriptEnd = source.indexOf('</script>');
+const templateStart = source.indexOf('<template>', scriptEnd);
+const template = source.slice(templateStart, source.indexOf('<style'));
+const script = source.slice(scriptStart, scriptEnd);
 const plannerStart = template.indexOf('<section class="planner-shell">');
 const plannerEnd = template.indexOf('planner-shell--publication');
 const plannerTemplate = template.slice(plannerStart, plannerEnd);
@@ -40,9 +42,8 @@ test('Add Day, Add Exercise and the bottom controls are preserved', () => {
   assert.match(script, /const showBottomScheduleGroupControls = computed/);
 });
 
-test('no week dropdown or Rename Week control is added yet', () => {
-  assert.equal(/Rename Week/i.test(template), false);
-  assert.equal(/<select[^>]*week/i.test(plannerTemplate), false);
+test('no Add Week or Rename Week control is added', () => {
+  assert.equal(/Rename Week|Add Week/i.test(template), false);
 });
 
 test('the builder never leaves day mode, so day cards are always shown', () => {

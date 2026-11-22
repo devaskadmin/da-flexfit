@@ -32,6 +32,25 @@ export const resolveDefaultWeek = (weekGroups = []) => {
 };
 
 /**
+ * Week dropdown options built from the existing weeks only. `value` is always the
+ * stored week name; only the label of the default "Week 1" gets a "(Default)" suffix.
+ */
+export const buildWeekOptions = (weekGroups = []) =>
+  uniqueLabels(weekGroups).map((week) => ({
+    value: week,
+    label: groupKey(week) === groupKey(DEFAULT_WEEK_NAME) ? `${week} (Default)` : week,
+  }));
+
+/**
+ * Week to show as selected: the current selection when it still exists (returned with
+ * the stored spelling), otherwise Week 1, otherwise the first week, otherwise ''.
+ */
+export const resolveSelectedWeek = (weekGroups = [], current = '') => {
+  const weeks = uniqueLabels(weekGroups);
+  return weeks.find((week) => groupKey(week) === groupKey(current)) || resolveDefaultWeek(weeks);
+};
+
+/**
  * In-memory day-to-week mapping: { [normalized day name]: week label }.
  * Each day appears at most once, so a day can never be assigned twice.
  * Valid assignments (day and week both still exist) are kept; entries for

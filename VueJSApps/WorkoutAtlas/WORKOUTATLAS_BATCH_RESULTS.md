@@ -542,7 +542,7 @@
 
 ## 0.85.313.a4 - Unified Schedule Planner, Stage 5/10 (2026-11-21)
 
-- Checkpoint: a3.4 reviewed, committed and pushed first (`f34e9eab1`, branch `0.85.113`; live acceptance recorded as pending). a4 is uncommitted.
+- Checkpoint: a3.4 reviewed, committed and pushed first (`f34e9eab1`, branch `0.85.113`; live acceptance recorded as pending). a4 was committed and pushed as `5ffa3132b`.
 - Goal: remove the separate Day View / Week View tabs from Create/Edit Workout Plan and show one Schedule Planner of workout day cards. Frontend only.
 - Change (`frontend/src/views/Member/WorkoutBuilder.vue`): removed the tab pair and its wrapper in the planner section and the unused `changeScheduleMode`. Nothing above Workout Plan Information, no backend, DB, schema or package change.
 - Preserved: Add Day (top and bottom), Add Exercise, Add Exercise to End, day rename/duplicate/move/delete, Save/Publish. The builder already always ran in day mode, so the save payload is unchanged (both group sets, orders, `settings.dayWeekAssignments`, all exercises); week names, assignments and workout content round-trip. Legacy week-mode plans load as before.
@@ -551,3 +551,14 @@
 - Safety: PlanID 5 untouched (no data access).
 - Limitations: source-contract tests only, no browser check of layout; inert `.planner-mode-*` CSS left in place; weeks and assignments are saved but not editable in the UI until the dropdown stage.
 - User acceptance: PENDING. STOP; Stage 6 not started.
+
+## 0.85.313.a5 - Week Selection Dropdown, Stage 6/10 (2026-11-21)
+
+- Checkpoint: a4 reviewed (staged-file and secret review clean, no `.local-only`/`.artifacts`/`.env`), committed and pushed first (`5ffa3132b`, branch `0.85.113`; browser acceptance recorded as pending). a5 is uncommitted.
+- Goal: add a Week selection dropdown in the Schedule Planner above the workout day cards. Frontend only.
+- Change: `WorkoutBuilder.vue` (dropdown below Workout Plan Information, above Add Day and the day cards; `selectedWeek` UI state, `weekOptions`, watcher) and `workoutDayWeekAssignment.mjs` (`buildWeekOptions`, `resolveSelectedWeek`). Options come from existing weeks; `Week 1` is displayed as `Week 1 (Default)` while stored as `Week 1`; default selection is Week 1, else the first week.
+- Behavior: switching weeks only changes the selection. It is not in the payload, dirty snapshot or draft, and edits no days, weeks, assignments or exercises, so unsaved changes are kept. No day filtering, Add Week or Rename Week.
+- Tests: new `WorkoutBuilder.week-dropdown-contract.test.mjs` `7/7`; `workoutDayWeekAssignment.test.mjs` `18/18` (+4); a4 contract `8/8` (one assertion updated); all 9 frontend test files pass (81 tests); Vite build passed; CRLF kept. Backend not re-run (no backend change).
+- Safety: PlanID 5 untouched (no data access); no backend, DB, schema, package or above-Workout-Plan-Information change.
+- Limitations: source-contract and pure-function tests only, no browser check of the rendered dropdown; selecting a week has no visible effect yet (filtering is a later stage); selection not remembered across reloads.
+- User acceptance: PENDING. STOP; Stage 7 not started.

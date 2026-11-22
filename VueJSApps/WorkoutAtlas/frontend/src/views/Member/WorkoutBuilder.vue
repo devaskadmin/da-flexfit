@@ -19,6 +19,8 @@ import {
   readSavedDayWeekAssignments,
   buildDayWeekAssignmentsSettings,
   serializeDayWeekAssignments,
+  buildWeekOptions,
+  resolveSelectedWeek,
 } from '@/utils/workoutDayWeekAssignment.mjs';
 import { normalizeRecordingType } from '@/utils/exerciseRecordingFields';
 import Swal from 'sweetalert2';
@@ -149,6 +151,9 @@ const dayGroupOrders = ref([]);
 const weekGroupOrders = ref([]);
 // In-memory day-to-week mapping ({ [normalized day name]: week label }); never saved or sent to the API.
 const dayWeekAssignments = ref({});
+// 0.85.313.a5: week shown in the Schedule Planner dropdown. UI state only: not saved, not sent to the API,
+// not part of unsaved-change detection, and it does not filter or change any day, week or assignment.
+const selectedWeek = ref('');
 const selectedScheduleGroup = ref(null);
 const expandedGroupIdByMode = ref({ day: null, week: null });
 const dayGroupIdentityMap = ref([]);
@@ -3233,6 +3238,7 @@ const resetPlannerDraft = ({ preserveSaveMessage = false } = {}) => {
   dayGroupOrders.value = [];
   weekGroupOrders.value = [];
   dayWeekAssignments.value = {};
+  selectedWeek.value = '';
   selectedScheduleGroup.value = null;
   expandedGroupIdByMode.value = { day: null, week: null };
   dayGroupIdentityMap.value = [];
@@ -3416,6 +3422,7 @@ const hydratePlanner = (planner = {}, {
   // Restore saved assignments (settings_json); reconcile keeps valid ones and defaults the rest in memory.
   dayWeekAssignments.value = readSavedDayWeekAssignments(planner);
   reconcileDayWeekAssignmentState();
+  selectedWeek.value = resolveSelectedWeek(weekGroups.value);
 
   hasSavedWorkoutDetails.value = markSaved;
   inlineEditingDayName.value = '';
@@ -4116,6 +4123,20 @@ const reconcileDayWeekAssignmentState = () => {
 };
 
 watch([dayGroups, weekGroups], reconcileDayWeekAssignmentState, { deep: true });
+
+const weekOptions = computed(() => buildWeekOptions(weekGroups.value));
+
+// Keep the selection valid: Week 1 by default, else the first existing week; a still-existing choice is kept.
+watch(
+  weekGroups,
+  (weeks) => {
+    const next = resolveSelectedWeek(weeks, selectedWeek.value);
+    if (next !== selectedWeek.value) {
+      selectedWeek.value = next;
+    }
+  },
+  { immediate: true, deep: true }
+);
 
 const isFirstScheduleGroup = (groupName) => {
   const normalized = String(groupName || '').trim().toLowerCase();
@@ -5490,6 +5511,20 @@ watch(
           </div>
 
           <div class="planner-tools">
+              <div class="planner-week-select">
+                <label class="planner-week-select__label" for="planner-week-select">Week</label>
+                <select
+                  id="planner-week-select"
+                  v-model="selectedWeek"
+                  class="planner-week-select__control"
+                  aria-label="Select week"
+                >
+                  <option v-for="week in weekOptions" :key="week.value" :value="week.value">
+                    {{ week.label }}
+                  </option>
+                </select>
+              </div>
+
               <div class="planner-group-editor">
                 <label class="planner-group-editor__label" for="planner-add-day-input">{{ scheduleGroupEditorLabel }}</label>
                 <input
@@ -8416,6 +8451,35 @@ watch(
 
 .planner-mode-btn.active:hover {
   background: #1d4ed8;
+}
+
+.planner-week-select {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  min-width: 0;
+}
+
+.planner-week-select__label {
+  color: #ecf6ff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.planner-week-select__control {
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  border-radius: 6px;
+  min-height: 36px;
+  padding: 6px 10px;
+  background: linear-gradient(180deg, rgba(15, 28, 46, 0.9), rgba(11, 22, 34, 0.92));
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  color: #ecf6ff;
+  font-size: 0.82rem;
 }
 
 .planner-group-editor {

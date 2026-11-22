@@ -190,4 +190,11 @@ Current evidence: implementation and automated coverage exist for many areas. Li
 - Create/Edit Workout Plan no longer has Day View / Week View tabs. `WorkoutBuilder.vue` shows one Schedule Planner of workout day cards. Frontend only; nothing above Workout Plan Information and no backend, DB or package change.
 - Unchanged: Add Day, Add Exercise, bottom controls, Save. The builder already always ran in day mode, so the payload still carries both group sets, orders, `settings.dayWeekAssignments` and exercises. No week dropdown or Rename Week yet (later stage); weeks and assignments are saved but not editable in the UI meanwhile.
 - Tests: new contract suite `8/8`, all 8 frontend test files pass (70 tests), Vite build passed. PlanID 5 untouched.
-- Open: no browser check of layout; inert `.planner-mode-*` CSS remains; a4 uncommitted. Acceptance PENDING; do not begin Stage 6.
+- Open: no browser check of layout; inert `.planner-mode-*` CSS remains; a4 committed and pushed as `5ffa3132b`. Acceptance PENDING.
+
+## 0.85.313.a5 Week Selection Dropdown (Stage 6/10) - 2026-11-21
+
+- The Schedule Planner has a Week dropdown above Add Day and the day cards (below Workout Plan Information). Options are the plan's existing weeks; `Week 1` is shown as `Week 1 (Default)` but stored as `Week 1`; default selection is Week 1, else the first week. Frontend only (`WorkoutBuilder.vue`, `workoutDayWeekAssignment.mjs`); no backend, DB or package change.
+- The selection is UI state only: not saved, not in the dirty snapshot or draft, and it does not filter or edit days, weeks, assignments or exercises. No day filtering, Add Week or Rename Week yet.
+- Tests: new contract suite `7/7`, util suite `18/18`, all 9 frontend test files pass (81 tests), Vite build passed. PlanID 5 untouched.
+- Open: no browser check; selection has no visible effect until filtering is added; a5 uncommitted. Acceptance PENDING; do not begin Stage 7.
