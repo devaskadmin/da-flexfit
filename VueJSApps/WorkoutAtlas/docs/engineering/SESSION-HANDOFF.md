@@ -108,3 +108,33 @@ No implementation action is authorized until scoped approval is provided. The ex
 - Automated evidence: 19/19 focused recording/builder tests; production build passed 701 modules.
 - Outstanding acceptance: live Save alignment, bottom Day/Week controls, recording surfaces/viewports, and Create/Edit save workflows require user browser verification.
 - 0.85.313: TODO; no implementation or change starts until authorized.
+
+## 0.85.313 baseline verification closeout - 2026-11-21
+
+- Request: `0.85.113.RESET` branch; result: **FAIL** as a branch-name check. Checked-out local and upstream-tracking branch is `0.85.113`, while HEAD commit is named `0.85.113.RESET`.
+- HEAD: `0fbf3b293cc6fb6363cac2922894bfc098c81bed`.
+- Restored 0.85.312 baseline: **PASS**. Direct tree diff against BETA `df1f026d506c50456b477e0777a98bb55c2e1977` (`0.85.312 - Recovery checkpoint for 0.85.309 through 0.85.312`) is empty.
+- Working tree: clean; status `## 0.85.113...origin/0.85.113`; no staged or tracked changes.
+- `backend/api/users.js`: `4,768` lines; `37` route definitions.
+- Exact API route inventory: `GET /user-id`, `GET /users`, `GET /user-profile-settings`, `PUT /user-profile-settings`, `POST /workout-schedules`, `GET /workout-schedules`, `GET /workout-schedules/:id`, `POST /workout-schedules/:id/plan-type-conversion-preview`, `POST /workout-schedules/:id/plan-type-conversion`, `POST /workout-schedules/:id/cover`, `DELETE /workout-schedules/:id/cover`, `PATCH /workout-schedules/:id`, `PUT /workout-schedules/:id/groups`, `POST /workout-schedules/:id/exercises`, `PATCH /workout-schedules/:id/exercises/:scheduleExerciseId`, `DELETE /workout-schedules/:id/exercises/:scheduleExerciseId`, `GET /workout-schedules/:id/delete-impact`, `DELETE /workout-schedules/:id`, `GET /featured-workout-plans`, `GET /global-workout-plans`, `GET /global-workout-plans/:id`, `POST /global-workout-plans/:id/use`, `POST /featured-workout-plans/:id/clone`, `GET /admin/global-workout-plans`, `GET /admin/user-workout-plans`, `GET /admin/global-workout-plans/:id`, `POST /admin/global-workout-plans`, `PATCH /admin/global-workout-plans/:id`, `PATCH /admin/global-workout-plans/:id/schedule`, `POST /admin/global-workout-plans/:id/exercises`, `DELETE /admin/global-workout-plans/:id/exercises/:scheduleExerciseId`, `DELETE /admin/global-workout-plans/:id`, `GET /workout-planner`, `GET /workout-planner/provenance`, `PUT /workout-planner`, `DELETE /workout-planner/:planId`, `GET /has-saved-workout-list`.
+- Week/day assignment: normalized in `normalizePlannerPayload` and reconstructed in `buildPlannerFromSchedule`; exercises carry `scheduleGroup`, while `dayGroups`/`weekGroups` and separate order arrays retain labels and sort order.
+- Storage: MySQL `workout_schedules`, `workout_schedule_groups`, and `workout_schedule_exercises`; `replaceScheduleGroupsAndExercises` replaces groups and exercise rows after preserving relevant custom display order.
+- Existing frontend assignment functions: `normalizeGroupKey`, `getScheduleGroupId`, `resolveScheduleGroupNameFromId`, `toggleScheduleGroupAccordion`, `addScheduleGroupFromValue`, `addScheduleGroup`, `addScheduleGroupBottom`, `duplicateScheduleGroup`, `moveScheduleGroup`, and `removeScheduleGroup` in `frontend/src/views/Member/WorkoutBuilder.vue`.
+- No application code, database, migration, package, server, protected PlanID 5, personal history, paused-session, or refactoring change was made.
+- STOP: baseline verification complete. Await approval; do not implement, modify the branch name, or alter data.
+
+## 0.85.313 Stage 1/10 closeout - 2026-11-21
+
+- Branch `0.85.113.RESET`: FAIL (checked out `0.85.113`; only the HEAD commit subject is `0.85.113.RESET`).
+- Baseline 0.85.312: PASS (HEAD `0fbf3b293cc6fb6363cac2922894bfc098c81bed` has an empty diff against BETA `df1f026d506c50456b477e0777a98bb55c2e1977`).
+- `backend/api/users.js`: 4,768 lines; 37 routes (4 user/profile, 14 workout-schedules, 5 featured/global, 9 admin, 4 workout-planner, 1 has-saved-workout-list).
+- Working tree: source clean; only documentation records modified.
+- Stage 1 was verification only. Do not begin Stage 2 until the user approves and decides on the branch-name mismatch.
+
+## 0.85.313.a1 Default Week Initialization closeout - 2026-11-21
+
+- Branch `0.85.113` (user-approved working branch). New plans now start with `Week 1` in `weekGroups` via `createWorkoutPlan` in `WorkoutBuilder.vue`; Day View stays empty and Day mode stays default.
+- Not touched: `hydratePlanner`, `resetPlannerDraft`, backend, database, packages, PlanID 5.
+- Tests: contract suite `14/14` (2 new); Vite build passed; `users.js` still `37` routes.
+- Known limit: backend persists only the active mode's groups, so `Week 1` saves only when the plan is saved in Week View.
+- No commit made. STOP; await user acceptance before any further work.

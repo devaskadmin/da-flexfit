@@ -6,6 +6,31 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.313.a1] - 2026-11-21 - Default Week initialization
+
+- **Status:** Code complete; focused automated verification and production build passed; user acceptance pending. Package versions remain `0.85.308`.
+- **Added:** New workout plans created through `createWorkoutPlan` now initialize `weekGroups` with `Week 1` (with matching order entry, identity map, and accordion selection) so Week View opens with Week 1 already present. Day View still starts empty and the default scheduling mode remains Day.
+- **Preserved:** `hydratePlanner` (existing/saved plans), `resetPlannerDraft`, week names, week order, and exercise assignments are untouched; saved plans are not modified. `Week 1` already satisfies the existing 60-character `[A-Za-z0-9&'() -]` label validation.
+- **Affected files:** `frontend/src/views/Member/WorkoutBuilder.vue` (`DEFAULT_NEW_PLAN_WEEK_NAME`, `createWorkoutPlan`); `frontend/src/views/Member/WorkoutBuilder.preview-mobile-contract.test.mjs` (2 new contract tests).
+- **Verification:** Contract suite passed `14/14`; Vite production build passed; `backend/api/users.js` still has `37` route definitions and is unmodified.
+- **Not changed:** No UI redesign, backend rewrite, database write or migration, server restart, push, or deploy. PlanID 5 and protected data were not touched.
+- **Known unresolved:** The backend persists only the active schedule mode's groups, so `Week 1` is saved only if the plan is saved in Week View. Live browser acceptance is pending. No commit was made.
+
+## [0.85.313] - 2026-11-21 - Baseline verification only
+
+- **Status:** Investigation/verification only; no implementation, database mutation, migration, server restart, package change, protected-data change, or refactoring was performed.
+- **Branch finding:** FAIL — the checked-out local branch is `0.85.113` tracking `origin/0.85.113`, while HEAD commit `0fbf3b293cc6fb6363cac2922894bfc098c81bed` has subject `0.85.113.RESET`. The requested branch name `0.85.113.RESET` is not checked out.
+- **0.85.312 baseline:** PASS — the HEAD tree exactly matches BETA HEAD `df1f026d506c50456b477e0777a98bb55c2e1977`, commit `0.85.312 - Recovery checkpoint for 0.85.309 through 0.85.312`; direct tree diff is empty.
+- **Working tree:** Clean; `git status --short --branch` reported only `## 0.85.113...origin/0.85.113`, with no tracked or staged changes.
+- **API baseline:** `backend/api/users.js` is 4,768 lines and contains 37 Express route definitions.
+- **Assignment functions:** `normalizePlannerPayload`, `buildPlannerFromSchedule`, and `replaceScheduleGroupsAndExercises` normalize or persist day/week labels, order arrays, and exercise `scheduleGroup` values.
+- **Frontend assignment functions:** `WorkoutBuilder.vue` contains group identity, toggle, add/top/bottom, duplicate, move, rename, and remove functions for day/week schedule groups.
+- **Storage mechanism:** MySQL tables `workout_schedules`, `workout_schedule_groups`, and `workout_schedule_exercises`; schedule updates delete/reinsert groups and exercises through the replacement routine.
+- **Protected scope:** PlanID 5, existing personal history, paused sessions, database rows, and non-disposable Global plans were not changed.
+- **Files updated:** `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`; `docs/engineering/CURRENT-STATE.md`; `docs/engineering/SESSION-HANDOFF.md`; `docs/engineering/DEVLOG.md`; applicable QA/version/release records.
+- **Next action:** STOP and await approval. Do not start implementation or switch/rename branches.
+- **Stage 1/10 re-verification (2026-11-21):** Branch `0.85.113.RESET` FAIL (checked out `0.85.113`); baseline 0.85.312 PASS (empty diff against BETA `df1f026d506c50456b477e0777a98bb55c2e1977`); `backend/api/users.js` 4,768 lines and 37 routes; source tree clean with only documentation records modified. Verification only; no application or database change.
+
 ## [0.85.312] - 2026-11-21 - Recovery checkpoint for 0.85.309 through 0.85.312
 
 - **Status:** Recovery checkpoint complete; 0.85.309, 0.85.309a, 0.85.311 FIX, and 0.85.312 restored implementations are present; user acceptance remains pending.

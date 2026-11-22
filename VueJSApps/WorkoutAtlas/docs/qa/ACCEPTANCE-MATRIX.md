@@ -65,3 +65,29 @@ Focused recording/builder tests passed `19/19`; Vite build passed `701` modules.
 | 0.85.312 bottom Add Day/Add Week | Contract/build PASS | PENDING |
 
 Historical restored-code FAIL/MISSING evidence above is preserved as historical verification context. 0.85.313 is TODO and not started.
+
+## 0.85.313 baseline verification - 2026-11-21
+
+| Check | Result | State |
+|---|---|---|
+| Requested branch `0.85.113.RESET` | Checked-out branch is `0.85.113`; HEAD commit subject is `0.85.113.RESET` | FAIL — branch name mismatch |
+| Restored 0.85.312 baseline | HEAD tree exactly matches BETA `df1f026d506c50456b477e0777a98bb55c2e1977`; direct tree diff empty | PASS |
+| Working tree | Clean; no tracked or staged changes | PASS |
+| `backend/api/users.js` | 4,768 lines; 37 route definitions | RECORDED |
+| Week/day assignment | Payload normalization/reconstruction and exercise `scheduleGroup` assignments verified; MySQL group/exercise tables identified | RECORDED |
+| PlanID 5/data protection | No PlanID 5, history, paused session, database, migration, or protected-data change | PASS |
+
+No live acceptance claim or implementation authorization is inferred. STOP pending approval.
+
+Stage 1/10 re-verification (2026-11-21): branch name FAIL; 0.85.312 baseline PASS; `users.js` 4,768 lines / 37 routes RECORDED; source working tree clean (documentation-only edits).
+
+## 0.85.313.a1 Default Week Initialization (2026-11-21)
+
+| Check | Evidence | Status |
+| --- | --- | --- |
+| New plan initializes Week 1 | `createWorkoutPlan` seeds `weekGroups`; contract test passed | PASS (automated) |
+| Existing/saved plans unchanged | `hydratePlanner`/`resetPlannerDraft` contain no default; contract test passed | PASS (automated) |
+| `users.js` routes | 37 route definitions; no diff | PASS |
+| Production build | Vite build passed | PASS |
+| PlanID 5/data protection | No database, migration, or protected-data change | PASS |
+| Live browser acceptance (Week View on new plan) | Not performed | PENDING USER ACCEPTANCE |

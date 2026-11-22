@@ -98,6 +98,28 @@ test('0.85.312 bottom controls reuse schedule labels and existing validation han
   assert.match(source, /addScheduleGroupBottom.*addScheduleGroupFromValue/s);
 });
 
+test('0.85.313.a1 new plans initialize Week 1 as the default week', () => {
+  assert.match(source, /const DEFAULT_NEW_PLAN_WEEK_NAME = 'Week 1';/);
+  const createStart = source.indexOf('const createWorkoutPlan = async () => {');
+  const createEnd = source.indexOf('const clearScheduleGroupEdit = () => {', createStart);
+  assert.notEqual(createStart, -1);
+  const createBlock = source.slice(createStart, createEnd);
+  assert.match(createBlock, /weekGroups\.value = \[DEFAULT_NEW_PLAN_WEEK_NAME\];/);
+  assert.match(createBlock, /syncGroupOrders\('week', weekGroups\.value\);/);
+  assert.match(createBlock, /ensureAccordionSelectionForMode\('week'\);/);
+  assert.match(createBlock, /scheduleMode\.value = 'day';\s*dayGroups\.value = \[\];/);
+});
+
+test('0.85.313.a1 default week is not injected into loaded or reset plans', () => {
+  const hydrateStart = source.indexOf('const hydratePlanner = (');
+  const hydrateEnd = source.indexOf('const clearSelection = async', hydrateStart);
+  assert.equal(source.slice(hydrateStart, hydrateEnd).includes('DEFAULT_NEW_PLAN_WEEK_NAME'), false);
+  const resetStart = source.indexOf('const resetPlannerDraft = (');
+  const resetEnd = source.indexOf('const clearActivePlanRouteQuery', resetStart);
+  assert.equal(source.slice(resetStart, resetEnd).includes('DEFAULT_NEW_PLAN_WEEK_NAME'), false);
+  assert.equal(source.split('DEFAULT_NEW_PLAN_WEEK_NAME').length - 1, 2);
+});
+
 test('0.85.312 bottom Add control uses green background and white text', () => {
   assert.match(source, /\.planner-group-add--bottom\s*\{[^}]*border-color:\s*#15803D;/s);
   assert.match(source, /\.planner-group-add--bottom\s*\{[^}]*background:\s*#15803D;/s);

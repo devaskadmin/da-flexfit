@@ -103,3 +103,34 @@ Current evidence: implementation and automated coverage exist for many areas. Li
 - 0.85.311 FIX: recording utility/component corrections complete; focused tests passed `19/19`; live surface/viewport acceptance NOT VERIFIED.
 - 0.85.312 bottom Add Day/Add Week: implementation complete; focused 12/12 coverage and build passed; live create/edit/week/collapsed/mobile acceptance pending.
 - 0.85.313: TODO; no implementation authorized or started.
+
+## 0.85.313 baseline verification - 2026-11-21
+
+- Verification scope: read-only baseline only; no application code, database, migration, server, package, or protected-data changes.
+- Branch requested: `0.85.113.RESET`; actual checked-out branch: `0.85.113` tracking `origin/0.85.113`. HEAD: `0fbf3b293cc6fb6363cac2922894bfc098c81bed`, commit subject `0.85.113.RESET`. Branch-name verification is therefore **FAIL**.
+- Restored baseline: **PASS**. The reset HEAD tree is identical to BETA HEAD `df1f026d506c50456b477e0777a98bb55c2e1977` (`0.85.312 - Recovery checkpoint for 0.85.309 through 0.85.312`); direct tree diff is empty.
+- Package versions remain frontend/backend `0.85.308`.
+- Working tree: clean, with no tracked or staged changes. Status was `## 0.85.113...origin/0.85.113`.
+- `backend/api/users.js`: `4,768` lines; route inventory: `37` router definitions.
+- API route inventory (corrected in Stage 1/10): 4 user/profile; 14 `workout-schedules`; 5 featured/global; 9 admin global/user plan; 4 `workout-planner`; 1 `has-saved-workout-list` = 37. Exact method/path inventory is preserved in the session handoff.
+- Week/day assignment exists in normalized planner payloads and `workout_schedule_groups`: day/week labels, label validation, group order entries, active schedule mode, and each exercise `scheduleGroup`.
+- Storage mechanism: MySQL `workout_schedules`, `workout_schedule_groups`, and `workout_schedule_exercises`; replacement logic deletes and re-inserts groups/exercises for schedule updates.
+- Existing frontend assignment functions in `WorkoutBuilder.vue`: `normalizeGroupKey`, `getScheduleGroupId`, `resolveScheduleGroupNameFromId`, `toggleScheduleGroupAccordion`, `addScheduleGroupFromValue`, `addScheduleGroup`, `addScheduleGroupBottom`, `duplicateScheduleGroup`, `moveScheduleGroup`, and `removeScheduleGroup`.
+- PlanID `5` protection remains enforced; no PlanID 5, personal history, paused session, database row, migration, or production data was changed.
+- Baseline verdict: branch-name mismatch is confirmed; restored baseline, route/API inventory, assignment/storage findings, and working-tree state are verified; no implementation work starts until approval.
+
+## 0.85.313 Stage 1/10 verification - 2026-11-21
+
+- Branch `0.85.113.RESET`: **FAIL**. Checked-out branch is `0.85.113` (tracks `origin/0.85.113`); no local or remote branch named `0.85.113.RESET` exists. HEAD `0fbf3b293cc6fb6363cac2922894bfc098c81bed` has commit subject `0.85.113.RESET`.
+- Baseline `0.85.312`: **PASS**. `git diff` between HEAD and BETA `df1f026d506c50456b477e0777a98bb55c2e1977` (`0.85.312 - Recovery checkpoint for 0.85.309 through 0.85.312`) is empty.
+- `backend/api/users.js`: **4,768 lines**; **37 route definitions** (`router.get|post|put|patch|delete`).
+- Working tree: no source changes; only documentation files modified by these verification records. Package versions remain `0.85.308`.
+- No application, database, migration, server, or PlanID 5 change. STOP; Stage 2 requires approval, and the branch-name mismatch needs a user decision.
+
+## 0.85.313.a1 Default Week Initialization - 2026-11-21
+
+- Branch `0.85.113` accepted as the working branch by user direction; HEAD `0fbf3b293cc6fb6363cac2922894bfc098c81bed`; package versions remain `0.85.308`.
+- Implemented in `frontend/src/views/Member/WorkoutBuilder.vue`: `createWorkoutPlan` initializes `weekGroups = ['Week 1']` (orders, identity map, and accordion synced). Day mode stays default; Day View stays empty.
+- Existing/saved plans (`hydratePlanner`), `resetPlannerDraft`, week names, and assignments are unchanged.
+- Focused contract suite passed `14/14`; Vite build passed; `users.js` retains `37` routes with no diff.
+- No backend, database, migration, UI redesign, PlanID 5, or protected-data change. Live browser acceptance PENDING.

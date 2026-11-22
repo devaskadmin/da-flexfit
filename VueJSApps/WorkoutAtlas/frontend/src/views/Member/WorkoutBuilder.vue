@@ -3467,6 +3467,8 @@ const closePicker = () => {
   selectedExerciseInsertPosition.value = 'bottom';
 };
 
+const DEFAULT_NEW_PLAN_WEEK_NAME = 'Week 1';
+
 const createWorkoutPlan = async () => {
   saveMessage.value = '';
   if (!userId.value) {
@@ -3549,12 +3551,15 @@ const createWorkoutPlan = async () => {
     };
 
     // New plans must begin with zero workout days regardless of backend defaults.
+    // Week 1 is initialized as the default week for brand-new plans only; saved plans are hydrated untouched.
     scheduleMode.value = 'day';
     dayGroups.value = [];
-    weekGroups.value = [];
+    weekGroups.value = [DEFAULT_NEW_PLAN_WEEK_NAME];
 
     syncGroupOrders('day', []);
-    syncGroupOrders('week', []);
+    syncGroupOrders('week', weekGroups.value);
+    ensureAccordionSelectionForMode('day');
+    ensureAccordionSelectionForMode('week');
 
     selectedScheduleGroup.value = null;
     

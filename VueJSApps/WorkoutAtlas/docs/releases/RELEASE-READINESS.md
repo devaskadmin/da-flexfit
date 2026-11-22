@@ -38,3 +38,13 @@ No release should be marked released or accepted merely because automated tests 
 - Focused contract suites passed 19/19; Vite production build passed 701 modules.
 - Live visual/user acceptance remains pending for Save, bottom schedule controls, recording layouts, and responsive surfaces.
 - 0.85.313 is reset to TODO and not started.
+
+## 0.85.313 Stage 1/10 baseline verification
+
+- Baseline 0.85.312 verified (empty diff against BETA `df1f026d506c50456b477e0777a98bb55c2e1977`); branch name `0.85.113.RESET` not checked out (`0.85.113`) — FAIL.
+- `users.js`: 4,768 lines, 37 routes. Verification only; no acceptance or release state changed.
+
+## 0.85.313.a1 Default Week Initialization
+
+- Code complete on branch `0.85.113`; contract suite `14/14` and Vite build passed; `users.js` 37 routes unchanged; package versions `0.85.308` unchanged.
+- Not committed, pushed, or deployed. User acceptance PENDING; not release-ready until accepted.

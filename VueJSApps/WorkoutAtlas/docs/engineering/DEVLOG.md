@@ -54,3 +54,28 @@ This log records engineering activity concisely and links to detailed evidence.
 - Automated recording/builder verification passed 19/19; touched diagnostics passed; Vite build passed 701 modules.
 - Outstanding: live browser acceptance for Save, bottom schedule controls, recording layouts, and responsive surfaces.
 - 0.85.313 reset to TODO; no implementation started.
+
+## 2026-11-21 — 0.85.313 Baseline Verification
+
+- Branch verification: FAIL. HEAD `0fbf3b293cc6fb6363cac2922894bfc098c81bed` is on local/remote-tracking branch `0.85.113`; the commit subject is `0.85.113.RESET`, not `0.85.113.RESET` as a checked-out branch name.
+- Restored baseline verification: PASS. HEAD tree exactly matches BETA `df1f026d506c50456b477e0777a98bb55c2e1977`, the `0.85.312` recovery checkpoint; direct tree diff is empty.
+- Working tree: clean and unstaged; no source or database mutations occurred.
+- API: `backend/api/users.js` contains 4,768 lines and 37 route definitions.
+- Assignment/storage: day/week assignments use `scheduleMode`, `dayGroups`, `weekGroups`, group-order arrays, and exercise `scheduleGroup`; MySQL persistence uses `workout_schedules`, `workout_schedule_groups`, and `workout_schedule_exercises` with replacement writes.
+- Protect PlanID 5: preserved. No implementation or subsequent workflow starts until explicit approval.
+
+## 2026-11-21 — 0.85.313 Stage 1/10 Verification
+
+- Objective: verify branch, 0.85.312 baseline, `users.js` size/route count, and working tree; verification only.
+- Results: branch `0.85.113.RESET` FAIL (checked out `0.85.113`; HEAD subject `0.85.113.RESET`); baseline 0.85.312 PASS (empty diff against BETA `df1f026d506c50456b477e0777a98bb55c2e1977`); `users.js` 4,768 lines and 37 routes; source tree clean.
+- Correction: route category counts are 4/14/5/9/4/1 (= 37); earlier 9/13/5/10 breakdown was inaccurate.
+- No application, database, or PlanID 5 change. Stage 2 awaits approval.
+
+## 2026-11-21 — 0.85.313.a1 Default Week Initialization
+
+- Objective: initialize Week 1 automatically for newly created workout plans without altering saved plans.
+- Root cause: `createWorkoutPlan` explicitly reset both `dayGroups` and `weekGroups` to empty arrays; backend defaults (`Week 1`) never reached the new-draft frontend state.
+- Change: `DEFAULT_NEW_PLAN_WEEK_NAME = 'Week 1'`; `createWorkoutPlan` seeds `weekGroups`, syncs week order entries, and calls `ensureAccordionSelectionForMode` for day and week. Day mode default and empty Day View are preserved.
+- Files: `frontend/src/views/Member/WorkoutBuilder.vue`; `frontend/src/views/Member/WorkoutBuilder.preview-mobile-contract.test.mjs`.
+- Tests: contract suite `14/14`; Vite production build passed; `users.js` `37` routes, no diff.
+- Safety: no backend, database, migration, PlanID 5, or package-version change. User acceptance pending.

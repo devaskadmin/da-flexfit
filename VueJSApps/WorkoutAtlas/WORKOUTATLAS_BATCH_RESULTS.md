@@ -438,3 +438,32 @@
 - Live acceptance: Save alignment, bottom Day/Week behavior, recording surfaces, desktop/tablet/mobile geometry, and create/edit/save workflows remain pending visual/browser verification.
 - 0.85.313: reset to TODO; no implementation authorized or started.
 - Historical 0.85.309 verification FAIL/MISSING entries remain preserved above and are not removed.
+
+## 0.85.313 - 2026-11-21 - Baseline verification only
+- Scope: documentation of read-only baseline verification; no application code, database, migration, server, package, or protected-data change.
+- Branch: FAIL. Checked-out branch is `0.85.113` tracking `origin/0.85.113`; HEAD is `0fbf3b293cc6fb6363cac2922894bfc098c81bed`, with commit subject `0.85.113.RESET`. The branch name `0.85.113.RESET` is not currently checked out.
+- Restored baseline: PASS. HEAD tree exactly matches BETA HEAD `df1f026d506c50456b477e0777a98bb55c2e1977`, commit `0.85.312 - Recovery checkpoint for 0.85.309 through 0.85.312`; direct tree diff is empty.
+- Working tree: CLEAN. Status is `## 0.85.113...origin/0.85.113`; no tracked or staged modifications were present before documentation evidence was appended.
+- Backend API file: `backend/api/users.js` is 4,768 lines and contains 37 route definitions.
+- Route inventory:
+	- User/profile/list: `GET /user-id`, `GET /users`, `GET /user-profile-settings`, `PUT /user-profile-settings`, `GET /has-saved-workout-list`.
+	- Workout schedules: `POST /workout-schedules`, `GET /workout-schedules`, `GET /workout-schedules/:id`, conversion preview/conversion routes, cover routes, schedule patch/delete routes, group replacement route, exercise add/patch/delete routes, and delete-impact route.
+	- Featured/global plans: featured list/clone, global list/detail/use, and admin global/user-plan list/create/patch/schedule/exercise/delete routes.
+	- Workout planner: `GET /workout-planner`, `GET /workout-planner/provenance`, `PUT /workout-planner`, `DELETE /workout-planner/:planId`.
+- Week/day assignment: `normalizePlannerPayload` normalizes day/week arrays and exercise schedule labels; `buildPlannerFromSchedule` reconstructs active mode, labels, order arrays, and exercise assignments; `replaceScheduleGroupsAndExercises` persists groups and exercises.
+- Storage: MySQL `workout_schedules`, `workout_schedule_groups`, and `workout_schedule_exercises`; group/exercise replacement deletes old rows and inserts the normalized plan structure.
+- Frontend assignment functions: `normalizeGroupKey`, `getScheduleGroupId`, `resolveScheduleGroupNameFromId`, `toggleScheduleGroupAccordion`, `addScheduleGroupFromValue`, `addScheduleGroup`, `addScheduleGroupBottom`, `duplicateScheduleGroup`, `moveScheduleGroup`, and `removeScheduleGroup` in `WorkoutBuilder.vue`.
+- Protected data: PlanID 5, personal history, paused sessions, and non-disposable plans were not queried or changed.
+- Applicable documentation logs updated: `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`, `docs/engineering/CURRENT-STATE.md`, `docs/engineering/SESSION-HANDOFF.md`, `docs/engineering/DEVLOG.md`, QA/release readiness and acceptance records.
+- Verdict: Baseline evidence verified; branch-name mismatch remains. STOP and await approval. No implementation is authorized.
+- Stage 1/10 re-verification: branch `0.85.113.RESET` FAIL (checked out `0.85.113`, no such branch exists); baseline 0.85.312 PASS (HEAD `0fbf3b293cc6fb6363cac2922894bfc098c81bed` vs BETA `df1f026d506c50456b477e0777a98bb55c2e1977`, empty diff); `users.js` 4,768 lines, 37 routes (4 user/profile, 14 workout-schedules, 5 featured/global, 9 admin, 4 workout-planner, 1 has-saved-workout-list); source clean, documentation-only modifications. STOP.
+
+## 0.85.313.a1 - Default Week Initialization (2026-11-21)
+
+- Branch: `0.85.113` (HEAD `0fbf3b293cc6fb6363cac2922894bfc098c81bed`); package versions unchanged at `0.85.308`.
+- Change: `createWorkoutPlan` in `frontend/src/views/Member/WorkoutBuilder.vue` seeds `weekGroups` with `Week 1` (`DEFAULT_NEW_PLAN_WEEK_NAME`), synced to order entries, identity map, and accordion selection. Day mode remains the default and Day View starts empty.
+- Preserved: `hydratePlanner`/existing saved plans, `resetPlannerDraft`, week names and assignments are untouched. No UI redesign, backend change, database write/migration, server restart, push, or deploy.
+- Tests: `WorkoutBuilder.preview-mobile-contract.test.mjs` passed `14/14` (2 new); Vite production build passed.
+- API: `backend/api/users.js` retains `37` route definitions and has no diff.
+- Protected data: PlanID 5, personal history, paused sessions, and non-disposable Global plans were not touched.
+- User acceptance: PENDING. STOP; no commit made.
