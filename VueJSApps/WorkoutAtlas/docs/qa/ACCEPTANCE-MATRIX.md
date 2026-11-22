@@ -270,7 +270,34 @@ Stage 1/10 re-verification (2026-11-21): branch name FAIL; 0.85.312 baseline PAS
 | Legacy label-only payloads, legacy plans and existing day-to-week assignments unchanged | Backend groups, settings and global-persistence suites | PASS (automated) |
 | 37 `users.js` routes and their order preserved | Route list compared with `HEAD` | PASS |
 | No migration, schema change, production data write or package change; PlanID 5 untouched | `git status`/`git diff --stat` | PASS |
-| Backend regression | Focused suites `78/78`; full run 132 pass / 45 fail, all missing `express`/`mysql2` (no `node_modules`) | PASS (focused); BLOCKED (full run, environmental) |
+| Backend regression | Focused suites `78/78` at the a8.1 checkpoint; full run re-done in a9 below | PASS (focused); see a9 |
 | Frontend regression and build | 13 test files, 140 tests pass; Vite build passed | PASS |
 | Label-keyed readers (global preview, `PUT /workout-schedules/:id/groups`, conversion engine, session label fallback) | Compatibility names for repeated labels; the last two still use the label path | LIMITATION |
 | Browser and live DB: same name in two weeks, rename, save and reopen, copy plan, existing plans, PlanID 5 intact | Not performed | PENDING USER ACCEPTANCE |
+
+## 0.85.313.a9 Final Regression and Acceptance, Stage 10/10 (2026-11-21)
+
+Automated and code-review evidence only; no browser, no live database. a8.1 committed and pushed first (`fe82ef325`).
+
+| # | Check | Evidence | Status |
+| --- | --- | --- | --- |
+| 1 | Default Week 1 initialization | Util suite `41/41`, unified-planner contract `8/8` | PASS (automated) |
+| 2 | Existing and legacy workout plans | Backend groups, settings and global-persistence suites (label-only path, existing assignments, unchanged read); compatibility names only for repeated labels | PASS (automated) |
+| 3 | Add Week validation | Add Week contract `8/8`, util suite | PASS (automated) |
+| 4 | Rename Week and persistent group IDs | Rename Week contract `9/9`; backend identity tests (id kept on rename). A legacy label-only save still recreates a renamed week row (a7 behavior) | PASS (automated); LIMITATION (legacy payload) |
+| 5 | Selected-week filtering and Add Day assignment | Week-filter contract `12/12`, util suite | PASS (automated) |
+| 6 | Identical day names in different weeks | Backend identity tests `10/10`, builder identity contract `7/7` | PASS (automated) |
+| 7 | Complete plan save, reload and persistence | Mocked-database save and read tests (entries, ids, `dayWeekAssignmentsById` round trip) | PASS (automated); live DB PENDING |
+| 8 | Global, Featured and Community plan operations, conversion, adoption | Global-persistence suite, featured registration integration (`7/7`, run with throwaway DB variables), conversion engine suite; adoption and clone insert fresh groups from entries (no separate Community clone route exists in `users.js`; only the global copy, featured clone and conversion routes were reviewed). Conversion engine writes compatibility names as labels for repeated day names in the copy | PASS (automated); LIMITATION (conversion) |
+| 9 | Workout Log, active sessions, dashboard, completed history | Full backend suite; sessions resolve by `workout_day_id` before label; `workout-log.js` shows real labels | PASS (automated) |
+| 10 | 0.85.309 through 0.85.312 behavior | All 13 frontend test files (140 tests) including preview-mobile, history and planner contracts; full backend suite | PASS (automated) |
+| - | Backend suite, default run (no `backend/.env`) | 178 tests, 165 pass, 13 fail, all `Missing database environment variables` at module load | BLOCKED (environmental) |
+| - | Backend suite with throwaway in-process DB variables (unreachable address) | 238 tests, 238 pass, 0 fail | PASS |
+| - | Frontend tests and production build | 13 files, 140 tests, 0 fail; Vite build passed | PASS |
+| - | 37 `users.js` routes and their order | Route list compared with the pre-a8 file | PASS |
+| - | No migration, schema change, package change, production write or deployment; PlanID 5 | `git diff` of a8 and a8.1 shows no package, migration or schema file; no data access | PASS |
+| - | Label-based path audit | No defect on paths the current frontend uses; conversion engine and `PUT /workout-schedules/:id/groups` noted (not fixed) | LIMITATION |
+| - | Index compatibility | Repository schema and 0.83 backup: only non-unique keys on `workout_schedule_groups` | PASS (source); live DB PENDING |
+| - | Browser testing of items 1-10 | Not performed | PENDING USER ACCEPTANCE |
+
+0.85.313 is NOT declared accepted and is not merged into BETA.
