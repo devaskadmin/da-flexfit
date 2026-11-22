@@ -187,3 +187,17 @@ Stage 1/10 re-verification (2026-11-21): branch name FAIL; 0.85.312 baseline PAS
 | Regression | settings `11/11`, groups `21/21`, group filter `24/24`, frontend 7 files, Vite build | PASS |
 | SQL on real MySQL; register/conversion integration suites | Not executed (`express`/`mysql2` missing locally) | OPEN |
 | Browser: create/edit a global plan with week assignments, clone a plan, adopt a global and a featured plan, reopen each | Not performed | PENDING USER ACCEPTANCE |
+
+## 0.85.313.a4 Unified Schedule Planner, Stage 5/10 (2026-11-21)
+
+| Check | Evidence | Status |
+| --- | --- | --- |
+| Day View / Week View tabs removed from Create/Edit Workout Plan | Contract suite `8/8`: no tab text, `planner-mode-*` markup or `changeScheduleMode` in the builder | PASS (automated, source contract) |
+| One Schedule Planner listing workout day cards | Contract: heading, day-card loop and card class present | PASS (automated, source contract) |
+| Add Day, Add Exercise, Add Exercise to End, bottom controls, day menu preserved | Contract assertions | PASS (automated, source contract) |
+| Week dropdown and Rename Week not added | Contract: neither present | PASS |
+| Week assignments and workout content preserved | Payload still sends both group sets, orders, `settings.dayWeekAssignments`, exercises; hydrate restores them; builder only ever in day mode | PASS (automated, source contract) |
+| Legacy plan compatibility | Load logic unchanged | PASS (by design); not verified in a browser |
+| Nothing above Workout Plan Information, no backend/DB/package change; PlanID 5 | Diff limited to the planner section of `WorkoutBuilder.vue`; no data access | PASS |
+| Regression | 8 frontend test files, 70 tests; Vite build passed | PASS |
+| Browser: tabs gone, layout spacing, Add Day/Add Exercise/Save work, reopen a plan with weeks and a legacy week-mode plan | Not performed | PENDING USER ACCEPTANCE |

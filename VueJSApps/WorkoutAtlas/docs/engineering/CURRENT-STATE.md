@@ -183,4 +183,11 @@ Current evidence: implementation and automated coverage exist for many areas. Li
 
 - Day-to-week assignments (`settings_json` -> `dayWeekAssignments`) now persist on global/featured/community create and edit (`PATCH /admin/global-workout-plans/:id/schedule`), global adopt (`/global-workout-plans/:id/use`), featured clone (`/featured-workout-plans/:id/clone`), plan-type conversion and the register-time featured copy (`auth.js`). All reuse `persistDayWeekAssignments`, run inside the existing transaction and are a no-op when the column is absent. Frontend unchanged. `users.js` 37 routes unchanged and in order.
 - Tests: new `workout-plan-global-persistence` `11/11`, settings `11/11`, groups `21/21`, group filter `24/24`, frontend 7 files pass, Vite build passed. No schema change, migration, data write or package change; PlanID 5 untouched.
-- Open: new calls not run on real MySQL; `settings_json` required in each target DB; register/conversion integration suites not runnable locally; no live or browser verification. a3.4 uncommitted. Acceptance PENDING; do not begin Stage 5.
+- Open: new calls not run on real MySQL; `settings_json` required in each target DB; register/conversion integration suites not runnable locally; no live or browser verification. a3.4 committed and pushed as `f34e9eab1`. Acceptance PENDING.
+
+## 0.85.313.a4 Unified Schedule Planner (Stage 5/10) - 2026-11-21
+
+- Create/Edit Workout Plan no longer has Day View / Week View tabs. `WorkoutBuilder.vue` shows one Schedule Planner of workout day cards. Frontend only; nothing above Workout Plan Information and no backend, DB or package change.
+- Unchanged: Add Day, Add Exercise, bottom controls, Save. The builder already always ran in day mode, so the payload still carries both group sets, orders, `settings.dayWeekAssignments` and exercises. No week dropdown or Rename Week yet (later stage); weeks and assignments are saved but not editable in the UI meanwhile.
+- Tests: new contract suite `8/8`, all 8 frontend test files pass (70 tests), Vite build passed. PlanID 5 untouched.
+- Open: no browser check of layout; inert `.planner-mode-*` CSS remains; a4 uncommitted. Acceptance PENDING; do not begin Stage 6.

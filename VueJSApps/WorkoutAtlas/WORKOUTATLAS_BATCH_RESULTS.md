@@ -539,3 +539,15 @@
 - Safety: no schema change, migration, package change or production data write; PlanID 5 untouched.
 - Limitations: new calls not executed on real MySQL; `settings_json` must exist in each target DB (verified only in `stephenk_flexfit`), otherwise assignments are silently not copied; clones of plans without assignments store an empty `dayWeekAssignments`; assignments rely on week names being copied unchanged; no live DB or browser verification.
 - User acceptance: PENDING. STOP; Stage 5 not started.
+
+## 0.85.313.a4 - Unified Schedule Planner, Stage 5/10 (2026-11-21)
+
+- Checkpoint: a3.4 reviewed, committed and pushed first (`f34e9eab1`, branch `0.85.113`; live acceptance recorded as pending). a4 is uncommitted.
+- Goal: remove the separate Day View / Week View tabs from Create/Edit Workout Plan and show one Schedule Planner of workout day cards. Frontend only.
+- Change (`frontend/src/views/Member/WorkoutBuilder.vue`): removed the tab pair and its wrapper in the planner section and the unused `changeScheduleMode`. Nothing above Workout Plan Information, no backend, DB, schema or package change.
+- Preserved: Add Day (top and bottom), Add Exercise, Add Exercise to End, day rename/duplicate/move/delete, Save/Publish. The builder already always ran in day mode, so the save payload is unchanged (both group sets, orders, `settings.dayWeekAssignments`, all exercises); week names, assignments and workout content round-trip. Legacy week-mode plans load as before.
+- Not added: week dropdown, Rename Week.
+- Tests: new `WorkoutBuilder.unified-planner-contract.test.mjs` `8/8`; all 8 frontend test files pass (70 tests); Vite build passed; CRLF kept. Backend not re-run (no backend change since the a3.4 run).
+- Safety: PlanID 5 untouched (no data access).
+- Limitations: source-contract tests only, no browser check of layout; inert `.planner-mode-*` CSS left in place; weeks and assignments are saved but not editable in the UI until the dropdown stage.
+- User acceptance: PENDING. STOP; Stage 6 not started.

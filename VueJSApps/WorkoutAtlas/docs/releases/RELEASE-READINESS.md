@@ -81,4 +81,9 @@ No release should be marked released or accepted merely because automated tests 
 ## 0.85.313.a3.4 Global Plan Persistence
 
 - Backend only (`users.js`, `auth.js`): day-to-week assignments persist on global create/edit, clone, adoption, conversion and register-time featured copy via the existing helper. No migration, deploy or package change; routes unchanged.
-- Release gates: user acceptance in the browser (create/edit a global plan with week assignments, clone a plan, adopt a global and a featured plan, reopen each); confirm `settings_json` exists in every target database (checked only in `stephenk_flexfit`; otherwise assignments are silently not copied); run the new calls on a real MySQL server (not executable locally). a3.4 uncommitted; not release-ready until accepted.
+- Release gates: user acceptance in the browser (create/edit a global plan with week assignments, clone a plan, adopt a global and a featured plan, reopen each); confirm `settings_json` exists in every target database (checked only in `stephenk_flexfit`; otherwise assignments are silently not copied); run the new calls on a real MySQL server (not executable locally). a3.4 committed and pushed as `f34e9eab1`; not release-ready until accepted.
+
+## 0.85.313.a4 Unified Schedule Planner (Stage 5/10)
+
+- Frontend only (`WorkoutBuilder.vue`): Day View / Week View tabs removed; one Schedule Planner of day cards. No backend, migration, deploy or package change; save payload unchanged.
+- Release gates: user acceptance in the browser (planner layout after the tab removal, Add Day / Add Exercise / Save, reopen a plan with weeks and a legacy week-mode plan); week assignments are not editable in the UI until the dropdown stage, so confirm that is acceptable for any interim release. a4 uncommitted; not release-ready until accepted.

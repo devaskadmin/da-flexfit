@@ -192,4 +192,11 @@ No implementation action is authorized until scoped approval is provided. The ex
 - a3.2/a3.3 were accepted and pushed as `20fefbfff` (branch `0.85.113`). a3.4 is uncommitted; do not commit or push unless asked.
 - Day-to-week assignments now persist on global/featured/community create and edit (`PATCH /admin/global-workout-plans/:id/schedule`), global adopt, featured clone, plan-type conversion (`users.js`) and the register-time featured copy (`auth.js`). Reuses `persistDayWeekAssignments`; frontend unchanged; no schema, route, data or package change; PlanID 5 untouched; 37 `users.js` routes identical to HEAD.
 - Verification: new `workout-plan-global-persistence` `11/11`, settings `11/11`, groups `21/21`, group filter `24/24`, frontend 7 files pass, Vite build passed, `node --check` clean, CRLF kept.
-- Still open: browser acceptance (create/edit a global plan with week assignments, clone a plan, adopt a global and a featured plan, reopen each and confirm weeks and assignments); `settings_json` must exist in each target DB; SQL not run on real MySQL. STOP; await acceptance. Do not begin Stage 5.
+- Still open: browser acceptance (create/edit a global plan with week assignments, clone a plan, adopt a global and a featured plan, reopen each and confirm weeks and assignments); `settings_json` must exist in each target DB; SQL not run on real MySQL. a3.4 is committed and pushed as `f34e9eab1`. Await acceptance.
+
+## 0.85.313.a4 Unified Schedule Planner closeout (Stage 5/10) - 2026-11-21
+
+- a3.4 pushed first (`f34e9eab1`, branch `0.85.113`, live acceptance pending). a4 is uncommitted; do not commit or push unless asked.
+- Frontend only (`WorkoutBuilder.vue`): Day View / Week View tabs and `changeScheduleMode` removed; one Schedule Planner of workout day cards. Add Day, Add Exercise, bottom controls and Save unchanged. The builder was already always in day mode, so the payload (both group sets, orders, `settings.dayWeekAssignments`, exercises) is unchanged. Nothing above Workout Plan Information, no backend/DB/package change, PlanID 5 untouched.
+- Verification: new contract suite `8/8`, all 8 frontend test files pass (70 tests), Vite build passed, CRLF kept.
+- Still open: browser check (tabs gone, day cards and Add Day/Add Exercise/Save work, a plan with weeks reopens with its week assignments intact after save, a legacy week-mode plan still opens); layout spacing after the tab removal is unverified; inert `.planner-mode-*` CSS remains; no week dropdown or Rename Week yet. STOP; await acceptance. Do not begin Stage 6.

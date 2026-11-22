@@ -3832,18 +3832,8 @@ const removeScheduleGroup = (groupName) => {
   plannerMessage.value = '';
 };
 
-const changeScheduleMode = (mode) => {
-  const normalizedMode = normalizeScheduleMode(mode);
-  scheduleMode.value = normalizedMode;
-  clearScheduleGroupEdit();
-  const targetGroups = getGroupRefForMode(normalizedMode);
-  const targetOrders = getGroupOrderRefForMode(normalizedMode);
-  targetGroups.value = sortGroupsByOrder(targetGroups.value, targetOrders.value);
-  syncGroupOrders(normalizedMode, targetGroups.value);
-  plannerMessage.value = '';
-  ensureAccordionSelectionForMode(normalizedMode);
-};
-
+// 0.85.313.a4: the Schedule Planner is unified. It always shows workout day cards (scheduleMode stays 'day');
+// the week set and day-to-week assignments are kept in state and saved, but are not edited here yet.
 const toggleWorkoutDetails = () => {
   isWorkoutDetailsOpen.value = !isWorkoutDetailsOpen.value;
 };
@@ -5500,30 +5490,6 @@ watch(
           </div>
 
           <div class="planner-tools">
-            <div class="planner-header-actions planner-header-actions--schedule">
-              <div class="planner-mode-pill-wrap" aria-label="Scheduling mode">
-                <div class="planner-mode-toggle" role="tablist" aria-label="Schedule planner modes">
-                  <button
-                    type="button"
-                    :class="['planner-mode-btn', { active: scheduleMode === 'day' }]"
-                    :aria-pressed="scheduleMode === 'day'"
-                    @click="changeScheduleMode('day')"
-                  >
-                    Day View
-                  </button>
-                  <button
-                    type="button"
-                    :class="['planner-mode-btn', { active: scheduleMode === 'week' }]"
-                    :aria-pressed="scheduleMode === 'week'"
-                    @click="changeScheduleMode('week')"
-                  >
-                    Week View
-                  </button>
-                </div>
-              </div>
-
-            </div>
-
               <div class="planner-group-editor">
                 <label class="planner-group-editor__label" for="planner-add-day-input">{{ scheduleGroupEditorLabel }}</label>
                 <input
