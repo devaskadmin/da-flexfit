@@ -576,7 +576,7 @@
 
 ## 0.85.313.a7 - Rename Week, Stage 8/10 (2026-11-21)
 
-- Checkpoint: a6 reviewed (staged-file and secret review clean), committed and pushed first (`a222c3228`, branch `0.85.113`; browser acceptance recorded as pending). a7 is uncommitted.
+- Checkpoint: a6 reviewed (staged-file and secret review clean), committed and pushed first (`a222c3228`, branch `0.85.113`; browser acceptance recorded as pending). a7 was committed and pushed as `bf66ec03e`.
 - Goal: a three-dot menu with Rename Week beside the Week dropdown. Frontend only.
 - Change: `WorkoutBuilder.vue` (menu, inline rename editor, `saveWeekRename` and related handlers, CSS; `validateWorkoutDayName` gained an optional noun) and `workoutDayWeekAssignment.mjs` (`renameWeekInPlan`). There is no Rename Day modal in this builder (it is an inline title editor), so Rename Week reuses that editor's styling and the same name validator.
 - Behavior: custom names with spaces, apostrophes and hyphens are accepted (same character rules as days, max 60); empty names and case-insensitive duplicates of another week are rejected with a message; the week keeps its position, its assigned days (assignments rewritten to the new name), its identity entry in the builder and the selection; exercises and days are untouched; no duplicate week is created. No day filtering.
@@ -584,4 +584,16 @@
 - Tests: new `WorkoutBuilder.rename-week-contract.test.mjs` `9/9`; `workoutDayWeekAssignment.test.mjs` `29/29` (+5); a4/a5/a6 contract tests updated (Rename Week now exists, only below the metadata form) and pass; all 11 frontend test files pass (109 tests); Vite build passed; CRLF kept. Backend not re-run (no backend change).
 - Safety: PlanID 5 untouched (no data access); no backend, DB, schema, package or above-Workout-Plan-Information change.
 - Limitations: source-contract and pure-function tests only, no browser check of the menu/editor layout; the group-id behavior above; no UI assigns days to weeks; day cards are not filtered; selection not remembered across reloads.
-- User acceptance: PENDING. STOP; Stage 9 not started.
+- User acceptance: PENDING. Stage 9 (a8) follows below.
+
+## 0.85.313.a8 - Week Filtering and Day Assignment, Stage 9/10 (2026-11-21)
+
+- Checkpoint: a7 reviewed (staged-file and secret review clean), committed and pushed first (`bf66ec03e`, branch `0.85.113`; browser acceptance recorded as pending, and the persistent week ID limitation recorded). a8 is uncommitted.
+- Goal: show only the selected week's day cards and assign new days to the selected week. Frontend only.
+- Change: `WorkoutBuilder.vue` (`visibleDayGroups`, cards built from visible days, `assignDayToWeek` in the shared Add Day handler, visible-aware expanded/selected day, week-switch watcher, move/first/last/bottom controls on visible days, empty-week message, duplicate-name message naming the other week) and `workoutDayWeekAssignment.mjs` (`getDaysForWeek`, `assignDayToWeek`, `buildDuplicateDayMessage`, `moveDayAmongVisible`). Also fixed an a7 edge case: the rename editor is cancelled if the dropdown changes, and a rename only moves the selection when it renamed the selected week.
+- Behavior: only days assigned to the selected week are shown; a new day (top or bottom Add Day) joins the selected week; a new week is empty; switching weeks keeps all unsaved days, exercises, recording values and assignments; saving still sends every week, day, assignment and exercise (payload unchanged); Add Week validation and Rename Week unchanged; day-card actions and exercise controls preserved. The Preview still lists the whole plan.
+- BLOCKER (reported, not worked around): identical day names in separate weeks are not supported. A day is identified by its name alone (day list, `scheduleGroup` on exercises, assignment keys, backend label matching), so same-named days in two weeks would merge. Fixing it needs a day id or week-qualified key in the payload and backend. Duplicate names remain rejected across weeks, with a message naming the week that holds the name.
+- Tests: new `WorkoutBuilder.week-filter-contract.test.mjs` `12/12`; `workoutDayWeekAssignment.test.mjs` `35/35` (+6); the a5 week-dropdown and 0.85.312 preview-mobile contract tests were updated; all 12 frontend test files pass (127 tests); Vite build passed; CRLF kept. Backend not re-run (no backend change).
+- Safety: PlanID 5 untouched (no data access); no backend, DB, schema, package or above-Workout-Plan-Information change.
+- Limitations: source-contract and pure-function tests only, no browser check; the identical-name blocker; week identity not persisted on rename (a7); no UI moves an existing day to another week; Preview unfiltered; expanded day not remembered per week.
+- User acceptance: PENDING. STOP; Stage 10 not started.

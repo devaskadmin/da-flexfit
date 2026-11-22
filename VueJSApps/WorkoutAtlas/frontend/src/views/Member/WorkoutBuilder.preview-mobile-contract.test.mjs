@@ -83,8 +83,9 @@ test('top plan action row uses identical aligned Back and Save control heights',
 
 test('0.85.312 shows bottom Add Day or Add Week after one schedule and two exercises', () => {
   assert.match(source, /const showBottomScheduleGroupControls = computed/);
-  assert.match(source, /activeGroups\.value\.length < 1/);
-  assert.match(source, /countUniqueWorkoutPlanExercises\(workoutExercises\.value\) >= 2/);
+  assert.match(source, /visibleDayGroups\.value\.length < 1/);
+  // 0.85.313.a8: the two-exercise rule now counts the exercises of the days shown for the selected week.
+  assert.match(source, /countUniqueWorkoutPlanExercises\(workoutDaysWithExercises\.value\.flatMap\(\(day\) => day\.exercises\)\) >= 2/);
   assert.match(source, /planner-bottom-group-actions/);
   assert.match(source, /v-model="newScheduleGroupNameBottom"/);
   assert.match(source, /@click="addScheduleGroupBottom"/);

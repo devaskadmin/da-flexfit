@@ -17,10 +17,75 @@ import {
   weekHasDayWithExercise,
   buildNextWeekName,
   renameWeekInPlan,
+  getDaysForWeek,
+  assignDayToWeek,
+  buildDuplicateDayMessage,
+  moveDayAmongVisible,
 } from './workoutDayWeekAssignment.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const source = fs.readFileSync(path.join(__dirname, '../views/Member/WorkoutBuilder.vue'), 'utf8');
+
+// 0.85.313.a8: week filtering and day assignment helpers.
+test('getDaysForWeek returns only the days assigned to the week, in order, without touching the input', () => {
+  const dayGroups = ['Push', 'Pull', 'Legs', 'Arms'];
+  const assignments = { push: 'Week 1', pull: 'Week 2', legs: 'week 1', arms: 'Week 2' };
+  const before = JSON.stringify({ dayGroups, assignments });
+  const weekGroups = ['Week 1', 'Week 2'];
+  assert.deepEqual(getDaysForWeek({ dayGroups, weekGroups, assignments, week: 'Week 1' }), ['Push', 'Legs']);
+  assert.deepEqual(getDaysForWeek({ dayGroups, weekGroups, assignments, week: 'week 2' }), ['Pull', 'Arms']);
+  assert.equal(JSON.stringify({ dayGroups, assignments }), before);
+});
+
+test('getDaysForWeek: a new week is empty, unassigned days use the default week, no selection shows everything', () => {
+  const weekGroups = ['Week 1', 'Week 2', 'Week 3'];
+  const dayGroups = ['A', 'B'];
+  assert.deepEqual(getDaysForWeek({ dayGroups, weekGroups, assignments: { a: 'Week 1', b: 'Week 2' }, week: 'Week 3' }), []);
+  assert.deepEqual(getDaysForWeek({ dayGroups, weekGroups, assignments: {}, week: 'Week 1' }), ['A', 'B']);
+  assert.deepEqual(getDaysForWeek({ dayGroups, weekGroups, assignments: {}, week: 'Week 2' }), []);
+  assert.deepEqual(getDaysForWeek({ dayGroups, weekGroups: [], assignments: {}, week: '' }), ['A', 'B']);
+  assert.deepEqual(getDaysForWeek({ dayGroups: null, weekGroups, assignments: {}, week: 'Week 1' }), []);
+});
+
+test('getDaysForWeek ignores inherited object keys', () => {
+  const days = getDaysForWeek({ dayGroups: ['toString'], weekGroups: ['Week 1', 'Week 2'], assignments: {}, week: 'Week 2' });
+  assert.deepEqual(days, []);
+});
+
+test('assignDayToWeek returns a new object, keeps other entries and blocks unsafe keys', () => {
+  const assignments = { push: 'Week 1' };
+  const next = assignDayToWeek(assignments, ' Pull ', ' Week 2 ');
+  assert.deepEqual(next, { push: 'Week 1', pull: 'Week 2' });
+  assert.deepEqual(assignments, { push: 'Week 1' });
+  assert.equal(assignDayToWeek(assignments, '', 'Week 2'), assignments);
+  assert.equal(assignDayToWeek(assignments, 'Pull', ''), assignments);
+  assert.equal(assignDayToWeek(assignments, '__proto__', 'Week 2'), assignments);
+});
+
+test('identical day names across weeks are rejected with a message that names the other week (blocker: data model is name-keyed)', () => {
+  const args = {
+    dayGroups: ['Push'],
+    weekGroups: ['Week 1', 'Week 2'],
+    assignments: { push: 'Week 1' },
+  };
+  assert.equal(
+    buildDuplicateDayMessage({ ...args, name: 'push', week: 'Week 2' }),
+    'push already exists in Week 1. Day names must be unique across all weeks.'
+  );
+  assert.equal(buildDuplicateDayMessage({ ...args, name: 'PUSH', week: 'Week 1' }), 'PUSH already exists.');
+  assert.equal(buildDuplicateDayMessage({ ...args, name: 'Other', week: 'Week 1' }), 'Other already exists.');
+});
+
+test('moveDayAmongVisible swaps with the visible neighbour and leaves hidden days in place', () => {
+  const groups = ['A1', 'B1', 'A2', 'B2', 'A3'];
+  const visible = ['A1', 'A2', 'A3'];
+  assert.deepEqual(moveDayAmongVisible({ groups, visibleGroups: visible, name: 'A2', direction: 'up' }), ['A2', 'B1', 'A1', 'B2', 'A3']);
+  assert.deepEqual(moveDayAmongVisible({ groups, visibleGroups: visible, name: 'a2', direction: 'down' }), ['A1', 'B1', 'A3', 'B2', 'A2']);
+  assert.equal(moveDayAmongVisible({ groups, visibleGroups: visible, name: 'A1', direction: 'up' }), null);
+  assert.equal(moveDayAmongVisible({ groups, visibleGroups: visible, name: 'A3', direction: 'down' }), null);
+  assert.equal(moveDayAmongVisible({ groups, visibleGroups: visible, name: 'B1', direction: 'up' }), null);
+  assert.deepEqual(groups, ['A1', 'B1', 'A2', 'B2', 'A3']);
+});
 
 test('default week prefers Week 1, then the first existing week, then none', () => {
   assert.equal(resolveDefaultWeek(['Phase A', 'week 1']), 'week 1');

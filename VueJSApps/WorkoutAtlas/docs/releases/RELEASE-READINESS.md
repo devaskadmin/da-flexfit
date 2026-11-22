@@ -101,4 +101,9 @@ No release should be marked released or accepted merely because automated tests 
 ## 0.85.313.a7 Rename Week (Stage 8/10)
 
 - Frontend only (`WorkoutBuilder.vue`, `workoutDayWeekAssignment.mjs`): Rename Week in a three-dot menu beside the Week dropdown. No backend, migration, deploy or package change; save payload unchanged.
-- Release gates: user acceptance in the browser (menu and editor layout, valid and invalid names, dropdown and selection update, assigned days and exercises intact, save and reopen shows the new name). Because persistence matches weeks by label, a saved rename recreates the week's group row with a new id; verify on a non-production database that nothing keyed on the old week group id is lost before any release that relies on week renames. a7 uncommitted; not release-ready until accepted.
+- Release gates: user acceptance in the browser (menu and editor layout, valid and invalid names, dropdown and selection update, assigned days and exercises intact, save and reopen shows the new name). Because persistence matches weeks by label, a saved rename recreates the week's group row with a new id; verify on a non-production database that nothing keyed on the old week group id is lost before any release that relies on week renames. a7 committed and pushed as `bf66ec03e`; not release-ready until accepted.
+
+## 0.85.313.a8 Week Filtering and Day Assignment (Stage 9/10)
+
+- Frontend only (`WorkoutBuilder.vue`, `workoutDayWeekAssignment.mjs`): day cards filtered by the selected week; new days assigned to the selected week. No backend, migration, deploy or package change; save payload unchanged.
+- Release gates: user acceptance in the browser (cards per week, Add Day top and bottom, empty new week, switching weeks keeps unsaved edits, save and reopen preserves all weeks and their days). Identical day names in separate weeks are NOT supported (a day is keyed by name across the UI, payload and backend); a release that needs them requires a day id or week-qualified key in the payload and backend. The week id is still not persisted on rename (a7). a8 uncommitted; not release-ready until accepted.

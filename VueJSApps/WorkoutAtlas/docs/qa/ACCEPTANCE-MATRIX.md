@@ -244,3 +244,18 @@ Stage 1/10 re-verification (2026-11-21): branch name FAIL; 0.85.312 baseline PAS
 | Day filtering not added; nothing above Workout Plan Information; no backend/DB/package change; PlanID 5 | Contract; diff hunks all below the metadata form (plus import, helper state and CSS); no data access | PASS |
 | Regression | 11 frontend test files, 109 tests; Vite build passed | PASS |
 | Browser: menu placement and styling, rename flow, error messages, dropdown and selection update, assigned days intact, save and reopen shows the new name | Not performed | PENDING USER ACCEPTANCE |
+
+## 0.85.313.a8 Week Filtering and Day Assignment, Stage 9/10 (2026-11-21)
+
+| Check | Evidence | Status |
+| --- | --- | --- |
+| Only the days assigned to the selected week are shown (default-week fallback for unassigned days) | Util tests `35/35` (`getDaysForWeek`), contract suite `12/12` (cards built from `visibleDayGroups`) | PASS (automated) |
+| New days from the top and bottom Add Day controls are assigned to the selected week | Util tests (`assignDayToWeek`), contract (shared `addScheduleGroupFromValue`) | PASS (automated, source contract) |
+| A newly created week shows an empty schedule | Util tests, contract (empty-state message) | PASS (automated) |
+| Switching weeks keeps unsaved days, exercises, recording values and assignments; nothing saved | Contract (watcher touches no plan data) | PASS (automated, source contract) |
+| Save payload still carries every week, day, assignment and exercise | Contract | PASS (automated, source contract) |
+| Identical day names in separate weeks | Data model is keyed by day name; backend matches by label | BLOCKER (reported, not implemented; duplicates stay rejected with a message naming the other week) |
+| Add Week validation, Rename Week and day-card actions preserved; move up/down within the week | Contract; util tests (`moveDayAmongVisible`); a6/a7 suites | PASS (automated) |
+| Nothing above Workout Plan Information; no backend/DB/package change; PlanID 5 | Diff hunks all below the metadata form (plus import and helper state); no data access | PASS |
+| Regression | 12 frontend test files, 127 tests; Vite build passed | PASS |
+| Browser: filtered cards per week, Add Day top and bottom, empty new week, switching weeks keeps edits, move within a week, Add Week and Rename Week, save and reopen preserves all weeks | Not performed | PENDING USER ACCEPTANCE |

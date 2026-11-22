@@ -44,8 +44,11 @@ test('selection defaults to Week 1 or the first week and is re-resolved on load 
   assert.match(reset, /selectedWeek\.value = '';/);
 });
 
-test('switching weeks never edits plan data, saves, or filters the day cards', () => {
-  const uses = script.split('\n').filter((line) => line.includes('selectedWeek'));
+test('switching weeks never edits plan data or saves; the day cards are filtered only through visibleDayGroups (a8)', () => {
+  // 0.85.313.a8: the one line that may combine selectedWeek with assignment data assigns a newly created day to the selected week.
+  const uses = script.split('\n')
+    .filter((line) => line.includes('selectedWeek'))
+    .filter((line) => !line.includes('dayWeekAssignments.value = assignDayToWeek('));
   uses.forEach((line) => {
     assert.equal(/workoutExercises|dayGroups|weekGroups\.value\s*=|dayWeekAssignments\.value\s*=|fetch\(|persist|save/i.test(line), false, line);
   });

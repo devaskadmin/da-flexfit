@@ -199,6 +199,98 @@ export const copyDayAssignment = (assignments = {}, sourceDay, newDay) => {
   return { ...assignments, [newKey]: assignments[sourceKey] };
 };
 
+const hasOwn = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+
+// Week a day belongs to: its saved assignment, otherwise the default week (the same fallback reconcile applies).
+const weekOfDay = (assignments, weekGroups, day) => {
+  const dayKey = groupKey(day);
+  if (assignments && typeof assignments === 'object' && hasOwn(assignments, dayKey) && groupKey(assignments[dayKey])) {
+    return String(assignments[dayKey]).trim();
+  }
+  return resolveDefaultWeek(weekGroups);
+};
+
+/**
+ * The days that belong to one week, in their current order and with their original labels.
+ * Only the display is filtered: nothing is removed or edited. With no week selected ('')
+ * every day is returned so the planner never hides its days while the selection is unresolved.
+ */
+export const getDaysForWeek = ({
+  dayGroups = [],
+  weekGroups = [],
+  assignments = {},
+  week = '',
+} = {}) => {
+  const days = Array.isArray(dayGroups) ? dayGroups : [];
+  const weekKey = groupKey(week);
+  if (!weekKey) {
+    return days;
+  }
+  return days.filter((day) => groupKey(weekOfDay(assignments, weekGroups, day)) === weekKey);
+};
+
+/** Assign one day to a week (used for newly created days). Returns a new object; other entries are untouched. */
+export const assignDayToWeek = (assignments = {}, day, week) => {
+  const dayKey = groupKey(day);
+  const label = String(week ?? '').trim();
+  if (!dayKey || !label || BLOCKED_ASSIGNMENT_KEYS.has(dayKey)) {
+    return assignments;
+  }
+  return { ...assignments, [dayKey]: label };
+};
+
+/**
+ * Message for a day name that already exists. Day names are unique across the whole plan
+ * (exercises, saved groups and assignments are all keyed by day name), so a duplicate that lives
+ * in another week says so instead of looking like a bug in the filtered view.
+ */
+export const buildDuplicateDayMessage = ({
+  name = '',
+  dayGroups = [],
+  weekGroups = [],
+  assignments = {},
+  week = '',
+} = {}) => {
+  const label = String(name ?? '').trim();
+  const existing = (Array.isArray(dayGroups) ? dayGroups : []).find((day) => groupKey(day) === groupKey(label));
+  if (existing === undefined) {
+    return `${label} already exists.`;
+  }
+  const existingWeek = weekOfDay(assignments, weekGroups, existing);
+  if (existingWeek && groupKey(existingWeek) !== groupKey(week)) {
+    return `${label} already exists in ${existingWeek}. Day names must be unique across all weeks.`;
+  }
+  return `${label} already exists.`;
+};
+
+/**
+ * Move a day up or down among the days that are currently visible: it swaps places with its
+ * visible neighbour, so hidden days from other weeks keep their positions. Returns the new full
+ * list, or null when the day cannot move that way.
+ */
+export const moveDayAmongVisible = ({
+  groups = [],
+  visibleGroups = [],
+  name = '',
+  direction = 'up',
+} = {}) => {
+  const all = Array.isArray(groups) ? [...groups] : [];
+  const visibleKeys = (Array.isArray(visibleGroups) ? visibleGroups : []).map(groupKey);
+  const key = groupKey(name);
+  const from = visibleKeys.indexOf(key);
+  const to = direction === 'down' ? from + 1 : from - 1;
+  if (from < 0 || to < 0 || to >= visibleKeys.length) {
+    return null;
+  }
+  const a = all.findIndex((group) => groupKey(group) === key);
+  const b = all.findIndex((group) => groupKey(group) === visibleKeys[to]);
+  if (a < 0 || b < 0) {
+    return null;
+  }
+  [all[a], all[b]] = [all[b], all[a]];
+  return all;
+};
+
 const BLOCKED_ASSIGNMENT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 /**

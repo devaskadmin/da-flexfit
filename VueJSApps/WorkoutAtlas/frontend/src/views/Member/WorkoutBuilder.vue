@@ -24,6 +24,10 @@ import {
   weekHasDayWithExercise,
   buildNextWeekName,
   renameWeekInPlan,
+  getDaysForWeek,
+  assignDayToWeek,
+  buildDuplicateDayMessage,
+  moveDayAmongVisible,
 } from '@/utils/workoutDayWeekAssignment.mjs';
 import { normalizeRecordingType } from '@/utils/exerciseRecordingFields';
 import Swal from 'sweetalert2';
@@ -2439,12 +2443,31 @@ const activeGroups = computed(() => {
   return sortGroupsByOrder(groups.value, orders.value);
 });
 
+// 0.85.313.a8: the day cards show only the days assigned to the selected week. This only filters the display;
+// dayGroups, assignments, exercises and the save payload still hold every week's days.
+const visibleDayGroups = computed(() => {
+  if (normalizeScheduleMode(scheduleMode.value) !== 'day') {
+    return activeGroups.value;
+  }
+  return getDaysForWeek({
+    dayGroups: activeGroups.value,
+    weekGroups: weekGroups.value,
+    assignments: dayWeekAssignments.value,
+    week: selectedWeek.value,
+  });
+});
+
 const scheduleModeLabel = computed(() => normalizeScheduleMode(scheduleMode.value) === 'week' ? 'Week' : 'Day');
 const scheduleModeLabelLower = computed(() => scheduleModeLabel.value.toLowerCase());
 const scheduleGroupEditorLabel = computed(() => `Add Workout ${scheduleModeLabel.value}:`);
 const scheduleGroupInputPlaceholder = computed(() => `${scheduleModeLabel.value} Name`);
 const scheduleGroupAddButtonLabel = computed(() => `+ Add ${scheduleModeLabel.value}`);
 const scheduleGroupEmptyStateText = computed(() => `No workout ${scheduleModeLabelLower.value}s added. Add a ${scheduleModeLabelLower.value} to begin.`);
+const plannerEmptyStateText = computed(() => (
+  activeGroups.value.length > 0
+    ? `No workout days in ${selectedWeek.value || 'this week'} yet. Add a day to begin.`
+    : scheduleGroupEmptyStateText.value
+));
 
 const WORKOUT_DAY_NAME_MAX_LENGTH = 60;
 const WORKOUT_DAY_NAME_DISPLAY_MAX_LENGTH = 48;
@@ -2572,7 +2595,12 @@ const ensureAccordionSelectionForMode = (modeCandidate) => {
   syncScheduleGroupIdentityMap(mode, groupRef.value);
 
   const identityRef = getGroupIdentityRefForMode(mode);
-  if (!identityRef.value.length) {
+  // Day cards are filtered by the selected week, so only visible days can be expanded or selected.
+  const visibleKeys = mode === 'day' ? new Set(visibleDayGroups.value.map(normalizeGroupKey)) : null;
+  const candidates = visibleKeys
+    ? identityRef.value.filter((entry) => visibleKeys.has(entry?.normalizedName))
+    : identityRef.value;
+  if (!candidates.length) {
     setExpandedGroupId(mode, null);
     if (normalizeScheduleMode(scheduleMode.value) === mode) {
       selectedScheduleGroup.value = null;
@@ -2581,14 +2609,14 @@ const ensureAccordionSelectionForMode = (modeCandidate) => {
   }
 
   const currentExpandedId = getExpandedGroupId(mode);
-  const stillExists = identityRef.value.some((entry) => entry?.id === currentExpandedId);
+  const stillExists = candidates.some((entry) => entry?.id === currentExpandedId);
   if (!stillExists) {
-    setExpandedGroupId(mode, identityRef.value[0].id);
+    setExpandedGroupId(mode, candidates[0].id);
   }
 
   if (normalizeScheduleMode(scheduleMode.value) === mode) {
     const resolvedName = resolveScheduleGroupNameFromId(getExpandedGroupId(mode), mode);
-    selectedScheduleGroup.value = resolvedName || groupRef.value[0] || null;
+    selectedScheduleGroup.value = resolvedName || (visibleKeys ? visibleDayGroups.value[0] : groupRef.value[0]) || null;
   }
 };
 
@@ -2666,7 +2694,7 @@ const clearScheduleGroupEditorError = (source = 'all') => {
   }
 };
 
-const hasMultipleScheduleGroups = computed(() => activeGroups.value.length > 1);
+const hasMultipleScheduleGroups = computed(() => visibleDayGroups.value.length > 1);
 const isAdminGlobalPlanDraftFlow = computed(() => {
   if (!isAdminUser.value) {
     return false;
@@ -2983,7 +3011,7 @@ watch(
 );
 
 const workoutDaysWithExercises = computed(() => {
-  return activeGroups.value.map((groupName) => {
+  return visibleDayGroups.value.map((groupName) => {
     const exercises = workoutExercises.value.filter(
       (ex) => String(ex?.scheduleGroup || '').trim() === groupName
     );
@@ -3027,8 +3055,8 @@ const canModifyScheduleDayActions = computed(() => {
 });
 const showBottomScheduleGroupControls = computed(() => {
   if (!canModifyScheduleDayActions.value) return false;
-  if (activeGroups.value.length < 1) return false;
-  return countUniqueWorkoutPlanExercises(workoutExercises.value) >= 2;
+  if (visibleDayGroups.value.length < 1) return false;
+  return countUniqueWorkoutPlanExercises(workoutDaysWithExercises.value.flatMap((day) => day.exercises)) >= 2;
 });
 const planDetailsHeaderText = computed(() => {
   if (builderTab.value === 'create') {
@@ -3442,6 +3470,8 @@ const hydratePlanner = (planner = {}, {
   dayWeekAssignments.value = readSavedDayWeekAssignments(planner);
   reconcileDayWeekAssignmentState();
   selectedWeek.value = resolveSelectedWeek(weekGroups.value);
+  // The cards are filtered by the selected week, so pick the expanded day again now that the week is known.
+  ensureAccordionSelectionForMode('day');
   isWeekMenuOpen.value = false;
   isRenamingWeek.value = false;
   weekRenameTarget.value = '';
@@ -3676,7 +3706,15 @@ const addScheduleGroupFromValue = ({
   const normalizedName = normalizeGroupKey(name);
 
   if (target.value.some((group) => normalizeGroupKey(group) === normalizedName)) {
-    const duplicateMessage = `${name} already exists.`;
+    const duplicateMessage = mode === 'day'
+      ? buildDuplicateDayMessage({
+        name,
+        dayGroups: target.value,
+        weekGroups: weekGroups.value,
+        assignments: dayWeekAssignments.value,
+        week: selectedWeek.value,
+      })
+      : `${name} already exists.`;
     if (source === 'bottom') {
       scheduleGroupBottomEditorError.value = duplicateMessage;
     } else {
@@ -3686,6 +3724,10 @@ const addScheduleGroupFromValue = ({
   }
 
   target.value = [...target.value, name];
+  // 0.85.313.a8: a new day belongs to the week currently selected, from both the top and bottom Add Day controls.
+  if (mode === 'day' && selectedWeek.value) {
+    dayWeekAssignments.value = assignDayToWeek(dayWeekAssignments.value, name, selectedWeek.value);
+  }
   syncGroupOrders(mode, target.value);
   syncScheduleGroupIdentityMap(mode, target.value);
 
@@ -3795,7 +3837,15 @@ const saveInlineDayNameEdit = () => {
   const normalizedNew = normalizeGroupKey(suggestedName);
   const normalizedOld = normalizeGroupKey(oldName);
   if (target.value.some((group) => normalizeGroupKey(group) === normalizedNew)) {
-    plannerMessage.value = `${suggestedName} already exists.`;
+    plannerMessage.value = mode === 'day'
+      ? buildDuplicateDayMessage({
+        name: suggestedName,
+        dayGroups: target.value,
+        weekGroups: weekGroups.value,
+        assignments: dayWeekAssignments.value,
+        week: selectedWeek.value,
+      })
+      : `${suggestedName} already exists.`;
     return;
   }
 
@@ -4038,6 +4088,22 @@ const moveScheduleGroup = (groupName, direction = 'up') => {
   const mode = normalizeScheduleMode(scheduleMode.value);
   const targetRef = getGroupRefForMode(mode);
   const ordered = [...targetRef.value];
+  if (mode === 'day') {
+    // Move among the days visible in the selected week; days of other weeks keep their positions.
+    const moved = moveDayAmongVisible({
+      groups: ordered,
+      visibleGroups: visibleDayGroups.value,
+      name: groupName,
+      direction,
+    });
+    if (!moved) {
+      return;
+    }
+    targetRef.value = moved;
+    syncGroupOrders(mode, moved);
+    ensureAccordionSelectionForMode(mode);
+    return;
+  }
   const index = ordered.findIndex(
     (group) => String(group || '').trim().toLowerCase() === String(groupName || '').trim().toLowerCase()
   );
@@ -4205,6 +4271,20 @@ const cancelWeekRename = () => {
   weekRenameError.value = '';
 };
 
+// 0.85.313.a8: switching weeks only changes which days are shown. Nothing is edited or removed; the expanded card
+// moves to the first day of the new week (selectedScheduleGroup is left alone, so a view change does not mark the plan dirty).
+watch(selectedWeek, (week) => {
+  openMenuDay.value = null;
+  if (isRenamingWeek.value && normalizeGroupKey(week) !== normalizeGroupKey(weekRenameTarget.value)) {
+    cancelWeekRename();
+  }
+  if (normalizeScheduleMode(scheduleMode.value) !== 'day') {
+    return;
+  }
+  const firstVisibleDay = visibleDayGroups.value[0];
+  setExpandedGroupId('day', firstVisibleDay ? getScheduleGroupId(firstVisibleDay, 'day') : null);
+});
+
 const startWeekRename = () => {
   isWeekMenuOpen.value = false;
   if (!canRenameWeek.value) {
@@ -4252,7 +4332,9 @@ const saveWeekRename = () => {
     weekGroups.value = result.weekGroups;
     dayWeekAssignments.value = result.assignments;
     syncGroupOrders('week', weekGroups.value);
-    selectedWeek.value = validation.value;
+    if (normalizeGroupKey(selectedWeek.value) === normalizeGroupKey(oldName)) {
+      selectedWeek.value = validation.value;
+    }
   }
 
   cancelWeekRename();
@@ -4261,12 +4343,12 @@ const saveWeekRename = () => {
 
 const isFirstScheduleGroup = (groupName) => {
   const normalized = String(groupName || '').trim().toLowerCase();
-  return String(activeGroups.value[0] || '').trim().toLowerCase() === normalized;
+  return String(visibleDayGroups.value[0] || '').trim().toLowerCase() === normalized;
 };
 
 const isLastScheduleGroup = (groupName) => {
   const normalized = String(groupName || '').trim().toLowerCase();
-  return String(activeGroups.value[activeGroups.value.length - 1] || '').trim().toLowerCase() === normalized;
+  return String(visibleDayGroups.value[visibleDayGroups.value.length - 1] || '').trim().toLowerCase() === normalized;
 };
 
 const plannerPayload = computed(() => ({
@@ -5934,8 +6016,8 @@ watch(
                 {{ plannerMessage }}
               </p>
 
-              <div v-if="activeGroups.length === 0" class="planner-helper-text">
-                {{ scheduleGroupEmptyStateText }}
+              <div v-if="visibleDayGroups.length === 0" class="planner-helper-text">
+                {{ plannerEmptyStateText }}
               </div>
             </div>
 
