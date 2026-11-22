@@ -6,6 +6,8 @@ const pool = require('../db.js');
 const { sanitizeText } = require('../utils/sanitize.js');
 const { WORKOUT_HISTORY_VISIBLE_STATUSES } = require('../utils/workout-session-status-policy.js');
 const { buildDailyWorkoutDurationSummary } = require('../utils/workout-history-summary.js');
+const { filterGroupsForScheduleMode, normalizeScheduleMode } = require('../utils/workoutScheduleGroupFilter.js');
+const { buildDayNameMapForRows } = require('../utils/workoutScheduleGroupView.js');
 
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -52,9 +54,30 @@ const buildNormalizedGroupOrder = (builderOrder = [], preferredOrder = []) => {
   return ordered;
 };
 
+// 0.85.313.a8.1: days that share a label (different weeks) are listed under unique compatibility names
+// (the same names the planner API exposes) so ordering never collapses them. Plans without shared
+// labels keep their labels unchanged. Week-mode plans list week groups, which are not renamed.
+const loadScheduleSettingsJson = async (db, planId) => {
+  try {
+    const [rows] = await db.query('SELECT settings_json FROM workout_schedules WHERE id = ? LIMIT 1', [planId]);
+    return rows?.[0]?.settings_json ?? null;
+  } catch (_) {
+    return null;
+  }
+};
+
+const withDayDisplayLabels = (allGroupRows, scheduleMode, settingsJson) => {
+  const rows = filterGroupsForScheduleMode(allGroupRows, scheduleMode);
+  if (normalizeScheduleMode(scheduleMode) === 'week') {
+    return rows;
+  }
+  const names = buildDayNameMapForRows(allGroupRows, settingsJson);
+  return rows.map((row) => ({ ...row, label: names.get(Number(row?.id)) || row?.label }));
+};
+
 const getWorkoutLogDayOrdering = async (userId, planId) => {
   const [[scheduleRow]] = await pool.query(
-    `SELECT id, use_custom_workout_log_order
+    `SELECT id, use_custom_workout_log_order, schedule_mode
      FROM workout_schedules
      WHERE id = ? AND user_id = ?
      LIMIT 1`,
@@ -65,12 +88,18 @@ const getWorkoutLogDayOrdering = async (userId, planId) => {
     return null;
   }
 
-  const [groupRows] = await pool.query(
-    `SELECT label, sort_order, workout_log_display_order
+  const [allGroupRows] = await pool.query(
+    `SELECT id, label, group_type, sort_order, workout_log_display_order
      FROM workout_schedule_groups
      WHERE workout_schedule_id = ?
      ORDER BY sort_order ASC, id ASC`,
     [planId]
+  );
+  // 0.85.313.a3.3: week containers are not workout days (legacy Week View plans keep their week groups).
+  const groupRows = withDayDisplayLabels(
+    allGroupRows,
+    scheduleRow.schedule_mode,
+    await loadScheduleSettingsJson(pool, planId)
   );
 
   const builderOrder = groupRows
@@ -379,7 +408,7 @@ router.put('/day-order', async (req, res) => {
     await connection.beginTransaction();
 
     const [[scheduleRow]] = await connection.query(
-      `SELECT id
+      `SELECT id, schedule_mode
        FROM workout_schedules
        WHERE id = ? AND user_id = ?
        LIMIT 1`,
@@ -391,12 +420,18 @@ router.put('/day-order', async (req, res) => {
       return res.status(404).json({ error: 'Workout plan not found.' });
     }
 
-    const [groupRows] = await connection.query(
-      `SELECT id, label, sort_order
+    const [allGroupRows] = await connection.query(
+      `SELECT id, label, group_type, sort_order
        FROM workout_schedule_groups
        WHERE workout_schedule_id = ?
        ORDER BY sort_order ASC, id ASC`,
       [planId]
+    );
+    // 0.85.313.a3.3: only workout days are ordered; week containers are never written.
+    const groupRows = withDayDisplayLabels(
+      allGroupRows,
+      scheduleRow.schedule_mode,
+      await loadScheduleSettingsJson(connection, planId)
     );
 
     if (!groupRows.length) {

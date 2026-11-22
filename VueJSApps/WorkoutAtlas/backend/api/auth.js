@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const dbConfig = require('../dbConfig');
 const { sanitizeText, parseNumber } = require('../utils/sanitize.js');
+const { persistDayWeekAssignments, extractDayWeekAssignments, extractDayWeekAssignmentsById, remapAssignmentsById } = require('../utils/workoutPlanSettings');
 const {
   verifyGoogleIdToken,
   GoogleTokenVerificationError,
@@ -250,7 +251,7 @@ const getRegistrationWorkoutSchemaState = async (connection) => {
          (table_name = 'workout_schedules' AND column_name IN (
            'category', 'workout_plan_type', 'goal_type', 'goal_target_date',
            'plan_duration_weeks', 'source_global_plan_id', 'global_plan_adopted_at',
-           'schedule_mode'
+           'schedule_mode', 'settings_json'
          ))
          OR (table_name = 'workout_schedule_groups' AND column_name IN ('workout_log_display_order'))
          OR (table_name = 'workout_schedule_exercises' AND column_name IN ('target_distance_miles'))
@@ -271,6 +272,7 @@ const getRegistrationWorkoutSchemaState = async (connection) => {
     hasSourceGlobalPlanId: hasColumn('workout_schedules', 'source_global_plan_id'),
     hasGlobalPlanAdoptedAt: hasColumn('workout_schedules', 'global_plan_adopted_at'),
     hasScheduleMode: hasColumn('workout_schedules', 'schedule_mode'),
+    hasSettingsJson: hasColumn('workout_schedules', 'settings_json'),
     hasWorkoutLogDisplayOrder: hasColumn('workout_schedule_groups', 'workout_log_display_order'),
     hasTargetDistanceMiles: hasColumn('workout_schedule_exercises', 'target_distance_miles'),
   };
@@ -495,6 +497,28 @@ const assignFeaturedPlanToNewUser = async ({
       `INSERT INTO workout_schedule_exercises (${insertColumns.join(', ')})
        VALUES (${insertColumns.map(() => '?').join(', ')})`,
       insertValues
+    );
+  }
+
+  // 0.85.313.a3.4: carry the featured plan's day-to-week assignments into the new member's copy.
+  if (schemaState.hasSettingsJson) {
+    const [sourceSettingsRows] = await connection.query(
+      'SELECT settings_json FROM workout_schedules WHERE id = ? LIMIT 1',
+      [featuredPlanId]
+    );
+    // 0.85.313.a8.1: the id-keyed twin (same-named days in different weeks) is remapped to the copied group ids.
+    const remappedAssignmentsById = remapAssignmentsById(
+      extractDayWeekAssignmentsById(sourceSettingsRows?.[0]?.settings_json),
+      groupIdBySourceId
+    );
+    await persistDayWeekAssignments(
+      connection,
+      clonedPlanId,
+      { settings: { dayWeekAssignments: extractDayWeekAssignments(sourceSettingsRows?.[0]?.settings_json) } },
+      {
+        hasSettingsJson: true,
+        assignmentsById: Object.keys(remappedAssignmentsById).length ? remappedAssignmentsById : null,
+      }
     );
   }
 

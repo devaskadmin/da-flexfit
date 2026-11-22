@@ -38,3 +38,93 @@ No release should be marked released or accepted merely because automated tests 
 - Focused contract suites passed 19/19; Vite production build passed 701 modules.
 - Live visual/user acceptance remains pending for Save, bottom schedule controls, recording layouts, and responsive surfaces.
 - 0.85.313 is reset to TODO and not started.
+
+## 0.85.313 Stage 1/10 baseline verification
+
+- Baseline 0.85.312 verified (empty diff against BETA `df1f026d506c50456b477e0777a98bb55c2e1977`); branch name `0.85.113.RESET` not checked out (`0.85.113`) — FAIL.
+- `users.js`: 4,768 lines, 37 routes. Verification only; no acceptance or release state changed.
+
+## 0.85.313.a1 Default Week Initialization
+
+- Code complete on branch `0.85.113`; contract suite `14/14` and Vite build passed; `users.js` 37 routes unchanged; package versions `0.85.308` unchanged.
+- Not committed, pushed, or deployed. User acceptance PENDING; not release-ready until accepted.
+
+## 0.85.313.a2 Default Day Assignment (Stage 3/10) - SUPERSEDED by 0.85.313.a2.1
+
+- Stage 2 checkpoint committed as `97397e075` and pushed to `origin/0.85.113`. Stage 3 is code complete but uncommitted; helper suite `7/7`, builder contract `14/14`, Vite build passed (`702` modules), `users.js` 37 routes unchanged, package versions `0.85.308` unchanged.
+- No deploy. User acceptance PENDING; not release-ready until accepted.
+
+## 0.85.313.a2.1 Correct Day Assignment
+
+- Frontend-only correction of Stage 3: in-memory day-to-week mapping replaces exercise-level assignment. Mapping suite `11/11`, builder contract `14/14`, Vite build passed (`702` modules), `users.js` 37 routes unchanged, package versions `0.85.308` unchanged. Uncommitted; not pushed or deployed.
+- Mapping is not persisted. User acceptance PENDING; not release-ready until accepted.
+
+## 0.85.313.a3 Persist Day-to-Week Assignments
+
+- Frontend plus backend (`users.js` +23 lines, new `backend/utils/workoutPlanSettings.js`): assignments saved to the existing `settings_json` column. No migration, deploy, or package change; routes unchanged (37).
+- Release gate: confirm `settings_json` exists in each target database (persistence is a no-op otherwise). Uncommitted; acceptance PENDING; not release-ready until accepted.
+
+## 0.85.313.a3.1 Database Verification
+
+- `settings_json` is VERIFIED present in the `stephenk_flexfit` schema (user-run read-only query, `longtext`, nullable). Before release, run the same query (`docs/database/SCHEMA.md`) on every other target schema, such as production; zero rows there means persistence is a no-op and a DBA-approved migration is needed. Documentation-only update; no code, schema, data, or package change.
+
+## 0.85.313.a3.2 Preserve Day and Week Groups
+
+- Backend save path now keeps both group sets (`backend/utils/workoutPlanGroups.js`, `users.js` wiring). No migration, deploy or package change; 37 routes unchanged.
+- Release gates: user acceptance of browser save and reopen in day and week modes; decide whether `workout-log.js` day ordering, `dashboard.js` weekly target and plan list `group_count` must filter groups by mode before release (they currently count all groups). Uncommitted; not release-ready until accepted.
+
+## 0.85.313.a3.3 Schedule Group Filtering
+
+- Backend only: shared filter util plus edits in `workout-log.js`, `dashboard.js` and `users.js` (plan-list subquery). Closes the a3.2 gate on readers that counted every group. No migration, deploy or package change; routes unchanged.
+- Release gates: user acceptance in the browser (Workout Log order, dashboard weekly target, Find Plans day counts for day and week plans); verify the new SQL on a real MySQL server before release (not executable locally); decide whether the add-exercise default group and `workout-sessions.js` day lookups need the same filter. a3.2 and a3.3 accepted and pushed as `20fefbfff`.
+
+## 0.85.313.a3.4 Global Plan Persistence
+
+- Backend only (`users.js`, `auth.js`): day-to-week assignments persist on global create/edit, clone, adoption, conversion and register-time featured copy via the existing helper. No migration, deploy or package change; routes unchanged.
+- Release gates: user acceptance in the browser (create/edit a global plan with week assignments, clone a plan, adopt a global and a featured plan, reopen each); confirm `settings_json` exists in every target database (checked only in `stephenk_flexfit`; otherwise assignments are silently not copied); run the new calls on a real MySQL server (not executable locally). a3.4 committed and pushed as `f34e9eab1`; not release-ready until accepted.
+
+## 0.85.313.a4 Unified Schedule Planner (Stage 5/10)
+
+- Frontend only (`WorkoutBuilder.vue`): Day View / Week View tabs removed; one Schedule Planner of day cards. No backend, migration, deploy or package change; save payload unchanged.
+- Release gates: user acceptance in the browser (planner layout after the tab removal, Add Day / Add Exercise / Save, reopen a plan with weeks and a legacy week-mode plan); week assignments are not editable in the UI until the dropdown stage, so confirm that is acceptable for any interim release. a4 committed and pushed as `5ffa3132b`; not release-ready until accepted.
+
+## 0.85.313.a5 Week Selection Dropdown (Stage 6/10)
+
+- Frontend only (`WorkoutBuilder.vue`, `workoutDayWeekAssignment.mjs`): Week dropdown above the day cards. No backend, migration, deploy or package change; save payload unchanged.
+- Release gates: user acceptance in the browser (dropdown label and layout, default selection, switching weeks keeps unsaved edits, save and reopen unchanged). The dropdown has no visible effect until day filtering lands, so confirm that is acceptable for any interim release. a5 committed and pushed as `317087e56`; not release-ready until accepted.
+
+## 0.85.313.a6 Add Week (Stage 7/10)
+
+- Frontend only (`WorkoutBuilder.vue`, `workoutDayWeekAssignment.mjs`): `+ Add Week` beside the Week dropdown. No backend, migration, deploy or package change; save payload unchanged.
+- Release gates: user acceptance in the browser (button disabled/enabled rule, Week 2/Week 3 naming and auto-selection, new week empty, switching weeks keeps unsaved edits, save and reopen keeps the new week). No UI assigns days to weeks yet, so a new week stays empty; confirm that is acceptable for any interim release, and verify empty-week persistence on a non-production database. a6 committed and pushed as `a222c3228`; not release-ready until accepted.
+
+## 0.85.313.a7 Rename Week (Stage 8/10)
+
+- Frontend only (`WorkoutBuilder.vue`, `workoutDayWeekAssignment.mjs`): Rename Week in a three-dot menu beside the Week dropdown. No backend, migration, deploy or package change; save payload unchanged.
+- Release gates: user acceptance in the browser (menu and editor layout, valid and invalid names, dropdown and selection update, assigned days and exercises intact, save and reopen shows the new name). Because persistence matches weeks by label, a saved rename recreates the week's group row with a new id; verify on a non-production database that nothing keyed on the old week group id is lost before any release that relies on week renames. a7 committed and pushed as `bf66ec03e`; not release-ready until accepted.
+
+## 0.85.313.a8 Week Filtering and Day Assignment (Stage 9/10)
+
+- Frontend only (`WorkoutBuilder.vue`, `workoutDayWeekAssignment.mjs`): day cards filtered by the selected week; new days assigned to the selected week. No backend, migration, deploy or package change; save payload unchanged.
+- Release gates: user acceptance in the browser (cards per week, Add Day top and bottom, empty new week, switching weeks keeps unsaved edits, save and reopen preserves all weeks and their days). Identical day names in separate weeks were NOT supported at a8 (resolved in a8.1 below). The week id is still not persisted on rename in the legacy label path (a7). a8 committed and pushed as `a64c21cf0`; not release-ready until accepted.
+
+## 0.85.313.a8.1 Schedule Identity Correction
+
+- Backend and frontend (`api/users.js`, `api/auth.js`, `api/workout-log.js`, `utils/workoutPlanGroups.js`, `utils/workoutPlanSettings.js`, new `utils/workoutScheduleGroupView.js`, `WorkoutBuilder.vue`, `workoutDayWeekAssignment.mjs`): groups are identified by `workout_schedule_groups.id`, labels are display only. No migration, schema change, deploy or package change; the API stays backward compatible (entries are optional; label-only payloads and old clients use the compatibility names).
+- Release gates: user acceptance in the browser (same day name in two weeks keeps separate exercises and recording values; rename keeps contents and week; save and reopen; copy plan; existing plans open unchanged). Verify on a non-production database that `workout_schedule_groups` has no unique `(workout_schedule_id, label)` index (the repository schema sources define none; the live state is unverified) and that `dayWeekAssignmentsById` round-trips. The backend must be deployed together with the frontend, because the new frontend sends entries. The full backend suite was re-run in a9 (below). a8.1 committed and pushed as `fe82ef325`; not release-ready until accepted.
+
+## 0.85.313.a9 Final Regression and Acceptance (Stage 10/10)
+
+- Verification and documentation only; no code, schema, migration, package or deployment change. Automated checks PASS; release readiness: NOT release-ready until the user accepts. 0.85.313 is not declared accepted and is not merged into BETA.
+- Results: default backend run 178 tests / 165 pass / 13 fail (all `Missing database environment variables` at module load, no `backend/.env`; environmental); with throwaway in-process DB variables 238/238 pass; frontend 13 files / 140 tests pass; Vite build passed; 37 `users.js` routes in the same order.
+- Release gates: (1) browser acceptance of the checklist below; (2) on a non-production copy of the live database run `SHOW INDEX FROM workout_schedule_groups` and confirm there is no unique `(workout_schedule_id, label)` index (repository schema and the 0.83 backup define none); (3) deploy backend and frontend together; (4) decide whether the conversion engine should keep the real labels for repeated day names (currently the compatibility names, for example `Push (Week 2)`, are stored in the converted copy); (5) the dormant `PUT /workout-schedules/:id/groups` delete-and-reinsert route has no frontend caller.
+- Manual browser checklist: open a new plan (Week 1 selected); open an existing and a legacy plan (all days under Week 1, exercises and values intact); Add Week (valid, invalid and duplicate names); Rename Week and save and reopen; select a week and check only its days show; Add Day top and bottom lands in the selected week; add the same day name to two weeks and confirm separate exercises and recording values; rename a day and confirm contents and week stay; save, reload and confirm persistence; copy and convert plans (Global, Featured, Community) and confirm days, weeks and exercises; Workout Log: start, resume and finish a session and see it in dashboard and history; run the 0.85.309-0.85.312 areas (preview, mobile layout, history) and confirm PlanID 5 is unchanged.
+
+## 0.85.313 merged into BETA - 2026-11-21
+
+- Merge: `0.85.113` (HEAD `e7b6059e8`, "0.85.313 - Unified Multi-Week Schedule Planner - QA Checkpoint") merged into `BETA` with a true merge commit (`--no-ff`). The merge commit hash is the commit that contains this entry (see `git log --merges -1 BETA`). Rollback hash (BETA before merge): `df1f026d506c50456b477e0777a98bb55c2e1977` (0.85.312 recovery checkpoint).
+- Conflicts resolved (10 files, nothing else changed): `WorkoutBuilder.vue` `showBottomScheduleGroupControls` keeps the 0.85.313 selected-week-aware logic (`visibleDayGroups` for the schedule check, exercises counted from the selected week's days). The 0.85.312 requirements remain in force within the selected week: the bottom Add Day control needs at least one visible schedule and at least two unique exercises. `WorkoutBuilder.preview-mobile-contract.test.mjs`: both the 0.85.312 and 0.85.313.a1/a3.2 tests retained, with added assertions that the exercise count derives from the visible day groups and that the control is gated by `showBottomScheduleGroupControls`. Eight documentation files: both histories kept (0.85.312 recovery entries and all 0.85.313 development entries); no entry removed.
+- Note: the originally approved final regression commit `0d46d7703` was amended before push into `e7b6059e8` (identical tree; `git diff 0d46d7703 e7b6059e8` is empty).
+- Verification (automated): frontend 13 test files, 140/140 pass; backend default run 178 tests (165 pass, 13 environmental failures: missing DB environment variables, none are code defects); backend with isolated throwaway in-process variables 238/238 pass; Vite production build passes; security gate `SECURITY_GATE_PASS`; all 37 `backend/api/users.js` routes present and in identical order to `0.85.113`, `BETA` before merge and baseline `bf66ec03e`.
+- Safety: no database change, migration, package/version change, server restart or deployment; PlanID #5 untouched; all 13 Git stashes preserved; no force push or branch deletion.
+- User acceptance: PENDING. Browser acceptance and the live-database index verification have not been performed. An automated pass is not user acceptance. Open audit items unchanged: conversion engine writes compatibility names as labels for repeated day names, dormant `PUT /workout-schedules/:id/groups`, session label fallback.

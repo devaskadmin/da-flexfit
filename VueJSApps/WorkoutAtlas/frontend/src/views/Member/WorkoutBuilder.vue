@@ -11,6 +11,32 @@ import { DEFAULT_EXERCISE_IMAGE, getExerciseImage } from '@/utils/exerciseImage'
 import { DEFAULT_WORKOUT_PLAN_IMAGE, buildWorkoutPlanCoverImageUrl, applyWorkoutPlanImageFallback } from '@/utils/workoutPlanImage';
 import { countUniqueWorkoutPlanExercises } from '@/utils/workoutPlanExerciseCount';
 import { getPreviewDescriptionDisplay } from '@/utils/workoutPreviewDescription.mjs';
+import {
+  reconcileDayWeekAssignments,
+  renameDayInAssignments,
+  renameWeekInAssignments,
+  copyDayAssignment,
+  readSavedDayWeekAssignments,
+  buildDayWeekAssignmentsSettings,
+  serializeDayWeekAssignments,
+  buildWeekOptions,
+  resolveSelectedWeek,
+  weekHasDayWithExercise,
+  buildNextWeekName,
+  renameWeekInPlan,
+  getDaysForWeek,
+  assignDayToWeek,
+  buildDuplicateDayMessage,
+  moveDayAmongVisible,
+  findDayWithLabelInWeek,
+  resolveDayLabel,
+  buildUniqueDayKey,
+  setDayLabelOverride,
+  moveDayLabelOverride,
+  buildGroupEntries,
+  readGroupEntries,
+  matchSavedGroupIds,
+} from '@/utils/workoutDayWeekAssignment.mjs';
 import { normalizeRecordingType } from '@/utils/exerciseRecordingFields';
 import Swal from 'sweetalert2';
 import { showConfirmDialog } from '@/utils/browserDialogs';
@@ -103,6 +129,10 @@ const closeDayMenu = (e) => {
     saveInlineDayNameEdit();
   }
 
+  if (!e.target.closest('.planner-week-menu-wrap')) {
+    isWeekMenuOpen.value = false;
+  }
+
   if (!e.target.closest('.day-kebab-wrap')) {
     openMenuDay.value = null;
     openMenuPlacement.value = 'down';
@@ -138,6 +168,20 @@ const dayGroups = ref([]);
 const weekGroups = ref([]);
 const dayGroupOrders = ref([]);
 const weekGroupOrders = ref([]);
+// In-memory day-to-week mapping ({ [normalized day name]: week label }); never saved or sent to the API.
+const dayWeekAssignments = ref({});
+// 0.85.313.a8.1: a day's internal key (what exercises and assignments refer to) is unique across the plan, but its
+// display label may repeat in another week. { [lowercase key]: real label } is kept only where the two differ.
+const dayLabelOverrides = ref({});
+// 0.85.313.a5: week shown in the Schedule Planner dropdown. UI state only: not saved, not sent to the API,
+// not part of unsaved-change detection, and it does not filter or change any day, week or assignment.
+const selectedWeek = ref('');
+// 0.85.313.a7: Rename Week editor state (UI only). The menu and editor act on the selected week.
+const isWeekMenuOpen = ref(false);
+const isRenamingWeek = ref(false);
+const weekRenameTarget = ref('');
+const weekRenameDraft = ref('');
+const weekRenameError = ref('');
 const selectedScheduleGroup = ref(null);
 const expandedGroupIdByMode = ref({ day: null, week: null });
 const dayGroupIdentityMap = ref([]);
@@ -1328,6 +1372,10 @@ const storeUnsavedBuilderDraft = () => {
       weekGroups: weekGroups.value,
       dayGroupOrders: dayGroupOrders.value,
       weekGroupOrders: weekGroupOrders.value,
+      dayWeekAssignments: dayWeekAssignments.value,
+      dayLabelOverrides: dayLabelOverrides.value,
+      dayDbIds: collectScheduleGroupDbIds('day'),
+      weekDbIds: collectScheduleGroupDbIds('week'),
       selectedScheduleGroup: selectedScheduleGroup.value,
       planPublicationStatus: planPublicationStatus.value,
       selectedPublicationStatus: selectedPublicationStatus.value,
@@ -1370,6 +1418,17 @@ const restoreUnsavedBuilderDraft = () => {
     weekGroups.value = Array.isArray(snapshot.weekGroups) ? snapshot.weekGroups : weekGroups.value;
     dayGroupOrders.value = Array.isArray(snapshot.dayGroupOrders) ? snapshot.dayGroupOrders : dayGroupOrders.value;
     weekGroupOrders.value = Array.isArray(snapshot.weekGroupOrders) ? snapshot.weekGroupOrders : weekGroupOrders.value;
+    // 0.85.313.a8.1: keep each day's label, week assignment and saved database id with the restored draft.
+    dayLabelOverrides.value = snapshot.dayLabelOverrides && typeof snapshot.dayLabelOverrides === 'object' && !Array.isArray(snapshot.dayLabelOverrides)
+      ? snapshot.dayLabelOverrides
+      : {};
+    if (snapshot.dayWeekAssignments && typeof snapshot.dayWeekAssignments === 'object' && !Array.isArray(snapshot.dayWeekAssignments)) {
+      dayWeekAssignments.value = snapshot.dayWeekAssignments;
+    }
+    syncScheduleGroupIdentityMap('day', dayGroups.value);
+    syncScheduleGroupIdentityMap('week', weekGroups.value);
+    applyScheduleGroupDbIds('day', snapshot.dayDbIds);
+    applyScheduleGroupDbIds('week', snapshot.weekDbIds);
     selectedScheduleGroup.value = snapshot.selectedScheduleGroup ?? selectedScheduleGroup.value;
     planPublicationStatus.value = String(snapshot.planPublicationStatus || planPublicationStatus.value || 'draft').trim() || 'draft';
     selectedPublicationStatus.value = String(snapshot.selectedPublicationStatus || selectedPublicationStatus.value || planPublicationStatus.value).trim() || planPublicationStatus.value;
@@ -2410,12 +2469,31 @@ const activeGroups = computed(() => {
   return sortGroupsByOrder(groups.value, orders.value);
 });
 
+// 0.85.313.a8: the day cards show only the days assigned to the selected week. This only filters the display;
+// dayGroups, assignments, exercises and the save payload still hold every week's days.
+const visibleDayGroups = computed(() => {
+  if (normalizeScheduleMode(scheduleMode.value) !== 'day') {
+    return activeGroups.value;
+  }
+  return getDaysForWeek({
+    dayGroups: activeGroups.value,
+    weekGroups: weekGroups.value,
+    assignments: dayWeekAssignments.value,
+    week: selectedWeek.value,
+  });
+});
+
 const scheduleModeLabel = computed(() => normalizeScheduleMode(scheduleMode.value) === 'week' ? 'Week' : 'Day');
 const scheduleModeLabelLower = computed(() => scheduleModeLabel.value.toLowerCase());
 const scheduleGroupEditorLabel = computed(() => `Add Workout ${scheduleModeLabel.value}:`);
 const scheduleGroupInputPlaceholder = computed(() => `${scheduleModeLabel.value} Name`);
 const scheduleGroupAddButtonLabel = computed(() => `+ Add ${scheduleModeLabel.value}`);
 const scheduleGroupEmptyStateText = computed(() => `No workout ${scheduleModeLabelLower.value}s added. Add a ${scheduleModeLabelLower.value} to begin.`);
+const plannerEmptyStateText = computed(() => (
+  activeGroups.value.length > 0
+    ? `No workout days in ${selectedWeek.value || 'this week'} yet. Add a day to begin.`
+    : scheduleGroupEmptyStateText.value
+));
 
 const WORKOUT_DAY_NAME_MAX_LENGTH = 60;
 const WORKOUT_DAY_NAME_DISPLAY_MAX_LENGTH = 48;
@@ -2423,7 +2501,7 @@ const WORKOUT_DAY_NAME_ALLOWED_PATTERN = /^[A-Za-z0-9&'() -]+$/;
 const WORKOUT_DAY_NAME_INLINE_ALLOWED_MESSAGE = 'Only letters, numbers, spaces, ampersands, hyphens, apostrophes, and parentheses are allowed.';
 
 const formatPlannerDayNameForDisplay = (value, maxLength = WORKOUT_DAY_NAME_DISPLAY_MAX_LENGTH) => {
-  const normalized = String(value ?? '').trim();
+  const normalized = String(resolveDayLabel(value, dayLabelOverrides.value) ?? '').trim();
 
   if (!normalized) {
     return '';
@@ -2524,6 +2602,35 @@ const resolveScheduleGroupNameFromId = (groupId, modeCandidate = scheduleMode.va
   return groupRef.value.find((groupName) => normalizeGroupKey(groupName) === identity.normalizedName) || '';
 };
 
+// 0.85.313.a8.1: the saved database id of a day or week lives on its identity entry. A rename moves the entry
+// (transferScheduleGroupIdentity), so the id survives; a group created in this session has none until it is saved.
+const getScheduleGroupDbId = (groupName, modeCandidate = scheduleMode.value) => {
+  const normalized = normalizeGroupKey(groupName);
+  if (!normalized) {
+    return null;
+  }
+  const hit = getGroupIdentityRefForMode(modeCandidate).value.find((entry) => entry?.normalizedName === normalized);
+  return hit?.dbId || null;
+};
+
+// Replaces the saved ids of every entry with the given map (entries missing from it lose any stale id).
+const applyScheduleGroupDbIds = (modeCandidate, idsByName = {}) => {
+  const identityRef = getGroupIdentityRefForMode(modeCandidate);
+  const source = idsByName && typeof idsByName === 'object' ? idsByName : {};
+  identityRef.value = identityRef.value.map((entry) => {
+    const rest = { ...(entry || {}) };
+    delete rest.dbId;
+    const id = Number(source[entry?.normalizedName]);
+    return Number.isInteger(id) && id > 0 ? { ...rest, dbId: id } : rest;
+  });
+};
+
+const collectScheduleGroupDbIds = (modeCandidate) => Object.fromEntries(
+  getGroupIdentityRefForMode(modeCandidate).value
+    .filter((entry) => entry?.dbId)
+    .map((entry) => [entry.normalizedName, entry.dbId])
+);
+
 const getExpandedGroupId = (modeCandidate = scheduleMode.value) => {
   const mode = normalizeScheduleMode(modeCandidate);
   return expandedGroupIdByMode.value[mode] || null;
@@ -2543,7 +2650,12 @@ const ensureAccordionSelectionForMode = (modeCandidate) => {
   syncScheduleGroupIdentityMap(mode, groupRef.value);
 
   const identityRef = getGroupIdentityRefForMode(mode);
-  if (!identityRef.value.length) {
+  // Day cards are filtered by the selected week, so only visible days can be expanded or selected.
+  const visibleKeys = mode === 'day' ? new Set(visibleDayGroups.value.map(normalizeGroupKey)) : null;
+  const candidates = visibleKeys
+    ? identityRef.value.filter((entry) => visibleKeys.has(entry?.normalizedName))
+    : identityRef.value;
+  if (!candidates.length) {
     setExpandedGroupId(mode, null);
     if (normalizeScheduleMode(scheduleMode.value) === mode) {
       selectedScheduleGroup.value = null;
@@ -2552,14 +2664,14 @@ const ensureAccordionSelectionForMode = (modeCandidate) => {
   }
 
   const currentExpandedId = getExpandedGroupId(mode);
-  const stillExists = identityRef.value.some((entry) => entry?.id === currentExpandedId);
+  const stillExists = candidates.some((entry) => entry?.id === currentExpandedId);
   if (!stillExists) {
-    setExpandedGroupId(mode, identityRef.value[0].id);
+    setExpandedGroupId(mode, candidates[0].id);
   }
 
   if (normalizeScheduleMode(scheduleMode.value) === mode) {
     const resolvedName = resolveScheduleGroupNameFromId(getExpandedGroupId(mode), mode);
-    selectedScheduleGroup.value = resolvedName || groupRef.value[0] || null;
+    selectedScheduleGroup.value = resolvedName || (visibleKeys ? visibleDayGroups.value[0] : groupRef.value[0]) || null;
   }
 };
 
@@ -2594,13 +2706,14 @@ const toggleScheduleGroupAccordion = (groupName) => {
   plannerMessage.value = '';
 };
 
-const validateWorkoutDayName = (rawValue) => {
+// `noun` defaults to the active schedule label ('day'); Rename Week passes 'week' so it shares these rules.
+const validateWorkoutDayName = (rawValue, noun = scheduleModeLabelLower.value) => {
   const typedValue = String(rawValue ?? '');
 
   if (typedValue.length > WORKOUT_DAY_NAME_MAX_LENGTH) {
     return {
       ok: false,
-      message: `Workout ${scheduleModeLabelLower.value} names can be at most ${WORKOUT_DAY_NAME_MAX_LENGTH} characters.`,
+      message: `Workout ${noun} names can be at most ${WORKOUT_DAY_NAME_MAX_LENGTH} characters.`,
     };
   }
 
@@ -2608,7 +2721,7 @@ const validateWorkoutDayName = (rawValue) => {
   if (!trimmedValue) {
     return {
       ok: false,
-      message: `Workout ${scheduleModeLabelLower.value} name cannot be empty.`,
+      message: `Workout ${noun} name cannot be empty.`,
     };
   }
 
@@ -2636,7 +2749,7 @@ const clearScheduleGroupEditorError = (source = 'all') => {
   }
 };
 
-const hasMultipleScheduleGroups = computed(() => activeGroups.value.length > 1);
+const hasMultipleScheduleGroups = computed(() => visibleDayGroups.value.length > 1);
 const isAdminGlobalPlanDraftFlow = computed(() => {
   if (!isAdminUser.value) {
     return false;
@@ -2953,7 +3066,7 @@ watch(
 );
 
 const workoutDaysWithExercises = computed(() => {
-  return activeGroups.value.map((groupName) => {
+  return visibleDayGroups.value.map((groupName) => {
     const exercises = workoutExercises.value.filter(
       (ex) => String(ex?.scheduleGroup || '').trim() === groupName
     );
@@ -2997,8 +3110,8 @@ const canModifyScheduleDayActions = computed(() => {
 });
 const showBottomScheduleGroupControls = computed(() => {
   if (!canModifyScheduleDayActions.value) return false;
-  if (activeGroups.value.length < 1) return false;
-  return countUniqueWorkoutPlanExercises(workoutExercises.value) >= 2;
+  if (visibleDayGroups.value.length < 1) return false;
+  return countUniqueWorkoutPlanExercises(workoutDaysWithExercises.value.flatMap((day) => day.exercises)) >= 2;
 });
 const planDetailsHeaderText = computed(() => {
   if (builderTab.value === 'create') {
@@ -3170,6 +3283,8 @@ const buildPlannerDirtyState = () => {
     weekGroups: Array.isArray(weekGroups.value) ? weekGroups.value : [],
     dayGroupOrders: Array.isArray(dayGroupOrders.value) ? dayGroupOrders.value : [],
     weekGroupOrders: Array.isArray(weekGroupOrders.value) ? weekGroupOrders.value : [],
+    dayWeekAssignments: serializeDayWeekAssignments(dayWeekAssignments.value),
+    dayLabelOverrides: JSON.stringify(Object.keys(dayLabelOverrides.value || {}).sort().map((key) => [key, dayLabelOverrides.value[key]])),
     selectedScheduleGroup: selectedScheduleGroup.value || null,
     exercises: sanitizedExercises,
     planPublicationStatus: normalizePlanPublicationStatus(planPublicationStatus.value),
@@ -3220,6 +3335,14 @@ const resetPlannerDraft = ({ preserveSaveMessage = false } = {}) => {
   weekGroups.value = [];
   dayGroupOrders.value = [];
   weekGroupOrders.value = [];
+  dayWeekAssignments.value = {};
+  dayLabelOverrides.value = {};
+  selectedWeek.value = '';
+  isWeekMenuOpen.value = false;
+  isRenamingWeek.value = false;
+  weekRenameTarget.value = '';
+  weekRenameDraft.value = '';
+  weekRenameError.value = '';
   selectedScheduleGroup.value = null;
   expandedGroupIdByMode.value = { day: null, week: null };
   dayGroupIdentityMap.value = [];
@@ -3360,6 +3483,9 @@ const hydratePlanner = (planner = {}, {
 
   dayGroups.value = sortGroupsByOrder(incomingDayGroups, incomingDayOrders);
   weekGroups.value = sortGroupsByOrder(incomingWeekGroups, incomingWeekOrders);
+  if (!weekGroups.value.length) {
+    weekGroups.value = [DEFAULT_NEW_PLAN_WEEK_NAME];
+  }
 
   syncGroupOrders('day', dayGroups.value);
   syncGroupOrders('week', weekGroups.value);
@@ -3394,8 +3520,27 @@ const hydratePlanner = (planner = {}, {
 
   syncScheduleGroupIdentityMap('day', dayGroups.value);
   syncScheduleGroupIdentityMap('week', weekGroups.value);
+  // 0.85.313.a8.1: a loaded plan brings the saved database id and real label of every day and week.
+  // Planners without entries (older payloads) fall back to the name-only behaviour with no ids.
+  const loadedDayEntries = readGroupEntries(planner?.dayGroupEntries);
+  const loadedWeekEntries = readGroupEntries(planner?.weekGroupEntries);
+  dayLabelOverrides.value = loadedDayEntries?.labelOverrides || {};
+  applyScheduleGroupDbIds('day', loadedDayEntries?.ids || {});
+  applyScheduleGroupDbIds('week', loadedWeekEntries?.ids || {});
   ensureAccordionSelectionForMode('day');
   ensureAccordionSelectionForMode('week');
+
+  // Restore saved assignments (settings_json); reconcile keeps valid ones and defaults the rest in memory.
+  dayWeekAssignments.value = readSavedDayWeekAssignments(planner);
+  reconcileDayWeekAssignmentState();
+  selectedWeek.value = resolveSelectedWeek(weekGroups.value);
+  // The cards are filtered by the selected week, so pick the expanded day again now that the week is known.
+  ensureAccordionSelectionForMode('day');
+  isWeekMenuOpen.value = false;
+  isRenamingWeek.value = false;
+  weekRenameTarget.value = '';
+  weekRenameDraft.value = '';
+  weekRenameError.value = '';
 
   hasSavedWorkoutDetails.value = markSaved;
   inlineEditingDayName.value = '';
@@ -3466,6 +3611,8 @@ const closePicker = () => {
   pickerOpen.value = false;
   selectedExerciseInsertPosition.value = 'bottom';
 };
+
+const DEFAULT_NEW_PLAN_WEEK_NAME = 'Week 1';
 
 const createWorkoutPlan = async () => {
   saveMessage.value = '';
@@ -3549,12 +3696,20 @@ const createWorkoutPlan = async () => {
     };
 
     // New plans must begin with zero workout days regardless of backend defaults.
+    // Week 1 is initialized as the default week for brand-new plans only; saved plans are hydrated untouched.
     scheduleMode.value = 'day';
     dayGroups.value = [];
-    weekGroups.value = [];
+    weekGroups.value = [DEFAULT_NEW_PLAN_WEEK_NAME];
 
     syncGroupOrders('day', []);
-    syncGroupOrders('week', []);
+    syncGroupOrders('week', weekGroups.value);
+    ensureAccordionSelectionForMode('day');
+    ensureAccordionSelectionForMode('week');
+    dayWeekAssignments.value = {};
+    dayLabelOverrides.value = {};
+    applyScheduleGroupDbIds('day', {});
+    applyScheduleGroupDbIds('week', {});
+    reconcileDayWeekAssignmentState();
 
     selectedScheduleGroup.value = null;
     
@@ -3617,8 +3772,22 @@ const addScheduleGroupFromValue = ({
   const target = getGroupRefForMode(mode);
   const normalizedName = normalizeGroupKey(name);
 
-  if (target.value.some((group) => normalizeGroupKey(group) === normalizedName)) {
-    const duplicateMessage = `${name} already exists.`;
+  // 0.85.313.a8.1: a day name only has to be unique inside its own week; the same label may be used in another
+  // week. Weeks keep plan-wide unique names.
+  const hasDuplicate = mode === 'day'
+    ? Boolean(findDayWithLabelInWeek({
+      name,
+      dayGroups: target.value,
+      weekGroups: weekGroups.value,
+      assignments: dayWeekAssignments.value,
+      week: selectedWeek.value,
+      labelOverrides: dayLabelOverrides.value,
+    }))
+    : target.value.some((group) => normalizeGroupKey(group) === normalizedName);
+  if (hasDuplicate) {
+    const duplicateMessage = mode === 'day'
+      ? buildDuplicateDayMessage({ name, week: selectedWeek.value })
+      : `${name} already exists.`;
     if (source === 'bottom') {
       scheduleGroupBottomEditorError.value = duplicateMessage;
     } else {
@@ -3627,13 +3796,25 @@ const addScheduleGroupFromValue = ({
     return;
   }
 
-  target.value = [...target.value, name];
+  // The internal key stays unique plan-wide; a repeated label keeps its real name as a display override.
+  const groupKeyName = mode === 'day'
+    ? buildUniqueDayKey({ label: name, week: selectedWeek.value, dayGroups: target.value })
+    : name;
+
+  target.value = [...target.value, groupKeyName];
+  if (mode === 'day') {
+    dayLabelOverrides.value = setDayLabelOverride(dayLabelOverrides.value, groupKeyName, name);
+  }
+  // 0.85.313.a8: a new day belongs to the week currently selected, from both the top and bottom Add Day controls.
+  if (mode === 'day' && selectedWeek.value) {
+    dayWeekAssignments.value = assignDayToWeek(dayWeekAssignments.value, groupKeyName, selectedWeek.value);
+  }
   syncGroupOrders(mode, target.value);
   syncScheduleGroupIdentityMap(mode, target.value);
 
   if (collapsePreviousAndExpandNew || !selectedScheduleGroup.value) {
-    selectedScheduleGroup.value = name;
-    const newGroupId = getScheduleGroupId(name, mode);
+    selectedScheduleGroup.value = groupKeyName;
+    const newGroupId = getScheduleGroupId(groupKeyName, mode);
     if (newGroupId) {
       setExpandedGroupId(mode, newGroupId);
     }
@@ -3690,7 +3871,7 @@ const startInlineDayNameEdit = (groupName) => {
     setExpandedGroupId(scheduleMode.value, groupId);
   }
   inlineEditingDayName.value = name;
-  inlineDayNameDraft.value = name;
+  inlineDayNameDraft.value = resolveDayLabel(name, dayLabelOverrides.value);
   inlineDayNameError.value = '';
   plannerMessage.value = '';
 };
@@ -3712,6 +3893,11 @@ const handleInlineDayNameInput = () => {
   }
 };
 
+// Week the renamed day belongs to (its saved assignment, else the selected week).
+const weekOfDayForRename = (dayName) => String(
+  dayWeekAssignments.value?.[normalizeGroupKey(dayName)] || selectedWeek.value || ''
+).trim();
+
 const saveInlineDayNameEdit = () => {
   const mode = normalizeScheduleMode(scheduleMode.value);
   const target = getGroupRefForMode(mode);
@@ -3727,24 +3913,59 @@ const saveInlineDayNameEdit = () => {
   }
   inlineDayNameError.value = '';
 
-  const suggestedName = validation.value;
+  const suggestedLabel = validation.value;
+  const oldLabel = resolveDayLabel(oldName, dayLabelOverrides.value);
 
-  if (!suggestedName || suggestedName === oldName) {
+  if (!suggestedLabel || suggestedLabel === oldLabel) {
     clearScheduleGroupEdit();
     return;
   }
 
-  const normalizedNew = normalizeGroupKey(suggestedName);
   const normalizedOld = normalizeGroupKey(oldName);
-  if (target.value.some((group) => normalizeGroupKey(group) === normalizedNew)) {
-    plannerMessage.value = `${suggestedName} already exists.`;
+  // 0.85.313.a8.1: a day only clashes with another day of the same week. The renamed day itself never counts.
+  const hasDuplicate = mode === 'day'
+    ? Boolean(findDayWithLabelInWeek({
+      name: suggestedLabel,
+      dayGroups: target.value,
+      weekGroups: weekGroups.value,
+      assignments: dayWeekAssignments.value,
+      week: weekOfDayForRename(oldName),
+      labelOverrides: dayLabelOverrides.value,
+      ignoreDay: oldName,
+    }))
+    : target.value.some((group) => normalizeGroupKey(group) !== normalizedOld && normalizeGroupKey(group) === normalizeGroupKey(suggestedLabel));
+  if (hasDuplicate) {
+    plannerMessage.value = mode === 'day'
+      ? buildDuplicateDayMessage({ name: suggestedLabel, week: weekOfDayForRename(oldName) })
+      : `${suggestedLabel} already exists.`;
     return;
   }
+
+  // The day keeps its saved database id (the identity entry moves with the key). Its internal key follows the
+  // new label while that is free; otherwise it gets a unique key and the label is kept as a display override.
+  const suggestedName = mode === 'day'
+    ? buildUniqueDayKey({
+      label: suggestedLabel,
+      week: weekOfDayForRename(oldName),
+      dayGroups: target.value,
+      ignoreDay: oldName,
+    })
+    : suggestedLabel;
 
   target.value = target.value.map((group) => (
     normalizeGroupKey(group) === normalizedOld ? suggestedName : group
   ));
   transferScheduleGroupIdentity(mode, oldName, suggestedName);
+  if (mode === 'day') {
+    dayLabelOverrides.value = setDayLabelOverride(
+      moveDayLabelOverride(dayLabelOverrides.value, oldName, suggestedName),
+      suggestedName,
+      suggestedLabel
+    );
+  }
+  dayWeekAssignments.value = mode === 'week'
+    ? renameWeekInAssignments(dayWeekAssignments.value, oldName, suggestedName)
+    : renameDayInAssignments(dayWeekAssignments.value, oldName, suggestedName);
   syncGroupOrders(mode, target.value);
 
   workoutExercises.value = workoutExercises.value.map((exercise) => {
@@ -3779,6 +4000,9 @@ const removeScheduleGroup = (groupName) => {
     (group) => String(group || '').trim().toLowerCase() !== normalizedRemovedName
   );
   target.value = nextGroups;
+  if (mode === 'day') {
+    dayLabelOverrides.value = setDayLabelOverride(dayLabelOverrides.value, groupName, '');
+  }
   syncGroupOrders(mode, target.value);
 
   if (String(inlineEditingDayName.value || '').trim().toLowerCase() === normalizedRemovedName) {
@@ -3802,18 +4026,8 @@ const removeScheduleGroup = (groupName) => {
   plannerMessage.value = '';
 };
 
-const changeScheduleMode = (mode) => {
-  const normalizedMode = normalizeScheduleMode(mode);
-  scheduleMode.value = normalizedMode;
-  clearScheduleGroupEdit();
-  const targetGroups = getGroupRefForMode(normalizedMode);
-  const targetOrders = getGroupOrderRefForMode(normalizedMode);
-  targetGroups.value = sortGroupsByOrder(targetGroups.value, targetOrders.value);
-  syncGroupOrders(normalizedMode, targetGroups.value);
-  plannerMessage.value = '';
-  ensureAccordionSelectionForMode(normalizedMode);
-};
-
+// 0.85.313.a4: the Schedule Planner is unified. It always shows workout day cards (scheduleMode stays 'day');
+// the week set and day-to-week assignments are kept in state and saved, but are not edited here yet.
 const toggleWorkoutDetails = () => {
   isWorkoutDetailsOpen.value = !isWorkoutDetailsOpen.value;
 };
@@ -3987,6 +4201,22 @@ const moveScheduleGroup = (groupName, direction = 'up') => {
   const mode = normalizeScheduleMode(scheduleMode.value);
   const targetRef = getGroupRefForMode(mode);
   const ordered = [...targetRef.value];
+  if (mode === 'day') {
+    // Move among the days visible in the selected week; days of other weeks keep their positions.
+    const moved = moveDayAmongVisible({
+      groups: ordered,
+      visibleGroups: visibleDayGroups.value,
+      name: groupName,
+      direction,
+    });
+    if (!moved) {
+      return;
+    }
+    targetRef.value = moved;
+    syncGroupOrders(mode, moved);
+    ensureAccordionSelectionForMode(mode);
+    return;
+  }
   const index = ordered.findIndex(
     (group) => String(group || '').trim().toLowerCase() === String(groupName || '').trim().toLowerCase()
   );
@@ -4031,16 +4261,21 @@ const duplicateScheduleGroup = (groupName) => {
   if (sourceIndex < 0) return;
 
   let suffix = 2;
-  let duplicateName = `${sourceName} Copy`;
+  // 0.85.313.a8.1: the copy is named after the day's label (not its internal key) so it reads "Monday Copy".
+  const sourceLabel = mode === 'day' ? resolveDayLabel(sourceName, dayLabelOverrides.value) : sourceName;
+  let duplicateName = `${sourceLabel} Copy`;
   const lowerSet = new Set(targetRef.value.map((name) => String(name || '').trim().toLowerCase()));
   while (lowerSet.has(duplicateName.toLowerCase())) {
-    duplicateName = `${sourceName} Copy ${suffix}`;
+    duplicateName = `${sourceLabel} Copy ${suffix}`;
     suffix += 1;
   }
 
   const nextGroups = [...targetRef.value];
   nextGroups.splice(sourceIndex + 1, 0, duplicateName);
   targetRef.value = nextGroups;
+  if (mode === 'day') {
+    dayWeekAssignments.value = copyDayAssignment(dayWeekAssignments.value, sourceName, duplicateName);
+  }
   syncGroupOrders(mode, targetRef.value);
 
   const sourceExercises = workoutExercises.value.filter(
@@ -4081,14 +4316,154 @@ watch(
   { immediate: true }
 );
 
+const reconcileDayWeekAssignmentState = () => {
+  const result = reconcileDayWeekAssignments({
+    dayGroups: dayGroups.value,
+    weekGroups: weekGroups.value,
+    assignments: dayWeekAssignments.value,
+  });
+  if (result.changed) {
+    dayWeekAssignments.value = result.assignments;
+  }
+};
+
+watch([dayGroups, weekGroups], reconcileDayWeekAssignmentState, { deep: true });
+
+const weekOptions = computed(() => buildWeekOptions(weekGroups.value));
+
+// Keep the selection valid: Week 1 by default, else the first existing week; a still-existing choice is kept.
+watch(
+  weekGroups,
+  (weeks) => {
+    const next = resolveSelectedWeek(weeks, selectedWeek.value);
+    if (next !== selectedWeek.value) {
+      selectedWeek.value = next;
+    }
+  },
+  { immediate: true, deep: true }
+);
+
+// 0.85.313.a6: Add Week is allowed only when the selected week has a day with at least one exercise.
+// Only the selected week's assignments are checked, never the whole plan.
+const canAddWeek = computed(() => (
+  canModifyScheduleDayActions.value
+  && weekHasDayWithExercise({
+    week: selectedWeek.value,
+    dayGroups: dayGroups.value,
+    assignments: dayWeekAssignments.value,
+    exercises: workoutExercises.value,
+    countExercises: countUniqueWorkoutPlanExercises,
+  })
+));
+
+const addWeek = () => {
+  if (!canAddWeek.value) {
+    return;
+  }
+  const name = buildNextWeekName(weekGroups.value);
+  // Append only: existing weeks, days, exercises and assignments are left as they are, so the new week is empty.
+  weekGroups.value = [...weekGroups.value, name];
+  syncGroupOrders('week', weekGroups.value);
+  selectedWeek.value = name;
+  plannerMessage.value = '';
+};
+
+// 0.85.313.a7: Rename Week. The menu sits beside the Week dropdown and renames the selected week in place.
+const canRenameWeek = computed(() => canModifyScheduleDayActions.value && Boolean(selectedWeek.value));
+
+const toggleWeekMenu = () => {
+  if (!canRenameWeek.value) {
+    return;
+  }
+  openMenuDay.value = null;
+  isWeekMenuOpen.value = !isWeekMenuOpen.value;
+};
+
+const cancelWeekRename = () => {
+  isRenamingWeek.value = false;
+  weekRenameTarget.value = '';
+  weekRenameDraft.value = '';
+  weekRenameError.value = '';
+};
+
+// 0.85.313.a8: switching weeks only changes which days are shown. Nothing is edited or removed; the expanded card
+// moves to the first day of the new week (selectedScheduleGroup is left alone, so a view change does not mark the plan dirty).
+watch(selectedWeek, (week) => {
+  openMenuDay.value = null;
+  if (isRenamingWeek.value && normalizeGroupKey(week) !== normalizeGroupKey(weekRenameTarget.value)) {
+    cancelWeekRename();
+  }
+  if (normalizeScheduleMode(scheduleMode.value) !== 'day') {
+    return;
+  }
+  const firstVisibleDay = visibleDayGroups.value[0];
+  setExpandedGroupId('day', firstVisibleDay ? getScheduleGroupId(firstVisibleDay, 'day') : null);
+});
+
+const startWeekRename = () => {
+  isWeekMenuOpen.value = false;
+  if (!canRenameWeek.value) {
+    return;
+  }
+  weekRenameTarget.value = selectedWeek.value;
+  weekRenameDraft.value = selectedWeek.value;
+  weekRenameError.value = '';
+  isRenamingWeek.value = true;
+  plannerMessage.value = '';
+};
+
+const handleWeekRenameInput = () => {
+  if (weekRenameError.value && validateWorkoutDayName(weekRenameDraft.value, 'week').ok) {
+    weekRenameError.value = '';
+  }
+};
+
+const saveWeekRename = () => {
+  const oldName = weekRenameTarget.value;
+  if (!isRenamingWeek.value || !oldName) {
+    return;
+  }
+
+  const validation = validateWorkoutDayName(weekRenameDraft.value, 'week');
+  if (!validation.ok) {
+    weekRenameError.value = validation.message;
+    return;
+  }
+
+  const result = renameWeekInPlan({
+    weekGroups: weekGroups.value,
+    assignments: dayWeekAssignments.value,
+    oldWeek: oldName,
+    newWeek: validation.value,
+  });
+  if (!result.ok) {
+    weekRenameError.value = result.message;
+    return;
+  }
+
+  if (result.changed) {
+    // Same week, new label: keep its identity entry, position, assignments and selection. Days and exercises are not touched.
+    transferScheduleGroupIdentity('week', oldName, validation.value);
+    weekGroups.value = result.weekGroups;
+    dayWeekAssignments.value = result.assignments;
+    syncGroupOrders('week', weekGroups.value);
+    if (normalizeGroupKey(selectedWeek.value) === normalizeGroupKey(oldName)) {
+      selectedWeek.value = validation.value;
+    }
+  }
+
+  cancelWeekRename();
+  plannerMessage.value = '';
+};
+
 const isFirstScheduleGroup = (groupName) => {
   const normalized = String(groupName || '').trim().toLowerCase();
-  return String(activeGroups.value[0] || '').trim().toLowerCase() === normalized;
+  return String(visibleDayGroups.value[0] || '').trim().toLowerCase() === normalized;
 };
 
 const isLastScheduleGroup = (groupName) => {
   const normalized = String(groupName || '').trim().toLowerCase();
-  return String(activeGroups.value[activeGroups.value.length - 1] || '').trim().toLowerCase() === normalized;
+  return String(visibleDayGroups.value[visibleDayGroups.value.length - 1] || '').trim().toLowerCase() === normalized;
 };
 
 const plannerPayload = computed(() => ({
@@ -4102,9 +4477,42 @@ const plannerPayload = computed(() => ({
   weekGroups: weekGroups.value,
   dayGroupOrders: buildOrderEntries(dayGroups.value),
   weekGroupOrders: buildOrderEntries(weekGroups.value),
-  exercises: workoutExercises.value,
+  // 0.85.313.a8.1: groups are saved by identity. key = internal name (what exercises and assignments use),
+  // id = saved database id (null for a new group), label = the real display name (may repeat across weeks).
+  dayGroupEntries: buildGroupEntries({
+    names: dayGroups.value,
+    idByName: (name) => getScheduleGroupDbId(name, 'day'),
+    labelOverrides: dayLabelOverrides.value,
+  }),
+  weekGroupEntries: buildGroupEntries({
+    names: weekGroups.value,
+    idByName: (name) => getScheduleGroupDbId(name, 'week'),
+  }),
+  settings: buildDayWeekAssignmentsSettings(dayWeekAssignments.value),
+  exercises: workoutExercises.value.map((exercise) => ({
+    ...exercise,
+    scheduleGroupKey: String(exercise?.scheduleGroup || '').trim(),
+  })),
   status: normalizePlanPublicationStatus(selectedPublicationStatus.value || planPublicationStatus.value),
 }));
+
+// 0.85.313.a8.1: after a save, groups created in this session pick up their database ids from the server's
+// response, so the next save updates them in place instead of recreating them. Matching is by saved order and
+// real label; if the response does not line up with what was sent, nothing changes.
+const adoptSavedGroupIds = (savedPlanner) => {
+  if (!savedPlanner || typeof savedPlanner !== 'object') {
+    return;
+  }
+  const sent = plannerPayload.value;
+  const dayIds = matchSavedGroupIds(sent.dayGroupEntries, savedPlanner.dayGroupEntries);
+  if (Object.keys(dayIds).length) {
+    applyScheduleGroupDbIds('day', dayIds);
+  }
+  const weekIds = matchSavedGroupIds(sent.weekGroupEntries, savedPlanner.weekGroupEntries);
+  if (Object.keys(weekIds).length) {
+    applyScheduleGroupDbIds('week', weekIds);
+  }
+};
 
 const sendAiSuggestion = async () => {
   const trimmedPrompt = aiPrompt.value.trim();
@@ -4352,6 +4760,7 @@ const persistWorkout = async (status = 'draft') => {
       }
 
       currentPlanId.value = targetPlanId;
+      adoptSavedGroupIds(scheduleData?.planner);
       selectedWorkoutId.value = targetPlanId;
       isCreatingWorkout.value = false;
       hasSavedWorkoutDetails.value = true;
@@ -4398,6 +4807,7 @@ const persistWorkout = async (status = 'draft') => {
 
     const data = await response.json();
     syncWorkoutPlannerCapabilities(data);
+    adoptSavedGroupIds(data?.planner);
     currentPlanId.value = String(data?.planner?.planId || currentPlanId.value || '').trim();
     selectedWorkoutId.value = currentPlanId.value;
     isCreatingWorkout.value = false;
@@ -5453,29 +5863,72 @@ watch(
           </div>
 
           <div class="planner-tools">
-            <div class="planner-header-actions planner-header-actions--schedule">
-              <div class="planner-mode-pill-wrap" aria-label="Scheduling mode">
-                <div class="planner-mode-toggle" role="tablist" aria-label="Schedule planner modes">
+              <div class="planner-week-select">
+                <label class="planner-week-select__label" for="planner-week-select">Week</label>
+                <select
+                  id="planner-week-select"
+                  v-model="selectedWeek"
+                  class="planner-week-select__control"
+                  aria-label="Select week"
+                >
+                  <option v-for="week in weekOptions" :key="week.value" :value="week.value">
+                    {{ week.label }}
+                  </option>
+                </select>
+                <button
+                  type="button"
+                  class="planner-week-add wa-blue-action-btn"
+                  :disabled="!canAddWeek"
+                  :title="canAddWeek ? 'Add a new empty week' : 'Add at least one exercise to a day in this week to add a new week.'"
+                  @click="addWeek"
+                >
+                  + Add Week
+                </button>
+                <div class="day-kebab-wrap planner-week-menu-wrap">
                   <button
                     type="button"
-                    :class="['planner-mode-btn', { active: scheduleMode === 'day' }]"
-                    :aria-pressed="scheduleMode === 'day'"
-                    @click="changeScheduleMode('day')"
+                    class="day-kebab-btn planner-week-menu-btn"
+                    aria-label="Week actions"
+                    aria-haspopup="menu"
+                    :aria-expanded="isWeekMenuOpen"
+                    :disabled="!canRenameWeek"
+                    @click.stop="toggleWeekMenu"
                   >
-                    Day View
+                    <i class="fa-solid fa-ellipsis-vertical"></i>
                   </button>
-                  <button
-                    type="button"
-                    :class="['planner-mode-btn', { active: scheduleMode === 'week' }]"
-                    :aria-pressed="scheduleMode === 'week'"
-                    @click="changeScheduleMode('week')"
-                  >
-                    Week View
-                  </button>
+                  <div v-if="isWeekMenuOpen" class="day-kebab-menu" role="menu">
+                    <button type="button" class="day-kebab-item" role="menuitem" @click="startWeekRename">
+                      <i class="fa-regular fa-pen-to-square"></i>
+                      Rename Week
+                    </button>
+                  </div>
                 </div>
               </div>
 
-            </div>
+              <div v-if="isRenamingWeek" class="planner-week-rename">
+                <label class="planner-week-select__label" for="planner-week-rename-input">Rename Week</label>
+                <input
+                  id="planner-week-rename-input"
+                  v-model="weekRenameDraft"
+                  class="day-title-inline-input planner-week-rename__input"
+                  type="text"
+                  :maxlength="WORKOUT_DAY_NAME_MAX_LENGTH"
+                  @input="handleWeekRenameInput"
+                  @keydown.esc.prevent="cancelWeekRename"
+                  @keydown.enter.prevent="saveWeekRename"
+                />
+                <div class="day-title-inline-actions">
+                  <button type="button" class="day-title-inline-btn day-title-inline-btn--save" @click="saveWeekRename">
+                    Save
+                  </button>
+                  <button type="button" class="day-title-inline-btn day-title-inline-btn--cancel" @click="cancelWeekRename">
+                    Cancel
+                  </button>
+                </div>
+                <p v-if="weekRenameError" class="day-title-inline-error planner-week-rename__error">
+                  {{ weekRenameError }}
+                </p>
+              </div>
 
               <div class="planner-group-editor">
                 <label class="planner-group-editor__label" for="planner-add-day-input">{{ scheduleGroupEditorLabel }}</label>
@@ -5545,7 +5998,7 @@ watch(
                         <strong
                           v-else
                           class="day-title-editable"
-                          :title="day.name"
+                          :title="formatPlannerDayNameForDisplay(day.name, 200)"
                           @click.stop="startInlineDayNameEdit(day.name)"
                         >
                           {{ formatPlannerDayNameForDisplay(day.name) }}
@@ -5678,7 +6131,7 @@ watch(
 
                         <div class="day-panel-actions day-panel-actions--bottom">
                           <div class="day-footer-summary" @click.stop>
-                            <span class="day-footer-summary__name" :title="day.name">{{ formatPlannerDayNameForDisplay(day.name) }}</span>
+                            <span class="day-footer-summary__name" :title="formatPlannerDayNameForDisplay(day.name, 200)">{{ formatPlannerDayNameForDisplay(day.name) }}</span>
                             <span class="exercise-count">{{ day.exerciseCount }} exercise{{ day.exerciseCount === 1 ? '' : 's' }}</span>
                             <button
                               type="button"
@@ -5712,8 +6165,8 @@ watch(
                 {{ plannerMessage }}
               </p>
 
-              <div v-if="activeGroups.length === 0" class="planner-helper-text">
-                {{ scheduleGroupEmptyStateText }}
+              <div v-if="visibleDayGroups.length === 0" class="planner-helper-text">
+                {{ plannerEmptyStateText }}
               </div>
             </div>
 
@@ -8405,6 +8858,35 @@ watch(
   background: #1d4ed8;
 }
 
+.planner-week-select {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 8px;
+  min-width: 0;
+}
+
+.planner-week-select__label {
+  color: #ecf6ff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.planner-week-select__control {
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  border-radius: 6px;
+  min-height: 36px;
+  padding: 6px 10px;
+  background: linear-gradient(180deg, rgba(15, 28, 46, 0.9), rgba(11, 22, 34, 0.92));
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  color: #ecf6ff;
+  font-size: 0.82rem;
+}
+
 .planner-group-editor {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr) auto;
@@ -8470,6 +8952,49 @@ watch(
   white-space: nowrap;
   flex: 0 0 auto;
   box-shadow: 0 8px 18px rgba(22, 163, 74, 0.18);
+}
+
+.planner-week-add {
+  border: 1px solid #15803d;
+  border-radius: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  background: linear-gradient(180deg, #16a34a 0%, #15803d 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.78rem;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.planner-week-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.planner-week-menu-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.planner-week-rename {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 4px;
+  min-width: 0;
+}
+
+.planner-week-rename__input {
+  max-width: none;
+  min-height: 36px;
+}
+
+.planner-week-rename__error {
+  grid-column: 2 / 4;
+  margin: 0;
 }
 
 .planner-group-save {
