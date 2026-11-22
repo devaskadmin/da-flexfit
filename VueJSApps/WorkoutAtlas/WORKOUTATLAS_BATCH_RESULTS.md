@@ -1,5 +1,65 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.313 - Critical backend recovery (route restoration only)
+- Scope: recover unintentionally removed handlers in `backend/api/users.js` without new feature development.
+- Trigger: VS Code OOM/interrupted edit sequence left backend route coverage below Git HEAD baseline.
+- Protective actions:
+	- Created backup snapshot before recovery: `backend/api/users.js.recovery-backup-20261121-191855`.
+	- Preserved existing in-progress working-tree changes; no `git reset`, `git restore`, or destructive operations were used.
+	- No database migrations and no runtime database writes were executed during recovery validation.
+	- Protected data remained untouched, including PlanID `5` (`Stephen K – Lean Muscle`), existing workout history, and active sessions.
+- Recovered endpoints:
+	- `POST/DELETE /workout-schedules/:id/cover`
+	- `PATCH/DELETE /workout-schedules/:id`
+	- `PUT /workout-schedules/:id/groups`
+	- `POST /workout-schedules/:id/exercises`
+	- `PATCH/DELETE /workout-schedules/:id/exercises/:scheduleExerciseId`
+	- `GET /workout-schedules/:id/delete-impact`
+	- `GET /featured-workout-plans`
+	- `GET /global-workout-plans`
+	- `GET /global-workout-plans/:id`
+	- `POST /global-workout-plans/:id/use`
+	- `POST /admin/global-workout-plans/:id/exercises`
+	- `DELETE /admin/global-workout-plans/:id/exercises/:scheduleExerciseId`
+	- `DELETE /admin/global-workout-plans/:id`
+	- `GET/PUT/DELETE /workout-planner`
+	- `GET /workout-planner/provenance`
+- Inventory verification:
+	- HEAD route signatures: `37`
+	- Current route signatures after recovery: `37`
+	- Missing routes: `0`
+	- Unexpected extra routes: `0`
+- Validation:
+	- Syntax check passed: `node --check backend/api/users.js`.
+	- Focused backend tests passed:
+		- `node --test tests/workout-plan-conversion-engine.test.js tests/workout-plan-cover-service.test.js tests/workout-plan-cover-storage.test.js` -> `30/30` pass.
+		- `node --test tests/workout-plan-template.test.js` -> `8/8` pass.
+- Out of scope / not performed:
+	- No Phase 1 feature advancement.
+	- No frontend build rerun for this backend-only recovery.
+	- No live browser/runtime mutation checks.
+- Status: Recovery complete; broader `0.85.313` Phase 1 acceptance remains pending.
+
+## 0.85.312 - Restore bottom Add Day / Add Week controls
+- Scope: restore bottom schedule-add controls after a schedule and at least two exercises exist, without changing top controls or Add Exercise behavior.
+- Root cause: existing bottom editor state and `addScheduleGroupBottom` logic remained available, but the bottom template controls were missing from `WorkoutBuilder.vue`.
+- Files changed: `frontend/src/views/Member/WorkoutBuilder.vue`, `frontend/src/views/Member/WorkoutBuilder.preview-mobile-contract.test.mjs`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`, `docs/qa/releases/0.85/0.85.312.md`.
+- Implementation:
+	- Bottom controls render below the final workout day/week accordion list.
+	- Visibility requires at least one active schedule group and at least two total exercises.
+	- Day and Week modes derive matching labels and placeholders from `scheduleModeLabelLower` and existing schedule editor computed values.
+	- Controls call existing `addScheduleGroupBottom` and `addScheduleGroupFromValue` logic, preserving duplicate checks, validation, appending, and accordion expansion behavior.
+	- Controls remain outside each accordion panel, so they remain accessible while panels are collapsed.
+- Preserved scope: existing top controls, Save functionality, Add Exercise controls, 0.85.311 recording fields, navigation tabs, database schema, and backend APIs were not modified.
+- Automated verification:
+	- `WorkoutBuilder.preview-mobile-contract.test.mjs`: `10/10` passed.
+	- Frontend production build: passed with Vite `4.5.9`.
+	- Vue diagnostics for touched source/test files: no errors.
+- Remaining limitations:
+	- Live browser verification in Create/Edit Plan and desktop/tablet/mobile viewport acceptance is pending.
+	- Package versions remain `0.85.308`; no package bump was performed for task `0.85.312`.
+- User acceptance status: Pending.
+
 ## 0.85.309 - Final functional QA and release-readiness investigation
 - Scope: verification-first 0.85 final acceptance audit without feature changes, server restarts, migrations, production mutations, deployment, or protected-data changes.
 - Repository baseline:
@@ -154,7 +214,7 @@
 	- Required screenshots captured for 320, 390, 800, 1366 during live validation.
 	- Planner cleanup checks confirmed: `plannerQuickSaveActions=0`, `plannerBottomGroupActions=0`, single visible add-day control, single primary Save Changes action, and no bottom kebab anchor duplication.
 - Automated checks:
-	- Frontend timer/session tests: 11/11 passing (`node --test src/utils/workoutSessionTimer.test.mjs`).
+	- Frontend timer/session tests: `11/11` passing (`node --test src/utils/workoutSessionTimer.test.mjs`).
 	- Frontend production build: passed (`npm run build`).
 	- Backend full suite: 155/155 passing (`npm test`).
 	- Vue diagnostics on touched file: no errors.
@@ -331,7 +391,7 @@
 ## 0.85.290 — Completion routes to Workout Log history
 - Scope: ensure successful Complete & End Workout navigates to the existing Workout Log history tab after backend completion instead of resetting to the overview tab.
 - Files changed: `frontend/src/views/Member/LogWorkout.vue`, `CHANGELOG.md`, `frontend/package.json`, `backend/package.json`.
-- Verification: backend full suite passed (118/118); frontend production build passed; live iPhone confirmation still required.
+- Verification: backend full suite passed (118/118); frontend production build passed; live iPhone confirmation still recommended.
 - Commit hash: `ca7dc832d140e6ba0a46b60abe4b9977763be731`.
 - Caveats: no production data or gateway changes; completion navigation is blocked until a successful backend completion response is returned.
 
@@ -374,3 +434,30 @@
 - NON-BLOCKING - localhost Google sign-in: origin/client-ID 403 warning; demo login remained functional.
 - NON-BLOCKING - nutrition unrelated API failures: unrelated nutrition calls returned HTTP 500 during browser navigation; outside requested acceptance scope and not repaired.
 - Protected data: PlanID 5 — Stephen K – Lean Muscle and the existing paused Monday Cardio session were not modified. Existing personal history was not edited or deleted except for the disposable QA309 record.
+
+### 2026-11-21 — Top Save button implementation update
+- Scope: add one additional Save control to the top Create/Edit Plan action row without adding save business logic or changing existing Save controls.
+- Files changed: `frontend/src/views/Member/WorkoutBuilder.vue`, `frontend/src/views/Member/WorkoutBuilder.preview-mobile-contract.test.mjs`, `CHANGELOG.md`, `docs/qa/releases/0.85/0.85.309.md`, `WORKOUTATLAS_BATCH_RESULTS.md`.
+- Layout: 100%-width action row; `Back to Plans` remains left and `Save` is right-aligned on desktop, tablet, and mobile.
+- Styling: `#15803D` green, `#FFFFFF` white text, matching compact button height, Font Awesome floppy-disk icon.
+- Wiring: both top buttons call existing `handlePrimarySave`; existing validation, permissions, status transitions, notifications, and duplicate-submission prevention remain intact.
+- Automated verification:
+	- `WorkoutBuilder.preview-mobile-contract.test.mjs`: `8/8` passed.
+	- Frontend production build: passed with Vite `4.5.9`.
+	- Vue diagnostics for touched source and test files: no errors.
+- Remaining limitations:
+	- Live Create/Edit save, publishing behavior, and desktop/tablet/mobile browser geometry require user verification.
+	- Package versions remain `0.85.308`; `0.85.309` is the task/release identifier and package bumps remain outside scope.
+- User acceptance status: `Pending`.
+
+### 0.85.309.a — Back to Plans / Save alignment correction
+- Scope: Correct top Create/Edit Plan button alignment without changing button behavior or unrelated layouts.
+- Files changed: `frontend/src/views/Member/WorkoutBuilder.vue`, `frontend/src/views/Member/WorkoutBuilder.preview-mobile-contract.test.mjs`, `CHANGELOG.md`, `WORKOUTATLAS_BATCH_RESULTS.md`, `docs/qa/releases/0.85/0.85.309.md`.
+- Correction: Back to Plans and Save share a full-width flex row with left/right distribution and shared vertical centering. Both controls are 36px high with identical 12px horizontal padding, 6px radius, 0.74rem font size, and centered content.
+- Preserved behavior: Blue Back to Plans and green Save colors remain intact; existing navigation and `handlePrimarySave` handlers are unchanged.
+- Verification:
+	- WorkoutBuilder contract tests: `11/11` passed.
+	- Frontend production build: passed with Vite `4.5.9`.
+	- Touched Vue diagnostics: no errors.
+- Remaining limitation: Live desktop/tablet/mobile top, center, and bottom-edge visual verification remains pending.
+- User acceptance status: Pending.

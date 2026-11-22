@@ -1,7 +1,7 @@
 # WorkoutAtlas Session Handoff
 
 ## Current objective
-A fresh agent should continue from enterprise documentation validation and synchronize implementation to the 0.85.309 backlog. No application or data changes are authorized until a task is explicitly scoped and approved.
+A fresh agent should maintain the completed 0.85.313 backend recovery state and wait for explicit approval before resuming Phase 1 feature development.
 
 ## Repository state
 
@@ -14,7 +14,27 @@ A fresh agent should continue from enterprise documentation validation and synch
 - Existing QA documentation changes: `CHANGELOG.md` and `WORKOUTATLAS_BATCH_RESULTS.md` are preserved
 
 ## Most recent completed task
-Fresh-agent documentation onboarding validation, 0.85.309 live evidence preservation, and tablet-defect backlog synchronization.
+Critical backend recovery for `backend/api/users.js` after interrupted/OOM edits removed canonical route blocks.
+
+### 0.85.313 backend recovery evidence
+
+- Backup created before modification: `backend/api/users.js.recovery-backup-20261121-191855`.
+- Route inventory parity restored versus HEAD:
+	- HEAD signatures: `37`
+	- Current signatures: `37`
+	- Missing: `0`
+	- Extra: `0`
+- Restored endpoints include:
+	- `GET/PUT/DELETE /workout-planner`
+	- `GET /workout-planner/provenance`
+	- `PUT /workout-schedules/:id/groups`
+	- all previously removed cover/exercise/delete-impact/global-plan route handlers in `backend/api/users.js`.
+- Validation passed:
+	- `node --check backend/api/users.js`
+	- `node --test tests/workout-plan-conversion-engine.test.js tests/workout-plan-cover-service.test.js tests/workout-plan-cover-storage.test.js` (`30/30`)
+	- `node --test tests/workout-plan-template.test.js` (`8/8`)
+- No migration/destructive operations were run.
+- Protected PlanID `5` and existing history/session data were not modified.
 
 ## Open failures and pending acceptance
 
@@ -42,7 +62,7 @@ Fresh-agent documentation onboarding validation, 0.85.309 live evidence preserva
 - `WORKOUTATLAS_BATCH_RESULTS.md`
 
 ## Next authorized action
-No implementation action is authorized until scoped approval is provided. The exact next targeted development task is `WA-UI-TABLET-001 — Tablet Find Plans responsiveness`, a P2 UI regression pending implementation approval. Separate live 0.85.309 acceptance requires explicit disposable-test scope.
+No implementation action is authorized until scoped approval is provided. Recovery is complete; next step is user review/approval before any further Phase 1 work.
 
 ## Next targeted development task
 `WA-UI-TABLET-001 — Tablet Find Plans responsiveness` after implementation approval. Acceptance testing must check page-level and component/table overflow at 768, 800, 820, and 1024px.

@@ -6,7 +6,81 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.313] - 2026-11-21 - Critical backend route recovery (Phase 1 paused)
+
+- **Status:** Recovery-only maintenance completed; Phase 1 feature development intentionally paused.
+- **Problem:** `backend/api/users.js` in the working tree lost multiple route handlers during interrupted edits, breaking compatibility endpoints and schedule mutation APIs.
+- **Root cause:** Unintentional route-block removal in a partial/incomplete file state left route inventory below HEAD baseline.
+- **Fixed:** Restored unintentionally removed route handlers from Git HEAD while preserving in-progress legitimate changes already present in the working file.
+- **Recovered endpoints:**
+  - `/workout-schedules/:id/cover` (POST, DELETE)
+  - `/workout-schedules/:id` (PATCH, DELETE)
+  - `/workout-schedules/:id/groups` (PUT)
+  - `/workout-schedules/:id/exercises` (POST)
+  - `/workout-schedules/:id/exercises/:scheduleExerciseId` (PATCH, DELETE)
+  - `/workout-schedules/:id/delete-impact` (GET)
+  - `/featured-workout-plans` (GET)
+  - `/global-workout-plans` (GET)
+  - `/global-workout-plans/:id` (GET)
+  - `/global-workout-plans/:id/use` (POST)
+  - `/admin/global-workout-plans/:id/exercises` (POST)
+  - `/admin/global-workout-plans/:id/exercises/:scheduleExerciseId` (DELETE)
+  - `/admin/global-workout-plans/:id` (DELETE)
+  - `/workout-planner` (GET, PUT, DELETE by planId)
+  - `/workout-planner/provenance` (GET)
+- **Verification:**
+  - Route inventory comparison against HEAD: `37/37` routes present, `0` missing, `0` extra.
+  - Syntax check: `node --check backend/api/users.js` passed.
+  - Focused backend regressions passed:
+    - `tests/workout-plan-conversion-engine.test.js` (`11/11`)
+    - `tests/workout-plan-cover-service.test.js` (`10/10`)
+    - `tests/workout-plan-cover-storage.test.js` (`9/9`)
+    - `tests/workout-plan-template.test.js` (`8/8`)
+- **Data protection:** No database migrations, no server restarts, and no runtime database writes were performed as part of this recovery. Protected PlanID `5` (`Stephen K – Lean Muscle`) was not modified.
+- **Relevant source files:** `backend/api/users.js`; `backend/api/users.js.recovery-backup-20261121-191855`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`; `docs/engineering/CURRENT-STATE.md`; `docs/engineering/SESSION-HANDOFF.md`.
+- **Known unresolved issues:** This recovery does not advance Phase 1 week-assignment feature scope; user acceptance is still required before further work.
+- **User acceptance status:** **Pending**.
+
+## [0.85.309.a] - 2026-11-21 - Back to Plans / Save button alignment correction
+
+- **Corrected:** Back to Plans and Save now share one full-width `plan-info-action-row` flex container with `width: 100%`, `justify-content: space-between`, and `align-items: center`.
+- **Alignment:** Back to Plans remains left-aligned and Save remains right-aligned. Both buttons are 36px tall with identical vertical padding, 6px border radius, 0.74rem font size, and centered icon/text content.
+- **Spacing:** The shared row uses 12px top and bottom margins and 12px between controls; desktop, tablet, and mobile retain a non-wrapping horizontal layout.
+- **Styling preserved:** Back to Plans remains blue (`#2563EB`) with white text; Save remains green (`#15803D`) with white text.
+- **Scope preserved:** Create and Edit Plan reuse the existing `handlePrimarySave` and navigation handlers. Save logic, validation, publishing, notifications, Save buttons, and unrelated layouts were not changed.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`; `frontend/src/views/Member/WorkoutBuilder.preview-mobile-contract.test.mjs`; `CHANGELOG.md`.
+- **Verification:** Focused WorkoutBuilder contract suite passed `11/11`. Frontend production build passed with Vite `4.5.9`; only existing Dart Sass legacy-API deprecation warnings were emitted. Touched Vue source and test diagnostics reported no errors.
+- **Known unresolved issues:** Live desktop, tablet, and mobile visual verification for top-edge, center-edge, and bottom-edge alignment remains pending browser acceptance.
+- **User acceptance status:** **Pending**.
+
+## [0.85.312] - 2026-11-21 - Restore bottom Add Day and Add Week controls
+
+- **Problem:** Bottom schedule controls disappeared after the prior planner cleanup, leaving users unable to add another day or week without scrolling back to the top.
+- **Root cause:** Bottom schedule editor state, validation, and `addScheduleGroupBottom` handler remained in `WorkoutBuilder.vue`, but the bottom controls were not rendered in the schedule template.
+- **Fixed:** Restored matching bottom Add Day / Add Week controls immediately below the final workout day/week accordion list.
+- **Behavior:** Controls appear in Create and Edit Plan when at least one workout day/week and at least two total exercises exist. They remain outside accordion content so collapsed states do not hide them. New groups are appended through the existing `addScheduleGroupBottom` and `addScheduleGroupFromValue` logic.
+- **Preserved:** Existing top controls, Add Exercise controls, Save behavior, exercise recording fields, navigation tabs, backend APIs, and database schema remain unchanged.
+- **Styling:** Reuses the existing planner group editor and green `#15803D` Add button styling with white `#FFFFFF` text; existing responsive full-width behavior remains available at mobile widths.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`; `frontend/src/views/Member/WorkoutBuilder.preview-mobile-contract.test.mjs`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`; `docs/qa/releases/0.85/0.85.312.md`.
+- **Verification:** Focused `WorkoutBuilder.preview-mobile-contract.test.mjs` passed `10/10`; frontend production build passed with Vite `4.5.9`; touched Vue source and test files reported no diagnostics. Existing Dart Sass legacy-API deprecation warnings remain non-blocking.
+- **Known unresolved issues:** Live Create/Edit Plan verification of Day View, Week View, accordion states, responsive layouts, and appended schedule ordering requires browser acceptance. No package-version bump was made; package versions remain `0.85.308`.
+- **User acceptance status:** **Pending** until the user verifies bottom controls in Create and Edit Plan across desktop, tablet, and mobile.
+
 ## [0.85.309] - 2026-11-18 - Final functional QA and release-readiness investigation
+
+### Implementation update - 2026-11-21 - Top Save button in Create and Edit Plan views
+
+- **Status:** Implementation complete for the top Save UI; live acceptance remains pending.
+- **Added:** Green top `Save` buttons with floppy-disk icons are present in both Create Workout Plan and Edit Workout Plan views.
+- **Changed:** The top action row spans 100% of the available parent width; `Back to Plans` remains left-aligned and `Save` remains right-aligned in the same horizontal row across desktop, tablet, and mobile widths.
+- **Preserved:** The top buttons call the existing `handlePrimarySave` handler, preserving validation, permissions, publication transitions, notifications, and duplicate-submission guards without duplicated business logic.
+- **Preserved:** Existing footer Save controls and the Workout Plan Information layout remain unchanged; no exercise recording fields, navigation tabs, database schema, or backend APIs were modified.
+- **Relevant source files:** `frontend/src/views/Member/WorkoutBuilder.vue`; `frontend/src/views/Member/WorkoutBuilder.preview-mobile-contract.test.mjs`; `CHANGELOG.md`.
+- **Verification:** Focused `WorkoutBuilder.preview-mobile-contract.test.mjs` passed `8/8`; frontend production build passed with Vite `4.5.9`. Only existing Dart Sass legacy-API deprecation warnings were emitted. Live Create/Edit save behavior and responsive browser acceptance remain pending.
+- **Known unresolved issues:** Package versions remain `0.85.308` in accordance with repository versioning rules; `0.85.309` is the assigned task/release identifier and not a package bump.
+- **User acceptance status:** **Pending** until the user verifies Create Plan, Edit Plan, responsive layout, create-save, edit-save, validation, and publishing behavior.
+
+### Investigation baseline - 2026-11-18 - Final functional QA and release-readiness investigation
 
 - **Status:** Investigation/blocked; this was a verification-first audit, not a completed release candidate and no source-code changes were made.
 - **Repository:** `BETA`, HEAD `ecb2b654ec40d1211bcec53f79fb61ac33bc1ada`, matching the expected previous commit; frontend and backend package versions remain `0.85.308`; branch was already ahead of `origin/BETA` by 2 commits.

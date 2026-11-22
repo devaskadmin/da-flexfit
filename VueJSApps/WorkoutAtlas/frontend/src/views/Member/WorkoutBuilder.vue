@@ -12,6 +12,13 @@ import { DEFAULT_WORKOUT_PLAN_IMAGE, buildWorkoutPlanCoverImageUrl, applyWorkout
 import { countUniqueWorkoutPlanExercises } from '@/utils/workoutPlanExerciseCount';
 import { getPreviewDescriptionDisplay } from '@/utils/workoutPreviewDescription.mjs';
 import { normalizeRecordingType } from '@/utils/exerciseRecordingFields';
+import {
+  DEFAULT_WORKOUT_WEEK_NAME,
+  ensureDefaultWorkoutWeek,
+  normalizeWeekAssignments,
+  resolveAssignedWorkoutDays,
+  validateAdditionalWeekCreation,
+} from '@/utils/workoutWeekAssignments.mjs';
 import Swal from 'sweetalert2';
 import { showConfirmDialog } from '@/utils/browserDialogs';
 import {
@@ -136,6 +143,8 @@ const mainAccordion = ref({
 const scheduleMode = ref('day');
 const dayGroups = ref([]);
 const weekGroups = ref([]);
+const dayGroupWeekAssignments = ref({});
+const selectedWeekName = ref(DEFAULT_WORKOUT_WEEK_NAME);
 const dayGroupOrders = ref([]);
 const weekGroupOrders = ref([]);
 const selectedScheduleGroup = ref(null);
@@ -1326,6 +1335,8 @@ const storeUnsavedBuilderDraft = () => {
       workoutExercises: workoutExercises.value,
       dayGroups: dayGroups.value,
       weekGroups: weekGroups.value,
+      dayGroupWeekAssignments: dayGroupWeekAssignments.value,
+      selectedWeekName: selectedWeekName.value,
       dayGroupOrders: dayGroupOrders.value,
       weekGroupOrders: weekGroupOrders.value,
       selectedScheduleGroup: selectedScheduleGroup.value,
@@ -1368,6 +1379,10 @@ const restoreUnsavedBuilderDraft = () => {
     workoutExercises.value = Array.isArray(snapshot.workoutExercises) ? snapshot.workoutExercises : workoutExercises.value;
     dayGroups.value = Array.isArray(snapshot.dayGroups) ? snapshot.dayGroups : dayGroups.value;
     weekGroups.value = Array.isArray(snapshot.weekGroups) ? snapshot.weekGroups : weekGroups.value;
+    dayGroupWeekAssignments.value = snapshot.dayGroupWeekAssignments && typeof snapshot.dayGroupWeekAssignments === 'object'
+      ? snapshot.dayGroupWeekAssignments
+      : dayGroupWeekAssignments.value;
+    selectedWeekName.value = String(snapshot.selectedWeekName || DEFAULT_WORKOUT_WEEK_NAME).trim() || DEFAULT_WORKOUT_WEEK_NAME;
     dayGroupOrders.value = Array.isArray(snapshot.dayGroupOrders) ? snapshot.dayGroupOrders : dayGroupOrders.value;
     weekGroupOrders.value = Array.isArray(snapshot.weekGroupOrders) ? snapshot.weekGroupOrders : weekGroupOrders.value;
     selectedScheduleGroup.value = snapshot.selectedScheduleGroup ?? selectedScheduleGroup.value;
@@ -2405,6 +2420,10 @@ const getGroupOrderRefForMode = (modeCandidate = scheduleMode.value) => {
 
 const activeGroups = computed(() => {
   const mode = normalizeScheduleMode(scheduleMode.value);
+  if (mode === 'week') {
+    const groups = resolveAssignedWorkoutDays(dayGroups.value, dayGroupWeekAssignments.value, selectedWeekName.value);
+    return sortGroupsByOrder(groups, dayGroupOrders.value);
+  }
   const groups = getGroupRefForMode(mode);
   const orders = getGroupOrderRefForMode(mode);
   return sortGroupsByOrder(groups.value, orders.value);
@@ -2637,6 +2656,12 @@ const clearScheduleGroupEditorError = (source = 'all') => {
 };
 
 const hasMultipleScheduleGroups = computed(() => activeGroups.value.length > 1);
+
+const bottomScheduleControlsVisible = computed(() => {
+  return activeGroups.value.length > 0
+    && countUniqueWorkoutPlanExercises(workoutExercises.value) >= 2;
+});
+
 const isAdminGlobalPlanDraftFlow = computed(() => {
   if (!isAdminUser.value) {
     return false;
@@ -3163,6 +3188,8 @@ const buildPlannerDirtyState = () => {
     scheduleMode: normalizeScheduleMode(scheduleMode.value),
     dayGroups: Array.isArray(dayGroups.value) ? dayGroups.value : [],
     weekGroups: Array.isArray(weekGroups.value) ? weekGroups.value : [],
+    dayGroupWeekAssignments: dayGroupWeekAssignments.value,
+    selectedWeekName: selectedWeekName.value,
     dayGroupOrders: Array.isArray(dayGroupOrders.value) ? dayGroupOrders.value : [],
     weekGroupOrders: Array.isArray(weekGroupOrders.value) ? weekGroupOrders.value : [],
     selectedScheduleGroup: selectedScheduleGroup.value || null,
@@ -3213,6 +3240,16 @@ const resetPlannerDraft = ({ preserveSaveMessage = false } = {}) => {
   scheduleMode.value = 'day';
   dayGroups.value = [];
   weekGroups.value = [];
+  dayGroupWeekAssignments.value = {};
+  weekGroups.value = ensureDefaultWorkoutWeek(weekGroups.value);
+  dayGroupWeekAssignments.value = normalizeWeekAssignments(
+    dayGroupWeekAssignments.value,
+    dayGroups.value,
+    weekGroups.value
+  );
+  selectedWeekName.value = weekGroups.value.some((week) => normalizeGroupKey(week) === normalizeGroupKey(selectedWeekName.value))
+    ? selectedWeekName.value
+    : DEFAULT_WORKOUT_WEEK_NAME;
   dayGroupOrders.value = [];
   weekGroupOrders.value = [];
   selectedScheduleGroup.value = null;
@@ -3387,6 +3424,20 @@ const hydratePlanner = (planner = {}, {
   dayGroups.value = appendMissingGroups(dayGroups.value);
   syncGroupOrders('day', dayGroups.value);
 
+  dayGroupWeekAssignments.value = planner?.dayGroupWeekAssignments && typeof planner.dayGroupWeekAssignments === 'object'
+    ? planner.dayGroupWeekAssignments
+    : {};
+  selectedWeekName.value = String(planner?.selectedWeekName || DEFAULT_WORKOUT_WEEK_NAME).trim() || DEFAULT_WORKOUT_WEEK_NAME;
+  weekGroups.value = ensureDefaultWorkoutWeek(weekGroups.value);
+  dayGroupWeekAssignments.value = normalizeWeekAssignments(
+    dayGroupWeekAssignments.value,
+    dayGroups.value,
+    weekGroups.value
+  );
+  selectedWeekName.value = weekGroups.value.some((week) => normalizeGroupKey(week) === normalizeGroupKey(selectedWeekName.value))
+    ? selectedWeekName.value
+    : DEFAULT_WORKOUT_WEEK_NAME;
+
   syncScheduleGroupIdentityMap('day', dayGroups.value);
   syncScheduleGroupIdentityMap('week', weekGroups.value);
   ensureAccordionSelectionForMode('day');
@@ -3547,9 +3598,19 @@ const createWorkoutPlan = async () => {
     scheduleMode.value = 'day';
     dayGroups.value = [];
     weekGroups.value = [];
+    dayGroupWeekAssignments.value = {};
+    weekGroups.value = ensureDefaultWorkoutWeek(weekGroups.value);
+    dayGroupWeekAssignments.value = normalizeWeekAssignments(
+      dayGroupWeekAssignments.value,
+      dayGroups.value,
+      weekGroups.value
+    );
+    selectedWeekName.value = weekGroups.value.some((week) => normalizeGroupKey(week) === normalizeGroupKey(selectedWeekName.value))
+      ? selectedWeekName.value
+      : DEFAULT_WORKOUT_WEEK_NAME;
 
     syncGroupOrders('day', []);
-    syncGroupOrders('week', []);
+    syncGroupOrders('week', weekGroups.value);
 
     selectedScheduleGroup.value = null;
     
@@ -3622,7 +3683,35 @@ const addScheduleGroupFromValue = ({
     return;
   }
 
+  if (mode === 'week') {
+    const validation = validateAdditionalWeekCreation({
+      weekName: selectedWeekName.value,
+      dayGroups: dayGroups.value,
+      weekAssignments: dayGroupWeekAssignments.value,
+      exercises: workoutExercises.value,
+    });
+    if (!validation.ok) {
+      if (source === 'bottom') {
+        scheduleGroupBottomEditorError.value = validation.message;
+      } else {
+        scheduleGroupEditorError.value = validation.message;
+      }
+      return;
+    }
+  }
+
   target.value = [...target.value, name];
+  if (mode === 'day') {
+    weekGroups.value = ensureDefaultWorkoutWeek(weekGroups.value);
+    dayGroupWeekAssignments.value = normalizeWeekAssignments(
+      { ...dayGroupWeekAssignments.value, [name]: selectedWeekName.value },
+      [...dayGroups.value, name],
+      weekGroups.value
+    );
+  } else {
+    weekGroups.value = ensureDefaultWorkoutWeek(target.value);
+    syncGroupOrders('week', weekGroups.value);
+  }
   syncGroupOrders(mode, target.value);
   syncScheduleGroupIdentityMap(mode, target.value);
 
@@ -4094,7 +4183,9 @@ const plannerPayload = computed(() => ({
   },
   scheduleMode: normalizeScheduleMode(scheduleMode.value),
   dayGroups: dayGroups.value,
-  weekGroups: weekGroups.value,
+  weekGroups: Array.isArray(weekGroups.value) ? weekGroups.value : [],
+  dayGroupWeekAssignments: dayGroupWeekAssignments.value,
+  selectedWeekName: selectedWeekName.value,
   dayGroupOrders: buildOrderEntries(dayGroups.value),
   weekGroupOrders: buildOrderEntries(weekGroups.value),
   exercises: workoutExercises.value,
@@ -5285,7 +5376,7 @@ watch(
             </span>
           </div>
 
-          <div v-if="builderTab === 'create' && !isViewEditMode" class="plan-info-action-row plan-info-action-row--create" role="group" aria-label="Create mode navigation">
+          <div v-if="builderTab === 'create' && !isViewEditMode" class="plan-info-action-row plan-info-action-row--create" role="group" aria-label="Create mode navigation and save actions">
             <button
               type="button"
               class="plan-info-action-row__back"
@@ -5293,6 +5384,16 @@ watch(
             >
               <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
               <span>Back to Plans</span>
+            </button>
+
+            <button
+              type="button"
+              class="plan-info-action-row__save"
+              :disabled="saving || publishing"
+              @click="handlePrimarySave"
+            >
+              <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+              <span>Save</span>
             </button>
           </div>
 
@@ -5307,6 +5408,16 @@ watch(
               >
                 <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
                 <span>Back to Plans</span>
+              </button>
+
+              <button
+                type="button"
+                class="plan-info-action-row__save"
+                :disabled="saving || publishing"
+                @click="handlePrimarySave"
+              >
+                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+                <span>Save</span>
               </button>
             </div>
 
@@ -5683,6 +5794,23 @@ watch(
                     </transition>
                   </div>
                 </transition-group>
+              </div>
+
+              <div v-if="bottomScheduleControlsVisible && canModifyScheduleDayActions" class="planner-bottom-group-actions" role="group" :aria-label="`Add another workout ${scheduleModeLabelLower}`">
+                <div class="planner-bottom-group-actions__editor">
+                  <label class="planner-group-editor__label" :for="`planner-add-${scheduleModeLabelLower}-bottom-input`">{{ scheduleGroupEditorLabel }}</label>
+                  <input
+                    :id="`planner-add-${scheduleModeLabelLower}-bottom-input`"
+                    v-model="newScheduleGroupNameBottom"
+                    type="text"
+                    :maxlength="WORKOUT_DAY_NAME_MAX_LENGTH"
+                    :placeholder="scheduleGroupInputPlaceholder"
+                    @input="clearScheduleGroupEditorError('bottom')"
+                    @keydown.enter.prevent="addScheduleGroupBottom"
+                  />
+                  <button type="button" class="planner-group-add planner-group-add--bottom" @click="addScheduleGroupBottom">{{ scheduleGroupAddButtonLabel }}</button>
+                  <p v-if="scheduleGroupBottomEditorError" class="planner-group-editor__error">{{ scheduleGroupBottomEditorError }}</p>
+                </div>
               </div>
 
               <p v-if="plannerMessage" class="planner-feedback planner-feedback--error">
@@ -8140,29 +8268,35 @@ watch(
 
 .plan-info-action-row {
   display: flex;
-  align-items: center;
+  width: 100%;
+  margin: 12px 0;
   justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin: 0 0 12px;
-  padding: 0;
+  align-items: center;
+  flex-wrap: nowrap;
 }
 
-.plan-info-action-row__back {
-  min-height: 32px;
-  padding: 0 10px;
+.plan-info-action-row__back,
+.plan-info-action-row__save {
+  height: 36px;
+  min-height: 36px;
+  padding: 0 12px;
   border-radius: 6px;
-  border: 1px solid #1d4ed8;
-  background: #2563eb;
-  color: #ffffff;
   font-weight: 700;
   font-size: 0.74rem;
   line-height: 1;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   cursor: pointer;
   white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.plan-info-action-row__back {
+  border: 1px solid #1d4ed8;
+  background: #2563eb;
+  color: #ffffff;
 }
 
 .plan-info-action-row__back:hover {
@@ -8170,10 +8304,18 @@ watch(
 }
 
 .plan-info-action-row__save {
-  min-height: 32px;
-  padding: 0 12px;
-  font-size: 0.74rem;
-  margin-left: 0;
+  border: 1px solid #15803D;
+  background: #15803D;
+  color: #FFFFFF;
+}
+
+.plan-info-action-row__save:hover:not(:disabled) {
+  background: #166534;
+}
+
+.plan-info-action-row__save:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .planner-primary-actions {
@@ -11976,18 +12118,6 @@ watch(
     display: grid;
     grid-template-columns: 1fr;
     gap: 8px;
-  }
-
-  .plan-info-action-row {
-    margin: 0 0 12px;
-    justify-content: stretch;
-    flex-wrap: wrap;
-  }
-
-  .plan-info-action-row__back,
-  .plan-info-action-row__save {
-    width: 100%;
-    justify-content: center;
   }
 
   .planner-mode-pill-wrap {

@@ -17,12 +17,24 @@
 
 ## Current work
 
-- Active workstream: `0.85.309` live acceptance closeout plus approved UI implementation follow-up.
+- Active workstream: `0.85.313` critical backend recovery (route restoration only), with prior `0.85.309` acceptance and UI follow-up still pending.
 - Last completed task: `DEVOPS-DOCS-002`, enterprise AI onboarding validation and backlog synchronization.
 - Previously completed task: `DEVOPS-DOCS-001`, enterprise documentation and AI governance consolidation.
 - Current blockers: publish/unpublish live persistence replay, Featured registration data, live role write mutations, ExerciseScope mutations, live two/third-session verification, and `WA-UI-TABLET-001` tablet Find Plans responsiveness remain blocked or acceptance-pending.
 - User acceptance outstanding: 0.85.309 release acceptance.
 - Next authorized action: complete the live 0.85.309 acceptance gates after explicit disposable scope; the next targeted UI implementation task is `WA-UI-TABLET-001 — Tablet Find Plans responsiveness` after implementation approval.
+
+## 0.85.313 recovery checkpoint (2026-11-21)
+
+- Recovery-only action completed for `backend/api/users.js` after interrupted/OOM edit state removed canonical API handlers.
+- Route inventory was restored to Git HEAD parity (`37/37` route signatures, `0` missing, `0` extra).
+- Critical compatibility endpoints confirmed restored: `GET/PUT /workout-planner` and `PUT /workout-schedules/:id/groups`.
+- Validation completed:
+	- `node --check backend/api/users.js` (pass)
+	- `node --test tests/workout-plan-conversion-engine.test.js tests/workout-plan-cover-service.test.js tests/workout-plan-cover-storage.test.js` (`30/30` pass)
+	- `node --test tests/workout-plan-template.test.js` (`8/8` pass)
+- Data protection preserved: no DB migration, no runtime DB write as part of recovery verification, no mutation of protected PlanID `5`.
+- Phase 1 feature development remains paused pending explicit approval to resume after recovery review.
 
 ## Protected data and constraints
 
