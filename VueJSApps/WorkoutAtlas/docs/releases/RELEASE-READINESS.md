@@ -91,4 +91,9 @@ No release should be marked released or accepted merely because automated tests 
 ## 0.85.313.a5 Week Selection Dropdown (Stage 6/10)
 
 - Frontend only (`WorkoutBuilder.vue`, `workoutDayWeekAssignment.mjs`): Week dropdown above the day cards. No backend, migration, deploy or package change; save payload unchanged.
-- Release gates: user acceptance in the browser (dropdown label and layout, default selection, switching weeks keeps unsaved edits, save and reopen unchanged). The dropdown has no visible effect until day filtering lands, so confirm that is acceptable for any interim release. a5 uncommitted; not release-ready until accepted.
+- Release gates: user acceptance in the browser (dropdown label and layout, default selection, switching weeks keeps unsaved edits, save and reopen unchanged). The dropdown has no visible effect until day filtering lands, so confirm that is acceptable for any interim release. a5 committed and pushed as `317087e56`; not release-ready until accepted.
+
+## 0.85.313.a6 Add Week (Stage 7/10)
+
+- Frontend only (`WorkoutBuilder.vue`, `workoutDayWeekAssignment.mjs`): `+ Add Week` beside the Week dropdown. No backend, migration, deploy or package change; save payload unchanged.
+- Release gates: user acceptance in the browser (button disabled/enabled rule, Week 2/Week 3 naming and auto-selection, new week empty, switching weeks keeps unsaved edits, save and reopen keeps the new week). No UI assigns days to weeks yet, so a new week stays empty; confirm that is acceptable for any interim release, and verify empty-week persistence on a non-production database. a6 uncommitted; not release-ready until accepted.

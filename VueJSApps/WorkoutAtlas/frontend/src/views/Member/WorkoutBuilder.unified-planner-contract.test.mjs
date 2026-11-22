@@ -42,8 +42,8 @@ test('Add Day, Add Exercise and the bottom controls are preserved', () => {
   assert.match(script, /const showBottomScheduleGroupControls = computed/);
 });
 
-test('no Add Week or Rename Week control is added', () => {
-  assert.equal(/Rename Week|Add Week/i.test(template), false);
+test('no Rename Week control is added (Add Week arrives in a6)', () => {
+  assert.equal(/Rename Week/i.test(template), false);
 });
 
 test('the builder never leaves day mode, so day cards are always shown', () => {

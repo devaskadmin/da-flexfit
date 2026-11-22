@@ -71,7 +71,7 @@ test('existing controls and the unsaved-change handling are unchanged', () => {
   );
   assert.match(script, /dayWeekAssignments: serializeDayWeekAssignments\(dayWeekAssignments\.value\),/);
   assert.match(script, /settings: buildDayWeekAssignmentsSettings\(dayWeekAssignments\.value\),/);
-  assert.equal(/Add Week|Rename Week/i.test(template), false);
+  assert.equal(/Rename Week/i.test(template), false);
   assert.equal(/Day View|Week View/.test(template), false);
 });
 

@@ -554,7 +554,7 @@
 
 ## 0.85.313.a5 - Week Selection Dropdown, Stage 6/10 (2026-11-21)
 
-- Checkpoint: a4 reviewed (staged-file and secret review clean, no `.local-only`/`.artifacts`/`.env`), committed and pushed first (`5ffa3132b`, branch `0.85.113`; browser acceptance recorded as pending). a5 is uncommitted.
+- Checkpoint: a4 reviewed (staged-file and secret review clean, no `.local-only`/`.artifacts`/`.env`), committed and pushed first (`5ffa3132b`, branch `0.85.113`; browser acceptance recorded as pending). a5 was committed and pushed as `317087e56` (browser acceptance pending).
 - Goal: add a Week selection dropdown in the Schedule Planner above the workout day cards. Frontend only.
 - Change: `WorkoutBuilder.vue` (dropdown below Workout Plan Information, above Add Day and the day cards; `selectedWeek` UI state, `weekOptions`, watcher) and `workoutDayWeekAssignment.mjs` (`buildWeekOptions`, `resolveSelectedWeek`). Options come from existing weeks; `Week 1` is displayed as `Week 1 (Default)` while stored as `Week 1`; default selection is Week 1, else the first week.
 - Behavior: switching weeks only changes the selection. It is not in the payload, dirty snapshot or draft, and edits no days, weeks, assignments or exercises, so unsaved changes are kept. No day filtering, Add Week or Rename Week.
@@ -562,3 +562,14 @@
 - Safety: PlanID 5 untouched (no data access); no backend, DB, schema, package or above-Workout-Plan-Information change.
 - Limitations: source-contract and pure-function tests only, no browser check of the rendered dropdown; selecting a week has no visible effect yet (filtering is a later stage); selection not remembered across reloads.
 - User acceptance: PENDING. STOP; Stage 7 not started.
+
+## 0.85.313.a6 - Add Week, Stage 7/10 (2026-11-21)
+
+- Checkpoint: a5 reviewed, committed and pushed first (`317087e56`, branch `0.85.113`; browser acceptance recorded as pending). a6 is uncommitted.
+- Goal: add an Add Week button beside the Week dropdown. Frontend only.
+- Change: `WorkoutBuilder.vue` (`+ Add Week` button, `canAddWeek`, `addWeek`, CSS) and `workoutDayWeekAssignment.mjs` (`weekHasDayWithExercise`, `buildNextWeekName`). Enabled only when the selected week has a day with at least one exercise (selected week's assignments only). Creates the next unused `Week N` (from Week 2, smallest free number), appends it to the weeks, and selects it. The new week is empty. Switching existing weeks is never gated.
+- Behavior: existing weeks, days, exercises, assignments and unsaved changes are preserved. No Rename Week, no day filtering.
+- Tests: new `WorkoutBuilder.add-week-contract.test.mjs` `8/8`; `workoutDayWeekAssignment.test.mjs` `24/24` (+6); a4 and a5 contract tests relaxed to assert only that Rename Week is absent (both previously asserted Add Week absent) and pass; all 10 frontend test files pass (95 tests); Vite build passed; CRLF kept. Backend not re-run (no backend change).
+- Safety: PlanID 5 untouched (no data access); no backend, DB, schema, package or above-Workout-Plan-Information change.
+- Limitations: source-contract and pure-function tests only, no browser check; no UI yet assigns days to weeks, so a new week stays empty and Add Week is disabled while it is selected; days added while a new week is selected default to the default week; saving an empty added week relies on the existing group-row save and is not verified on a live DB; day cards are not filtered; selection not remembered across reloads.
+- User acceptance: PENDING. STOP; Stage 8 not started.

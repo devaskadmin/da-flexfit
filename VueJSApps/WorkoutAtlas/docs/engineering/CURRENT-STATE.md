@@ -197,4 +197,10 @@ Current evidence: implementation and automated coverage exist for many areas. Li
 - The Schedule Planner has a Week dropdown above Add Day and the day cards (below Workout Plan Information). Options are the plan's existing weeks; `Week 1` is shown as `Week 1 (Default)` but stored as `Week 1`; default selection is Week 1, else the first week. Frontend only (`WorkoutBuilder.vue`, `workoutDayWeekAssignment.mjs`); no backend, DB or package change.
 - The selection is UI state only: not saved, not in the dirty snapshot or draft, and it does not filter or edit days, weeks, assignments or exercises. No day filtering, Add Week or Rename Week yet.
 - Tests: new contract suite `7/7`, util suite `18/18`, all 9 frontend test files pass (81 tests), Vite build passed. PlanID 5 untouched.
-- Open: no browser check; selection has no visible effect until filtering is added; a5 uncommitted. Acceptance PENDING; do not begin Stage 7.
+- Open: no browser check; selection has no visible effect until filtering is added; a5 committed and pushed as `317087e56`. Acceptance PENDING.
+
+## 0.85.313.a6 Add Week (Stage 7/10) - 2026-11-21
+
+- A `+ Add Week` button sits beside the Week dropdown. It is enabled only when the selected week has at least one workout day with at least one exercise (selected week's assignments only). It appends the next unused `Week N` (from Week 2), selects it, and the new week starts empty. Existing weeks, days, exercises, assignments and unsaved changes are untouched; switching weeks is never gated. Frontend only (`WorkoutBuilder.vue`, `workoutDayWeekAssignment.mjs`); no backend, DB or package change. No Rename Week or day filtering yet.
+- Tests: new contract suite `8/8`, util suite `24/24`, all 10 frontend test files pass (95 tests), Vite build passed. PlanID 5 untouched.
+- Open: no browser check; no UI assigns days to weeks, so a new week stays empty and Add Week is disabled while it is selected; empty-week persistence unverified on a live DB; a6 uncommitted. Acceptance PENDING; do not begin Stage 8.

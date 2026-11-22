@@ -203,7 +203,14 @@ No implementation action is authorized until scoped approval is provided. The ex
 
 ## 0.85.313.a5 Week Selection Dropdown closeout (Stage 6/10) - 2026-11-21
 
-- a4 pushed first (`5ffa3132b`, branch `0.85.113`, browser acceptance pending). a5 is uncommitted; do not commit or push unless asked.
+- a4 pushed first (`5ffa3132b`, branch `0.85.113`, browser acceptance pending). a5 was committed and pushed as `317087e56` (browser acceptance pending).
 - Frontend only: a Week dropdown at the top of the Schedule Planner (below Workout Plan Information, above Add Day and the day cards). Options = existing weeks; `Week 1` displays as `Week 1 (Default)` and stays stored as `Week 1`; default selection Week 1, else the first week. Helpers `buildWeekOptions` / `resolveSelectedWeek` in `workoutDayWeekAssignment.mjs`; `selectedWeek` is UI state only (not in payload, dirty snapshot or draft) and does not filter or edit anything. No day filtering, Add Week or Rename Week.
 - Verification: new contract suite `7/7`, util suite `18/18`, a4 contract `8/8`, all 9 frontend test files pass (81 tests), Vite build passed, CRLF kept. No backend/DB/package change; PlanID 5 untouched.
 - Still open: browser check (dropdown renders above the day cards with `Week 1 (Default)` first; switching weeks changes nothing else and keeps unsaved edits; a plan with custom weeks and a plan without Week 1 select the first week; save and reopen unchanged); selection has no visible effect until day filtering; no Add Week / Rename Week. STOP; await acceptance. Do not begin Stage 7.
+
+## 0.85.313.a6 Add Week closeout (Stage 7/10) - 2026-11-21
+
+- a5 pushed first (`317087e56`, branch `0.85.113`, browser acceptance pending). a6 is uncommitted; do not commit or push unless asked.
+- Frontend only: `+ Add Week` beside the Week dropdown. Enabled only when the selected week has a day with at least one exercise (selected week's assignments only; also requires create/edit mode). Adds the next unused `Week N` (from Week 2, smallest free number), selects it, new week is empty. Helpers `weekHasDayWithExercise` / `buildNextWeekName`. Existing weeks, days, exercises, assignments and unsaved edits untouched; switching weeks never gated. No Rename Week, no day filtering.
+- Verification: new contract suite `8/8`, util suite `24/24`, a4/a5 contract suites updated and pass, all 10 frontend test files pass (95 tests), Vite build passed, CRLF kept. No backend/DB/package change; PlanID 5 untouched.
+- Still open: browser check (Add Week disabled when the selected week has no exercised day and enabled otherwise; click creates Week 2 / Week 3 and selects it; new week is empty; switching weeks always works and keeps unsaved edits; save and reopen keeps the new week); there is no UI yet to assign days to weeks, so a new week stays empty and Add Week is disabled while it is selected; empty-week persistence unverified on a live DB. STOP; await acceptance. Do not begin Stage 8.

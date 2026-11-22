@@ -14,6 +14,8 @@ import {
   serializeDayWeekAssignments,
   buildWeekOptions,
   resolveSelectedWeek,
+  weekHasDayWithExercise,
+  buildNextWeekName,
 } from './workoutDayWeekAssignment.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -192,4 +194,71 @@ test('0.85.313.a5 builder keeps the week selection as UI-only state', () => {
   const storeStart = source.indexOf('const storeUnsavedBuilderDraft');
   const storeBlock = source.slice(storeStart, source.indexOf('const restoreUnsavedBuilderDraft', storeStart));
   assert.equal(storeBlock.includes('selectedWeek'), false);
+});
+
+const ex = (name, scheduleGroup) => ({ exerciseId: name.length * 7, name, scheduleGroup });
+
+test('Add Week is allowed only when the selected week has a day with an exercise', () => {
+  const base = { dayGroups: ['Monday', 'Tuesday'], assignments: { monday: 'Week 1', tuesday: 'Week 1' } };
+  assert.equal(weekHasDayWithExercise({ ...base, week: 'Week 1', exercises: [ex('Squat', 'Monday')] }), true);
+  assert.equal(weekHasDayWithExercise({ ...base, week: 'Week 1', exercises: [] }), false);
+  assert.equal(weekHasDayWithExercise({ ...base, week: 'Week 1', exercises: [ex('Squat', 'Friday')] }), false);
+  assert.equal(weekHasDayWithExercise({ ...base, week: '', exercises: [ex('Squat', 'Monday')] }), false);
+  assert.equal(weekHasDayWithExercise({ ...base, week: 'Week 1', exercises: null }), false);
+  assert.equal(weekHasDayWithExercise(), false);
+});
+
+test('Add Week looks only at the selected week, not the whole plan', () => {
+  const state = {
+    dayGroups: ['Monday', 'Tuesday', 'Wednesday'],
+    assignments: { monday: 'Week 1', tuesday: 'Week 2', wednesday: 'Week 2' },
+    exercises: [ex('Squat', 'Monday'), ex('Bench', 'Tuesday')],
+  };
+  assert.equal(weekHasDayWithExercise({ ...state, week: 'Week 1' }), true);
+  assert.equal(weekHasDayWithExercise({ ...state, week: 'Week 2' }), true);
+  // Week 2 has no exercise in any of its days, even though the plan does.
+  const emptyWeek2 = { ...state, exercises: [ex('Squat', 'Monday')] };
+  assert.equal(weekHasDayWithExercise({ ...emptyWeek2, week: 'Week 2' }), false);
+  // A week with no assigned day is never eligible.
+  assert.equal(weekHasDayWithExercise({ ...state, week: 'Week 3' }), false);
+  // Selected-week matching ignores case.
+  assert.equal(weekHasDayWithExercise({ ...state, week: 'week 1' }), true);
+});
+
+test('Add Week uses the caller exercise counting rule and ignores unnamed exercises', () => {
+  const count = (list) => list.filter((item) => item.name).length;
+  const input = { week: 'Week 1', dayGroups: ['Monday'], assignments: { monday: 'Week 1' }, countExercises: count };
+  assert.equal(weekHasDayWithExercise({ ...input, exercises: [{ scheduleGroup: 'Monday' }] }), false);
+  assert.equal(weekHasDayWithExercise({ ...input, exercises: [ex('Squat', 'Monday')] }), true);
+});
+
+test('Add Week ignores inherited assignment keys and does not mutate its inputs', () => {
+  const assignments = { monday: 'Week 1' };
+  const exercises = [ex('Squat', 'constructor')];
+  assert.equal(weekHasDayWithExercise({ week: 'Week 1', dayGroups: ['constructor'], assignments, exercises }), false);
+  assert.deepEqual(assignments, { monday: 'Week 1' });
+  assert.equal(exercises.length, 1);
+});
+
+test('the next week name is the first unused Week N from 2', () => {
+  assert.equal(buildNextWeekName(['Week 1']), 'Week 2');
+  assert.equal(buildNextWeekName(['Week 1', 'Week 2']), 'Week 3');
+  assert.equal(buildNextWeekName(['Week 1', 'week 2', 'Week 3']), 'Week 4');
+  assert.equal(buildNextWeekName(['Week 1', 'Week 3']), 'Week 2');
+  assert.equal(buildNextWeekName(['Phase A', 'Phase B']), 'Week 2');
+  assert.equal(buildNextWeekName([]), 'Week 2');
+  assert.equal(buildNextWeekName(undefined), 'Week 2');
+});
+
+test('adding a week leaves existing weeks, days, exercises and assignments alone', () => {
+  const weeks = ['Week 1'];
+  const assignments = { monday: 'Week 1' };
+  const exercises = [ex('Squat', 'Monday')];
+  const next = [...weeks, buildNextWeekName(weeks)];
+  assert.deepEqual(next, ['Week 1', 'Week 2']);
+  const result = reconcileDayWeekAssignments({ dayGroups: ['Monday'], weekGroups: next, assignments });
+  assert.equal(result.changed, false);
+  assert.deepEqual(result.assignments, { monday: 'Week 1' });
+  assert.equal(weekHasDayWithExercise({ week: 'Week 2', dayGroups: ['Monday'], assignments: result.assignments, exercises }), false);
+  assert.deepEqual(weeks, ['Week 1']);
 });

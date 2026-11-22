@@ -51,6 +51,42 @@ export const resolveSelectedWeek = (weekGroups = [], current = '') => {
 };
 
 /**
+ * True when the given week has at least one day assigned to it that holds at least one
+ * exercise. Only that week's assignments are looked at; other weeks and the rest of the plan
+ * are ignored. `countExercises` lets the caller reuse its own exercise-counting rule.
+ */
+export const weekHasDayWithExercise = ({
+  week = '',
+  dayGroups = [],
+  assignments = {},
+  exercises = [],
+  countExercises = (list) => list.length,
+} = {}) => {
+  const weekKey = groupKey(week);
+  if (!weekKey || !assignments || typeof assignments !== 'object') {
+    return false;
+  }
+  const list = Array.isArray(exercises) ? exercises : [];
+  return uniqueLabels(dayGroups).some((day) => {
+    const dayKey = groupKey(day);
+    if (!Object.prototype.hasOwnProperty.call(assignments, dayKey) || groupKey(assignments[dayKey]) !== weekKey) {
+      return false;
+    }
+    return countExercises(list.filter((exercise) => groupKey(exercise?.scheduleGroup) === dayKey)) > 0;
+  });
+};
+
+/** Next unused "Week N" (N starting at 2), compared case-insensitively against existing weeks. */
+export const buildNextWeekName = (weekGroups = []) => {
+  const used = new Set(uniqueLabels(weekGroups).map(groupKey));
+  let number = 2;
+  while (used.has(groupKey(`Week ${number}`))) {
+    number += 1;
+  }
+  return `Week ${number}`;
+};
+
+/**
  * In-memory day-to-week mapping: { [normalized day name]: week label }.
  * Each day appears at most once, so a day can never be assigned twice.
  * Valid assignments (day and week both still exist) are kept; entries for

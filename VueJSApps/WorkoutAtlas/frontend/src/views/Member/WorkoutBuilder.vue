@@ -21,6 +21,8 @@ import {
   serializeDayWeekAssignments,
   buildWeekOptions,
   resolveSelectedWeek,
+  weekHasDayWithExercise,
+  buildNextWeekName,
 } from '@/utils/workoutDayWeekAssignment.mjs';
 import { normalizeRecordingType } from '@/utils/exerciseRecordingFields';
 import Swal from 'sweetalert2';
@@ -4138,6 +4140,31 @@ watch(
   { immediate: true, deep: true }
 );
 
+// 0.85.313.a6: Add Week is allowed only when the selected week has a day with at least one exercise.
+// Only the selected week's assignments are checked, never the whole plan.
+const canAddWeek = computed(() => (
+  canModifyScheduleDayActions.value
+  && weekHasDayWithExercise({
+    week: selectedWeek.value,
+    dayGroups: dayGroups.value,
+    assignments: dayWeekAssignments.value,
+    exercises: workoutExercises.value,
+    countExercises: countUniqueWorkoutPlanExercises,
+  })
+));
+
+const addWeek = () => {
+  if (!canAddWeek.value) {
+    return;
+  }
+  const name = buildNextWeekName(weekGroups.value);
+  // Append only: existing weeks, days, exercises and assignments are left as they are, so the new week is empty.
+  weekGroups.value = [...weekGroups.value, name];
+  syncGroupOrders('week', weekGroups.value);
+  selectedWeek.value = name;
+  plannerMessage.value = '';
+};
+
 const isFirstScheduleGroup = (groupName) => {
   const normalized = String(groupName || '').trim().toLowerCase();
   return String(activeGroups.value[0] || '').trim().toLowerCase() === normalized;
@@ -5523,6 +5550,15 @@ watch(
                     {{ week.label }}
                   </option>
                 </select>
+                <button
+                  type="button"
+                  class="planner-week-add wa-blue-action-btn"
+                  :disabled="!canAddWeek"
+                  :title="canAddWeek ? 'Add a new empty week' : 'Add at least one exercise to a day in this week to add a new week.'"
+                  @click="addWeek"
+                >
+                  + Add Week
+                </button>
               </div>
 
               <div class="planner-group-editor">
@@ -8455,7 +8491,7 @@ watch(
 
 .planner-week-select {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-columns: max-content minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 8px;
   min-width: 0;
@@ -8547,6 +8583,25 @@ watch(
   white-space: nowrap;
   flex: 0 0 auto;
   box-shadow: 0 8px 18px rgba(22, 163, 74, 0.18);
+}
+
+.planner-week-add {
+  border: 1px solid #15803d;
+  border-radius: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  background: linear-gradient(180deg, #16a34a 0%, #15803d 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.78rem;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.planner-week-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .planner-group-save {

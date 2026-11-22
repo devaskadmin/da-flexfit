@@ -215,3 +215,17 @@ Stage 1/10 re-verification (2026-11-21): branch name FAIL; 0.85.312 baseline PAS
 | Nothing above Workout Plan Information; no backend/DB/package change; PlanID 5 | Diff hunks all below the metadata form; no data access | PASS |
 | Regression | 9 frontend test files, 81 tests; Vite build passed | PASS |
 | Browser: dropdown renders with `Week 1 (Default)`, switching weeks keeps unsaved edits, plan without Week 1 selects its first week, save and reopen unchanged | Not performed | PENDING USER ACCEPTANCE |
+
+## 0.85.313.a6 Add Week, Stage 7/10 (2026-11-21)
+
+| Check | Evidence | Status |
+| --- | --- | --- |
+| `+ Add Week` beside the Week dropdown, below Workout Plan Information | Contract suite `8/8` (source position) | PASS (automated, source contract) |
+| Enabled only when the selected week has a day with at least one exercise; only the selected week is checked, not the whole plan | Util tests `24/24` (`weekHasDayWithExercise`), contract | PASS (automated) |
+| Next unique name (Week 2, Week 3, gap-filling, case-insensitive) | Util tests (`buildNextWeekName`) | PASS (automated) |
+| New week is auto-selected and starts empty; no assignments, days or exercises edited | Contract: handler body has no data writes | PASS (automated, source contract) |
+| Switching existing weeks is never disabled; unsaved changes preserved | Contract: `<select>` has no disabled binding; selection not in payload/dirty snapshot | PASS (automated, source contract) |
+| Rename Week and day filtering not added; existing controls and save payload preserved | Contract; a4/a5 contract suites | PASS |
+| Nothing above Workout Plan Information; no backend/DB/package change; PlanID 5 | Diff hunks all below the metadata form (plus import and CSS); no data access | PASS |
+| Regression | 10 frontend test files, 95 tests; Vite build passed | PASS |
+| Browser: disabled/enabled states, Week 2/Week 3 creation and selection, empty new week, switching, unsaved edits kept, save and reopen keeps the new week | Not performed | PENDING USER ACCEPTANCE |
