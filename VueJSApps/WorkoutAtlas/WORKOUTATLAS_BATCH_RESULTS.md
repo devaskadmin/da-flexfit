@@ -487,3 +487,24 @@
 - API: `backend/api/users.js` retains `37` route definitions (4,768 non-empty lines); no backend, package, or database change; PlanID 5 not loaded or modified.
 - Limitations: mapping is not visible in the UI and not persisted (lost on reload); no live browser verification. Backend persistence was not begun.
 - User acceptance: PENDING. STOP; Stage 3 changes are uncommitted.
+
+## 0.85.313.a3 - Persist Day-to-Week Assignments (2026-11-21)
+
+- Stage 3 checkpoint committed and pushed first as `71c1048a8` (`SECURITY_GATE_PASS`).
+- `dayWeekAssignments` now persists in the existing `workout_schedules.settings_json` column (key `dayWeekAssignments`): saved by `PUT /api/workout-planner` (merged, other settings preserved), restored via `planner.settings.dayWeekAssignments` on `GET /api/workout-planner` and `GET /api/workout-schedules/:id`.
+- Backend: new `backend/utils/workoutPlanSettings.js` plus 23 surgical lines in `users.js`; column presence detected read-only via `information_schema`; no schema change, migration, or production data write.
+- Frontend: restore + reconcile on load, `Week 1` initialized when a loaded plan has no weeks, payload includes settings, assignments included in unsaved-change detection.
+- Tests: frontend `28/28`; new backend suite `11/11` (in-memory fixture); `node --check` clean; Vite build passed (`702` modules).
+- Routes: `users.js` has `37` route definitions, identical order to HEAD; no package change; PlanID 5 untouched.
+- Limitations: requires `settings_json` to exist in the target DB (else stays in memory); unsaved custom week names are not persisted by the backend; global/clone paths do not write assignments; `mysql2` missing locally so 2 existing backend tests could not run; no live verification.
+- User acceptance: PENDING. STOP; Stage 5 not started. Stage 4 changes are uncommitted.
+
+## 0.85.313.a3.1 - Database Verification (2026-11-21)
+
+- Goal: read-only check that `workout_schedules.settings_json` exists in the target database.
+- Agent-side: BLOCKED. No `backend/.env`/`.env.local`, no `DB_*` variables, no `mysql2` driver, no `mysql` client; no query was run and no credentials were sought or guessed. The agent could not query directly; the user ran the read-only query instead (below).
+- Indirect evidence only: repository backups `0.76` and `0.83` define `settings_json longtext utf8mb4_bin DEFAULT NULL` (nullable, `json_valid` check). Not proof of the live schema.
+- User action: completed (see result below).
+- No application code, schema, data, or package change; no database writes; PlanID 5 untouched.
+- Result (user-run, phpMyAdmin, 2026-11-21): VERIFIED, COLUMN EXISTS. First run was inconclusive (`information_schema` selected, so `DATABASE()` mismatch); the re-run without `DATABASE()` returned 1 row: schema `stephenk_flexfit`, `workout_schedules.settings_json`, `DATA_TYPE` `longtext`, `IS_NULLABLE` `YES`, `COLUMN_DEFAULT` `NULL`. Other environments not checked.
+- User acceptance: PENDING. STOP.

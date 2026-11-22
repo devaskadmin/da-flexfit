@@ -110,14 +110,16 @@ test('0.85.313.a1 new plans initialize Week 1 as the default week', () => {
   assert.match(createBlock, /scheduleMode\.value = 'day';\s*dayGroups\.value = \[\];/);
 });
 
-test('0.85.313.a1 default week is not injected into loaded or reset plans', () => {
+test('0.85.313.a1 default week is not injected into reset plans; loaded plans only initialize Week 1 when no weeks exist', () => {
   const hydrateStart = source.indexOf('const hydratePlanner = (');
   const hydrateEnd = source.indexOf('const clearSelection = async', hydrateStart);
-  assert.equal(source.slice(hydrateStart, hydrateEnd).includes('DEFAULT_NEW_PLAN_WEEK_NAME'), false);
+  const hydrateBlock = source.slice(hydrateStart, hydrateEnd);
+  assert.match(hydrateBlock, /if \(!weekGroups\.value\.length\) \{\s*weekGroups\.value = \[DEFAULT_NEW_PLAN_WEEK_NAME\];\s*\}/);
+  assert.equal(hydrateBlock.split('DEFAULT_NEW_PLAN_WEEK_NAME').length - 1, 1);
   const resetStart = source.indexOf('const resetPlannerDraft = (');
   const resetEnd = source.indexOf('const clearActivePlanRouteQuery', resetStart);
   assert.equal(source.slice(resetStart, resetEnd).includes('DEFAULT_NEW_PLAN_WEEK_NAME'), false);
-  assert.equal(source.split('DEFAULT_NEW_PLAN_WEEK_NAME').length - 1, 2);
+  assert.equal(source.split('DEFAULT_NEW_PLAN_WEEK_NAME').length - 1, 3);
 });
 
 test('0.85.312 bottom Add control uses green background and white text', () => {

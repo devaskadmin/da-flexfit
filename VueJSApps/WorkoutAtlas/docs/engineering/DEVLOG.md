@@ -96,3 +96,18 @@ This log records engineering activity concisely and links to detailed evidence.
 - Wiring: `hydratePlanner`, `createWorkoutPlan`, `resetPlannerDraft`, rename/duplicate handlers, and a `[dayGroups, weekGroups]` watcher. Mapping is not in `buildPlannerDirtyState` or the save payload; hydration has no fetch/save.
 - Tests: new suite `11/11`, builder contract `14/14`; Vite build passed (`702` modules); `get_errors` clean; `users.js` `37` routes, no backend/package diff.
 - Limitations: invisible in UI and not persisted (lost on reload); no live browser verification. User acceptance pending; backend persistence not begun.
+
+## 2026-11-21 — 0.85.313.a3 Persist Day-to-Week Assignments
+
+- Finding: `workout_schedules.settings_json` exists only in `backend/schema/workout_schedule_schema.sql`; no code or docs read or wrote it. It is therefore the existing mechanism by definition only, and its presence in the live DB is unverified.
+- Backend: `backend/utils/workoutPlanSettings.js` (normalize, parse, merge, persist with an injected connection). `users.js`: require, `hasSettingsJson` schema-state flag (read-only `information_schema` clause), `normalizePlannerPayload` carries `settings`, `PUT /workout-planner` calls `persistDayWeekAssignments` after `replaceScheduleGroupsAndExercises` inside the transaction, `buildPlannerFromSchedule` returns `settings.dayWeekAssignments`. +23 lines; route table identical.
+- Frontend: `readSavedDayWeekAssignments`, `buildDayWeekAssignmentsSettings`, `serializeDayWeekAssignments`; `hydratePlanner` restores then reconciles and seeds `Week 1` when a plan has no weeks; payload and dirty state include assignments. a1 contract test adjusted (hydrate may now reference the default week name once; total references 3).
+- Tests: frontend `28/28`; backend `workout-plan-settings` `11/11` with an in-memory fixture; `node --check` clean; Vite build passed (`702` modules). `workout-plan-conversion-engine` and `featured-plan-public-access` fail locally only because `mysql2` is not installed.
+- Limitations: no-op if the column is absent; the backend persists only the active mode's groups, so assignments to unsaved week names default on reload; global and clone paths not covered. User acceptance pending.
+
+## 2026-11-21 — 0.85.313.a3.1 Database Verification
+
+- Attempted read-only verification of `workout_schedules.settings_json`. `backend/dbConfig.js` reads `DB_HOST`/`DB_USER`/`DB_PASSWORD`/`DB_DATABASE` from `backend/.env`/`.env.local`: only `.env.example` exists, no `DB_*` or `MYSQL*` variables are set, `mysql2` is not installed, and no `mysql` CLI is on PATH. Stopped there; did not look for or use any other credentials.
+- Searched the repository for `settings_json`: the schema SQL and the `0.76`/`0.83` database backups. The backups define a nullable `longtext utf8mb4_bin` column with `json_valid`; only the definition lines were read.
+- Agent-side outcome: could not query the database directly. Read-only `information_schema.COLUMNS` query provided for the user (also in `docs/database/SCHEMA.md`). No code, schema, data, or package change. STOP.
+- Follow-up: user ran it in phpMyAdmin and got zero rows, but the screenshot showed `information_schema` as the selected database, so `DATABASE()` was `information_schema`. First result was inconclusive. The re-run without `DATABASE()` returned 1 row: `stephenk_flexfit.workout_schedules.settings_json`, `longtext`, `IS_NULLABLE` `YES`, default `NULL`. VERIFIED (user-run, read-only).

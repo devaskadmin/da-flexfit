@@ -20,6 +20,12 @@ const {
   buildWorkoutPlanConversionPreview,
   assertConversionCanProceed,
 } = require('../services/workoutPlanConversionEngine');
+const {
+  normalizeDayWeekAssignments,
+  hasIncomingDayWeekAssignments,
+  extractDayWeekAssignments,
+  persistDayWeekAssignments,
+} = require('../utils/workoutPlanSettings');
 
 // ✅ DB Connect
 const pool = require('../db');
@@ -91,6 +97,7 @@ const workoutPlannerSchemaState = {
   hasSourceGlobalPlanId: false,
   hasGlobalPlanAdoptedAt: false,
   hasTargetDistanceMiles: false,
+  hasSettingsJson: false,
 };
 
 let workoutPlanTypeEnumCache = {
@@ -826,6 +833,8 @@ const refreshWorkoutPlannerSchemaState = async (db = pool) => {
          OR
          (table_name = 'workout_schedules' AND column_name = 'cover_image_updated_at')
          OR
+         (table_name = 'workout_schedules' AND column_name = 'settings_json')
+         OR
          (table_name = 'workout_schedule_exercises' AND column_name = 'target_distance_miles')
          OR
          (table_name = 'workout_schedule_groups' AND column_name = 'workout_log_display_order')
@@ -871,6 +880,9 @@ const refreshWorkoutPlannerSchemaState = async (db = pool) => {
   );
   workoutPlannerSchemaState.hasTargetDistanceMiles = columnRows.some(
     (row) => row?.table_name === 'workout_schedule_exercises' && row?.column_name === 'target_distance_miles'
+  );
+  workoutPlannerSchemaState.hasSettingsJson = columnRows.some(
+    (row) => row?.table_name === 'workout_schedules' && row?.column_name === 'settings_json'
   );
 
   return { ...workoutPlannerSchemaState };
@@ -1289,6 +1301,9 @@ const normalizePlannerPayload = (planner = {}) => {
       category: categoryValidation.isSet ? categoryValidation.value : null,
     },
     exercises,
+    ...(hasIncomingDayWeekAssignments(planner)
+      ? { settings: { dayWeekAssignments: normalizeDayWeekAssignments(planner.settings.dayWeekAssignments) } }
+      : {}),
     updatedAt: new Date().toISOString(),
   };
 };
@@ -2303,6 +2318,11 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
       hasCustomCoverImage: Boolean(String(schedule.cover_image_storage_key || '').trim()),
     },
     exercises,
+    settings: {
+      dayWeekAssignments: schemaState.hasSettingsJson
+        ? extractDayWeekAssignments(schedule.settings_json)
+        : {},
+    },
     status: String(schedule.status || 'draft').trim() || 'draft',
     visibility: String(schedule.visibility || 'private').trim() || 'private',
     updatedAt: schedule.updated_at,
@@ -5298,6 +5318,9 @@ router.put('/workout-planner', async (req, res) => {
     }
 
     await replaceScheduleGroupsAndExercises(connection, scheduleId, normalizedPlanner);
+    await persistDayWeekAssignments(connection, scheduleId, normalizedPlanner, {
+      hasSettingsJson: schemaState.hasSettingsJson,
+    });
     await connection.commit();
 
     const planner = await buildPlannerFromSchedule(scheduleId, userId);

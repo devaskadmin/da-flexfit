@@ -99,3 +99,36 @@ export const copyDayAssignment = (assignments = {}, sourceDay, newDay) => {
   }
   return { ...assignments, [newKey]: assignments[sourceKey] };
 };
+
+const BLOCKED_ASSIGNMENT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+/**
+ * Reads saved assignments from a loaded planner (`planner.settings.dayWeekAssignments`,
+ * persisted in workout_schedules.settings_json). Anything malformed is ignored; the
+ * result still goes through reconcileDayWeekAssignments before use.
+ */
+export const readSavedDayWeekAssignments = (planner) => {
+  const saved = planner?.settings?.dayWeekAssignments;
+  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) {
+    return {};
+  }
+  const out = {};
+  Object.entries(saved).forEach(([day, week]) => {
+    const dayKey = groupKey(day);
+    const weekLabel = typeof week === 'string' ? week.trim() : '';
+    if (dayKey && weekLabel && !BLOCKED_ASSIGNMENT_KEYS.has(dayKey)) {
+      out[dayKey] = weekLabel;
+    }
+  });
+  return out;
+};
+
+/** Save-payload fragment sent with the planner (merged into settings_json by the backend). */
+export const buildDayWeekAssignmentsSettings = (assignments = {}) => ({
+  dayWeekAssignments: { ...assignments },
+});
+
+/** Order-independent snapshot used by unsaved-change detection. */
+export const serializeDayWeekAssignments = (assignments = {}) =>
+  JSON.stringify(Object.keys(assignments || {}).sort().map((day) => [day, assignments[day]]));
+

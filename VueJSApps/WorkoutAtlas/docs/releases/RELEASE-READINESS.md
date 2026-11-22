@@ -58,3 +58,12 @@ No release should be marked released or accepted merely because automated tests 
 
 - Frontend-only correction of Stage 3: in-memory day-to-week mapping replaces exercise-level assignment. Mapping suite `11/11`, builder contract `14/14`, Vite build passed (`702` modules), `users.js` 37 routes unchanged, package versions `0.85.308` unchanged. Uncommitted; not pushed or deployed.
 - Mapping is not persisted. User acceptance PENDING; not release-ready until accepted.
+
+## 0.85.313.a3 Persist Day-to-Week Assignments
+
+- Frontend plus backend (`users.js` +23 lines, new `backend/utils/workoutPlanSettings.js`): assignments saved to the existing `settings_json` column. No migration, deploy, or package change; routes unchanged (37).
+- Release gate: confirm `settings_json` exists in each target database (persistence is a no-op otherwise). Uncommitted; acceptance PENDING; not release-ready until accepted.
+
+## 0.85.313.a3.1 Database Verification
+
+- `settings_json` is VERIFIED present in the `stephenk_flexfit` schema (user-run read-only query, `longtext`, nullable). Before release, run the same query (`docs/database/SCHEMA.md`) on every other target schema, such as production; zero rows there means persistence is a no-op and a DBA-approved migration is needed. Documentation-only update; no code, schema, data, or package change.

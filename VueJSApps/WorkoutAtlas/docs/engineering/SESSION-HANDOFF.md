@@ -154,3 +154,20 @@ No implementation action is authorized until scoped approval is provided. The ex
 - Not persisted or saved; excluded from dirty state/payload. No backend persistence started.
 - Tests: new suite `11/11`, builder contract `14/14`; Vite build passed (`702` modules); `users.js` `37` routes unchanged; PlanID 5 untouched. Stage 2 is pushed (`97397e075`); Stage 3 work is uncommitted.
 - STOP; await user acceptance. Do not begin backend persistence or 0.85.313.a3.
+
+## 0.85.313.a3 Persist Day-to-Week Assignments closeout - 2026-11-21
+
+- Stage 3 committed and pushed (`71c1048a8`) before Stage 4 work.
+- Persistence uses the existing `workout_schedules.settings_json` column: `PUT /api/workout-planner` merges `settings.dayWeekAssignments` (other keys preserved) through `persistDayWeekAssignments` in `backend/utils/workoutPlanSettings.js`; `buildPlannerFromSchedule` returns it as `planner.settings.dayWeekAssignments`. No schema change, route change, or data write; PlanID 5 untouched.
+- Frontend: restore + reconcile on load, `Week 1` initialized when no weeks, payload and unsaved-change detection include assignments.
+- Verification: frontend `28/28`; backend new suite `11/11`; `node --check` clean; 37 routes identical to HEAD; Vite build passed (`702` modules). Two existing backend tests need `mysql2` (not installed locally).
+- Open items for the user: confirm `settings_json` exists in the target database (otherwise persistence is a no-op); unsaved custom week names are not persisted by the backend; global/clone paths do not write assignments.
+- Stage 4 changes are uncommitted. STOP; await user acceptance. Do not begin Stage 5.
+
+## 0.85.313.a3.1 Database Verification closeout - 2026-11-21
+
+- Agent-side live query was BLOCKED (the user ran it instead, see below): no `backend/.env`, no `DB_*` variables, no `mysql2` (backend `node_modules` absent), no `mysql` client. Nothing was queried, guessed, or searched for credentials.
+- Indirect only: backups `0.76` and `0.83` show a nullable `longtext utf8mb4_bin` column with `json_valid`.
+- VERIFIED by the user (phpMyAdmin, 2026-11-21): `stephenk_flexfit.workout_schedules.settings_json` exists, `longtext`, `IS_NULLABLE` `YES`, default `NULL`.
+- No code, schema, data, or package change; PlanID 5 untouched. Stage 4 changes remain uncommitted. STOP; do not begin Stage 5.
+- First attempt was inconclusive (`information_schema` selected, `DATABASE()` mismatch); the re-run without `DATABASE()` returned the column. Open: browser save and reopen acceptance, and checking other environments (for example production) before release.

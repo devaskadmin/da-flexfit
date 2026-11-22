@@ -16,6 +16,9 @@ import {
   renameDayInAssignments,
   renameWeekInAssignments,
   copyDayAssignment,
+  readSavedDayWeekAssignments,
+  buildDayWeekAssignmentsSettings,
+  serializeDayWeekAssignments,
 } from '@/utils/workoutDayWeekAssignment.mjs';
 import { normalizeRecordingType } from '@/utils/exerciseRecordingFields';
 import Swal from 'sweetalert2';
@@ -3178,6 +3181,7 @@ const buildPlannerDirtyState = () => {
     weekGroups: Array.isArray(weekGroups.value) ? weekGroups.value : [],
     dayGroupOrders: Array.isArray(dayGroupOrders.value) ? dayGroupOrders.value : [],
     weekGroupOrders: Array.isArray(weekGroupOrders.value) ? weekGroupOrders.value : [],
+    dayWeekAssignments: serializeDayWeekAssignments(dayWeekAssignments.value),
     selectedScheduleGroup: selectedScheduleGroup.value || null,
     exercises: sanitizedExercises,
     planPublicationStatus: normalizePlanPublicationStatus(planPublicationStatus.value),
@@ -3369,6 +3373,9 @@ const hydratePlanner = (planner = {}, {
 
   dayGroups.value = sortGroupsByOrder(incomingDayGroups, incomingDayOrders);
   weekGroups.value = sortGroupsByOrder(incomingWeekGroups, incomingWeekOrders);
+  if (!weekGroups.value.length) {
+    weekGroups.value = [DEFAULT_NEW_PLAN_WEEK_NAME];
+  }
 
   syncGroupOrders('day', dayGroups.value);
   syncGroupOrders('week', weekGroups.value);
@@ -3406,8 +3413,8 @@ const hydratePlanner = (planner = {}, {
   ensureAccordionSelectionForMode('day');
   ensureAccordionSelectionForMode('week');
 
-  // In-memory only: unassigned days default to Week 1 (or the first week); nothing is saved during load.
-  dayWeekAssignments.value = {};
+  // Restore saved assignments (settings_json); reconcile keeps valid ones and defaults the rest in memory.
+  dayWeekAssignments.value = readSavedDayWeekAssignments(planner);
   reconcileDayWeekAssignmentState();
 
   hasSavedWorkoutDetails.value = markSaved;
@@ -4141,6 +4148,7 @@ const plannerPayload = computed(() => ({
   weekGroups: weekGroups.value,
   dayGroupOrders: buildOrderEntries(dayGroups.value),
   weekGroupOrders: buildOrderEntries(weekGroups.value),
+  settings: buildDayWeekAssignmentsSettings(dayWeekAssignments.value),
   exercises: workoutExercises.value,
   status: normalizePlanPublicationStatus(selectedPublicationStatus.value || planPublicationStatus.value),
 }));

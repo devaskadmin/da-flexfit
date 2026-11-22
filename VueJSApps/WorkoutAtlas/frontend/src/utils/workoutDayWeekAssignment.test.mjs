@@ -9,6 +9,9 @@ import {
   renameWeekInAssignments,
   copyDayAssignment,
   resolveDefaultWeek,
+  readSavedDayWeekAssignments,
+  buildDayWeekAssignmentsSettings,
+  serializeDayWeekAssignments,
 } from './workoutDayWeekAssignment.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -93,13 +96,51 @@ test('WorkoutBuilder wires the day-to-week mapping without touching exercises or
   const hydrateStart = source.indexOf('const hydratePlanner = (');
   const hydrateEnd = source.indexOf('const clearSelection = async', hydrateStart);
   const hydrateBlock = source.slice(hydrateStart, hydrateEnd);
-  assert.match(hydrateBlock, /dayWeekAssignments\.value = \{\};/);
+  assert.match(hydrateBlock, /dayWeekAssignments\.value = readSavedDayWeekAssignments\(planner\);/);
   assert.match(hydrateBlock, /reconcileDayWeekAssignmentState\(\);/);
   assert.equal(/fetch\(|persistWorkout|saveWorkout|router\./.test(hydrateBlock), false);
 });
 
-test('day-to-week mapping is not part of the saved payload or dirty state', () => {
+test('saved assignments are read from planner.settings and malformed input is ignored', () => {
+  assert.deepEqual(
+    readSavedDayWeekAssignments({ settings: { dayWeekAssignments: { Monday: ' Week 2 ', '': 'Week 1', tuesday: 5, __proto__: 'x', constructor: 'y' } } }),
+    { monday: 'Week 2' }
+  );
+  assert.deepEqual(readSavedDayWeekAssignments({}), {});
+  assert.deepEqual(readSavedDayWeekAssignments(null), {});
+  assert.deepEqual(readSavedDayWeekAssignments({ settings: { dayWeekAssignments: ['Week 1'] } }), {});
+  assert.deepEqual(readSavedDayWeekAssignments({ settings: { dayWeekAssignments: 'Week 1' } }), {});
+});
+
+test('restored assignments keep valid weeks, drop stale ones and default unassigned days', () => {
+  const saved = readSavedDayWeekAssignments({
+    settings: { dayWeekAssignments: { monday: 'Week 2', tuesday: 'Gone', ghost: 'Week 1' } },
+  });
+  const result = reconcileDayWeekAssignments({
+    dayGroups: ['Monday', 'Tuesday', 'Wednesday'],
+    weekGroups: ['Week 1', 'Week 2'],
+    assignments: saved,
+  });
+  assert.deepEqual(result.assignments, { monday: 'Week 2', tuesday: 'Week 1', wednesday: 'Week 1' });
+});
+
+test('save payload settings carry a copy of the assignments and dirty snapshot ignores key order', () => {
+  const assignments = { monday: 'Week 2', friday: 'Week 1' };
+  const settings = buildDayWeekAssignmentsSettings(assignments);
+  assert.deepEqual(settings, { dayWeekAssignments: assignments });
+  assert.notEqual(settings.dayWeekAssignments, assignments);
+  assert.equal(
+    serializeDayWeekAssignments({ friday: 'Week 1', monday: 'Week 2' }),
+    serializeDayWeekAssignments({ monday: 'Week 2', friday: 'Week 1' })
+  );
+  assert.notEqual(serializeDayWeekAssignments({ monday: 'Week 1' }), serializeDayWeekAssignments({ monday: 'Week 2' }));
+});
+
+test('0.85.313.a3 builder sends assignments in the payload and tracks them for unsaved changes', () => {
+  const payloadStart = source.indexOf('const plannerPayload = computed');
+  const payloadBlock = source.slice(payloadStart, source.indexOf('}));', payloadStart));
+  assert.match(payloadBlock, /settings: buildDayWeekAssignmentsSettings\(dayWeekAssignments\.value\),/);
   const dirtyStart = source.indexOf('return JSON.stringify({', source.indexOf('const buildPlannerDirtyState'));
   const dirtyBlock = source.slice(dirtyStart, source.indexOf('const markPlannerStateCommitted', dirtyStart));
-  assert.equal(dirtyBlock.includes('dayWeekAssignments'), false);
+  assert.match(dirtyBlock, /dayWeekAssignments: serializeDayWeekAssignments\(dayWeekAssignments\.value\),/);
 });

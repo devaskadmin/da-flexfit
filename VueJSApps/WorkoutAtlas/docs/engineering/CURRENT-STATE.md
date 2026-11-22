@@ -150,3 +150,18 @@ Current evidence: implementation and automated coverage exist for many areas. Li
 - Not persisted, not in dirty state or save payload; no save on load. Backend persistence not begun.
 - Tests: new suite `11/11`, builder contract `14/14`; Vite build passed (`702` modules); `users.js` `37` routes, no backend/package diff; Stage 3 changes uncommitted.
 - Limitations: mapping invisible in UI and lost on reload until persistence exists; no live browser verification. User acceptance PENDING.
+
+## 0.85.313.a3 Persist Day-to-Week Assignments - 2026-11-21
+
+- Stage 3 pushed first (`71c1048a8`). Assignments persist in `workout_schedules.settings_json` (`dayWeekAssignments` key) via `PUT /api/workout-planner`; restored from `planner.settings.dayWeekAssignments` on load. Helper: `backend/utils/workoutPlanSettings.js`; `users.js` +23 lines, 37 routes unchanged and in the same order.
+- Backend uses the column only if `information_schema` shows it; no `ALTER`/migration; other settings keys preserved; non-object stored JSON never overwritten.
+- Frontend restores then reconciles (default Week 1 / first week), initializes `Week 1` if a loaded plan has no weeks, sends assignments in the payload, and tracks them in unsaved-change detection.
+- Tests: frontend `28/28`, backend new suite `11/11` (fixture), syntax clean, Vite build passed (`702` modules).
+- Limitations: needs `settings_json` in the target DB; unsaved custom week names are not persisted by the backend so such assignments fall back to the default week; global/clone paths do not write assignments; no live verification. Changes uncommitted; acceptance PENDING. Do not begin Stage 5.
+
+## 0.85.313.a3.1 Database Verification - 2026-11-21
+
+- `workout_schedules.settings_json` is VERIFIED in the `stephenk_flexfit` schema (user-run read-only query, phpMyAdmin): `longtext`, nullable (`YES`), default `NULL`. The agent had no direct DB access, so no query ran from the agent side.
+- Indirect evidence: repository backups `0.76` and `0.83` define it as nullable `longtext utf8mb4_bin` with a `json_valid` check.
+- a3 persistence can now activate against this schema. Browser save and reopen acceptance is still PENDING, and other environments (for example production) are unchecked. No code, schema, data, or package change. STOP; do not begin Stage 5.
+- The first user run returned zero rows only because `information_schema` was the selected database (`DATABASE()` mismatch); the re-run without `DATABASE()` returned the column.

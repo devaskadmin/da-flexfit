@@ -119,3 +119,27 @@ Stage 1/10 re-verification (2026-11-21): branch name FAIL; 0.85.312 baseline PAS
 | Production build | Vite build passed (`702` modules) | PASS |
 | PlanID 5/data protection | No database, migration, or protected-data change | PASS |
 | Live browser load; mapping persistence | Not performed / not implemented | PENDING USER ACCEPTANCE |
+
+## 0.85.313.a3 Persist Day-to-Week Assignments (2026-11-21)
+
+| Check | Evidence | Status |
+| --- | --- | --- |
+| Assignments saved to `settings_json` and restored | Fixture round trip (backend suite `11/11`) | PASS (automated, fixture) |
+| Existing settings keys preserved | Merge tests | PASS (automated) |
+| Non-object stored settings never overwritten; no-op without column | Persist guard tests | PASS (automated) |
+| Day names, exercises, recording values untouched | No change to group/exercise save code; frontend `28/28` | PASS (automated) |
+| Default to Week 1 / first week; Week 1 initialized if none | Reconcile tests and hydrate contract test | PASS (automated) |
+| Unsaved-change detection includes assignments | Contract test | PASS (automated) |
+| `users.js` routes | 37, identical order to HEAD; `node --check` clean | PASS |
+| Production build | Vite build passed (`702` modules) | PASS |
+| Schema / production data | No `ALTER`, migration, or data write; PlanID 5 untouched | PASS |
+| Column present in target DB; browser save and reopen | Not performed | PENDING USER ACCEPTANCE |
+
+## 0.85.313.a3.1 Database Verification (2026-11-21)
+
+| Check | Evidence | Status |
+| --- | --- | --- |
+| `settings_json` exists in target DB | User-run read-only query (phpMyAdmin): 1 row in `stephenk_flexfit` | PASS (user-supplied evidence) |
+| Data type and nullability | Backups `0.76`/`0.83`: nullable `longtext utf8mb4_bin` with `json_valid` (not the live DB) | PASS: `longtext`, nullable (`YES`), default `NULL`; matches backups |
+| No database writes or schema change | None performed | PASS |
+| No application code change; PlanID 5 | No code edited; PlanID 5 not read or modified | PASS |
