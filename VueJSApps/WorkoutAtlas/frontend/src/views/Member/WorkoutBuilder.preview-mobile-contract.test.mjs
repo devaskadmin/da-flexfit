@@ -122,6 +122,19 @@ test('0.85.313.a1 default week is not injected into reset plans; loaded plans on
   assert.equal(source.split('DEFAULT_NEW_PLAN_WEEK_NAME').length - 1, 3);
 });
 
+test('0.85.313.a3.2 save payload always carries both day and week groups with their orders and assignments', () => {
+  const payloadStart = source.indexOf('const plannerPayload = computed(() => ({');
+  const payloadEnd = source.indexOf('const sendAiSuggestion = async', payloadStart);
+  assert.notEqual(payloadStart, -1);
+  const payloadBlock = source.slice(payloadStart, payloadEnd);
+  assert.match(payloadBlock, /dayGroups: dayGroups\.value,/);
+  assert.match(payloadBlock, /weekGroups: weekGroups\.value,/);
+  assert.match(payloadBlock, /dayGroupOrders: buildOrderEntries\(dayGroups\.value\),/);
+  assert.match(payloadBlock, /weekGroupOrders: buildOrderEntries\(weekGroups\.value\),/);
+  assert.match(payloadBlock, /settings: buildDayWeekAssignmentsSettings\(dayWeekAssignments\.value\),/);
+  assert.equal(/scheduleMode\.value === 'week' \?\s*(dayGroups|weekGroups)/.test(payloadBlock), false);
+});
+
 test('0.85.312 bottom Add control uses green background and white text', () => {
   assert.match(source, /\.planner-group-add--bottom\s*\{[^}]*border-color:\s*#15803D;/s);
   assert.match(source, /\.planner-group-add--bottom\s*\{[^}]*background:\s*#15803D;/s);

@@ -6,6 +6,7 @@ const pool = require('../db.js');
 const { sanitizeText } = require('../utils/sanitize.js');
 const { WORKOUT_HISTORY_VISIBLE_STATUSES } = require('../utils/workout-session-status-policy.js');
 const { buildDailyWorkoutDurationSummary } = require('../utils/workout-history-summary.js');
+const { filterGroupsForScheduleMode } = require('../utils/workoutScheduleGroupFilter.js');
 
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -54,7 +55,7 @@ const buildNormalizedGroupOrder = (builderOrder = [], preferredOrder = []) => {
 
 const getWorkoutLogDayOrdering = async (userId, planId) => {
   const [[scheduleRow]] = await pool.query(
-    `SELECT id, use_custom_workout_log_order
+    `SELECT id, use_custom_workout_log_order, schedule_mode
      FROM workout_schedules
      WHERE id = ? AND user_id = ?
      LIMIT 1`,
@@ -65,13 +66,15 @@ const getWorkoutLogDayOrdering = async (userId, planId) => {
     return null;
   }
 
-  const [groupRows] = await pool.query(
-    `SELECT label, sort_order, workout_log_display_order
+  const [allGroupRows] = await pool.query(
+    `SELECT label, group_type, sort_order, workout_log_display_order
      FROM workout_schedule_groups
      WHERE workout_schedule_id = ?
      ORDER BY sort_order ASC, id ASC`,
     [planId]
   );
+  // 0.85.313.a3.3: week containers are not workout days (legacy Week View plans keep their week groups).
+  const groupRows = filterGroupsForScheduleMode(allGroupRows, scheduleRow.schedule_mode);
 
   const builderOrder = groupRows
     .map((row) => String(row?.label || '').trim())
@@ -379,7 +382,7 @@ router.put('/day-order', async (req, res) => {
     await connection.beginTransaction();
 
     const [[scheduleRow]] = await connection.query(
-      `SELECT id
+      `SELECT id, schedule_mode
        FROM workout_schedules
        WHERE id = ? AND user_id = ?
        LIMIT 1`,
@@ -391,13 +394,15 @@ router.put('/day-order', async (req, res) => {
       return res.status(404).json({ error: 'Workout plan not found.' });
     }
 
-    const [groupRows] = await connection.query(
-      `SELECT id, label, sort_order
+    const [allGroupRows] = await connection.query(
+      `SELECT id, label, group_type, sort_order
        FROM workout_schedule_groups
        WHERE workout_schedule_id = ?
        ORDER BY sort_order ASC, id ASC`,
       [planId]
     );
+    // 0.85.313.a3.3: only workout days are ordered; week containers are never written.
+    const groupRows = filterGroupsForScheduleMode(allGroupRows, scheduleRow.schedule_mode);
 
     if (!groupRows.length) {
       await connection.rollback();

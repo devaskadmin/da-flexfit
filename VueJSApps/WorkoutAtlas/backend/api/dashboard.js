@@ -17,6 +17,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db.js');
+const { buildScheduleModeGroupFilterSql } = require('../utils/workoutScheduleGroupFilter.js');
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -241,13 +242,15 @@ router.get('/dashboard/metrics', requireAuth, async (req, res) => {
     // ── Weekly target from user's most-recent active schedule ───────────────
     const [[targetRow]] = await pool.query(
       `SELECT COUNT(*) AS cnt
-       FROM workout_schedule_groups
-       WHERE workout_schedule_id = (
+       FROM workout_schedule_groups wsg
+       INNER JOIN workout_schedules target_ws ON target_ws.id = wsg.workout_schedule_id
+       WHERE wsg.workout_schedule_id = (
          SELECT id FROM workout_schedules
          WHERE user_id = ? AND status = 'active'
          ORDER BY updated_at DESC
          LIMIT 1
-       )`,
+       )
+       AND ${buildScheduleModeGroupFilterSql('wsg', 'target_ws')}`,
       [userId]
     );
     const weeklyTarget = Number(targetRow?.cnt ?? 0);

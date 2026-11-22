@@ -143,3 +143,32 @@ Stage 1/10 re-verification (2026-11-21): branch name FAIL; 0.85.312 baseline PAS
 | Data type and nullability | Backups `0.76`/`0.83`: nullable `longtext utf8mb4_bin` with `json_valid` (not the live DB) | PASS: `longtext`, nullable (`YES`), default `NULL`; matches backups |
 | No database writes or schema change | None performed | PASS |
 | No application code change; PlanID 5 | No code edited; PlanID 5 not read or modified | PASS |
+
+## 0.85.313.a3.2 Preserve Day and Week Groups (2026-11-21)
+
+| Check | Evidence | Status |
+| --- | --- | --- |
+| Both day and week groups saved in either mode | Backend `workout-plan-groups` `21/21` (fixture) | PASS (automated, fixture) |
+| Group IDs, names, order preserved on re-save; no duplicates | Fixture re-save, reorder and legacy-duplicate tests | PASS (automated, fixture) |
+| Unintended deletion prevented | Isolated removal, unsent-set and placeholder tests | PASS (automated, fixture) |
+| Exercises, recording values, day-to-week assignments intact | Settings suite `11/11`; assignment week names remain; frontend `29/29` | PASS (automated) |
+| `users.js` routes | 37, identical order to HEAD; `node --check` clean; CRLF kept | PASS |
+| Production build | Vite build passed | PASS |
+| Schema / production data | No `ALTER`, migration or data write; PlanID 5 fixture unchanged | PASS |
+| Other readers counting all groups (`workout-log.js`, `dashboard.js`, plan list `group_count`) | Not changed; documented | OPEN (user decision) |
+| Browser save and reopen in day and week modes; mode switch; reload | Not performed | PENDING USER ACCEPTANCE |
+
+## 0.85.313.a3.3 Schedule Group Filtering (2026-11-21)
+
+| Check | Evidence | Status |
+| --- | --- | --- |
+| Workout Log day ordering excludes week containers (`GET`/`PUT /day-order`) | Suite `24/24`: builder, custom and ordered lists; display order written for days only | PASS (automated, fixture) |
+| Dashboard weekly target excludes week containers | Dashboard fixture tests; plan with only weeks gives 0 | PASS (automated, fixture) |
+| Plan-list day totals exclude week containers | Source contract plus evaluated SQL predicate | PASS (automated; `users.js` not runnable locally) |
+| Legacy Week View still works | Week-mode plan keeps its week groups in ordering and target | PASS (automated, fixture) |
+| Shared label between a day card and a week container | Ordering lists one day card and writes only the day row | PASS (automated, fixture) |
+| Save logic, UI, schema, data | No change; PlanID 5 fixture snapshot unchanged; no writes outside the requested plan | PASS |
+| Routes | `users.js` 37, `workout-log.js` 14, `dashboard.js` 3; identical to HEAD | PASS |
+| Regression | `21/21`, `11/11`, frontend `29/29`, Vite build passed | PASS |
+| SQL on real MySQL; add-exercise default group and `workout-sessions.js` lookups | Not executed / not changed | OPEN |
+| Browser: Workout Log day order, dashboard card and Find Plans day counts for day and week plans | Not performed | PENDING USER ACCEPTANCE |

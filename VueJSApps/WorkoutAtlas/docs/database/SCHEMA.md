@@ -24,6 +24,8 @@ Source: `backend/schema/workout_schedule_schema.sql` and workout migrations.
 - Primary key: `id BIGINT UNSIGNED`.
 - Parent: `workout_schedule_id` with FK to `workout_schedules(id)`.
 - Fields: `label`, `group_type`, `sort_order`, `workout_log_display_order`.
+- Since 0.85.313.a3.2 a plan holds both its day set (`day`/`any`/`section`) and its week set (`week`) regardless of the selected schedule mode. `PUT /api/workout-planner` syncs them in place (`backend/utils/workoutPlanGroups.js`): rows are matched by family and case-insensitive label, so IDs persist; new labels are inserted; removed labels are deleted; legacy duplicates within a synced set collapse. A set not sent by the client, or a set that is only the default placeholder (`Any Day`/`Week 1`) with no stored rows, is not written. `workout_log_display_order` is kept only when a custom order is already set. No schema change. Readers that count or list every group (`workout-log.js` day ordering, `dashboard.js` weekly target, plan list `group_count`) now see both sets.
+- Since 0.85.313.a3.3 readers that count or list workout days follow `workout_schedules.schedule_mode`: day mode uses every `group_type` except `week`; legacy Week View (`schedule_mode = 'week'`) uses its `week` groups. Applied to Workout Log `GET`/`PUT /day-order`, dashboard `weeklyTarget`, and the global plan-list `day_count`/`group_count`. Shared in `backend/utils/workoutScheduleGroupFilter.js`. Not yet filtered: the add-exercise default group (`users.js`) and `workout-sessions.js` day lookups by id or label. No schema change.
 
 ### `workout_schedule_exercises`
 

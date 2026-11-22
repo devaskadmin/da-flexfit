@@ -508,3 +508,22 @@
 - No application code, schema, data, or package change; no database writes; PlanID 5 untouched.
 - Result (user-run, phpMyAdmin, 2026-11-21): VERIFIED, COLUMN EXISTS. First run was inconclusive (`information_schema` selected, so `DATABASE()` mismatch); the re-run without `DATABASE()` returned 1 row: schema `stephenk_flexfit`, `workout_schedules.settings_json`, `DATA_TYPE` `longtext`, `IS_NULLABLE` `YES`, `COLUMN_DEFAULT` `NULL`. Other environments not checked.
 - User acceptance: PENDING. STOP.
+
+## 0.85.313.a3.2 - Preserve Day and Week Groups (2026-11-21)
+
+- Checkpoint: a3/a3.1 committed and pushed first (`1e8fa6818`). a3.2 changes are uncommitted.
+- Fix: the shared save helper deleted all groups and re-inserted only the active mode's groups, dropping the other set and regenerating IDs. New `backend/utils/workoutPlanGroups.js` syncs day and week sets in place (match by family plus case-insensitive label; update, insert, delete only within the schedule). Unsent sets and placeholder-only empty sets are left alone. `users.js` wiring is surgical; frontend unchanged apart from one contract test.
+- Tests: backend `workout-plan-groups` `21/21`, `workout-plan-settings` `11/11` (in-memory fixtures, PlanID 5 rows snapshot-checked); frontend `29/29`; `node --check` clean; CRLF kept; Vite build passed. Other backend tests needing `express`/`mysql2` cannot run locally.
+- Routes: `37`, identical order to HEAD. No schema change, migration, package change or production data write; PlanID 5 untouched.
+- Limitations: other readers (`workout-log.js` day order, `dashboard.js` weekly target, plan list `group_count`) count all groups regardless of type; exercise IDs still regenerate per save; renaming a group changes its ID; no live DB or browser verification.
+- User acceptance: PENDING. STOP; Stage 5 not started.
+
+## 0.85.313.a3.3 - Schedule Group Filtering (2026-11-21)
+
+- Goal: after a3.2 stores both day and week groups, stop week containers being treated as workout days. a3.2 and a3.3 are both uncommitted.
+- Rule: new `backend/utils/workoutScheduleGroupFilter.js`. Day-mode plans use every group type except `week`; legacy Week View plans (`schedule_mode = 'week'`) keep their week groups.
+- Applied to: Workout Log `GET`/`PUT /day-order` (`workout-log.js`), dashboard `weeklyTarget` (`dashboard.js`), and the plan-list `day_count` / `group_count` subquery (`users.js`, 3 lines plus import). Save logic untouched.
+- Tests: new `workout-schedule-group-filter` `24/24` (real route modules with stubbed express and an in-memory pool; SQL predicate checked against the JS helper; PlanID 5 snapshot unchanged); `workout-plan-groups` `21/21`; `workout-plan-settings` `11/11`; other runnable backend suites pass; frontend `29/29`; Vite build passed; `node --check` clean; CRLF kept.
+- Routes: `users.js` 37, `workout-log.js` 14, `dashboard.js` 3, identical to HEAD. No schema change, migration, package change or production data write; PlanID 5 untouched.
+- Limitations: SQL not run on a real MySQL server (no `mysql2`/`express` locally); day-mode plans with only weeks show 0 days and miss the publish gate until a day exists; add-exercise default group and `workout-sessions.js` day lookups were left alone; no live DB or browser verification.
+- User acceptance: PENDING. STOP; Stage 5 not started.

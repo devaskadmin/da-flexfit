@@ -26,6 +26,8 @@ const {
   extractDayWeekAssignments,
   persistDayWeekAssignments,
 } = require('../utils/workoutPlanSettings');
+const { syncScheduleGroups, buildGroupKey } = require('../utils/workoutPlanGroups');
+const { buildScheduleModeGroupFilterSql } = require('../utils/workoutScheduleGroupFilter');
 
 // ✅ DB Connect
 const pool = require('../db');
@@ -1292,6 +1294,11 @@ const normalizePlannerPayload = (planner = {}) => {
     version: 1,
     planId: incomingPlanId || buildPlanId(),
     scheduleMode: mode,
+    // 0.85.313.a3.2: lets the save path keep existing groups of a set the client did not send.
+    groupSetsProvided: {
+      day: Array.isArray(planner.dayGroups) && planner.dayGroups.length > 0,
+      week: Array.isArray(planner.weekGroups) && planner.weekGroups.length > 0,
+    },
     dayGroups: normalizedDayGroups,
     weekGroups: normalizedWeekGroups,
     dayGroupOrders: dayOrderInfo.orderEntries,
@@ -1849,7 +1856,9 @@ const loadGlobalWorkoutPlans = async ({
           wsg.workout_schedule_id,
           COUNT(wsg.id) AS group_count
         FROM workout_schedule_groups wsg
+        INNER JOIN workout_schedules group_ws ON group_ws.id = wsg.workout_schedule_id
         WHERE COALESCE(NULLIF(TRIM(wsg.label), ''), '') <> ''
+          AND ${buildScheduleModeGroupFilterSql('wsg', 'group_ws')}
         GROUP BY wsg.workout_schedule_id
       ) group_agg ON group_agg.workout_schedule_id = ws.id
       WHERE ws.workout_plan_type IN (${typePlaceholders})
@@ -2342,32 +2351,6 @@ const replaceScheduleGroupsAndExercises = async (connection, scheduleId, planner
   const normalizedDayGroups = dayGroups.length ? dayGroups : ['Any Day'];
   const normalizedWeekGroups = weekGroups.length ? weekGroups : ['Week 1'];
 
-  const incomingDayOrders = Array.isArray(planner?.dayGroupOrders) ? planner.dayGroupOrders : [];
-  const incomingWeekOrders = Array.isArray(planner?.weekGroupOrders) ? planner.weekGroupOrders : [];
-
-  const findSortOrder = (entries, label, fallbackIndex) => {
-    const normalizedLabel = String(label || '').trim().toLowerCase();
-    const found = entries.find((entry) => String(entry?.label || '').trim().toLowerCase() === normalizedLabel);
-    const parsed = Number(found?.sortOrder);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackIndex + 1;
-  };
-
-  const groupEntries = mode === 'week'
-    ? normalizedWeekGroups
-      .map((label, index) => ({
-        label,
-        groupType: 'week',
-        sortOrder: findSortOrder(incomingWeekOrders, label, index),
-      }))
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-    : normalizedDayGroups
-      .map((label, index) => ({
-        label,
-        groupType: label.toLowerCase() === 'any day' ? 'any' : 'day',
-        sortOrder: findSortOrder(incomingDayOrders, label, index),
-      }))
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-
   let scheduleRow = null;
   if (schemaState.hasUseCustomWorkoutLogOrder) {
     const [rows] = await connection.query(
@@ -2383,66 +2366,14 @@ const replaceScheduleGroupsAndExercises = async (connection, scheduleId, planner
   const preserveCustomWorkoutLogOrder = schemaState.hasUseCustomWorkoutLogOrder
     ? Number(scheduleRow?.use_custom_workout_log_order || 0) === 1
     : false;
-  const existingWorkoutLogOrderByLabel = new Map();
-
-  if (preserveCustomWorkoutLogOrder && schemaState.hasWorkoutLogDisplayOrder) {
-    const [existingGroupRows] = await connection.query(
-      `SELECT label, workout_log_display_order
-       FROM workout_schedule_groups
-       WHERE workout_schedule_id = ?
-         AND workout_log_display_order IS NOT NULL`,
-      [scheduleId]
-    );
-
-    for (const row of existingGroupRows) {
-      const normalizedLabel = String(row?.label || '').trim().toLowerCase();
-      const orderValue = Number(row?.workout_log_display_order);
-      if (!normalizedLabel || !Number.isFinite(orderValue) || orderValue <= 0) {
-        continue;
-      }
-      existingWorkoutLogOrderByLabel.set(normalizedLabel, orderValue);
-    }
-  }
 
   await connection.query('DELETE FROM workout_schedule_exercises WHERE workout_schedule_id = ?', [scheduleId]);
-  await connection.query('DELETE FROM workout_schedule_groups WHERE workout_schedule_id = ?', [scheduleId]);
 
-  const groupIdByLabel = new Map();
-  for (const groupEntry of groupEntries) {
-    const normalizedLabel = String(groupEntry?.label || '').trim().toLowerCase();
-    const preservedWorkoutLogDisplayOrder = preserveCustomWorkoutLogOrder
-      ? (existingWorkoutLogOrderByLabel.get(normalizedLabel) ?? null)
-      : null;
-
-    let insertGroup;
-    if (schemaState.hasWorkoutLogDisplayOrder) {
-      [insertGroup] = await connection.query(
-        `INSERT INTO workout_schedule_groups
-          (workout_schedule_id, label, group_type, sort_order, workout_log_display_order)
-         VALUES (?, ?, ?, ?, ?)`,
-        [
-          scheduleId,
-          groupEntry.label,
-          groupEntry.groupType,
-          groupEntry.sortOrder,
-          preservedWorkoutLogDisplayOrder,
-        ]
-      );
-    } else {
-      [insertGroup] = await connection.query(
-        `INSERT INTO workout_schedule_groups
-          (workout_schedule_id, label, group_type, sort_order)
-         VALUES (?, ?, ?, ?)`,
-        [
-          scheduleId,
-          groupEntry.label,
-          groupEntry.groupType,
-          groupEntry.sortOrder,
-        ]
-      );
-    }
-    groupIdByLabel.set(groupEntry.label, insertGroup.insertId);
-  }
+  // 0.85.313.a3.2: groups are synced in place (both day and week sets) instead of delete-all/re-insert-active.
+  const { groupIdByKey } = await syncScheduleGroups(connection, scheduleId, planner, {
+    hasWorkoutLogDisplayOrder: schemaState.hasWorkoutLogDisplayOrder,
+    preserveCustomWorkoutLogOrder,
+  });
 
   const fallbackGroupLabel = mode === 'week' ? normalizedWeekGroups[0] : normalizedDayGroups[0];
   const exercises = Array.isArray(planner?.exercises) ? planner.exercises : [];
@@ -2450,7 +2381,7 @@ const replaceScheduleGroupsAndExercises = async (connection, scheduleId, planner
   for (let i = 0; i < exercises.length; i += 1) {
     const ex = exercises[i] || {};
     const label = String(ex.scheduleGroup || fallbackGroupLabel || '').trim();
-    const groupId = groupIdByLabel.get(label) || null;
+    const groupId = groupIdByKey.get(buildGroupKey(mode, label)) || null;
 
     const insertColumns = [
       'workout_schedule_id',

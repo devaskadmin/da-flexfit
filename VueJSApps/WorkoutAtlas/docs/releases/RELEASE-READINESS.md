@@ -67,3 +67,13 @@ No release should be marked released or accepted merely because automated tests 
 ## 0.85.313.a3.1 Database Verification
 
 - `settings_json` is VERIFIED present in the `stephenk_flexfit` schema (user-run read-only query, `longtext`, nullable). Before release, run the same query (`docs/database/SCHEMA.md`) on every other target schema, such as production; zero rows there means persistence is a no-op and a DBA-approved migration is needed. Documentation-only update; no code, schema, data, or package change.
+
+## 0.85.313.a3.2 Preserve Day and Week Groups
+
+- Backend save path now keeps both group sets (`backend/utils/workoutPlanGroups.js`, `users.js` wiring). No migration, deploy or package change; 37 routes unchanged.
+- Release gates: user acceptance of browser save and reopen in day and week modes; decide whether `workout-log.js` day ordering, `dashboard.js` weekly target and plan list `group_count` must filter groups by mode before release (they currently count all groups). Uncommitted; not release-ready until accepted.
+
+## 0.85.313.a3.3 Schedule Group Filtering
+
+- Backend only: shared filter util plus edits in `workout-log.js`, `dashboard.js` and `users.js` (plan-list subquery). Closes the a3.2 gate on readers that counted every group. No migration, deploy or package change; routes unchanged.
+- Release gates: user acceptance in the browser (Workout Log order, dashboard weekly target, Find Plans day counts for day and week plans); verify the new SQL on a real MySQL server before release (not executable locally); decide whether the add-exercise default group and `workout-sessions.js` day lookups need the same filter. a3.2 and a3.3 uncommitted; not release-ready until accepted.
