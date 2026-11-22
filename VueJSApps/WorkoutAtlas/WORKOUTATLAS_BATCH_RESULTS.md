@@ -467,3 +467,23 @@
 - API: `backend/api/users.js` retains `37` route definitions and has no diff.
 - Protected data: PlanID 5, personal history, paused sessions, and non-disposable Global plans were not touched.
 - User acceptance: PENDING. STOP; no commit made.
+
+## 0.85.313.a2 - Stage 3/10 Default Day Assignment (2026-11-21) - SUPERSEDED by 0.85.313.a2.1
+
+- Checkpoint: Stage 2 (0.85.313.a1) committed as `97397e075` and pushed to `origin/0.85.113` after staged-file/secret/exclusion review (`SECURITY_GATE_PASS`).
+- Change (frontend only): `hydratePlanner` in `WorkoutBuilder.vue` now calls `assignUnassignedExercisesToDefaultWeek` (new `frontend/src/utils/workoutDefaultWeekAssignment.mjs`). Exercises with no schedule group are assigned in memory to `Week 1` (or the plan's first existing week, or a newly created `Week 1`).
+- Safeguards: case-insensitive de-duplication, matching day label reuse, idempotent, valid assignments/custom week names/exercises/recording values preserved, no save call during load.
+- Tests: new helper suite `7/7`; WorkoutBuilder contract suite `14/14`; Vite production build passed (`702` modules).
+- API: `backend/api/users.js` retains `37` route definitions (4,768 non-empty lines); no backend or package diff.
+- Limitations: no day-to-week link exists in the data model, so "unassigned days" = exercises without a schedule group; no live browser verification; PlanID 5 not loaded or modified.
+- User acceptance: PENDING. STOP; 0.85.313.a3 not started. Stage 3 changes are uncommitted.
+
+## 0.85.313.a2.1 - Correct Day Assignment (2026-11-21)
+
+- Correction of Stage 3: a2 wrongly assigned exercises (and could create a `Week 1` day card); that logic is removed and exercises/group labels load exactly as saved.
+- Change (frontend only): in-memory `dayWeekAssignments` mapping (day name -> week) in `WorkoutBuilder.vue`, backed by new `frontend/src/utils/workoutDayWeekAssignment.mjs`. Unassigned days default to `Week 1` or the first existing week; valid assignments, day names, exercises, and recording values preserved; each day assigned once; no day card or week is created by assignment.
+- Mapping is reconciled on load/create/add/remove, carried on rename/duplicate, cleared on reset; excluded from dirty state and save payload; no save or network call on load.
+- Tests: new suite `11/11`; WorkoutBuilder contract `14/14` (25/25 combined); Vite production build passed (`702` modules).
+- API: `backend/api/users.js` retains `37` route definitions (4,768 non-empty lines); no backend, package, or database change; PlanID 5 not loaded or modified.
+- Limitations: mapping is not visible in the UI and not persisted (lost on reload); no live browser verification. Backend persistence was not begun.
+- User acceptance: PENDING. STOP; Stage 3 changes are uncommitted.

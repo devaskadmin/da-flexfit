@@ -91,3 +91,31 @@ Stage 1/10 re-verification (2026-11-21): branch name FAIL; 0.85.312 baseline PAS
 | Production build | Vite build passed | PASS |
 | PlanID 5/data protection | No database, migration, or protected-data change | PASS |
 | Live browser acceptance (Week View on new plan) | Not performed | PENDING USER ACCEPTANCE |
+
+## 0.85.313.a2 Default Day Assignment (2026-11-21) - SUPERSEDED by 0.85.313.a2.1
+
+| Check | Evidence | Status |
+| --- | --- | --- |
+| Unassigned exercises assigned to Week 1 on load | Helper suite `7/7` | PASS (automated) |
+| Valid assignments, custom week names, recording values preserved | Helper tests (reference equality) | PASS (automated) |
+| No duplicate assignment/groups | Case-insensitive de-dup and idempotency tests | PASS (automated) |
+| No auto-save during load | Contract test: no fetch/save/router in `hydratePlanner` | PASS (automated) |
+| `users.js` routes | 37 route definitions; no backend diff | PASS |
+| Production build | Vite build passed (`702` modules) | PASS |
+| PlanID 5/data protection | No database, migration, or protected-data change | PASS |
+| Live browser load of existing plans | Not performed | PENDING USER ACCEPTANCE |
+
+## 0.85.313.a2.1 Correct Day Assignment (2026-11-21)
+
+| Check | Evidence | Status |
+| --- | --- | --- |
+| Whole days assigned to weeks (in memory) | Mapping suite `11/11` | PASS (automated) |
+| Default Week 1, else first existing week | Default-week tests | PASS (automated) |
+| Valid assignments, custom weeks, day names preserved | Reconcile tests | PASS (automated) |
+| No duplicate day assignment | Case-insensitive uniqueness/idempotency tests | PASS (automated) |
+| No `Week 1` day card; exercise labels unchanged | `hydratePlanner` loads exercises as saved; no helper touches `scheduleGroup`; wiring test | PASS (automated) |
+| No auto-save; not in payload/dirty state | Wiring and payload tests | PASS (automated) |
+| `users.js` routes | 37 route definitions; no backend diff | PASS |
+| Production build | Vite build passed (`702` modules) | PASS |
+| PlanID 5/data protection | No database, migration, or protected-data change | PASS |
+| Live browser load; mapping persistence | Not performed / not implemented | PENDING USER ACCEPTANCE |

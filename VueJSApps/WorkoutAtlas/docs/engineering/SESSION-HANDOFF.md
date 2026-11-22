@@ -138,3 +138,19 @@ No implementation action is authorized until scoped approval is provided. The ex
 - Tests: contract suite `14/14` (2 new); Vite build passed; `users.js` still `37` routes.
 - Known limit: backend persists only the active mode's groups, so `Week 1` saves only when the plan is saved in Week View.
 - No commit made. STOP; await user acceptance before any further work.
+
+## 0.85.313.a2 Default Day Assignment closeout (Stage 3/10) - 2026-11-21 - SUPERSEDED by 0.85.313.a2.1
+
+- Committed and pushed the Stage 2 checkpoint first: `97397e075` on `origin/0.85.113`.
+- Stage 3 (uncommitted): on plan load, `hydratePlanner` assigns exercises lacking a schedule group to `Week 1` in memory using the new `workoutDefaultWeekAssignment.mjs` helper. No save during load; valid assignments and recording values untouched.
+- Tests: helper `7/7`, builder contract `14/14`; Vite build passed (`702` modules); `users.js` `37` routes, no backend/package/database change; PlanID 5 untouched.
+- Limitation: data model has no day-to-week link; no live browser check.
+- STOP; await user acceptance. Do not begin 0.85.313.a3.
+
+## 0.85.313.a2.1 Correct Day Assignment closeout - 2026-11-21
+
+- Replaced the exercise-level a2 logic: whole days are mapped to weeks in memory (`dayWeekAssignments`, `workoutDayWeekAssignment.mjs`). Exercises and their group labels load exactly as saved; no `Week 1` day card is created.
+- Defaults: existing `Week 1`, else first existing week; valid assignments preserved; one week per day.
+- Not persisted or saved; excluded from dirty state/payload. No backend persistence started.
+- Tests: new suite `11/11`, builder contract `14/14`; Vite build passed (`702` modules); `users.js` `37` routes unchanged; PlanID 5 untouched. Stage 2 is pushed (`97397e075`); Stage 3 work is uncommitted.
+- STOP; await user acceptance. Do not begin backend persistence or 0.85.313.a3.

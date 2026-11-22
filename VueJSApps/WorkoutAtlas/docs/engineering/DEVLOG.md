@@ -79,3 +79,20 @@ This log records engineering activity concisely and links to detailed evidence.
 - Files: `frontend/src/views/Member/WorkoutBuilder.vue`; `frontend/src/views/Member/WorkoutBuilder.preview-mobile-contract.test.mjs`.
 - Tests: contract suite `14/14`; Vite production build passed; `users.js` `37` routes, no diff.
 - Safety: no backend, database, migration, PlanID 5, or package-version change. User acceptance pending.
+
+## 2026-11-21 — 0.85.313.a2 Default Day Assignment (Stage 3/10) - SUPERSEDED by 0.85.313.a2.1
+
+- Checkpoint: Stage 2 committed as `97397e075` and pushed to `origin/0.85.113` after staged-file, secret-pattern, and exclusion review.
+- Objective: assign unassigned items to Week 1 on plan load without saving, duplicating, or altering valid assignments.
+- Finding: the data model stores one `scheduleGroup` per exercise and has no day-to-week link; unassigned content is exercises with an empty `scheduleGroup` (backend falls back to the first group only on save).
+- Change: new pure helper `frontend/src/utils/workoutDefaultWeekAssignment.mjs` applied in `hydratePlanner`; target is existing `Week 1`, else first week, else new `Week 1`; weeks de-duplicated case-insensitively, matching day label reused.
+- Tests: helper `7/7`, builder contract `14/14`; Vite build passed (`702` modules); `users.js` `37` routes, no diff.
+- Limitation: no live browser verification; default week appears as a day card in Day View when such exercises exist. User acceptance pending.
+
+## 2026-11-21 — 0.85.313.a2.1 Correct Day Assignment
+
+- Defect in a2: it assigned individual exercises to a week, which could surface a `Week 1` day card and relabel exercise groups.
+- Fix: removed exercise-level helper (never committed). New pure module `frontend/src/utils/workoutDayWeekAssignment.mjs` keeps `{ day -> week }` in a `dayWeekAssignments` ref; `reconcileDayWeekAssignments` keeps valid entries, drops stale ones, defaults unassigned days to existing `Week 1` or first week, one entry per day (case-insensitive). Rename/duplicate carry assignments; reset clears them.
+- Wiring: `hydratePlanner`, `createWorkoutPlan`, `resetPlannerDraft`, rename/duplicate handlers, and a `[dayGroups, weekGroups]` watcher. Mapping is not in `buildPlannerDirtyState` or the save payload; hydration has no fetch/save.
+- Tests: new suite `11/11`, builder contract `14/14`; Vite build passed (`702` modules); `get_errors` clean; `users.js` `37` routes, no backend/package diff.
+- Limitations: invisible in UI and not persisted (lost on reload); no live browser verification. User acceptance pending; backend persistence not begun.

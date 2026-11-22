@@ -48,3 +48,13 @@ No release should be marked released or accepted merely because automated tests 
 
 - Code complete on branch `0.85.113`; contract suite `14/14` and Vite build passed; `users.js` 37 routes unchanged; package versions `0.85.308` unchanged.
 - Not committed, pushed, or deployed. User acceptance PENDING; not release-ready until accepted.
+
+## 0.85.313.a2 Default Day Assignment (Stage 3/10) - SUPERSEDED by 0.85.313.a2.1
+
+- Stage 2 checkpoint committed as `97397e075` and pushed to `origin/0.85.113`. Stage 3 is code complete but uncommitted; helper suite `7/7`, builder contract `14/14`, Vite build passed (`702` modules), `users.js` 37 routes unchanged, package versions `0.85.308` unchanged.
+- No deploy. User acceptance PENDING; not release-ready until accepted.
+
+## 0.85.313.a2.1 Correct Day Assignment
+
+- Frontend-only correction of Stage 3: in-memory day-to-week mapping replaces exercise-level assignment. Mapping suite `11/11`, builder contract `14/14`, Vite build passed (`702` modules), `users.js` 37 routes unchanged, package versions `0.85.308` unchanged. Uncommitted; not pushed or deployed.
+- Mapping is not persisted. User acceptance PENDING; not release-ready until accepted.

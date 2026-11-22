@@ -6,6 +6,31 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.313.a2.1] - 2026-11-21 - Correct Day Assignment (Stage 3 correction)
+
+- **Status:** Code complete; focused automated verification and production build passed; user acceptance pending. Frontend only; package versions remain `0.85.308`. Corrects and supersedes 0.85.313.a2.
+- **Correction:** 0.85.313.a2 assigned individual exercises (and could create a `Week 1` day card). That is removed. `hydratePlanner` again loads exercises and their group labels exactly as saved.
+- **Changed:** Whole workout days are assigned to weeks through an in-memory mapping `dayWeekAssignments` (`{ normalized day name: week label }`) managed by the new pure module `frontend/src/utils/workoutDayWeekAssignment.mjs` (`reconcileDayWeekAssignments`, `resolveDefaultWeek`, rename/copy helpers).
+- **Rules:** Unassigned days default to an existing `Week 1`, otherwise the first existing week. Valid assignments are kept; stale entries (missing day or week) are dropped; each day appears once (case-insensitive). No day card or week group is created by assignment, and exercise `scheduleGroup` labels, day names, exercises, and recording values are never modified.
+- **Lifecycle:** Reconciled on plan load, after a new plan is created, and by a watcher when days or weeks are added or removed; renaming a day or week and duplicating a day carry the assignment. The mapping is cleared on draft reset.
+- **Not persisted:** The mapping is excluded from the dirty-state baseline and the save payload; load performs no network or save call. Nothing is written to the database and backend persistence was not begun.
+- **Affected files:** `frontend/src/views/Member/WorkoutBuilder.vue`; new `frontend/src/utils/workoutDayWeekAssignment.mjs` and `workoutDayWeekAssignment.test.mjs`; removed uncommitted `workoutDefaultWeekAssignment.mjs` and its test.
+- **Verification:** New suite `11/11` plus builder contract `14/14` (25/25 combined); Vite production build passed (`702` modules); `backend/api/users.js` retains `37` route definitions (4,768 non-empty lines) with no diff; no backend/package diff; `get_errors` clean.
+- **Limitations:** The mapping is invisible in the UI (no redesign) and lost on page reload until backend persistence exists. If a plan has no weeks, no assignment is created. No browser/live verification. PlanID 5 was not loaded or modified.
+
+## [0.85.313.a2] - 2026-11-21 - Default Day Assignment (Stage 3/10) - SUPERSEDED by 0.85.313.a2.1
+
+- **Status:** Code complete; focused automated verification and production build passed; user acceptance pending. Frontend only; package versions remain `0.85.308`.
+- **Checkpoint:** The accepted Stage 2 (0.85.313.a1) work was committed as `97397e075` and pushed to `origin/0.85.113` after staged-file, secret-pattern, and `.local-only`/`.artifacts` review (repository pre-push security gate reported `SECURITY_GATE_PASS`).
+- **Added:** When a plan is loaded into the builder (`hydratePlanner`), exercises with no schedule group are assigned in memory to the default week via the new pure helper `assignUnassignedExercisesToDefaultWeek` (`frontend/src/utils/workoutDefaultWeekAssignment.mjs`). Default week = existing `Week 1` (case-insensitive), otherwise the plan's first existing week, otherwise a new `Week 1`.
+- **Duplicate prevention:** Week labels are de-duplicated case-insensitively; an existing matching day label is reused; assignment only touches empty assignments, so it is idempotent and no exercise is assigned twice.
+- **Preserved:** Exercises with valid assignments are returned by reference; custom week names/order, exercises, and recording values (sets, reps, weight, notes, etc.) are unchanged.
+- **No auto-save:** Hydration performs no network or save call; the committed dirty-state baseline is captured after assignment, so loading alone does not flag or persist changes. The database changes only if the user later saves.
+- **Affected files:** `frontend/src/views/Member/WorkoutBuilder.vue`; new `frontend/src/utils/workoutDefaultWeekAssignment.mjs` and `workoutDefaultWeekAssignment.test.mjs`.
+- **Verification:** New helper/contract suite `7/7` and WorkoutBuilder contract suite `14/14` (21/21 combined); Vite production build passed (`702` modules); `backend/api/users.js` retains `37` route definitions (4,768 non-empty lines) with no diff; no backend/package diff.
+- **Limitations:** The data model has no day-to-week link, so "unassigned workout days" is implemented as exercises lacking a schedule group; the backend already falls back to the first group on save. Because the builder opens in Day View, the default week label appears as a day card when such exercises exist. No browser/live verification was performed.
+- **Not changed:** No UI redesign, backend, database write/migration, server restart, or deploy. PlanID 5 and protected data were not touched or loaded.
+
 ## [0.85.313.a1] - 2026-11-21 - Default Week initialization
 
 - **Status:** Code complete; focused automated verification and production build passed; user acceptance pending. Package versions remain `0.85.308`.

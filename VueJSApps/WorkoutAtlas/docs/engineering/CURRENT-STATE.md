@@ -134,3 +134,19 @@ Current evidence: implementation and automated coverage exist for many areas. Li
 - Existing/saved plans (`hydratePlanner`), `resetPlannerDraft`, week names, and assignments are unchanged.
 - Focused contract suite passed `14/14`; Vite build passed; `users.js` retains `37` routes with no diff.
 - No backend, database, migration, UI redesign, PlanID 5, or protected-data change. Live browser acceptance PENDING.
+
+## 0.85.313.a2 Default Day Assignment (Stage 3/10) - 2026-11-21 - SUPERSEDED by 0.85.313.a2.1
+
+- Stage 2 (0.85.313.a1) committed as `97397e075` and pushed to `origin/0.85.113`; Stage 3 changes are uncommitted.
+- `hydratePlanner` in `WorkoutBuilder.vue` assigns exercises with no schedule group, in memory only, to `Week 1` (existing `Week 1`, else first existing week, else new `Week 1`) via `frontend/src/utils/workoutDefaultWeekAssignment.mjs`.
+- Valid assignments, custom week names, exercises, and recording values preserved; duplicates prevented; no auto-save on load.
+- Tests: helper suite `7/7`, builder contract suite `14/14`; Vite build passed (`702` modules); `users.js` `37` routes, no backend/package diff.
+- Limitation: no day-to-week link exists in the data model; no live browser verification. User acceptance PENDING. Do not begin 0.85.313.a3.
+
+## 0.85.313.a2.1 Correct Day Assignment - 2026-11-21
+
+- Corrects Stage 3 (frontend only): whole workout days, not exercises, are assigned to weeks via an in-memory `dayWeekAssignments` mapping in `WorkoutBuilder.vue` (`frontend/src/utils/workoutDayWeekAssignment.mjs`).
+- Unassigned days default to `Week 1` or the first existing week; valid assignments, day names, exercises, group labels, and recording values preserved; no `Week 1` day card or week is created by assignment.
+- Not persisted, not in dirty state or save payload; no save on load. Backend persistence not begun.
+- Tests: new suite `11/11`, builder contract `14/14`; Vite build passed (`702` modules); `users.js` `37` routes, no backend/package diff; Stage 3 changes uncommitted.
+- Limitations: mapping invisible in UI and lost on reload until persistence exists; no live browser verification. User acceptance PENDING.

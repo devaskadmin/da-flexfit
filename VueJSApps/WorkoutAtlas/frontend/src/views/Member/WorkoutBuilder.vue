@@ -11,6 +11,12 @@ import { DEFAULT_EXERCISE_IMAGE, getExerciseImage } from '@/utils/exerciseImage'
 import { DEFAULT_WORKOUT_PLAN_IMAGE, buildWorkoutPlanCoverImageUrl, applyWorkoutPlanImageFallback } from '@/utils/workoutPlanImage';
 import { countUniqueWorkoutPlanExercises } from '@/utils/workoutPlanExerciseCount';
 import { getPreviewDescriptionDisplay } from '@/utils/workoutPreviewDescription.mjs';
+import {
+  reconcileDayWeekAssignments,
+  renameDayInAssignments,
+  renameWeekInAssignments,
+  copyDayAssignment,
+} from '@/utils/workoutDayWeekAssignment.mjs';
 import { normalizeRecordingType } from '@/utils/exerciseRecordingFields';
 import Swal from 'sweetalert2';
 import { showConfirmDialog } from '@/utils/browserDialogs';
@@ -138,6 +144,8 @@ const dayGroups = ref([]);
 const weekGroups = ref([]);
 const dayGroupOrders = ref([]);
 const weekGroupOrders = ref([]);
+// In-memory day-to-week mapping ({ [normalized day name]: week label }); never saved or sent to the API.
+const dayWeekAssignments = ref({});
 const selectedScheduleGroup = ref(null);
 const expandedGroupIdByMode = ref({ day: null, week: null });
 const dayGroupIdentityMap = ref([]);
@@ -3220,6 +3228,7 @@ const resetPlannerDraft = ({ preserveSaveMessage = false } = {}) => {
   weekGroups.value = [];
   dayGroupOrders.value = [];
   weekGroupOrders.value = [];
+  dayWeekAssignments.value = {};
   selectedScheduleGroup.value = null;
   expandedGroupIdByMode.value = { day: null, week: null };
   dayGroupIdentityMap.value = [];
@@ -3397,6 +3406,10 @@ const hydratePlanner = (planner = {}, {
   ensureAccordionSelectionForMode('day');
   ensureAccordionSelectionForMode('week');
 
+  // In-memory only: unassigned days default to Week 1 (or the first week); nothing is saved during load.
+  dayWeekAssignments.value = {};
+  reconcileDayWeekAssignmentState();
+
   hasSavedWorkoutDetails.value = markSaved;
   inlineEditingDayName.value = '';
   inlineDayNameDraft.value = '';
@@ -3560,6 +3573,8 @@ const createWorkoutPlan = async () => {
     syncGroupOrders('week', weekGroups.value);
     ensureAccordionSelectionForMode('day');
     ensureAccordionSelectionForMode('week');
+    dayWeekAssignments.value = {};
+    reconcileDayWeekAssignmentState();
 
     selectedScheduleGroup.value = null;
     
@@ -3750,6 +3765,9 @@ const saveInlineDayNameEdit = () => {
     normalizeGroupKey(group) === normalizedOld ? suggestedName : group
   ));
   transferScheduleGroupIdentity(mode, oldName, suggestedName);
+  dayWeekAssignments.value = mode === 'week'
+    ? renameWeekInAssignments(dayWeekAssignments.value, oldName, suggestedName)
+    : renameDayInAssignments(dayWeekAssignments.value, oldName, suggestedName);
   syncGroupOrders(mode, target.value);
 
   workoutExercises.value = workoutExercises.value.map((exercise) => {
@@ -4046,6 +4064,9 @@ const duplicateScheduleGroup = (groupName) => {
   const nextGroups = [...targetRef.value];
   nextGroups.splice(sourceIndex + 1, 0, duplicateName);
   targetRef.value = nextGroups;
+  if (mode === 'day') {
+    dayWeekAssignments.value = copyDayAssignment(dayWeekAssignments.value, sourceName, duplicateName);
+  }
   syncGroupOrders(mode, targetRef.value);
 
   const sourceExercises = workoutExercises.value.filter(
@@ -4085,6 +4106,19 @@ watch(
   },
   { immediate: true }
 );
+
+const reconcileDayWeekAssignmentState = () => {
+  const result = reconcileDayWeekAssignments({
+    dayGroups: dayGroups.value,
+    weekGroups: weekGroups.value,
+    assignments: dayWeekAssignments.value,
+  });
+  if (result.changed) {
+    dayWeekAssignments.value = result.assignments;
+  }
+};
+
+watch([dayGroups, weekGroups], reconcileDayWeekAssignmentState, { deep: true });
 
 const isFirstScheduleGroup = (groupName) => {
   const normalized = String(groupName || '').trim().toLowerCase();
