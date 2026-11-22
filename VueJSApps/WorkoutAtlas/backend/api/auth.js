@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const dbConfig = require('../dbConfig');
 const { sanitizeText, parseNumber } = require('../utils/sanitize.js');
-const { persistDayWeekAssignments, extractDayWeekAssignments } = require('../utils/workoutPlanSettings');
+const { persistDayWeekAssignments, extractDayWeekAssignments, extractDayWeekAssignmentsById, remapAssignmentsById } = require('../utils/workoutPlanSettings');
 const {
   verifyGoogleIdToken,
   GoogleTokenVerificationError,
@@ -506,11 +506,19 @@ const assignFeaturedPlanToNewUser = async ({
       'SELECT settings_json FROM workout_schedules WHERE id = ? LIMIT 1',
       [featuredPlanId]
     );
+    // 0.85.313.a8.1: the id-keyed twin (same-named days in different weeks) is remapped to the copied group ids.
+    const remappedAssignmentsById = remapAssignmentsById(
+      extractDayWeekAssignmentsById(sourceSettingsRows?.[0]?.settings_json),
+      groupIdBySourceId
+    );
     await persistDayWeekAssignments(
       connection,
       clonedPlanId,
       { settings: { dayWeekAssignments: extractDayWeekAssignments(sourceSettingsRows?.[0]?.settings_json) } },
-      { hasSettingsJson: true }
+      {
+        hasSettingsJson: true,
+        assignmentsById: Object.keys(remappedAssignmentsById).length ? remappedAssignmentsById : null,
+      }
     );
   }
 

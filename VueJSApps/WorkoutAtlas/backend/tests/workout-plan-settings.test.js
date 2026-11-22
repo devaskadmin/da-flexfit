@@ -159,8 +159,9 @@ test('users.js wires settings_json persistence surgically and keeps the route ta
   assert.match(usersSource, /require\('\.\.\/utils\/workoutPlanSettings'\)/);
   assert.match(usersSource, /column_name = 'settings_json'/);
   assert.match(usersSource, /hasSettingsJson: false,/);
-  assert.match(usersSource, /await persistDayWeekAssignments\(connection, scheduleId, normalizedPlanner, \{\s*hasSettingsJson: schemaState\.hasSettingsJson,\s*\}\);/);
-  assert.match(usersSource, /dayWeekAssignments: schemaState\.hasSettingsJson\s*\?\s*extractDayWeekAssignments\(schedule\.settings_json\)/);
+  assert.match(usersSource, /await persistDayWeekAssignments\(connection, scheduleId, normalizedPlanner, \{\s*hasSettingsJson: schemaState\.hasSettingsJson,\s*\.\.\.plannerGroupSync,\s*\}\);/);
+  // 0.85.313.a8.1: the GET builder derives assignments through the group-identity view (legacy map unchanged when no id map / shared labels).
+  assert.match(usersSource, /dayWeekAssignments: schemaState\.hasSettingsJson\s*\?\s*groupView\.assignments/);
   assert.equal(/ADD COLUMN settings_json|ALTER TABLE[^`]*settings_json/i.test(usersSource), false);
   assert.equal((usersSource.match(/\brouter\.(get|post|put|patch|delete)\s*\(/g) || []).length, 37);
   // a3 wired the PUT route; a3.4 added the global schedule PATCH, global adopt, featured clone and plan-type conversion.

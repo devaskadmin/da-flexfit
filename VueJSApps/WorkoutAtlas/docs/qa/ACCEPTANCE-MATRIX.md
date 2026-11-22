@@ -254,8 +254,23 @@ Stage 1/10 re-verification (2026-11-21): branch name FAIL; 0.85.312 baseline PAS
 | A newly created week shows an empty schedule | Util tests, contract (empty-state message) | PASS (automated) |
 | Switching weeks keeps unsaved days, exercises, recording values and assignments; nothing saved | Contract (watcher touches no plan data) | PASS (automated, source contract) |
 | Save payload still carries every week, day, assignment and exercise | Contract | PASS (automated, source contract) |
-| Identical day names in separate weeks | Data model is keyed by day name; backend matches by label | BLOCKER (reported, not implemented; duplicates stay rejected with a message naming the other week) |
+| Identical day names in separate weeks | Data model was keyed by day name; backend matched by label | BLOCKER at a8 (resolved in a8.1 below) |
 | Add Week validation, Rename Week and day-card actions preserved; move up/down within the week | Contract; util tests (`moveDayAmongVisible`); a6/a7 suites | PASS (automated) |
 | Nothing above Workout Plan Information; no backend/DB/package change; PlanID 5 | Diff hunks all below the metadata form (plus import and helper state); no data access | PASS |
 | Regression | 12 frontend test files, 127 tests; Vite build passed | PASS |
 | Browser: filtered cards per week, Add Day top and bottom, empty new week, switching weeks keeps edits, move within a week, Add Week and Rename Week, save and reopen preserves all weeks | Not performed | PENDING USER ACCEPTANCE |
+
+## 0.85.313.a8.1 Schedule Identity Correction (2026-11-21)
+
+| Check | Evidence | Status |
+| --- | --- | --- |
+| Existing schema can safely support id-based identity (no migration) | Read-only mapping: no unique `(workout_schedule_id, label)` constraint, exercise link by group id, sessions by `workout_day_id` first | PASS (code and schema-source review; live index state unverified) |
+| Same day name in separate weeks keeps separate exercises and recording values | Backend identity tests `10/10`; frontend util and contract tests | PASS (automated; no live DB or browser) |
+| Rename keeps the group id, week assignment and exercises | Backend groups/identity tests; builder contract (`transferScheduleGroupIdentity`, override move) | PASS (automated, source contract) |
+| Legacy label-only payloads, legacy plans and existing day-to-week assignments unchanged | Backend groups, settings and global-persistence suites | PASS (automated) |
+| 37 `users.js` routes and their order preserved | Route list compared with `HEAD` | PASS |
+| No migration, schema change, production data write or package change; PlanID 5 untouched | `git status`/`git diff --stat` | PASS |
+| Backend regression | Focused suites `78/78`; full run 132 pass / 45 fail, all missing `express`/`mysql2` (no `node_modules`) | PASS (focused); BLOCKED (full run, environmental) |
+| Frontend regression and build | 13 test files, 140 tests pass; Vite build passed | PASS |
+| Label-keyed readers (global preview, `PUT /workout-schedules/:id/groups`, conversion engine, session label fallback) | Compatibility names for repeated labels; the last two still use the label path | LIMITATION |
+| Browser and live DB: same name in two weeks, rename, save and reopen, copy plan, existing plans, PlanID 5 intact | Not performed | PENDING USER ACCEPTANCE |

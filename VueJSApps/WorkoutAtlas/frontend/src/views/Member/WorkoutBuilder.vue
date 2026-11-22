@@ -28,6 +28,14 @@ import {
   assignDayToWeek,
   buildDuplicateDayMessage,
   moveDayAmongVisible,
+  findDayWithLabelInWeek,
+  resolveDayLabel,
+  buildUniqueDayKey,
+  setDayLabelOverride,
+  moveDayLabelOverride,
+  buildGroupEntries,
+  readGroupEntries,
+  matchSavedGroupIds,
 } from '@/utils/workoutDayWeekAssignment.mjs';
 import { normalizeRecordingType } from '@/utils/exerciseRecordingFields';
 import Swal from 'sweetalert2';
@@ -162,6 +170,9 @@ const dayGroupOrders = ref([]);
 const weekGroupOrders = ref([]);
 // In-memory day-to-week mapping ({ [normalized day name]: week label }); never saved or sent to the API.
 const dayWeekAssignments = ref({});
+// 0.85.313.a8.1: a day's internal key (what exercises and assignments refer to) is unique across the plan, but its
+// display label may repeat in another week. { [lowercase key]: real label } is kept only where the two differ.
+const dayLabelOverrides = ref({});
 // 0.85.313.a5: week shown in the Schedule Planner dropdown. UI state only: not saved, not sent to the API,
 // not part of unsaved-change detection, and it does not filter or change any day, week or assignment.
 const selectedWeek = ref('');
@@ -1361,6 +1372,10 @@ const storeUnsavedBuilderDraft = () => {
       weekGroups: weekGroups.value,
       dayGroupOrders: dayGroupOrders.value,
       weekGroupOrders: weekGroupOrders.value,
+      dayWeekAssignments: dayWeekAssignments.value,
+      dayLabelOverrides: dayLabelOverrides.value,
+      dayDbIds: collectScheduleGroupDbIds('day'),
+      weekDbIds: collectScheduleGroupDbIds('week'),
       selectedScheduleGroup: selectedScheduleGroup.value,
       planPublicationStatus: planPublicationStatus.value,
       selectedPublicationStatus: selectedPublicationStatus.value,
@@ -1403,6 +1418,17 @@ const restoreUnsavedBuilderDraft = () => {
     weekGroups.value = Array.isArray(snapshot.weekGroups) ? snapshot.weekGroups : weekGroups.value;
     dayGroupOrders.value = Array.isArray(snapshot.dayGroupOrders) ? snapshot.dayGroupOrders : dayGroupOrders.value;
     weekGroupOrders.value = Array.isArray(snapshot.weekGroupOrders) ? snapshot.weekGroupOrders : weekGroupOrders.value;
+    // 0.85.313.a8.1: keep each day's label, week assignment and saved database id with the restored draft.
+    dayLabelOverrides.value = snapshot.dayLabelOverrides && typeof snapshot.dayLabelOverrides === 'object' && !Array.isArray(snapshot.dayLabelOverrides)
+      ? snapshot.dayLabelOverrides
+      : {};
+    if (snapshot.dayWeekAssignments && typeof snapshot.dayWeekAssignments === 'object' && !Array.isArray(snapshot.dayWeekAssignments)) {
+      dayWeekAssignments.value = snapshot.dayWeekAssignments;
+    }
+    syncScheduleGroupIdentityMap('day', dayGroups.value);
+    syncScheduleGroupIdentityMap('week', weekGroups.value);
+    applyScheduleGroupDbIds('day', snapshot.dayDbIds);
+    applyScheduleGroupDbIds('week', snapshot.weekDbIds);
     selectedScheduleGroup.value = snapshot.selectedScheduleGroup ?? selectedScheduleGroup.value;
     planPublicationStatus.value = String(snapshot.planPublicationStatus || planPublicationStatus.value || 'draft').trim() || 'draft';
     selectedPublicationStatus.value = String(snapshot.selectedPublicationStatus || selectedPublicationStatus.value || planPublicationStatus.value).trim() || planPublicationStatus.value;
@@ -2475,7 +2501,7 @@ const WORKOUT_DAY_NAME_ALLOWED_PATTERN = /^[A-Za-z0-9&'() -]+$/;
 const WORKOUT_DAY_NAME_INLINE_ALLOWED_MESSAGE = 'Only letters, numbers, spaces, ampersands, hyphens, apostrophes, and parentheses are allowed.';
 
 const formatPlannerDayNameForDisplay = (value, maxLength = WORKOUT_DAY_NAME_DISPLAY_MAX_LENGTH) => {
-  const normalized = String(value ?? '').trim();
+  const normalized = String(resolveDayLabel(value, dayLabelOverrides.value) ?? '').trim();
 
   if (!normalized) {
     return '';
@@ -2575,6 +2601,35 @@ const resolveScheduleGroupNameFromId = (groupId, modeCandidate = scheduleMode.va
 
   return groupRef.value.find((groupName) => normalizeGroupKey(groupName) === identity.normalizedName) || '';
 };
+
+// 0.85.313.a8.1: the saved database id of a day or week lives on its identity entry. A rename moves the entry
+// (transferScheduleGroupIdentity), so the id survives; a group created in this session has none until it is saved.
+const getScheduleGroupDbId = (groupName, modeCandidate = scheduleMode.value) => {
+  const normalized = normalizeGroupKey(groupName);
+  if (!normalized) {
+    return null;
+  }
+  const hit = getGroupIdentityRefForMode(modeCandidate).value.find((entry) => entry?.normalizedName === normalized);
+  return hit?.dbId || null;
+};
+
+// Replaces the saved ids of every entry with the given map (entries missing from it lose any stale id).
+const applyScheduleGroupDbIds = (modeCandidate, idsByName = {}) => {
+  const identityRef = getGroupIdentityRefForMode(modeCandidate);
+  const source = idsByName && typeof idsByName === 'object' ? idsByName : {};
+  identityRef.value = identityRef.value.map((entry) => {
+    const rest = { ...(entry || {}) };
+    delete rest.dbId;
+    const id = Number(source[entry?.normalizedName]);
+    return Number.isInteger(id) && id > 0 ? { ...rest, dbId: id } : rest;
+  });
+};
+
+const collectScheduleGroupDbIds = (modeCandidate) => Object.fromEntries(
+  getGroupIdentityRefForMode(modeCandidate).value
+    .filter((entry) => entry?.dbId)
+    .map((entry) => [entry.normalizedName, entry.dbId])
+);
 
 const getExpandedGroupId = (modeCandidate = scheduleMode.value) => {
   const mode = normalizeScheduleMode(modeCandidate);
@@ -3229,6 +3284,7 @@ const buildPlannerDirtyState = () => {
     dayGroupOrders: Array.isArray(dayGroupOrders.value) ? dayGroupOrders.value : [],
     weekGroupOrders: Array.isArray(weekGroupOrders.value) ? weekGroupOrders.value : [],
     dayWeekAssignments: serializeDayWeekAssignments(dayWeekAssignments.value),
+    dayLabelOverrides: JSON.stringify(Object.keys(dayLabelOverrides.value || {}).sort().map((key) => [key, dayLabelOverrides.value[key]])),
     selectedScheduleGroup: selectedScheduleGroup.value || null,
     exercises: sanitizedExercises,
     planPublicationStatus: normalizePlanPublicationStatus(planPublicationStatus.value),
@@ -3280,6 +3336,7 @@ const resetPlannerDraft = ({ preserveSaveMessage = false } = {}) => {
   dayGroupOrders.value = [];
   weekGroupOrders.value = [];
   dayWeekAssignments.value = {};
+  dayLabelOverrides.value = {};
   selectedWeek.value = '';
   isWeekMenuOpen.value = false;
   isRenamingWeek.value = false;
@@ -3463,6 +3520,13 @@ const hydratePlanner = (planner = {}, {
 
   syncScheduleGroupIdentityMap('day', dayGroups.value);
   syncScheduleGroupIdentityMap('week', weekGroups.value);
+  // 0.85.313.a8.1: a loaded plan brings the saved database id and real label of every day and week.
+  // Planners without entries (older payloads) fall back to the name-only behaviour with no ids.
+  const loadedDayEntries = readGroupEntries(planner?.dayGroupEntries);
+  const loadedWeekEntries = readGroupEntries(planner?.weekGroupEntries);
+  dayLabelOverrides.value = loadedDayEntries?.labelOverrides || {};
+  applyScheduleGroupDbIds('day', loadedDayEntries?.ids || {});
+  applyScheduleGroupDbIds('week', loadedWeekEntries?.ids || {});
   ensureAccordionSelectionForMode('day');
   ensureAccordionSelectionForMode('week');
 
@@ -3642,6 +3706,9 @@ const createWorkoutPlan = async () => {
     ensureAccordionSelectionForMode('day');
     ensureAccordionSelectionForMode('week');
     dayWeekAssignments.value = {};
+    dayLabelOverrides.value = {};
+    applyScheduleGroupDbIds('day', {});
+    applyScheduleGroupDbIds('week', {});
     reconcileDayWeekAssignmentState();
 
     selectedScheduleGroup.value = null;
@@ -3705,15 +3772,21 @@ const addScheduleGroupFromValue = ({
   const target = getGroupRefForMode(mode);
   const normalizedName = normalizeGroupKey(name);
 
-  if (target.value.some((group) => normalizeGroupKey(group) === normalizedName)) {
+  // 0.85.313.a8.1: a day name only has to be unique inside its own week; the same label may be used in another
+  // week. Weeks keep plan-wide unique names.
+  const hasDuplicate = mode === 'day'
+    ? Boolean(findDayWithLabelInWeek({
+      name,
+      dayGroups: target.value,
+      weekGroups: weekGroups.value,
+      assignments: dayWeekAssignments.value,
+      week: selectedWeek.value,
+      labelOverrides: dayLabelOverrides.value,
+    }))
+    : target.value.some((group) => normalizeGroupKey(group) === normalizedName);
+  if (hasDuplicate) {
     const duplicateMessage = mode === 'day'
-      ? buildDuplicateDayMessage({
-        name,
-        dayGroups: target.value,
-        weekGroups: weekGroups.value,
-        assignments: dayWeekAssignments.value,
-        week: selectedWeek.value,
-      })
+      ? buildDuplicateDayMessage({ name, week: selectedWeek.value })
       : `${name} already exists.`;
     if (source === 'bottom') {
       scheduleGroupBottomEditorError.value = duplicateMessage;
@@ -3723,17 +3796,25 @@ const addScheduleGroupFromValue = ({
     return;
   }
 
-  target.value = [...target.value, name];
+  // The internal key stays unique plan-wide; a repeated label keeps its real name as a display override.
+  const groupKeyName = mode === 'day'
+    ? buildUniqueDayKey({ label: name, week: selectedWeek.value, dayGroups: target.value })
+    : name;
+
+  target.value = [...target.value, groupKeyName];
+  if (mode === 'day') {
+    dayLabelOverrides.value = setDayLabelOverride(dayLabelOverrides.value, groupKeyName, name);
+  }
   // 0.85.313.a8: a new day belongs to the week currently selected, from both the top and bottom Add Day controls.
   if (mode === 'day' && selectedWeek.value) {
-    dayWeekAssignments.value = assignDayToWeek(dayWeekAssignments.value, name, selectedWeek.value);
+    dayWeekAssignments.value = assignDayToWeek(dayWeekAssignments.value, groupKeyName, selectedWeek.value);
   }
   syncGroupOrders(mode, target.value);
   syncScheduleGroupIdentityMap(mode, target.value);
 
   if (collapsePreviousAndExpandNew || !selectedScheduleGroup.value) {
-    selectedScheduleGroup.value = name;
-    const newGroupId = getScheduleGroupId(name, mode);
+    selectedScheduleGroup.value = groupKeyName;
+    const newGroupId = getScheduleGroupId(groupKeyName, mode);
     if (newGroupId) {
       setExpandedGroupId(mode, newGroupId);
     }
@@ -3790,7 +3871,7 @@ const startInlineDayNameEdit = (groupName) => {
     setExpandedGroupId(scheduleMode.value, groupId);
   }
   inlineEditingDayName.value = name;
-  inlineDayNameDraft.value = name;
+  inlineDayNameDraft.value = resolveDayLabel(name, dayLabelOverrides.value);
   inlineDayNameError.value = '';
   plannerMessage.value = '';
 };
@@ -3812,6 +3893,11 @@ const handleInlineDayNameInput = () => {
   }
 };
 
+// Week the renamed day belongs to (its saved assignment, else the selected week).
+const weekOfDayForRename = (dayName) => String(
+  dayWeekAssignments.value?.[normalizeGroupKey(dayName)] || selectedWeek.value || ''
+).trim();
+
 const saveInlineDayNameEdit = () => {
   const mode = normalizeScheduleMode(scheduleMode.value);
   const target = getGroupRefForMode(mode);
@@ -3827,32 +3913,56 @@ const saveInlineDayNameEdit = () => {
   }
   inlineDayNameError.value = '';
 
-  const suggestedName = validation.value;
+  const suggestedLabel = validation.value;
+  const oldLabel = resolveDayLabel(oldName, dayLabelOverrides.value);
 
-  if (!suggestedName || suggestedName === oldName) {
+  if (!suggestedLabel || suggestedLabel === oldLabel) {
     clearScheduleGroupEdit();
     return;
   }
 
-  const normalizedNew = normalizeGroupKey(suggestedName);
   const normalizedOld = normalizeGroupKey(oldName);
-  if (target.value.some((group) => normalizeGroupKey(group) === normalizedNew)) {
+  // 0.85.313.a8.1: a day only clashes with another day of the same week. The renamed day itself never counts.
+  const hasDuplicate = mode === 'day'
+    ? Boolean(findDayWithLabelInWeek({
+      name: suggestedLabel,
+      dayGroups: target.value,
+      weekGroups: weekGroups.value,
+      assignments: dayWeekAssignments.value,
+      week: weekOfDayForRename(oldName),
+      labelOverrides: dayLabelOverrides.value,
+      ignoreDay: oldName,
+    }))
+    : target.value.some((group) => normalizeGroupKey(group) !== normalizedOld && normalizeGroupKey(group) === normalizeGroupKey(suggestedLabel));
+  if (hasDuplicate) {
     plannerMessage.value = mode === 'day'
-      ? buildDuplicateDayMessage({
-        name: suggestedName,
-        dayGroups: target.value,
-        weekGroups: weekGroups.value,
-        assignments: dayWeekAssignments.value,
-        week: selectedWeek.value,
-      })
-      : `${suggestedName} already exists.`;
+      ? buildDuplicateDayMessage({ name: suggestedLabel, week: weekOfDayForRename(oldName) })
+      : `${suggestedLabel} already exists.`;
     return;
   }
+
+  // The day keeps its saved database id (the identity entry moves with the key). Its internal key follows the
+  // new label while that is free; otherwise it gets a unique key and the label is kept as a display override.
+  const suggestedName = mode === 'day'
+    ? buildUniqueDayKey({
+      label: suggestedLabel,
+      week: weekOfDayForRename(oldName),
+      dayGroups: target.value,
+      ignoreDay: oldName,
+    })
+    : suggestedLabel;
 
   target.value = target.value.map((group) => (
     normalizeGroupKey(group) === normalizedOld ? suggestedName : group
   ));
   transferScheduleGroupIdentity(mode, oldName, suggestedName);
+  if (mode === 'day') {
+    dayLabelOverrides.value = setDayLabelOverride(
+      moveDayLabelOverride(dayLabelOverrides.value, oldName, suggestedName),
+      suggestedName,
+      suggestedLabel
+    );
+  }
   dayWeekAssignments.value = mode === 'week'
     ? renameWeekInAssignments(dayWeekAssignments.value, oldName, suggestedName)
     : renameDayInAssignments(dayWeekAssignments.value, oldName, suggestedName);
@@ -3890,6 +4000,9 @@ const removeScheduleGroup = (groupName) => {
     (group) => String(group || '').trim().toLowerCase() !== normalizedRemovedName
   );
   target.value = nextGroups;
+  if (mode === 'day') {
+    dayLabelOverrides.value = setDayLabelOverride(dayLabelOverrides.value, groupName, '');
+  }
   syncGroupOrders(mode, target.value);
 
   if (String(inlineEditingDayName.value || '').trim().toLowerCase() === normalizedRemovedName) {
@@ -4148,10 +4261,12 @@ const duplicateScheduleGroup = (groupName) => {
   if (sourceIndex < 0) return;
 
   let suffix = 2;
-  let duplicateName = `${sourceName} Copy`;
+  // 0.85.313.a8.1: the copy is named after the day's label (not its internal key) so it reads "Monday Copy".
+  const sourceLabel = mode === 'day' ? resolveDayLabel(sourceName, dayLabelOverrides.value) : sourceName;
+  let duplicateName = `${sourceLabel} Copy`;
   const lowerSet = new Set(targetRef.value.map((name) => String(name || '').trim().toLowerCase()));
   while (lowerSet.has(duplicateName.toLowerCase())) {
-    duplicateName = `${sourceName} Copy ${suffix}`;
+    duplicateName = `${sourceLabel} Copy ${suffix}`;
     suffix += 1;
   }
 
@@ -4362,10 +4477,42 @@ const plannerPayload = computed(() => ({
   weekGroups: weekGroups.value,
   dayGroupOrders: buildOrderEntries(dayGroups.value),
   weekGroupOrders: buildOrderEntries(weekGroups.value),
+  // 0.85.313.a8.1: groups are saved by identity. key = internal name (what exercises and assignments use),
+  // id = saved database id (null for a new group), label = the real display name (may repeat across weeks).
+  dayGroupEntries: buildGroupEntries({
+    names: dayGroups.value,
+    idByName: (name) => getScheduleGroupDbId(name, 'day'),
+    labelOverrides: dayLabelOverrides.value,
+  }),
+  weekGroupEntries: buildGroupEntries({
+    names: weekGroups.value,
+    idByName: (name) => getScheduleGroupDbId(name, 'week'),
+  }),
   settings: buildDayWeekAssignmentsSettings(dayWeekAssignments.value),
-  exercises: workoutExercises.value,
+  exercises: workoutExercises.value.map((exercise) => ({
+    ...exercise,
+    scheduleGroupKey: String(exercise?.scheduleGroup || '').trim(),
+  })),
   status: normalizePlanPublicationStatus(selectedPublicationStatus.value || planPublicationStatus.value),
 }));
+
+// 0.85.313.a8.1: after a save, groups created in this session pick up their database ids from the server's
+// response, so the next save updates them in place instead of recreating them. Matching is by saved order and
+// real label; if the response does not line up with what was sent, nothing changes.
+const adoptSavedGroupIds = (savedPlanner) => {
+  if (!savedPlanner || typeof savedPlanner !== 'object') {
+    return;
+  }
+  const sent = plannerPayload.value;
+  const dayIds = matchSavedGroupIds(sent.dayGroupEntries, savedPlanner.dayGroupEntries);
+  if (Object.keys(dayIds).length) {
+    applyScheduleGroupDbIds('day', dayIds);
+  }
+  const weekIds = matchSavedGroupIds(sent.weekGroupEntries, savedPlanner.weekGroupEntries);
+  if (Object.keys(weekIds).length) {
+    applyScheduleGroupDbIds('week', weekIds);
+  }
+};
 
 const sendAiSuggestion = async () => {
   const trimmedPrompt = aiPrompt.value.trim();
@@ -4613,6 +4760,7 @@ const persistWorkout = async (status = 'draft') => {
       }
 
       currentPlanId.value = targetPlanId;
+      adoptSavedGroupIds(scheduleData?.planner);
       selectedWorkoutId.value = targetPlanId;
       isCreatingWorkout.value = false;
       hasSavedWorkoutDetails.value = true;
@@ -4659,6 +4807,7 @@ const persistWorkout = async (status = 'draft') => {
 
     const data = await response.json();
     syncWorkoutPlannerCapabilities(data);
+    adoptSavedGroupIds(data?.planner);
     currentPlanId.value = String(data?.planner?.planId || currentPlanId.value || '').trim();
     selectedWorkoutId.value = currentPlanId.value;
     isCreatingWorkout.value = false;
@@ -5849,7 +5998,7 @@ watch(
                         <strong
                           v-else
                           class="day-title-editable"
-                          :title="day.name"
+                          :title="formatPlannerDayNameForDisplay(day.name, 200)"
                           @click.stop="startInlineDayNameEdit(day.name)"
                         >
                           {{ formatPlannerDayNameForDisplay(day.name) }}
@@ -5982,7 +6131,7 @@ watch(
 
                         <div class="day-panel-actions day-panel-actions--bottom">
                           <div class="day-footer-summary" @click.stop>
-                            <span class="day-footer-summary__name" :title="day.name">{{ formatPlannerDayNameForDisplay(day.name) }}</span>
+                            <span class="day-footer-summary__name" :title="formatPlannerDayNameForDisplay(day.name, 200)">{{ formatPlannerDayNameForDisplay(day.name) }}</span>
                             <span class="exercise-count">{{ day.exerciseCount }} exercise{{ day.exerciseCount === 1 ? '' : 's' }}</span>
                             <button
                               type="button"

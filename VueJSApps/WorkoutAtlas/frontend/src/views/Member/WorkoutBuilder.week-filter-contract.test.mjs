@@ -40,17 +40,18 @@ test('the day cards are built from the visible days only', () => {
 
 test('new days are assigned to the selected week from the shared handler used by top and bottom Add Day', () => {
   const body = bodyOf(script, 'const addScheduleGroupFromValue', '\nconst addScheduleGroup =');
-  assert.match(body, /dayWeekAssignments\.value = assignDayToWeek\(dayWeekAssignments\.value, name, selectedWeek\.value\)/);
+  assert.match(body, /dayWeekAssignments\.value = assignDayToWeek\(dayWeekAssignments\.value, groupKeyName, selectedWeek\.value\)/);
   assert.match(bodyOf(script, 'const addScheduleGroup = ', '\nconst addScheduleGroupBottom'), /addScheduleGroupFromValue\(/);
   assert.match(bodyOf(script, 'const addScheduleGroupBottom = ', '\nconst setActiveDay'), /addScheduleGroupFromValue\(/);
   assert.match(plannerTemplate, /@click="addScheduleGroup"/);
   assert.match(plannerTemplate, /@click="addScheduleGroupBottom"/);
 });
 
-test('identical day names stay rejected across weeks with a message naming the other week', () => {
+test('identical day names are rejected only inside the same week, with a message naming that week (a8.1)', () => {
   const body = bodyOf(script, 'const addScheduleGroupFromValue', '\nconst addScheduleGroup =');
-  assert.match(body, /buildDuplicateDayMessage\(/);
-  assert.match(body, /normalizeGroupKey\(group\) === normalizedName/);
+  assert.match(body, /findDayWithLabelInWeek\(/);
+  assert.match(body, /buildDuplicateDayMessage\(\{ name, week: selectedWeek\.value \}\)/);
+  assert.match(body, /buildUniqueDayKey\(/);
 });
 
 test('switching weeks changes only the display: no plan data, saves or selected day are touched', () => {

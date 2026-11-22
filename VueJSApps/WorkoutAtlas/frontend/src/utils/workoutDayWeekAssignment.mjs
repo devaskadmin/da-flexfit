@@ -240,27 +240,120 @@ export const assignDayToWeek = (assignments = {}, day, week) => {
 };
 
 /**
- * Message for a day name that already exists. Day names are unique across the whole plan
- * (exercises, saved groups and assignments are all keyed by day name), so a duplicate that lives
- * in another week says so instead of looking like a bug in the filtered view.
+ * 0.85.313.a8.1: a day name only has to be unique inside its own week. The same label may be used in
+ * another week because each day has its own internal key (see buildUniqueDayKey) and database id.
+ * Returns the internal key of the day in `week` that already uses `name` (case-insensitive), or ''.
+ * `ignoreDay` skips the day being renamed so it never collides with itself.
  */
-export const buildDuplicateDayMessage = ({
+export const findDayWithLabelInWeek = ({
   name = '',
   dayGroups = [],
   weekGroups = [],
   assignments = {},
   week = '',
+  labelOverrides = {},
+  ignoreDay = '',
+} = {}) => {
+  const labelKey = groupKey(name);
+  const weekKey = groupKey(week);
+  const ignoreKey = groupKey(ignoreDay);
+  if (!labelKey) {
+    return '';
+  }
+  const found = (Array.isArray(dayGroups) ? dayGroups : []).find((day) => {
+    if (ignoreKey && groupKey(day) === ignoreKey) {
+      return false;
+    }
+    if (groupKey(resolveDayLabel(day, labelOverrides)) !== labelKey) {
+      return false;
+    }
+    return !weekKey || groupKey(weekOfDay(assignments, weekGroups, day)) === weekKey;
+  });
+  return found === undefined ? '' : found;
+};
+
+/** Message for a day name that already exists in the same week. */
+export const buildDuplicateDayMessage = ({
+  name = '',
+  week = '',
 } = {}) => {
   const label = String(name ?? '').trim();
-  const existing = (Array.isArray(dayGroups) ? dayGroups : []).find((day) => groupKey(day) === groupKey(label));
-  if (existing === undefined) {
-    return `${label} already exists.`;
+  const weekLabel = String(week ?? '').trim();
+  return weekLabel ? `${label} already exists in ${weekLabel}.` : `${label} already exists.`;
+};
+
+/** Display label of a day: its saved label when it differs from the internal key, else the key itself. */
+export const resolveDayLabel = (name, labelOverrides = {}) => {
+  const raw = String(name ?? '').trim();
+  const override = labelOverrides && typeof labelOverrides === 'object'
+    ? labelOverrides[groupKey(raw)]
+    : '';
+  return typeof override === 'string' && override.trim() ? override.trim() : raw;
+};
+
+/**
+ * Internal key for a day with the display label `label` in `week`. The bare label is used while it is free;
+ * otherwise "<label> (<week>)" and finally "<label> (n)". Mirrors the compatibility names the API returns,
+ * so a reload yields the same keys. `ignoreDay` is the day being renamed (its own key does not count).
+ */
+export const buildUniqueDayKey = ({
+  label = '',
+  week = '',
+  dayGroups = [],
+  ignoreDay = '',
+} = {}) => {
+  const base = String(label ?? '').trim();
+  const ignoreKey = groupKey(ignoreDay);
+  const used = new Set(
+    (Array.isArray(dayGroups) ? dayGroups : [])
+      .filter((day) => !ignoreKey || groupKey(day) !== ignoreKey)
+      .map(groupKey)
+  );
+  if (!base || !used.has(groupKey(base))) {
+    return base;
   }
-  const existingWeek = weekOfDay(assignments, weekGroups, existing);
-  if (existingWeek && groupKey(existingWeek) !== groupKey(week)) {
-    return `${label} already exists in ${existingWeek}. Day names must be unique across all weeks.`;
+  const weekLabel = String(week ?? '').trim();
+  const withWeek = weekLabel ? `${base} (${weekLabel})` : '';
+  if (withWeek && !used.has(groupKey(withWeek))) {
+    return withWeek;
   }
-  return `${label} already exists.`;
+  let counter = 2;
+  while (used.has(groupKey(`${base} (${counter})`))) {
+    counter += 1;
+  }
+  return `${base} (${counter})`;
+};
+
+/** Returns new overrides with `key` shown as `label`; an override equal to the key is dropped. */
+export const setDayLabelOverride = (labelOverrides = {}, key, label) => {
+  const dayKey = groupKey(key);
+  const next = { ...(labelOverrides && typeof labelOverrides === 'object' ? labelOverrides : {}) };
+  if (!dayKey || BLOCKED_ASSIGNMENT_KEYS.has(dayKey)) {
+    return next;
+  }
+  const text = String(label ?? '').trim();
+  if (!text || text === String(key ?? '').trim()) {
+    delete next[dayKey];
+  } else {
+    next[dayKey] = text;
+  }
+  return next;
+};
+
+/** Moves an override from one key to another (rename); overrides of other days are untouched. */
+export const moveDayLabelOverride = (labelOverrides = {}, oldKey, newKey) => {
+  const from = groupKey(oldKey);
+  const to = groupKey(newKey);
+  const next = { ...(labelOverrides && typeof labelOverrides === 'object' ? labelOverrides : {}) };
+  if (!from || !to || from === to) {
+    return next;
+  }
+  const carried = next[from];
+  delete next[from];
+  if (carried && !BLOCKED_ASSIGNMENT_KEYS.has(to)) {
+    next[to] = carried;
+  }
+  return next;
 };
 
 /**
@@ -322,4 +415,87 @@ export const buildDayWeekAssignmentsSettings = (assignments = {}) => ({
 /** Order-independent snapshot used by unsaved-change detection. */
 export const serializeDayWeekAssignments = (assignments = {}) =>
   JSON.stringify(Object.keys(assignments || {}).sort().map((day) => [day, assignments[day]]));
+
+/**
+ * Save-payload entries for one family: { key, id, label, sortOrder } in list order.
+ * `key` is the internal name the exercises and assignments refer to, `id` the saved database id (null for a
+ * group created in this session) and `label` the real display name. The server matches groups by id only.
+ */
+export const buildGroupEntries = ({
+  names = [],
+  idByName = () => null,
+  labelOverrides = {},
+} = {}) =>
+  (Array.isArray(names) ? names : [])
+    .map((name) => String(name ?? '').trim())
+    .filter(Boolean)
+    .map((name, index) => {
+      const rawId = Number(idByName(name));
+      return {
+        key: name,
+        id: Number.isInteger(rawId) && rawId > 0 ? rawId : null,
+        label: resolveDayLabel(name, labelOverrides),
+        sortOrder: index + 1,
+      };
+    });
+
+/**
+ * Reads the entries a loaded planner carries (`dayGroupEntries` / `weekGroupEntries`).
+ * Returns { names, ids, labelOverrides }: names in saved order, ids as { [lowercase name]: id } and the
+ * label overrides for entries whose real label differs from the unique name. Without entries (older
+ * payloads) it returns null so the caller keeps the name-only behaviour.
+ */
+export const readGroupEntries = (rawEntries) => {
+  if (!Array.isArray(rawEntries) || !rawEntries.length) {
+    return null;
+  }
+  const names = [];
+  const ids = {};
+  let labelOverrides = {};
+  const seen = new Set();
+  [...rawEntries]
+    .map((entry, index) => ({ entry, index }))
+    .sort((left, right) => (Number(left.entry?.sortOrder || 0) - Number(right.entry?.sortOrder || 0)) || (left.index - right.index))
+    .forEach(({ entry }) => {
+      const key = String(entry?.key ?? entry?.label ?? '').trim();
+      const normalized = groupKey(key);
+      if (!normalized || seen.has(normalized) || BLOCKED_ASSIGNMENT_KEYS.has(normalized)) {
+        return;
+      }
+      seen.add(normalized);
+      names.push(key);
+      const id = Number(entry?.id);
+      if (Number.isInteger(id) && id > 0) {
+        ids[normalized] = id;
+      }
+      labelOverrides = setDayLabelOverride(labelOverrides, key, entry?.label);
+    });
+  return names.length ? { names, ids, labelOverrides } : null;
+};
+
+/**
+ * After a save, the server returns the saved entries. Entries are matched to the entries that were sent by
+ * position and real label (the server keeps the sent order), so newly created groups pick up their database
+ * ids and the next save updates them in place. Returns { [lowercase sent key]: id }.
+ */
+export const matchSavedGroupIds = (sentEntries = [], savedEntries = []) => {
+  const sent = Array.isArray(sentEntries) ? sentEntries : [];
+  const saved = [...(Array.isArray(savedEntries) ? savedEntries : [])]
+    .map((entry, index) => ({ entry, index }))
+    .sort((left, right) => (Number(left.entry?.sortOrder || 0) - Number(right.entry?.sortOrder || 0)) || (left.index - right.index))
+    .map(({ entry }) => entry);
+  const out = {};
+  if (sent.length !== saved.length) {
+    return out;
+  }
+  sent.forEach((entry, index) => {
+    const id = Number(saved[index]?.id);
+    const sameLabel = groupKey(saved[index]?.label) === groupKey(entry?.label);
+    const sentKey = groupKey(entry?.key);
+    if (sameLabel && sentKey && Number.isInteger(id) && id > 0) {
+      out[sentKey] = id;
+    }
+  });
+  return out;
+};
 

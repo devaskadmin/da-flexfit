@@ -23,10 +23,15 @@ const {
 const {
   normalizeDayWeekAssignments,
   hasIncomingDayWeekAssignments,
-  extractDayWeekAssignments,
   persistDayWeekAssignments,
 } = require('../utils/workoutPlanSettings');
-const { syncScheduleGroups, buildGroupKey } = require('../utils/workoutPlanGroups');
+const {
+  syncScheduleGroups,
+  normalizeIdentityEntries,
+  resolveExerciseGroupId,
+  resolveSavedAssignments,
+} = require('../utils/workoutPlanGroups');
+const { buildScheduleGroupView } = require('../utils/workoutScheduleGroupView');
 const { buildScheduleModeGroupFilterSql } = require('../utils/workoutScheduleGroupFilter');
 
 // ✅ DB Connect
@@ -1181,6 +1186,19 @@ const normalizePlannerPayload = (planner = {}) => {
   const defaultDayGroups = ['Any Day'];
   const defaultWeekGroups = ['Week 1'];
 
+  // 0.85.313.a8.1: identity entries ({ key, id, label, sortOrder }) let two days share a label.
+  // Labels are validated exactly like day/week names; keys are opaque request-local handles.
+  const dayIdentityEntries = normalizeIdentityEntries(planner.dayGroupEntries, 'day', {
+    validateLabel: validateWorkoutGroupLabel,
+    createError: buildBadRequestError,
+  });
+  const weekIdentityEntries = normalizeIdentityEntries(planner.weekGroupEntries, 'week', {
+    validateLabel: validateWorkoutGroupLabel,
+    createError: buildBadRequestError,
+  });
+  const dayEntryByKey = new Map(dayIdentityEntries.map((entry) => [entry.key.toLowerCase(), entry]));
+  const weekEntryByKey = new Map(weekIdentityEntries.map((entry) => [entry.key.toLowerCase(), entry]));
+
   const normalizeOrderEntries = (entries, fallbackGroups) => {
     const source = Array.isArray(entries) ? entries : [];
     const byLabel = new Map();
@@ -1213,7 +1231,9 @@ const normalizePlannerPayload = (planner = {}) => {
     };
   };
 
-  const incomingDayGroups = Array.isArray(planner.dayGroups)
+  const incomingDayGroups = dayIdentityEntries.length
+    ? dayIdentityEntries.map((entry) => entry.label)
+    : Array.isArray(planner.dayGroups)
     ? planner.dayGroups.map((v, index) => {
       const validation = validateWorkoutGroupLabel(v, { label: `Workout day ${index + 1}` });
       if (!validation.ok) {
@@ -1223,7 +1243,9 @@ const normalizePlannerPayload = (planner = {}) => {
     })
     : defaultDayGroups;
 
-  const incomingWeekGroups = Array.isArray(planner.weekGroups)
+  const incomingWeekGroups = weekIdentityEntries.length
+    ? weekIdentityEntries.map((entry) => entry.label)
+    : Array.isArray(planner.weekGroups)
     ? planner.weekGroups.map((v, index) => {
       const validation = validateWorkoutGroupLabel(v, { label: `Workout week ${index + 1}` });
       if (!validation.ok) {
@@ -1236,16 +1258,28 @@ const normalizePlannerPayload = (planner = {}) => {
   const normalizedDayGroupsBase = incomingDayGroups.length > 0 ? incomingDayGroups : defaultDayGroups;
   const normalizedWeekGroupsBase = incomingWeekGroups.length > 0 ? incomingWeekGroups : defaultWeekGroups;
 
-  const dayOrderInfo = normalizeOrderEntries(planner.dayGroupOrders, normalizedDayGroupsBase);
-  const weekOrderInfo = normalizeOrderEntries(planner.weekGroupOrders, normalizedWeekGroupsBase);
+  const dayOrderInfo = dayIdentityEntries.length
+    ? { orderedGroups: dayIdentityEntries.map((entry) => entry.label), orderEntries: dayIdentityEntries.map((entry) => ({ label: entry.label, sortOrder: entry.sortOrder })) }
+    : normalizeOrderEntries(planner.dayGroupOrders, normalizedDayGroupsBase);
+  const weekOrderInfo = weekIdentityEntries.length
+    ? { orderedGroups: weekIdentityEntries.map((entry) => entry.label), orderEntries: weekIdentityEntries.map((entry) => ({ label: entry.label, sortOrder: entry.sortOrder })) }
+    : normalizeOrderEntries(planner.weekGroupOrders, normalizedWeekGroupsBase);
 
   const normalizedDayGroups = dayOrderInfo.orderedGroups.length ? dayOrderInfo.orderedGroups : defaultDayGroups;
   const normalizedWeekGroups = weekOrderInfo.orderedGroups.length ? weekOrderInfo.orderedGroups : defaultWeekGroups;
   const mode = planner.scheduleMode === 'week' ? 'week' : 'day';
   const fallbackGroup = mode === 'week' ? normalizedWeekGroups[0] : normalizedDayGroups[0];
+  const modeEntryByKey = mode === 'week' ? weekEntryByKey : dayEntryByKey;
+  const modeEntries = mode === 'week' ? weekIdentityEntries : dayIdentityEntries;
 
   const exercises = Array.isArray(planner.exercises)
-    ? planner.exercises.map((exercise, index) => ({
+    ? planner.exercises.map((exercise, index) => {
+      // 0.85.313.a8.1: an exercise belongs to a group by key when identity entries are present.
+      const requestedKey = String(exercise?.scheduleGroupKey || exercise?.scheduleGroup || '').trim().toLowerCase();
+      const identityEntry = modeEntries.length
+        ? (modeEntryByKey.get(requestedKey) || (requestedKey ? null : modeEntries[0]))
+        : null;
+      return {
         id: String(exercise?.id || ''),
         exerciseId: Number(exercise?.exerciseId || 0),
         name: String(exercise?.name || '').trim(),
@@ -1260,7 +1294,8 @@ const normalizePlannerPayload = (planner = {}) => {
         distance: Number(exercise?.distance || 0),
         restTime: Number(exercise?.restTime || 0),
         notes: String(exercise?.notes || '').trim(),
-        scheduleGroup: (() => {
+        ...(identityEntry ? { scheduleGroupKey: identityEntry.key } : {}),
+        scheduleGroup: identityEntry ? identityEntry.label : (() => {
           const validation = validateWorkoutGroupLabel(exercise?.scheduleGroup || fallbackGroup, {
             label: `Workout ${mode === 'week' ? 'week' : 'day'} for exercise ${index + 1}`,
           });
@@ -1269,7 +1304,8 @@ const normalizePlannerPayload = (planner = {}) => {
           }
           return validation.value;
         })(),
-      }))
+      };
+    })
     : [];
 
   const metadata = {
@@ -1296,13 +1332,15 @@ const normalizePlannerPayload = (planner = {}) => {
     scheduleMode: mode,
     // 0.85.313.a3.2: lets the save path keep existing groups of a set the client did not send.
     groupSetsProvided: {
-      day: Array.isArray(planner.dayGroups) && planner.dayGroups.length > 0,
-      week: Array.isArray(planner.weekGroups) && planner.weekGroups.length > 0,
+      day: dayIdentityEntries.length > 0 || (Array.isArray(planner.dayGroups) && planner.dayGroups.length > 0),
+      week: weekIdentityEntries.length > 0 || (Array.isArray(planner.weekGroups) && planner.weekGroups.length > 0),
     },
     dayGroups: normalizedDayGroups,
     weekGroups: normalizedWeekGroups,
     dayGroupOrders: dayOrderInfo.orderEntries,
     weekGroupOrders: weekOrderInfo.orderEntries,
+    ...(dayIdentityEntries.length ? { dayGroupEntries: dayIdentityEntries } : {}),
+    ...(weekIdentityEntries.length ? { weekGroupEntries: weekIdentityEntries } : {}),
     metadata: {
       ...metadata,
       category: categoryValidation.isSet ? categoryValidation.value : null,
@@ -2246,32 +2284,44 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
   const scheduleMode = String(schedule.schedule_mode || 'day').trim().toLowerCase() === 'week' ? 'week' : 'day';
 
   const normalizedGroupRows = Array.isArray(groupRows) ? groupRows : [];
-  const dayGroupRows = normalizedGroupRows.filter((g) => {
-    const groupType = String(g?.group_type || '').trim().toLowerCase();
-    return ['day', 'any', 'section'].includes(groupType);
+  // 0.85.313.a8.1: group IDs are the identity. Days that share a label (different weeks) are exposed
+  // under unique compatibility names for label-keyed readers; dayGroupEntries carry id + real label.
+  const groupView = buildScheduleGroupView({
+    groupRows: normalizedGroupRows,
+    settingsJson: schemaState.hasSettingsJson ? schedule.settings_json : null,
   });
-  const weekGroupRows = normalizedGroupRows.filter((g) => String(g?.group_type || '').trim().toLowerCase() === 'week');
+  const dayGroupRows = groupView.days;
+  const weekGroupRows = groupView.weeks;
 
-  const dayGroups = dayGroupRows
-    .map((g) => String(g.label || '').trim())
-    .filter(Boolean);
-  const weekGroups = weekGroupRows
-    .map((g) => String(g.label || '').trim())
-    .filter(Boolean);
+  const dayGroups = dayGroupRows.map((g) => g.name).filter(Boolean);
+  const weekGroups = weekGroupRows.map((g) => g.name).filter(Boolean);
 
   const dayGroupOrders = dayGroupRows
     .map((g, index) => ({
-      label: String(g.label || '').trim(),
-      sortOrder: Number(g.sort_order || index + 1) || index + 1,
+      label: g.name,
+      sortOrder: Number(g.sortOrder || index + 1) || index + 1,
     }))
     .filter((entry) => entry.label);
 
   const weekGroupOrders = weekGroupRows
     .map((g, index) => ({
-      label: String(g.label || '').trim(),
-      sortOrder: Number(g.sort_order || index + 1) || index + 1,
+      label: g.name,
+      sortOrder: Number(g.sortOrder || index + 1) || index + 1,
     }))
     .filter((entry) => entry.label);
+
+  const dayGroupEntries = dayGroupRows.map((g, index) => ({
+    key: g.name,
+    id: g.id,
+    label: g.label,
+    sortOrder: Number(g.sortOrder || index + 1) || index + 1,
+  }));
+  const weekGroupEntries = weekGroupRows.map((g, index) => ({
+    key: g.name,
+    id: g.id,
+    label: g.label,
+    sortOrder: Number(g.sortOrder || index + 1) || index + 1,
+  }));
 
   const fallbackGroup = scheduleMode === 'week'
     ? (weekGroups[0] || 'Week 1')
@@ -2294,7 +2344,9 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
     distance: Number(row.target_distance_miles || 0),
     restTime: Number(row.target_rest_seconds || 0),
     notes: String(row.notes || '').trim(),
-    scheduleGroup: String(row.group_label || fallbackGroup).trim() || fallbackGroup,
+    scheduleGroup: String(
+      groupView.nameByGroupId.get(Number(row.workout_schedule_group_id || 0)) || row.group_label || fallbackGroup
+    ).trim() || fallbackGroup,
     sortOrder: Number(row.sort_order || 0),
   }));
 
@@ -2309,6 +2361,8 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
     weekGroups: weekGroups.length ? weekGroups : ['Week 1'],
     dayGroupOrders: dayGroupOrders.length ? dayGroupOrders : [{ label: 'Any Day', sortOrder: 1 }],
     weekGroupOrders: weekGroupOrders.length ? weekGroupOrders : [{ label: 'Week 1', sortOrder: 1 }],
+    dayGroupEntries,
+    weekGroupEntries,
     metadata: {
       name: String(schedule.title || '').trim(),
       description: String(schedule.description || '').trim(),
@@ -2329,7 +2383,7 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
     exercises,
     settings: {
       dayWeekAssignments: schemaState.hasSettingsJson
-        ? extractDayWeekAssignments(schedule.settings_json)
+        ? groupView.assignments
         : {},
     },
     status: String(schedule.status || 'draft').trim() || 'draft',
@@ -2378,10 +2432,11 @@ const replaceScheduleGroupsAndExercises = async (connection, scheduleId, planner
   const fallbackGroupLabel = mode === 'week' ? normalizedWeekGroups[0] : normalizedDayGroups[0];
   const exercises = Array.isArray(planner?.exercises) ? planner.exercises : [];
 
+  // 0.85.313.a8.1: identity entries of the active family map exercises by key (labels may repeat).
+
   for (let i = 0; i < exercises.length; i += 1) {
     const ex = exercises[i] || {};
-    const label = String(ex.scheduleGroup || fallbackGroupLabel || '').trim();
-    const groupId = groupIdByKey.get(buildGroupKey(mode, label)) || null;
+    const groupId = resolveExerciseGroupId(planner, mode, ex, groupIdByKey, fallbackGroupLabel);
 
     const insertColumns = [
       'workout_schedule_id',
@@ -2431,6 +2486,10 @@ const replaceScheduleGroupsAndExercises = async (connection, scheduleId, planner
       insertValues
     );
   }
+
+  // 0.85.313.a8.1: resolve the client's key-keyed day-to-week assignments to saved group ids so
+  // same-named days in different weeks keep separate assignments. null = legacy (name-only) save.
+  return resolveSavedAssignments(planner, groupIdByKey);
 };
 
 // New API: create draft schedule immediately (supports zero exercises)
@@ -2863,9 +2922,10 @@ router.post('/workout-schedules/:id/plan-type-conversion', async (req, res) => {
       planId: String(convertedPlanId),
       settings: sourcePlanner.settings,
     };
-    await replaceScheduleGroupsAndExercises(connection, convertedPlanId, convertedPlannerForSave);
+    const convertedGroupSync = await replaceScheduleGroupsAndExercises(connection, convertedPlanId, convertedPlannerForSave);
     await persistDayWeekAssignments(connection, convertedPlanId, convertedPlannerForSave, {
       hasSettingsJson: schemaState.hasSettingsJson,
+      ...convertedGroupSync,
     });
 
     coverCloneResult = await cloneWorkoutPlanCoverToPlan({
@@ -3878,10 +3938,11 @@ router.post('/global-workout-plans/:id/use', async (req, res) => {
       },
     };
 
-    await replaceScheduleGroupsAndExercises(connection, clonedScheduleId, plannerForClone);
+    const adoptedGroupSync = await replaceScheduleGroupsAndExercises(connection, clonedScheduleId, plannerForClone);
     // 0.85.313.a3.4: carry the source day-to-week assignments into the adopted copy.
     await persistDayWeekAssignments(connection, clonedScheduleId, plannerForClone, {
       hasSettingsJson: schemaState.hasSettingsJson,
+      ...adoptedGroupSync,
     });
 
     await cloneWorkoutPlanCoverToPlan({
@@ -4058,10 +4119,11 @@ router.post('/featured-workout-plans/:id/clone', async (req, res) => {
       },
     };
 
-    await replaceScheduleGroupsAndExercises(connection, clonedScheduleId, plannerForClone);
+    const clonedGroupSync = await replaceScheduleGroupsAndExercises(connection, clonedScheduleId, plannerForClone);
     // 0.85.313.a3.4: carry the source day-to-week assignments into the cloned copy.
     await persistDayWeekAssignments(connection, clonedScheduleId, plannerForClone, {
       hasSettingsJson: schemaState.hasSettingsJson,
+      ...clonedGroupSync,
     });
 
     await cloneWorkoutPlanCoverToPlan({
@@ -4613,10 +4675,11 @@ router.patch('/admin/global-workout-plans/:id/schedule', async (req, res) => {
       return res.status(404).json({ error: 'Global workout plan not found' });
     }
 
-    await replaceScheduleGroupsAndExercises(connection, scheduleId, normalizedPlanner);
+    const globalGroupSync = await replaceScheduleGroupsAndExercises(connection, scheduleId, normalizedPlanner);
     // 0.85.313.a3.4: global create/edit saves go through this route; keep day-to-week assignments.
     await persistDayWeekAssignments(connection, scheduleId, normalizedPlanner, {
       hasSettingsJson: schemaState.hasSettingsJson,
+      ...globalGroupSync,
     });
     await connection.commit();
 
@@ -5266,9 +5329,10 @@ router.put('/workout-planner', async (req, res) => {
       scheduleId = insertResult.insertId;
     }
 
-    await replaceScheduleGroupsAndExercises(connection, scheduleId, normalizedPlanner);
+    const plannerGroupSync = await replaceScheduleGroupsAndExercises(connection, scheduleId, normalizedPlanner);
     await persistDayWeekAssignments(connection, scheduleId, normalizedPlanner, {
       hasSettingsJson: schemaState.hasSettingsJson,
+      ...plannerGroupSync,
     });
     await connection.commit();
 

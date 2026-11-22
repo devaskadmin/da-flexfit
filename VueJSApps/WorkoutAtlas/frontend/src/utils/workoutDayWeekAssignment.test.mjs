@@ -20,6 +20,14 @@ import {
   getDaysForWeek,
   assignDayToWeek,
   buildDuplicateDayMessage,
+  findDayWithLabelInWeek,
+  resolveDayLabel,
+  buildUniqueDayKey,
+  setDayLabelOverride,
+  moveDayLabelOverride,
+  buildGroupEntries,
+  readGroupEntries,
+  matchSavedGroupIds,
   moveDayAmongVisible,
 } from './workoutDayWeekAssignment.mjs';
 
@@ -62,18 +70,86 @@ test('assignDayToWeek returns a new object, keeps other entries and blocks unsaf
   assert.equal(assignDayToWeek(assignments, '__proto__', 'Week 2'), assignments);
 });
 
-test('identical day names across weeks are rejected with a message that names the other week (blocker: data model is name-keyed)', () => {
+test('identical day names are only rejected inside the same week (a8.1: schedule identity is id-based)', () => {
   const args = {
     dayGroups: ['Push'],
     weekGroups: ['Week 1', 'Week 2'],
     assignments: { push: 'Week 1' },
   };
-  assert.equal(
-    buildDuplicateDayMessage({ ...args, name: 'push', week: 'Week 2' }),
-    'push already exists in Week 1. Day names must be unique across all weeks.'
-  );
-  assert.equal(buildDuplicateDayMessage({ ...args, name: 'PUSH', week: 'Week 1' }), 'PUSH already exists.');
-  assert.equal(buildDuplicateDayMessage({ ...args, name: 'Other', week: 'Week 1' }), 'Other already exists.');
+  assert.equal(buildDuplicateDayMessage({ name: 'push', week: 'Week 1' }), 'push already exists in Week 1.');
+  assert.equal(buildDuplicateDayMessage({ name: 'Other', week: '' }), 'Other already exists.');
+  assert.equal(findDayWithLabelInWeek({ ...args, name: 'PUSH', week: 'Week 1' }), 'Push');
+  assert.equal(findDayWithLabelInWeek({ ...args, name: 'push', week: 'Week 2' }), '');
+  assert.equal(findDayWithLabelInWeek({ ...args, name: 'Push', week: 'Week 1', ignoreDay: 'Push' }), '');
+});
+
+// 0.85.313.a8.1: stable identity helpers.
+test('buildUniqueDayKey keeps the bare label while free, then adds the week, then a counter', () => {
+  assert.equal(buildUniqueDayKey({ label: 'Monday', week: 'Week 2', dayGroups: [] }), 'Monday');
+  assert.equal(buildUniqueDayKey({ label: 'Monday', week: 'Week 2', dayGroups: ['Monday'] }), 'Monday (Week 2)');
+  assert.equal(buildUniqueDayKey({ label: 'monday', week: 'Week 2', dayGroups: ['Monday', 'Monday (Week 2)'] }), 'monday (2)');
+  assert.equal(buildUniqueDayKey({ label: 'Monday', week: 'Week 1', dayGroups: ['Monday'], ignoreDay: 'Monday' }), 'Monday');
+});
+
+test('label overrides resolve, move on rename and are dropped when equal to the key', () => {
+  const overrides = setDayLabelOverride({}, 'Monday (Week 2)', 'Monday');
+  assert.deepEqual(overrides, { 'monday (week 2)': 'Monday' });
+  assert.equal(resolveDayLabel('Monday (Week 2)', overrides), 'Monday');
+  assert.equal(resolveDayLabel('Tuesday', overrides), 'Tuesday');
+  assert.deepEqual(moveDayLabelOverride(overrides, 'Monday (Week 2)', 'Monday (2)'), { 'monday (2)': 'Monday' });
+  assert.deepEqual(setDayLabelOverride(overrides, 'Monday (Week 2)', ''), {});
+  assert.deepEqual(setDayLabelOverride({}, 'Chest', 'Chest'), {});
+  assert.deepEqual(overrides, { 'monday (week 2)': 'Monday' });
+});
+
+test('two weeks can hold days with the same label and each keeps its own key', () => {
+  const dayGroups = ['Monday', 'Monday (Week 2)'];
+  const overrides = { 'monday (week 2)': 'Monday' };
+  const assignments = { monday: 'Week 1', 'monday (week 2)': 'Week 2' };
+  const weekGroups = ['Week 1', 'Week 2'];
+  assert.deepEqual(getDaysForWeek({ dayGroups, weekGroups, assignments, week: 'Week 1' }), ['Monday']);
+  assert.deepEqual(getDaysForWeek({ dayGroups, weekGroups, assignments, week: 'Week 2' }), ['Monday (Week 2)']);
+  assert.equal(findDayWithLabelInWeek({ name: 'Monday', dayGroups, weekGroups, assignments, week: 'Week 2', labelOverrides: overrides }), 'Monday (Week 2)');
+  assert.equal(findDayWithLabelInWeek({ name: 'Monday', dayGroups, weekGroups, assignments, week: 'Week 3', labelOverrides: overrides }), '');
+});
+
+test('buildGroupEntries carries key, id, real label and order; ids default to null', () => {
+  const ids = { Monday: 11 };
+  const entries = buildGroupEntries({
+    names: ['Monday', 'Monday (Week 2)', ''],
+    idByName: (name) => ids[name] || null,
+    labelOverrides: { 'monday (week 2)': 'Monday' },
+  });
+  assert.deepEqual(entries, [
+    { key: 'Monday', id: 11, label: 'Monday', sortOrder: 1 },
+    { key: 'Monday (Week 2)', id: null, label: 'Monday', sortOrder: 2 },
+  ]);
+});
+
+test('readGroupEntries restores names, ids and label overrides; older payloads return null', () => {
+  assert.equal(readGroupEntries(undefined), null);
+  assert.equal(readGroupEntries([]), null);
+  const read = readGroupEntries([
+    { key: 'Monday (Week 2)', id: 22, label: 'Monday', sortOrder: 2 },
+    { key: 'Monday', id: 11, label: 'Monday', sortOrder: 1 },
+  ]);
+  assert.deepEqual(read.names, ['Monday', 'Monday (Week 2)']);
+  assert.deepEqual(read.ids, { monday: 11, 'monday (week 2)': 22 });
+  assert.deepEqual(read.labelOverrides, { 'monday (week 2)': 'Monday' });
+});
+
+test('matchSavedGroupIds adopts ids by order and label, and ignores a response that does not line up', () => {
+  const sent = [
+    { key: 'Monday', id: 11, label: 'Monday', sortOrder: 1 },
+    { key: 'Monday (Week 2)', id: null, label: 'Monday', sortOrder: 2 },
+  ];
+  const saved = [
+    { key: 'Monday', id: 11, label: 'Monday', sortOrder: 1 },
+    { key: 'Monday (Week 2)', id: 22, label: 'Monday', sortOrder: 2 },
+  ];
+  assert.deepEqual(matchSavedGroupIds(sent, saved), { monday: 11, 'monday (week 2)': 22 });
+  assert.deepEqual(matchSavedGroupIds(sent, saved.slice(0, 1)), {});
+  assert.deepEqual(matchSavedGroupIds(sent, [saved[0], { ...saved[1], label: 'Other' }]), { monday: 11 });
 });
 
 test('moveDayAmongVisible swaps with the visible neighbour and leaves hidden days in place', () => {

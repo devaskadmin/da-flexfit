@@ -102,7 +102,7 @@ const loadRouteModule = (relativePath, state) => {
       const row = state.schedules.find((sc) => sc.id === Number(params[0]) && sc.user_id === Number(params[1]));
       return [[row]];
     }
-    if (/^SELECT (label, group_type, sort_order, workout_log_display_order|id, label, group_type, sort_order) FROM workout_schedule_groups WHERE workout_schedule_id = \? ORDER BY sort_order ASC, id ASC$/.test(s)) {
+    if (/^SELECT (id, label, group_type, sort_order, workout_log_display_order|label, group_type, sort_order, workout_log_display_order|id, label, group_type, sort_order) FROM workout_schedule_groups WHERE workout_schedule_id = \? ORDER BY sort_order ASC, id ASC$/.test(s)) {
       const rows = state.groups
         .filter((g) => g.workout_schedule_id === Number(params[0]))
         .sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)
@@ -424,7 +424,8 @@ test('users.js keeps its 37 routes and the group-save routes are not touched by 
 test('workout-log.js and dashboard.js wire the shared filter and keep their route sets', () => {
   const log = fs.readFileSync(path.join(__dirname, '..', 'api', 'workout-log.js'), 'utf8');
   const dashboard = fs.readFileSync(path.join(__dirname, '..', 'api', 'dashboard.js'), 'utf8');
-  assert.match(log, /filterGroupsForScheduleMode\(allGroupRows, scheduleRow\.schedule_mode\)/);
-  assert.equal(log.split('filterGroupsForScheduleMode(allGroupRows').length - 1, 2);
+  // 0.85.313.a8.1: both day-order paths go through withDayDisplayLabels, which applies the shared filter once.
+  assert.match(log, /filterGroupsForScheduleMode\(allGroupRows, scheduleMode\)/);
+  assert.equal(log.split('withDayDisplayLabels(\n').length - 1 + log.split('withDayDisplayLabels(\r\n').length - 1, 2);
   assert.match(dashboard, /buildScheduleModeGroupFilterSql\('wsg', 'target_ws'\)/);
 });

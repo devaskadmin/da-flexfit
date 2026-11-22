@@ -46,9 +46,11 @@ test('selection defaults to Week 1 or the first week and is re-resolved on load 
 
 test('switching weeks never edits plan data or saves; the day cards are filtered only through visibleDayGroups (a8)', () => {
   // 0.85.313.a8: the one line that may combine selectedWeek with assignment data assigns a newly created day to the selected week.
+  // 0.85.313.a8.1: the same handler also passes selectedWeek to the per-week duplicate check and unique-key helpers (read-only).
   const uses = script.split('\n')
     .filter((line) => line.includes('selectedWeek'))
-    .filter((line) => !line.includes('dayWeekAssignments.value = assignDayToWeek('));
+    .filter((line) => !line.includes('dayWeekAssignments.value = assignDayToWeek('))
+    .filter((line) => !/buildUniqueDayKey\(|buildDuplicateDayMessage\(/.test(line));
   uses.forEach((line) => {
     assert.equal(/workoutExercises|dayGroups|weekGroups\.value\s*=|dayWeekAssignments\.value\s*=|fetch\(|persist|save/i.test(line), false, line);
   });

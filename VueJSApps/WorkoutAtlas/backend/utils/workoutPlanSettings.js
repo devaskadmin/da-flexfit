@@ -4,6 +4,10 @@
 // Nothing here creates or alters schema; if the column is absent it is a no-op.
 
 const DAY_WEEK_ASSIGNMENTS_KEY = 'dayWeekAssignments';
+// 0.85.313.a8.1: id-keyed twin of dayWeekAssignments ({ "<dayGroupId>": <weekGroupId> }) so two days
+// that share a display name in different weeks keep separate assignments. Stored in the same
+// settings_json column; no schema change.
+const DAY_WEEK_ASSIGNMENTS_BY_ID_KEY = 'dayWeekAssignmentsById';
 const MAX_ASSIGNMENT_ENTRIES = 200;
 const MAX_ASSIGNMENT_LABEL_LENGTH = 120;
 const BLOCKED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
@@ -30,6 +34,33 @@ const normalizeDayWeekAssignments = (raw) => {
       continue;
     }
     out[day] = week;
+    count += 1;
+  }
+  return out;
+};
+
+const toPositiveInt = (value) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+const normalizeDayWeekAssignmentsById = (raw) => {
+  const out = {};
+  if (!isPlainObject(raw)) {
+    return out;
+  }
+
+  let count = 0;
+  for (const [rawDayId, rawWeekId] of Object.entries(raw)) {
+    if (count >= MAX_ASSIGNMENT_ENTRIES) {
+      break;
+    }
+    const dayId = toPositiveInt(rawDayId);
+    const weekId = toPositiveInt(rawWeekId);
+    if (!dayId || !weekId) {
+      continue;
+    }
+    out[String(dayId)] = weekId;
     count += 1;
   }
   return out;
@@ -66,8 +97,15 @@ const extractDayWeekAssignments = (rawSettingsJson) => {
   return parsed.ok ? normalizeDayWeekAssignments(parsed.settings[DAY_WEEK_ASSIGNMENTS_KEY]) : {};
 };
 
+const extractDayWeekAssignmentsById = (rawSettingsJson) => {
+  const parsed = parseStoredSettings(rawSettingsJson);
+  return parsed.ok ? normalizeDayWeekAssignmentsById(parsed.settings[DAY_WEEK_ASSIGNMENTS_BY_ID_KEY]) : {};
+};
+
 // Merge assignments into existing settings, preserving every other key.
-const mergeDayWeekAssignmentsIntoSettings = (rawSettingsJson, assignments) => {
+// assignmentsById: an id-keyed map to store alongside the name-keyed one, or null/undefined to drop any
+// stored id-keyed map (a name-only save must not leave a stale id map that would override it).
+const mergeDayWeekAssignmentsIntoSettings = (rawSettingsJson, assignments, assignmentsById = null) => {
   const parsed = parseStoredSettings(rawSettingsJson);
   if (!parsed.ok) {
     return { ok: false, json: null };
@@ -76,12 +114,76 @@ const mergeDayWeekAssignmentsIntoSettings = (rawSettingsJson, assignments) => {
     ...parsed.settings,
     [DAY_WEEK_ASSIGNMENTS_KEY]: normalizeDayWeekAssignments(assignments),
   };
+  if (isPlainObject(assignmentsById)) {
+    merged[DAY_WEEK_ASSIGNMENTS_BY_ID_KEY] = normalizeDayWeekAssignmentsById(assignmentsById);
+  } else {
+    delete merged[DAY_WEEK_ASSIGNMENTS_BY_ID_KEY];
+  }
   return { ok: true, json: JSON.stringify(merged) };
 };
 
+// Resolves the client's name/key-keyed assignments ({ dayKeyLower: weekKeyOrLabel }) to database ids.
+// days / weeks: [{ key, label, id }] where id is the saved workout_schedule_groups.id.
+// Returns { assignmentsById, legacyAssignments }; legacyAssignments is the name-keyed map by REAL
+// label and only contains labels that are unique among the days (a shared label cannot key one week).
+const resolveAssignmentsToIds = ({ assignments, days = [], weeks = [] } = {}) => {
+  const lower = (value) => String(value ?? '').trim().toLowerCase();
+  const source = normalizeDayWeekAssignments(assignments);
+  const weekByName = new Map();
+  weeks.forEach((week) => {
+    const keyName = lower(week?.key);
+    const labelName = lower(week?.label);
+    if (keyName && !weekByName.has(keyName)) weekByName.set(keyName, week);
+    if (labelName && !weekByName.has(labelName)) weekByName.set(labelName, week);
+  });
+
+  const labelCounts = new Map();
+  days.forEach((day) => {
+    const labelName = lower(day?.label);
+    labelCounts.set(labelName, (labelCounts.get(labelName) || 0) + 1);
+  });
+
+  const assignmentsById = {};
+  const legacyAssignments = {};
+  days.forEach((day) => {
+    const week = weekByName.get(lower(source[lower(day?.key)]));
+    const dayId = toPositiveInt(day?.id);
+    const weekId = toPositiveInt(week?.id);
+    if (!week || !dayId || !weekId) {
+      return;
+    }
+    assignmentsById[String(dayId)] = weekId;
+    if (labelCounts.get(lower(day?.label)) === 1) {
+      legacyAssignments[lower(day?.label)] = String(week.label || '').trim();
+    }
+  });
+
+  return { assignmentsById, legacyAssignments };
+};
+
+// Remaps a stored id-keyed map when groups are copied to another schedule (oldId -> newId).
+const remapAssignmentsById = (assignmentsById, idMap) => {
+  const out = {};
+  const source = normalizeDayWeekAssignmentsById(assignmentsById);
+  for (const [dayId, weekId] of Object.entries(source)) {
+    const nextDay = toPositiveInt(idMap?.get?.(Number(dayId)));
+    const nextWeek = toPositiveInt(idMap?.get?.(Number(weekId)));
+    if (nextDay && nextWeek) {
+      out[String(nextDay)] = nextWeek;
+    }
+  }
+  return out;
+};
+
 // Saves assignments inside the caller's transaction. Never touches other columns.
+// Options a8.1: assignmentsById (+ optional legacyAssignments) override the planner's name-keyed map when the
+// save resolved group identities; omit them for a name-only save.
 // Returns { persisted, reason }.
-const persistDayWeekAssignments = async (db, scheduleId, planner, { hasSettingsJson = false } = {}) => {
+const persistDayWeekAssignments = async (db, scheduleId, planner, {
+  hasSettingsJson = false,
+  assignmentsById = null,
+  legacyAssignments = null,
+} = {}) => {
   if (!hasSettingsJson) {
     return { persisted: false, reason: 'settings_json column unavailable' };
   }
@@ -97,7 +199,12 @@ const persistDayWeekAssignments = async (db, scheduleId, planner, { hasSettingsJ
     return { persisted: false, reason: 'schedule not found' };
   }
 
-  const merged = mergeDayWeekAssignmentsIntoSettings(rows[0]?.settings_json, planner.settings[DAY_WEEK_ASSIGNMENTS_KEY]);
+  const useIdMap = isPlainObject(assignmentsById);
+  const merged = mergeDayWeekAssignmentsIntoSettings(
+    rows[0]?.settings_json,
+    useIdMap && isPlainObject(legacyAssignments) ? legacyAssignments : planner.settings[DAY_WEEK_ASSIGNMENTS_KEY],
+    useIdMap ? assignmentsById : null
+  );
   if (!merged.ok) {
     return { persisted: false, reason: 'stored settings_json is not an object' };
   }
@@ -108,11 +215,16 @@ const persistDayWeekAssignments = async (db, scheduleId, planner, { hasSettingsJ
 
 module.exports = {
   DAY_WEEK_ASSIGNMENTS_KEY,
+  DAY_WEEK_ASSIGNMENTS_BY_ID_KEY,
   MAX_ASSIGNMENT_ENTRIES,
   normalizeDayWeekAssignments,
+  normalizeDayWeekAssignmentsById,
   hasIncomingDayWeekAssignments,
   parseStoredSettings,
   extractDayWeekAssignments,
+  extractDayWeekAssignmentsById,
   mergeDayWeekAssignmentsIntoSettings,
+  resolveAssignmentsToIds,
+  remapAssignmentsById,
   persistDayWeekAssignments,
 };

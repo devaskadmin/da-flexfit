@@ -371,8 +371,9 @@ test('users.js saves groups through the shared sync helper and keeps the route t
   const usersSource = fs.readFileSync(path.join(__dirname, '../api/users.js'), 'utf8');
   assert.match(usersSource, /require\('\.\.\/utils\/workoutPlanGroups'\)/);
   assert.match(usersSource, /await syncScheduleGroups\(connection, scheduleId, planner, \{/);
-  assert.match(usersSource, /groupIdByKey\.get\(buildGroupKey\(mode, label\)\)/);
-  assert.match(usersSource, /groupSetsProvided: \{\s*day: Array\.isArray\(planner\.dayGroups\)/);
+  // a8.1: exercise-to-group resolution moved into the shared helper (still family + label unless entries are sent).
+  assert.match(usersSource, /resolveExerciseGroupId\(planner, mode, ex, groupIdByKey, fallbackGroupLabel\)/);
+  assert.match(usersSource, /groupSetsProvided: \{\s*day: dayIdentityEntries\.length > 0 \|\| \(Array\.isArray\(planner\.dayGroups\)/);
   // The delete-all-groups step is gone from the shared save helper.
   const helperStart = usersSource.indexOf('const replaceScheduleGroupsAndExercises');
   const helperEnd = usersSource.indexOf("router.post('/workout-schedules'", helperStart);
@@ -381,8 +382,8 @@ test('users.js saves groups through the shared sync helper and keeps the route t
   assert.equal(/INSERT INTO workout_schedule_groups/.test(helperSource), false);
   assert.match(helperSource, /DELETE FROM workout_schedule_exercises WHERE workout_schedule_id = \?/);
   // Load side still splits day and week groups by group_type.
-  assert.match(usersSource, /\['day', 'any', 'section'\]\.includes\(groupType\)/);
-  assert.match(usersSource, /String\(g\?\.group_type \|\| ''\)\.trim\(\)\.toLowerCase\(\) === 'week'/);
+  assert.match(usersSource, /\['day', 'any', 'section'\]\.includes\(groupType\)|buildScheduleGroupView\(\{/);
+  assert.match(usersSource, /String\(g\?\.group_type \|\| ''\)\.trim\(\)\.toLowerCase\(\) === 'week'|groupView\.weeks/);
   assert.equal((usersSource.match(/\brouter\.(get|post|put|patch|delete)\s*\(/g) || []).length, 37);
   assert.equal(/ADD COLUMN|CREATE TABLE/i.test(helperSource), false);
 });

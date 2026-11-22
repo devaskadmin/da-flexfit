@@ -140,15 +140,16 @@ const readSource = (relative) => fs.readFileSync(path.join(__dirname, relative),
 test('users.js persists assignments after the group/exercise replace in every global, clone and adopt path', () => {
   const usersSource = readSource('../api/users.js');
 
-  const globalSave = /await replaceScheduleGroupsAndExercises\(connection, scheduleId, normalizedPlanner\);\s*(?:\/\/[^\n]*\n\s*)?await persistDayWeekAssignments\(connection, scheduleId, normalizedPlanner, \{\s*hasSettingsJson: schemaState\.hasSettingsJson,\s*\}\);\s*await connection\.commit\(\);/g;
+  // 0.85.313.a8.1: each replace now returns the resolved group-id assignments, spread into the persist options.
+  const globalSave = /const (\w+) = await replaceScheduleGroupsAndExercises\(connection, scheduleId, normalizedPlanner\);\s*(?:\/\/[^\n]*\n\s*)?await persistDayWeekAssignments\(connection, scheduleId, normalizedPlanner, \{\s*hasSettingsJson: schemaState\.hasSettingsJson,\s*\.\.\.\1,\s*\}\);\s*await connection\.commit\(\);/g;
   // PUT /workout-planner (a3) and PATCH /admin/global-workout-plans/:id/schedule (a3.4).
   assert.equal((usersSource.match(globalSave) || []).length, 2);
 
-  const cloneAdopt = /await replaceScheduleGroupsAndExercises\(connection, clonedScheduleId, plannerForClone\);\s*(?:\/\/[^\n]*\n\s*)?await persistDayWeekAssignments\(connection, clonedScheduleId, plannerForClone, \{\s*hasSettingsJson: schemaState\.hasSettingsJson,\s*\}\);\s*await cloneWorkoutPlanCoverToPlan/g;
+  const cloneAdopt = /const (\w+) = await replaceScheduleGroupsAndExercises\(connection, clonedScheduleId, plannerForClone\);\s*(?:\/\/[^\n]*\n\s*)?await persistDayWeekAssignments\(connection, clonedScheduleId, plannerForClone, \{\s*hasSettingsJson: schemaState\.hasSettingsJson,\s*\.\.\.\1,\s*\}\);\s*await cloneWorkoutPlanCoverToPlan/g;
   // POST /global-workout-plans/:id/use and POST /featured-workout-plans/:id/clone.
   assert.equal((usersSource.match(cloneAdopt) || []).length, 2);
 
-  const conversion = /const convertedPlannerForSave = \{\s*\.\.\.convertedPlannerPayload,\s*planId: String\(convertedPlanId\),\s*settings: sourcePlanner\.settings,\s*\};\s*await replaceScheduleGroupsAndExercises\(connection, convertedPlanId, convertedPlannerForSave\);\s*await persistDayWeekAssignments\(connection, convertedPlanId, convertedPlannerForSave, \{\s*hasSettingsJson: schemaState\.hasSettingsJson,\s*\}\);/;
+  const conversion = /const convertedPlannerForSave = \{\s*\.\.\.convertedPlannerPayload,\s*planId: String\(convertedPlanId\),\s*settings: sourcePlanner\.settings,\s*\};\s*const (\w+) = await replaceScheduleGroupsAndExercises\(connection, convertedPlanId, convertedPlannerForSave\);\s*await persistDayWeekAssignments\(connection, convertedPlanId, convertedPlannerForSave, \{\s*hasSettingsJson: schemaState\.hasSettingsJson,\s*\.\.\.\1,\s*\}\);/;
   assert.match(usersSource, conversion);
 
   assert.equal(usersSource.split('persistDayWeekAssignments(connection').length - 1, 5);
