@@ -1226,20 +1226,9 @@ const normalizePlannerPayload = (planner = {}) => {
   const weekOrderInfo = normalizeOrderEntries(planner.weekGroupOrders, normalizedWeekGroupsBase);
 
   const normalizedDayGroups = dayOrderInfo.orderedGroups.length ? dayOrderInfo.orderedGroups : defaultDayGroups;
-  const orderedWeekGroups = weekOrderInfo.orderedGroups.length ? weekOrderInfo.orderedGroups : defaultWeekGroups;
-  const normalizedWeekGroups = orderedWeekGroups.some((week) => String(week).toLowerCase() === 'week 1')
-    ? orderedWeekGroups.map((week) => String(week).toLowerCase() === 'week 1' ? 'Week 1' : week)
-    : ['Week 1', ...orderedWeekGroups];
-  const normalizedAssignments = {};
-  for (const day of normalizedDayGroups) {
-    const exactKey = Object.keys(planner?.dayGroupWeekAssignments || {}).find((key) => String(key).trim().toLowerCase() === day.toLowerCase());
-    const candidate = exactKey ? String(planner.dayGroupWeekAssignments[exactKey] || '').trim() : '';
-    const matchedWeek = normalizedWeekGroups.find((week) => week.toLowerCase() === candidate.toLowerCase());
-    normalizedAssignments[day] = matchedWeek || 'Week 1';
-  }
-  const requestedSelectedWeek = String(planner?.selectedWeekName || '').trim();
-  const selectedWeekName = normalizedWeekGroups.find((week) => week.toLowerCase() === requestedSelectedWeek.toLowerCase()) || 'Week 1';
+  const normalizedWeekGroups = weekOrderInfo.orderedGroups.length ? weekOrderInfo.orderedGroups : defaultWeekGroups;
   const mode = planner.scheduleMode === 'week' ? 'week' : 'day';
+  const fallbackGroup = mode === 'week' ? normalizedWeekGroups[0] : normalizedDayGroups[0];
 
   const exercises = Array.isArray(planner.exercises)
     ? planner.exercises.map((exercise, index) => ({
@@ -1293,8 +1282,6 @@ const normalizePlannerPayload = (planner = {}) => {
     scheduleMode: mode,
     dayGroups: normalizedDayGroups,
     weekGroups: normalizedWeekGroups,
-    dayGroupWeekAssignments: normalizedAssignments,
-    selectedWeekName: normalizedWeekGroups.find((week) => week.toLowerCase() === String(persistedAssignmentState?.selectedWeekName || '').trim().toLowerCase()) || 'Week 1',
     dayGroupOrders: dayOrderInfo.orderEntries,
     weekGroupOrders: weekOrderInfo.orderEntries,
     metadata: {
@@ -2134,19 +2121,58 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
   }
 
   const schedule = scheduleRows[0];
-  let persistedAssignmentState = {};
-  try {
-    const settingsSource = schedule.settings_json;
-    const settings = typeof settingsSource === 'string' ? JSON.parse(settingsSource || '{}') : (settingsSource || {});
-    persistedAssignmentState = settings?.workoutPlanner && typeof settings.workoutPlanner === 'object'
-      ? settings.workoutPlanner
-      : {};
-  } catch (_) {
-    persistedAssignmentState = {};
+  let sourceGlobalPlanName = '';
+  let linkedGoal = null;
+
+  if (schemaState.hasSourceGlobalPlanId) {
+    const sourceGlobalPlanId = Number(schedule?.source_global_plan_id || 0);
+    if (sourceGlobalPlanId > 0) {
+      const [[sourceRow]] = await pool.query(
+        `SELECT title
+         FROM workout_schedules
+         WHERE id = ?
+         LIMIT 1`,
+        [sourceGlobalPlanId]
+      );
+      sourceGlobalPlanName = String(sourceRow?.title || '').trim();
+    }
   }
-  const persistedDayAssignments = persistedAssignmentState?.dayGroupWeekAssignments && typeof persistedAssignmentState.dayGroupWeekAssignments === 'object'
-    ? persistedAssignmentState.dayGroupWeekAssignments
-    : {};
+
+  if (schemaState.hasLinkedGoalId) {
+    const linkedGoalId = parseLinkedGoalId(schedule?.linked_goal_id);
+    if (linkedGoalId) {
+      const [goalRows] = await pool.query(
+        `SELECT
+          ug.id,
+          ug.goal_type,
+          ug.exercise_id,
+          COALESCE(ug.exercise_name, e.ExerciseTitle, '') AS exercise_name,
+          ug.target_value,
+          ug.target_unit,
+          ug.target_date,
+          ug.status
+         FROM user_goals ug
+         LEFT JOIN exercises e ON e.ExerciseID = ug.exercise_id
+         WHERE ug.id = ? AND ug.user_id = ?
+         LIMIT 1`,
+        [linkedGoalId, userId]
+      );
+
+      if (goalRows.length) {
+        const row = goalRows[0] || {};
+        linkedGoal = {
+          id: Number(row.id || 0),
+          goalType: String(row.goal_type || '').trim(),
+          exerciseId: Number(row.exercise_id || 0) || null,
+          exerciseName: String(row.exercise_name || '').trim(),
+          targetValue: Number(row.target_value || 0),
+          targetUnit: String(row.target_unit || 'lb').trim() || 'lb',
+          targetDate: row.target_date ? String(row.target_date) : '',
+          status: String(row.status || '').trim(),
+        };
+      }
+    }
+  }
 
   const groupSelectFields = schemaState.hasWorkoutLogDisplayOrder
     ? 'id, label, group_type, sort_order, workout_log_display_order'
@@ -2223,9 +2249,9 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
     }))
     .filter((entry) => entry.label);
 
-  const fallbackGroup = mode === 'week'
-    ? (normalizedWeekGroups[0] || 'Week 1')
-    : (normalizedDayGroups[0] || 'Any Day');
+  const fallbackGroup = scheduleMode === 'week'
+    ? (weekGroups[0] || 'Week 1')
+    : (dayGroups[0] || 'Any Day');
 
   const normalizedExerciseRows = Array.isArray(exerciseRows) ? exerciseRows : [];
   const exercises = normalizedExerciseRows.map((row) => ({
@@ -2248,11 +2274,6 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
     sortOrder: Number(row.sort_order || 0),
   }));
 
-  const dayAssignments = persistedAssignmentState?.dayGroupWeekAssignments || {};
-  const normalizedDayAssignments = Object.fromEntries(
-    Object.entries(dayAssignments).map(([day, week]) => [String(day).trim(), String(week).trim()])
-  );
-
   return {
     version: 2,
     planId: String(schedule.id),
@@ -2261,11 +2282,9 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
       ? Number(schedule.use_custom_workout_log_order || 0) === 1
       : false,
     dayGroups: dayGroups.length ? dayGroups : ['Any Day'],
-    weekGroups: normalizedWeekGroups,
-    dayGroupWeekAssignments: normalizedDayAssignments,
-    selectedWeekName: normalizedWeekGroups.find((week) => week.toLowerCase() === String(persistedAssignmentState?.selectedWeekName || '').trim().toLowerCase()) || 'Week 1',
-    dayGroupOrders: dayOrderInfo.orderEntries,
-    weekGroupOrders: weekOrderInfo.orderEntries,
+    weekGroups: weekGroups.length ? weekGroups : ['Week 1'],
+    dayGroupOrders: dayGroupOrders.length ? dayGroupOrders : [{ label: 'Any Day', sortOrder: 1 }],
+    weekGroupOrders: weekGroupOrders.length ? weekGroupOrders : [{ label: 'Week 1', sortOrder: 1 }],
     metadata: {
       name: String(schedule.title || '').trim(),
       description: String(schedule.description || '').trim(),
@@ -2293,7 +2312,7 @@ const buildPlannerFromSchedule = async (scheduleId, userId) => {
 const replaceScheduleGroupsAndExercises = async (connection, scheduleId, planner) => {
   const schemaState = await getWorkoutPlannerSchemaState(connection);
 
-  const mode = planner.scheduleMode === 'week' ? 'week' : 'day';
+  const mode = planner?.scheduleMode === 'week' ? 'week' : 'day';
   const inputDayGroups = Array.isArray(planner?.dayGroups) ? planner.dayGroups : [];
   const inputWeekGroups = Array.isArray(planner?.weekGroups) ? planner.weekGroups : [];
 
@@ -2301,48 +2320,117 @@ const replaceScheduleGroupsAndExercises = async (connection, scheduleId, planner
   const weekGroups = inputWeekGroups.map((v) => String(v || '').trim()).filter(Boolean);
 
   const normalizedDayGroups = dayGroups.length ? dayGroups : ['Any Day'];
-  const normalizedWeekGroupsBase = weekGroups.length ? weekGroups : ['Week 1'];
-  const normalizedWeekGroups = normalizedWeekGroupsBase.some((week) => String(week).toLowerCase() === 'week 1')
-    ? normalizedWeekGroupsBase.map((week) => String(week).toLowerCase() === 'week 1' ? 'Week 1' : week)
-    : ['Week 1', ...normalizedWeekGroupsBase];
+  const normalizedWeekGroups = weekGroups.length ? weekGroups : ['Week 1'];
+
+  const incomingDayOrders = Array.isArray(planner?.dayGroupOrders) ? planner.dayGroupOrders : [];
+  const incomingWeekOrders = Array.isArray(planner?.weekGroupOrders) ? planner.weekGroupOrders : [];
+
+  const findSortOrder = (entries, label, fallbackIndex) => {
+    const normalizedLabel = String(label || '').trim().toLowerCase();
+    const found = entries.find((entry) => String(entry?.label || '').trim().toLowerCase() === normalizedLabel);
+    const parsed = Number(found?.sortOrder);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackIndex + 1;
+  };
+
+  const groupEntries = mode === 'week'
+    ? normalizedWeekGroups
+      .map((label, index) => ({
+        label,
+        groupType: 'week',
+        sortOrder: findSortOrder(incomingWeekOrders, label, index),
+      }))
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+    : normalizedDayGroups
+      .map((label, index) => ({
+        label,
+        groupType: label.toLowerCase() === 'any day' ? 'any' : 'day',
+        sortOrder: findSortOrder(incomingDayOrders, label, index),
+      }))
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  let scheduleRow = null;
+  if (schemaState.hasUseCustomWorkoutLogOrder) {
+    const [rows] = await connection.query(
+      `SELECT use_custom_workout_log_order
+       FROM workout_schedules
+       WHERE id = ?
+       LIMIT 1`,
+      [scheduleId]
+    );
+    scheduleRow = rows?.[0] || null;
+  }
+
+  const preserveCustomWorkoutLogOrder = schemaState.hasUseCustomWorkoutLogOrder
+    ? Number(scheduleRow?.use_custom_workout_log_order || 0) === 1
+    : false;
+  const existingWorkoutLogOrderByLabel = new Map();
+
+  if (preserveCustomWorkoutLogOrder && schemaState.hasWorkoutLogDisplayOrder) {
+    const [existingGroupRows] = await connection.query(
+      `SELECT label, workout_log_display_order
+       FROM workout_schedule_groups
+       WHERE workout_schedule_id = ?
+         AND workout_log_display_order IS NOT NULL`,
+      [scheduleId]
+    );
+
+    for (const row of existingGroupRows) {
+      const normalizedLabel = String(row?.label || '').trim().toLowerCase();
+      const orderValue = Number(row?.workout_log_display_order);
+      if (!normalizedLabel || !Number.isFinite(orderValue) || orderValue <= 0) {
+        continue;
+      }
+      existingWorkoutLogOrderByLabel.set(normalizedLabel, orderValue);
+    }
+  }
 
   await connection.query('DELETE FROM workout_schedule_exercises WHERE workout_schedule_id = ?', [scheduleId]);
   await connection.query('DELETE FROM workout_schedule_groups WHERE workout_schedule_id = ?', [scheduleId]);
 
   const groupIdByLabel = new Map();
-  for (const groupLabel of normalizedDayGroups) {
-    const label = String(groupLabel || '').trim();
-    if (!label) {
-      continue;
-    }
+  for (const groupEntry of groupEntries) {
+    const normalizedLabel = String(groupEntry?.label || '').trim().toLowerCase();
+    const preservedWorkoutLogDisplayOrder = preserveCustomWorkoutLogOrder
+      ? (existingWorkoutLogOrderByLabel.get(normalizedLabel) ?? null)
+      : null;
 
-    const [insertGroup] = await connection.query(
-      `INSERT INTO workout_schedule_groups (workout_schedule_id, label, group_type, sort_order)
-       VALUES (?, ?, 'day', 1)`,
-      [scheduleId, label]
-    );
-    groupIdByLabel.set(label, insertGroup.insertId);
+    let insertGroup;
+    if (schemaState.hasWorkoutLogDisplayOrder) {
+      [insertGroup] = await connection.query(
+        `INSERT INTO workout_schedule_groups
+          (workout_schedule_id, label, group_type, sort_order, workout_log_display_order)
+         VALUES (?, ?, ?, ?, ?)`,
+        [
+          scheduleId,
+          groupEntry.label,
+          groupEntry.groupType,
+          groupEntry.sortOrder,
+          preservedWorkoutLogDisplayOrder,
+        ]
+      );
+    } else {
+      [insertGroup] = await connection.query(
+        `INSERT INTO workout_schedule_groups
+          (workout_schedule_id, label, group_type, sort_order)
+         VALUES (?, ?, ?, ?)`,
+        [
+          scheduleId,
+          groupEntry.label,
+          groupEntry.groupType,
+          groupEntry.sortOrder,
+        ]
+      );
+    }
+    groupIdByLabel.set(groupEntry.label, insertGroup.insertId);
   }
 
-  for (const groupLabel of normalizedWeekGroups) {
-    const label = String(groupLabel || '').trim();
-    if (!label) {
-      continue;
-    }
-
-    const [insertGroup] = await connection.query(
-      `INSERT INTO workout_schedule_groups (workout_schedule_id, label, group_type, sort_order)
-       VALUES (?, ?, 'week', 1)`,
-      [scheduleId, label]
-    );
-    groupIdByLabel.set(label, insertGroup.insertId);
-  }
-
+  const fallbackGroupLabel = mode === 'week' ? normalizedWeekGroups[0] : normalizedDayGroups[0];
   const exercises = Array.isArray(planner?.exercises) ? planner.exercises : [];
 
   for (let i = 0; i < exercises.length; i += 1) {
     const ex = exercises[i] || {};
-    const groupId = groupIdByLabel.get(ex.scheduleGroup) || null;
+    const label = String(ex.scheduleGroup || fallbackGroupLabel || '').trim();
+    const groupId = groupIdByLabel.get(label) || null;
 
     const insertColumns = [
       'workout_schedule_id',
@@ -2365,24 +2453,24 @@ const replaceScheduleGroupsAndExercises = async (connection, scheduleId, planner
     const insertValues = [
       scheduleId,
       groupId,
-      Number(exerciseRow.ExerciseID || 0) || null,
-      sanitizeText(body.name || exerciseRow.ExerciseTitle || '', 150),
-      sanitizeText(body.image || exerciseRow.ImageURL || '', 255),
-      sanitizeText(body.workoutType || exerciseRow.WorkoutType || scheduleRows[0]?.workout_type || 'Strength', 50),
-      sanitizeText(body.muscleGroup || exerciseRow.MuscleGroup || '', 80),
-      sanitizeText(body.equipment || exerciseRow.Equipment || '', 80),
-      nextSortOrder,
-      sanitizeText(body.notes || '', 500),
-      parseNumber(body.targetSets),
-      parseNumber(body.targetReps),
-      parseNumber(body.targetWeight, true),
-      parseNumber(body.targetDurationMinutes),
-      parseNumber(body.targetRestSeconds),
+      Number(ex.exerciseId || 0) || null,
+      sanitizeText(ex.name || '', 150),
+      sanitizeText(ex.image || '', 255),
+      sanitizeText(ex.workoutType || '', 50),
+      sanitizeText(ex.muscleGroup || '', 80),
+      sanitizeText(ex.equipment || '', 80),
+      i + 1,
+      sanitizeText(ex.notes || '', 500),
+      parseNumber(ex.sets),
+      parseNumber(ex.reps),
+      parseNumber(ex.weight, true),
+      parseNumber(ex.duration),
+      parseNumber(ex.restTime),
     ];
 
     if (schemaState.hasTargetDistanceMiles) {
       insertColumns.push('target_distance_miles');
-      insertValues.push(parseNumber(body.targetDistanceMiles, true));
+      insertValues.push(parseNumber(ex.distance, true));
     }
 
     await connection.query(
@@ -2540,7 +2628,7 @@ router.get('/workout-schedules/:id', async (req, res) => {
       return res.status(404).json({ error: 'Workout schedule not found' });
     }
 
-    return res.json({ planner });
+    return res.json({ planner, canCreateFeaturedPlans: isAdminUser(req) });
   } catch (err) {
     console.error('❌ Failed to load workout schedule:', err);
     return res.status(500).json({ error: 'Failed to load workout schedule' });
@@ -2672,15 +2760,26 @@ router.post('/workout-schedules/:id/plan-type-conversion', async (req, res) => {
       return res.status(404).json({ error: 'Workout schedule not found' });
     }
 
+    if (isRawGlobalWorkoutPlanType(sourceSchedule.workout_plan_type)) {
+      return res.status(403).json({
+        error: 'Global workout templates must be managed from Admin/Trainer Global Workout Plans.',
+      });
+    }
+
+    const sourcePlanner = await buildPlannerFromSchedule(sourcePlanId, userId);
+    if (!sourcePlanner) {
+      return res.status(404).json({ error: 'Workout schedule not found' });
+    }
+
     const destinationTitle = resolveDestinationTitleForConversion(req.body?.destinationTitle);
     if (!destinationTitle.ok) {
       return res.status(destinationTitle.status).json({ error: destinationTitle.error });
     }
 
-    sourceSchedule.coverImage = resolveWorkoutPlanCoverImageReference(sourceSchedule);
+    sourcePlanner.coverImage = resolveWorkoutPlanCoverImageReference(sourceSchedule);
 
     const conversionResult = await buildWorkoutPlanConversionPreview({
-      sourcePlan: sourceSchedule,
+      sourcePlan: sourcePlanner,
       targetPlanType: req.body?.targetPlanType,
       authContext: {
         userId,
@@ -2757,7 +2856,7 @@ router.post('/workout-schedules/:id/plan-type-conversion', async (req, res) => {
     const insertColumns = ['user_id', 'title', 'description', 'workout_type'];
     const insertValues = [
       userId,
-      sanitizeText(convertedPlannerPayload?.metadata?.name || '', 150) || 'Untitled Workout',
+      sanitizeText(convertedPlannerPayload?.metadata?.name || '', WORKOUT_PLAN_TITLE_MAX_LENGTH) || 'Untitled Workout',
       sanitizeText(convertedPlannerPayload?.metadata?.description || '', 1000),
       sanitizeText(convertedPlannerPayload?.metadata?.type || 'Strength', 50) || 'Strength',
     ];
@@ -2775,7 +2874,7 @@ router.post('/workout-schedules/:id/plan-type-conversion', async (req, res) => {
     }
     if (schemaState.hasGoalType) {
       insertColumns.push('goal_type');
-      insertValues.push(parsedGoalType.value);
+      insertValues.push(parseWorkoutGoalType(convertedPlannerPayload?.metadata?.goalType).value);
     }
     if (schemaState.hasGoalTargetDate) {
       insertColumns.push('goal_target_date');
@@ -2801,812 +2900,70 @@ router.post('/workout-schedules/:id/plan-type-conversion', async (req, res) => {
       insertValues
     );
 
-    const clonedScheduleId = Number(insertResult.insertId || 0);
-    if (!clonedScheduleId) {
+    const convertedPlanId = Number(insertResult.insertId || 0);
+    if (!convertedPlanId) {
       await connection.rollback();
-      return res.status(500).json({ error: 'Failed to create personal workout copy' });
+      return res.status(500).json({ error: 'Failed to create converted workout plan.' });
     }
 
-    const mappedPlanner = await mapPlannerExercisesForAdoption({
-      connection,
-      req,
-      recipientUserId: userId,
-      sourcePlanner,
-      copiedMediaStorageKeys,
+    await replaceScheduleGroupsAndExercises(connection, convertedPlanId, {
+      ...convertedPlannerPayload,
+      planId: String(convertedPlanId),
     });
 
-    const plannerForClone = {
-      ...mappedPlanner,
-      planId: String(clonedScheduleId),
-      metadata: {
-        ...sourceMetadata,
-        category: sourceCategory,
-        planType: null,
-        goalType: sourceGoalType,
-        goalId: '',
-        goalContext: null,
-      },
-    };
-
-    await replaceScheduleGroupsAndExercises(connection, clonedScheduleId, plannerForClone);
-
-    await cloneWorkoutPlanCoverToPlan({
+    coverCloneResult = await cloneWorkoutPlanCoverToPlan({
       pool: connection,
       sourcePlan: {
         id: sourcePlanId,
-        cover_image_storage_key: sourceRows[0]?.cover_image_storage_key,
-        cover_image_content_type: sourceRows[0]?.cover_image_content_type,
+        cover_image_storage_key: sourceSchedule?.cover_image_storage_key,
+        cover_image_content_type: sourceSchedule?.cover_image_content_type,
       },
-      destinationPlanId: clonedScheduleId,
+      destinationPlanId: convertedPlanId,
     });
 
     await connection.commit();
+    didCommit = true;
 
-    const planner = await buildPlannerFromSchedule(clonedScheduleId, userId);
+    const planner = await buildPlannerFromSchedule(convertedPlanId, userId);
     const workoutLists = await loadSchedulesForUser(userId);
     const hasSavedExerciseList = await hasSavedExercisesForUser(userId);
 
     return res.status(201).json({
-      message: 'Global workout plan copied to your Workout Builder.',
+      message: 'Workout plan type converted by creating a new plan copy.',
+      sourcePlanId: String(sourcePlanId),
+      convertedPlanId: String(convertedPlanId),
       planner,
       workoutLists,
       hasWorkoutLists: workoutLists.length > 0,
       hasSavedWorkoutExerciseList: hasSavedExerciseList,
-      canCreateFeaturedPlans: isAdminUser(req),
-      sourcePlanId: String(sourcePlanId),
+      canCreateConvertedPlan: true,
     });
   } catch (err) {
-    try {
-      await connection.rollback();
-    } catch (_) {
-      // ignore rollback errors
-    }
-    await cleanupAdoptionCopiedMedia(copiedMediaStorageKeys);
-    console.error('❌ Failed to copy global workout plan:', err);
-    return res.status(Number(err?.statusCode || 500)).json({ error: err?.message || 'Failed to copy global workout plan' });
-  } finally {
-    connection.release();
-  }
-});
-
-router.post('/featured-workout-plans/:id/clone', async (req, res) => {
-  const connection = await pool.getConnection();
-  const copiedMediaStorageKeys = [];
-  try {
-    const userId = req.session?.user?.id;
-    if (!userId) {
-      return res.status(401).json({ error: 'User not logged in' });
-    }
-
-    const sourcePlanId = Number(req.params?.id || 0);
-    if (!sourcePlanId) {
-      return res.status(400).json({ error: 'Invalid featured workout plan id' });
-    }
-
-    const schemaState = await getWorkoutPlannerSchemaState(connection);
-    if (!schemaState.hasWorkoutPlanType) {
-      return res.status(400).json({ error: 'Database migration required: workout_plan_type column is missing.' });
-    }
-
-    const [sourceRows] = await connection.query(
-      `SELECT id, user_id, cover_image_storage_key, cover_image_content_type
-       FROM workout_schedules
-       WHERE id = ?
-         AND workout_plan_type = ?
-         AND LOWER(COALESCE(status, '')) IN (?, ?, ?)
-         AND LOWER(COALESCE(visibility, '')) = 'public'
-         AND EXISTS (
-           SELECT 1
-           FROM workout_schedule_exercises wse
-           WHERE wse.workout_schedule_id = workout_schedules.id
-         )
-       LIMIT 1`,
-      [sourcePlanId, FEATURED_WORKOUT_PLAN_TYPE, ...PUBLISHED_GLOBAL_STATUSES]
-    );
-
-    if (!sourceRows.length) {
-      return res.status(404).json({ error: 'Featured workout plan not found' });
-    }
-
-    const sourceOwnerUserId = Number(sourceRows[0]?.user_id || 0);
-    if (!sourceOwnerUserId) {
-      return res.status(404).json({ error: 'Featured workout plan owner not found' });
-    }
-
-    const sourcePlanner = await buildPlannerFromSchedule(sourcePlanId, sourceOwnerUserId);
-    if (!sourcePlanner) {
-      return res.status(404).json({ error: 'Featured workout plan details not found' });
-    }
-
-    const sourceMetadata = sourcePlanner?.metadata || {};
-    const sourceName = sanitizeText(sourceMetadata?.name || 'Featured Workout', 150) || 'Featured Workout';
-    const sourceDescription = sanitizeText(sourceMetadata?.description || '', 1000);
-    const sourceType = sanitizeText(sourceMetadata?.type || 'Strength', 50) || 'Strength';
-    const sourceCategory = normalizeWorkoutPlanCategory(sourceMetadata?.category).value;
-    const sourceDuration = parseNumber(sourceMetadata?.estimatedDuration) || 0;
-    const sourceGoalType = parseWorkoutGoalType(sourceMetadata?.goalType).value;
-    const sourceScheduleMode = sourcePlanner?.scheduleMode === 'week' ? 'week' : 'day';
-
-    await connection.beginTransaction();
-
-    const cloneColumns = [
-      'user_id',
-      'title',
-      'description',
-      'workout_type',
-      'category',
-      'workout_plan_type',
-      'estimated_duration_minutes',
-      'status',
-      'visibility',
-      'schedule_mode',
-    ];
-    const cloneValues = [
-      userId,
-      sourceName,
-      sourceDescription,
-      sourceType,
-      sourceCategory,
-      null,
-      sourceDuration,
-      'draft',
-      'private',
-      sourceScheduleMode,
-    ];
-
-    if (schemaState.hasGoalType) {
-      cloneColumns.splice(6, 0, 'goal_type');
-      cloneValues.splice(6, 0, sourceGoalType);
-    }
-    if (schemaState.hasSourceGlobalPlanId) {
-      const insertAt = cloneColumns.indexOf('workout_plan_type') + 1;
-      cloneColumns.splice(insertAt, 0, 'source_global_plan_id');
-      cloneValues.splice(insertAt, 0, sourcePlanId);
-    }
-    if (schemaState.hasGlobalPlanAdoptedAt) {
-      const insertAt = cloneColumns.indexOf('source_global_plan_id') >= 0
-        ? cloneColumns.indexOf('source_global_plan_id') + 1
-        : cloneColumns.indexOf('workout_plan_type') + 1;
-      cloneColumns.splice(insertAt, 0, 'global_plan_adopted_at');
-      cloneValues.splice(insertAt, 0, new Date());
-    }
-
-    const [insertResult] = await connection.query(
-      `INSERT INTO workout_schedules (${cloneColumns.join(', ')})
-       VALUES (${cloneColumns.map(() => '?').join(', ')})`,
-      cloneValues
-    );
-
-    const clonedScheduleId = Number(insertResult.insertId || 0);
-    if (!clonedScheduleId) {
-      await connection.rollback();
-      return res.status(500).json({ error: 'Failed to create personal workout copy' });
-    }
-
-    const mappedPlanner = await mapPlannerExercisesForAdoption({
-      connection,
-      req,
-      recipientUserId: userId,
-      sourcePlanner,
-      copiedMediaStorageKeys,
-    });
-
-    const plannerForClone = {
-      ...mappedPlanner,
-      planId: String(clonedScheduleId),
-      metadata: {
-        ...sourceMetadata,
-        category: sourceCategory,
-        planType: null,
-        goalType: sourceGoalType,
-        goalId: '',
-        goalContext: null,
-      },
-    };
-
-    await replaceScheduleGroupsAndExercises(connection, clonedScheduleId, plannerForClone);
-
-    await cloneWorkoutPlanCoverToPlan({
-      pool: connection,
-      sourcePlan: {
-        id: sourcePlanId,
-        cover_image_storage_key: sourceRows[0]?.cover_image_storage_key,
-        cover_image_content_type: sourceRows[0]?.cover_image_content_type,
-      },
-      destinationPlanId: clonedScheduleId,
-    });
-
-    await connection.commit();
-
-    const planner = await buildPlannerFromSchedule(clonedScheduleId, userId);
-    const workoutLists = await loadSchedulesForUser(userId);
-    const hasSavedExerciseList = await hasSavedExercisesForUser(userId);
-
-    return res.status(201).json({
-      message: 'Featured workout plan copied to your Workout Builder.',
-      planner,
-      workoutLists,
-      hasWorkoutLists: workoutLists.length > 0,
-      hasSavedWorkoutExerciseList: hasSavedExerciseList,
-      canCreateFeaturedPlans: isAdminUser(req),
-      sourcePlanId: String(sourcePlanId),
-    });
-  } catch (err) {
-    try {
-      await connection.rollback();
-    } catch (_) {
-      // ignore rollback errors
-    }
-    await cleanupAdoptionCopiedMedia(copiedMediaStorageKeys);
-    console.error('❌ Failed to clone featured workout plan:', err);
-    return res.status(Number(err?.statusCode || 500)).json({ error: err?.message || 'Failed to clone featured workout plan' });
-  } finally {
-    connection.release();
-  }
-});
-
-router.get('/admin/global-workout-plans', async (req, res) => {
-  try {
-    const userId = await requireAdminSessionUserForGlobalPlans(req, res);
-    if (!userId) {
-      return;
-    }
-
-    await ensureWorkoutPlannerOrderingColumns();
-
-    const workoutLists = await loadGlobalWorkoutPlans();
-    const visibleLists = isAdminUser(req)
-      ? workoutLists
-      : workoutLists.filter((plan) => Number(plan?.ownerUserId || 0) === Number(userId));
-    return res.json({
-      workoutLists: visibleLists,
-      hasWorkoutLists: visibleLists.length > 0,
-    });
-  } catch (err) {
-    console.error('❌ Failed to load global workout plans:', err);
-    return res.status(500).json({ error: 'Failed to load global workout plans' });
-  }
-});
-
-router.get('/admin/user-workout-plans', async (req, res) => {
-  try {
-    const userId = requireAdminSessionUser(req, res);
-    if (!userId) {
-      return;
-    }
-
-    await ensureWorkoutPlannerOrderingColumns();
-
-    const workoutLists = await loadAdminUserWorkoutPlans();
-    return res.json({
-      workoutLists,
-      hasWorkoutLists: workoutLists.length > 0,
-    });
-  } catch (err) {
-    console.error('❌ Failed to load admin user workout plans:', err);
-    return res.status(500).json({ error: 'Failed to load admin user workout plans' });
-  }
-});
-
-router.get('/admin/global-workout-plans/:id', async (req, res) => {
-  try {
-    const userId = await requireAdminSessionUserForGlobalPlans(req, res);
-    if (!userId) {
-      return;
-    }
-
-    await ensureWorkoutPlannerOrderingColumns();
-
-    const scheduleId = Number(req.params?.id || 0);
-    if (!scheduleId) {
-      return res.status(400).json({ error: 'Invalid schedule id' });
-    }
-
-    const planner = await buildGlobalWorkoutPlanById(scheduleId);
-    if (!planner) {
-      return res.status(404).json({ error: 'Global workout plan not found' });
-    }
-
-    return res.json({ planner });
-  } catch (err) {
-    console.error('❌ Failed to load global workout plan:', err);
-    return res.status(500).json({ error: 'Failed to load global workout plan' });
-  }
-});
-
-router.post('/admin/global-workout-plans', async (req, res) => {
-  try {
-    const userId = await requireAdminSessionUserForGlobalPlans(req, res);
-    if (!userId) {
-      return;
-    }
-
-    const schemaState = await ensureWorkoutPlannerOrderingColumns();
-    if (!schemaState.hasWorkoutPlanType) {
-      return res.status(400).json({ error: 'Database migration required: workout_plan_type column is missing.' });
-    }
-
-    const payload = req.body || {};
-    const requestedGlobalPlanType = payload?.planType == null ? GLOBAL_WORKOUT_PLAN_TYPE : payload?.planType;
-    const parsedPlanType = parseGlobalWorkoutPlanTypeForAdmin(req, requestedGlobalPlanType);
-    if (!parsedPlanType.ok) {
-      return res.status(parsedPlanType.status).json({ error: parsedPlanType.error });
-    }
-    const createTypeSupport = await ensureWorkoutPlanTypeSupportedBySchema(parsedPlanType.value);
-    if (!createTypeSupport.ok) {
-      return res.status(createTypeSupport.status).json({ error: createTypeSupport.error });
-    }
-    const parsedGoalType = parseWorkoutGoalType(payload?.goalType);
-    if (!parsedGoalType.isValid) {
-      return res.status(400).json({ error: 'Invalid Goal Type. Allowed values: No Specific Goal, Body Weight, Exercise Weight.' });
-    }
-    const hasCategoryOverride = Object.prototype.hasOwnProperty.call(payload, 'category');
-    const categoryValidation = hasCategoryOverride
-      ? normalizeWorkoutPlanCategory(payload?.category)
-      : { isSet: false, isValid: true, value: null };
-    if (hasCategoryOverride && !categoryValidation.isValid) {
-      return res.status(400).json({ error: categoryValidation.error || getWorkoutPlanCategoryValidationError() });
-    }
-    const hasGoalTargetDateOverride = Object.prototype.hasOwnProperty.call(payload, 'goalTargetDate');
-    const goalTargetDateValidation = hasGoalTargetDateOverride
-      ? normalizeWorkoutGoalTargetDate(payload?.goalTargetDate)
-      : { isSet: false, isValid: true, value: null };
-    if (hasGoalTargetDateOverride && !goalTargetDateValidation.isValid) {
-      return res.status(400).json({ error: goalTargetDateValidation.error || 'Invalid goal target date. Use YYYY-MM-DD.' });
-    }
-    const hasPlanDurationWeeksOverride = Object.prototype.hasOwnProperty.call(payload, 'planDurationWeeks');
-    const planDurationWeeksValidation = hasPlanDurationWeeksOverride
-      ? normalizePlanDurationWeeks(payload?.planDurationWeeks)
-      : { isSet: false, isValid: true, value: null };
-    if (hasPlanDurationWeeksOverride && !planDurationWeeksValidation.isValid) {
-      return res.status(400).json({ error: planDurationWeeksValidation.error || 'Invalid plan duration in weeks. Use a positive integer or leave blank.' });
-    }
-
-    const title = sanitizeText(payload?.title || 'Untitled Workout', 150) || 'Untitled Workout';
-    const description = sanitizeText(payload?.description || '', 1000);
-    const estimatedDuration = parseNumber(payload?.estimatedDurationMinutes) || 0;
-    const visibility = normalizeGlobalAccessVisibility(payload?.accessLevel, 'private');
-
-    const insertColumns = [
-      'user_id',
-      'title',
-      'description',
-      'workout_type',
-    ];
-    const insertValues = [
-      userId,
-      title,
-      description,
-      'Strength',
-    ];
-
-    if (hasCategoryOverride) {
-      insertColumns.push('category');
-      insertValues.push(categoryValidation.value);
-    }
-    insertColumns.push('workout_plan_type', 'estimated_duration_minutes', 'status', 'visibility', 'schedule_mode');
-    insertValues.push(parsedPlanType.value, estimatedDuration, 'draft', visibility, 'day');
-
-    if (schemaState.hasGoalType) {
-      insertColumns.push('goal_type');
-      insertValues.push(parsedGoalType.value);
-    }
-    if (schemaState.hasGoalTargetDate) {
-      insertColumns.push('goal_target_date');
-      insertValues.push(goalTargetDateValidation.value);
-    }
-    if (schemaState.hasPlanDurationWeeks) {
-      insertColumns.push('plan_duration_weeks');
-      insertValues.push(planDurationWeeksValidation.value);
-    }
-
-    const [result] = await pool.query(
-      `INSERT INTO workout_schedules (${insertColumns.join(', ')})
-       VALUES (${insertColumns.map(() => '?').join(', ')})`,
-      insertValues
-    );
-
-    const scheduleId = Number(result.insertId || 0);
-    if (!scheduleId) {
-      return res.status(500).json({ error: 'Failed to create global workout plan' });
-    }
-
-    await pool.query(
-      `INSERT INTO workout_schedule_groups (workout_schedule_id, label, group_type, sort_order)
-       VALUES (?, 'Any Day', 'any', 1)`,
-      [scheduleId]
-    );
-
-    const planner = await buildGlobalWorkoutPlanById(scheduleId);
-    const workoutLists = await loadGlobalWorkoutPlans();
-
-    return res.status(201).json({
-      message: 'Global workout plan draft created',
-      planner,
-      workoutLists,
-      hasWorkoutLists: workoutLists.length > 0,
-    });
-  } catch (err) {
-    console.error('❌ Failed to create global workout plan:', err);
-    return res.status(500).json({ error: 'Failed to create global workout plan' });
-  }
-});
-
-router.patch('/admin/global-workout-plans/:id', async (req, res) => {
-  try {
-    const userId = await requireAdminSessionUserForGlobalPlans(req, res);
-    if (!userId) {
-      return;
-    }
-
-    const schemaState = await ensureWorkoutPlannerOrderingColumns();
-    if (!schemaState.hasWorkoutPlanType) {
-      return res.status(400).json({ error: 'Database migration required: workout_plan_type column is missing.' });
-    }
-
-    const scheduleId = Number(req.params?.id || 0);
-    if (!scheduleId) {
-      return res.status(400).json({ error: 'Invalid schedule id' });
-    }
-
-    const body = req.body || {};
-    const parsedGoalType = parseWorkoutGoalType(body?.goalType);
-    if (!parsedGoalType.isValid) {
-      return res.status(400).json({ error: 'Invalid Goal Type. Allowed values: No Specific Goal, Body Weight, Exercise Weight.' });
-    }
-    const hasCategoryOverride = Object.prototype.hasOwnProperty.call(body, 'category');
-    const categoryValidation = hasCategoryOverride
-      ? normalizeWorkoutPlanCategory(body?.category)
-      : { isSet: false, isValid: true, value: null };
-    if (hasCategoryOverride && !categoryValidation.isValid) {
-      return res.status(400).json({ error: categoryValidation.error || getWorkoutPlanCategoryValidationError() });
-    }
-    const hasGoalTargetDateOverride = Object.prototype.hasOwnProperty.call(body, 'goalTargetDate');
-    const goalTargetDateValidation = hasGoalTargetDateOverride
-      ? normalizeWorkoutGoalTargetDate(body?.goalTargetDate)
-      : { isSet: false, isValid: true, value: null };
-    if (hasGoalTargetDateOverride && !goalTargetDateValidation.isValid) {
-      return res.status(400).json({ error: goalTargetDateValidation.error || 'Invalid goal target date. Use YYYY-MM-DD.' });
-    }
-    const hasPlanDurationWeeksOverride = Object.prototype.hasOwnProperty.call(body, 'planDurationWeeks');
-    const planDurationWeeksValidation = hasPlanDurationWeeksOverride
-      ? normalizePlanDurationWeeks(body?.planDurationWeeks)
-      : { isSet: false, isValid: true, value: null };
-    if (hasPlanDurationWeeksOverride && !planDurationWeeksValidation.isValid) {
-      return res.status(400).json({ error: planDurationWeeksValidation.error || 'Invalid plan duration in weeks. Use a positive integer or leave blank.' });
-    }
-
-    const [currentRows] = await pool.query(
-      `SELECT id, workout_plan_type
-       FROM workout_schedules
-       WHERE id = ?
-         AND workout_plan_type IN (${GLOBAL_WORKOUT_PLAN_TYPE_SQL_PLACEHOLDERS})
-       LIMIT 1`,
-      [scheduleId, ...GLOBAL_WORKOUT_PLAN_TYPE_VALUES]
-    );
-
-    if (!currentRows.length) {
-      return res.status(404).json({ error: 'Global workout plan not found' });
-    }
-
-    const requestedPlanType = validateRequestedWorkoutPlanType(req, body?.planType, {
-      surface: PLAN_TYPE_SURFACE_ADMIN_GLOBAL,
-    });
-    if (!requestedPlanType.ok) {
-      return res.status(requestedPlanType.status).json({ error: requestedPlanType.error });
-    }
-
-    const immutablePlanType = resolveImmutableWorkoutPlanType({
-      existingValue: currentRows[0]?.workout_plan_type,
-      requestedValue: requestedPlanType.isSet ? requestedPlanType.value : null,
-    });
-    if (!immutablePlanType.ok) {
-      return res.status(immutablePlanType.status).json({ error: immutablePlanType.error });
-    }
-    const updateTypeSupport = await ensureWorkoutPlanTypeSupportedBySchema(immutablePlanType.value);
-    if (!updateTypeSupport.ok) {
-      return res.status(updateTypeSupport.status).json({ error: updateTypeSupport.error });
-    }
-
-    const title = sanitizeText(body?.title || '', 150);
-    const description = sanitizeText(body?.description || '', 1000);
-    const estimatedDuration = parseNumber(body?.estimatedDurationMinutes);
-    const visibility = normalizeGlobalAccessVisibility(body?.accessLevel, 'public');
-
-    const updateFields = [
-      "title = COALESCE(NULLIF(?, ''), title)",
-      'description = COALESCE(?, description)',
-      'workout_plan_type = ?',
-      'estimated_duration_minutes = COALESCE(?, estimated_duration_minutes)',
-      'visibility = ?',
-    ];
-    const updateParams = [
-      title,
-      description,
-      immutablePlanType.value,
-      estimatedDuration,
-      visibility,
-    ];
-
-    if (schemaState.hasGoalType) {
-      updateFields.push('goal_type = ?');
-      updateParams.push(parsedGoalType.value);
-    }
-    if (schemaState.hasGoalTargetDate && hasGoalTargetDateOverride) {
-      updateFields.push('goal_target_date = ?');
-      updateParams.push(goalTargetDateValidation.value);
-    }
-    if (schemaState.hasPlanDurationWeeks && hasPlanDurationWeeksOverride) {
-      updateFields.push('plan_duration_weeks = ?');
-      updateParams.push(planDurationWeeksValidation.value);
-    }
-    if (hasCategoryOverride) {
-      updateFields.push('category = ?');
-      updateParams.push(categoryValidation.value);
-    }
-
-    updateFields.push('updated_at = CURRENT_TIMESTAMP');
-
-    const [result] = await pool.query(
-      `UPDATE workout_schedules
-       SET
-         ${updateFields.join(',\n         ')}
-       WHERE id = ?
-         AND workout_plan_type IN (${GLOBAL_WORKOUT_PLAN_TYPE_SQL_PLACEHOLDERS})`,
-      [
-        ...updateParams,
-        scheduleId,
-        ...GLOBAL_WORKOUT_PLAN_TYPE_VALUES,
-      ]
-    );
-
-    if (!result.affectedRows) {
-      return res.status(404).json({ error: 'Global workout plan not found' });
-    }
-
-    const planner = await buildGlobalWorkoutPlanById(scheduleId);
-    const workoutLists = await loadGlobalWorkoutPlans();
-
-    return res.json({
-      message: 'Global workout plan updated',
-      planner,
-      workoutLists,
-      hasWorkoutLists: workoutLists.length > 0,
-    });
-  } catch (err) {
-    console.error('❌ Failed to update global workout plan:', err);
-    return res.status(500).json({ error: 'Failed to update global workout plan' });
-  }
-});
-
-const validateGlobalPlanStatusTransition = (currentStatus, nextStatus) => {
-  const current = normalizeWorkoutPlanPublicationStatus(currentStatus, 'draft');
-  const next = String(nextStatus || '').trim().toLowerCase();
-
-  if (!['draft', 'active', 'archived'].includes(next)) {
-    return {
-      ok: false,
-      status: 400,
-      error: `Invalid status "${next}". Allowed values: draft, active, archived.`,
-    };
-  }
-
-  const allowedTransitions = {
-    draft: ['draft', 'active'],
-    active: ['active', 'draft', 'archived'],
-    archived: ['draft', 'archived'],
-  };
-
-  const allowed = allowedTransitions[current] || [];
-  if (!allowed.includes(next)) {
-    return {
-      ok: false,
-      status: 400,
-      error: `Status transition from "${current}" to "${next}" is not allowed.`,
-    };
-  }
-
-  return { ok: true, current, next };
-};
-
-router.patch('/admin/global-workout-plans/:id/schedule', async (req, res) => {
-  const connection = await pool.getConnection();
-  try {
-    const userId = await requireAdminSessionUserForGlobalPlans(req, res);
-    if (!userId) {
-      connection.release();
-      return;
-    }
-
-    const scheduleId = Number(req.params?.id || 0);
-    if (!scheduleId) {
-      connection.release();
-      return res.status(400).json({ error: 'Invalid schedule id' });
-    }
-
-    const schemaState = await ensureWorkoutPlannerOrderingColumns(connection);
-
-    const currentPlanner = await buildGlobalWorkoutPlanById(scheduleId);
-    if (!currentPlanner) {
-      connection.release();
-      return res.status(404).json({ error: 'Global workout plan not found' });
-    }
-
-    const incomingPlanner = req.body?.planner;
-    if (!incomingPlanner || typeof incomingPlanner !== 'object') {
-      connection.release();
-      return res.status(400).json({ error: 'planner object is required' });
-    }
-
-    const normalizedPlanner = normalizePlannerPayload({
-      ...incomingPlanner,
-      planId: String(scheduleId),
-      metadata: {
-        ...(incomingPlanner?.metadata || {}),
-        category: incomingPlanner?.metadata?.category ?? currentPlanner?.metadata?.category ?? null,
-        // Preserve global plan classification during schedule edits.
-        planType: currentPlanner?.metadata?.planType,
-        goalType: parseWorkoutGoalType(incomingPlanner?.metadata?.goalType).isValid
-          ? parseWorkoutGoalType(incomingPlanner?.metadata?.goalType).value
-          : currentPlanner?.metadata?.goalType,
-        goalTargetDate: incomingPlanner?.metadata?.goalTargetDate ?? currentPlanner?.metadata?.goalTargetDate ?? null,
-        planDurationWeeks: incomingPlanner?.metadata?.planDurationWeeks ?? currentPlanner?.metadata?.planDurationWeeks ?? null,
-      },
-    });
-    const normalizedCategory = normalizeWorkoutPlanCategory(normalizedPlanner?.metadata?.category);
-    if (normalizedPlanner?.metadata && Object.prototype.hasOwnProperty.call(normalizedPlanner.metadata, 'category') && normalizedCategory.isSet && !normalizedCategory.isValid) {
-      return res.status(400).json({ error: normalizedCategory.error || getWorkoutPlanCategoryValidationError() });
-    }
-    const normalizedGoalType = parseWorkoutGoalType(normalizedPlanner?.metadata?.goalType).value;
-    const hasGoalTargetDateOverride = Object.prototype.hasOwnProperty.call(incomingPlanner?.metadata || {}, 'goalTargetDate');
-    const goalTargetDateValidation = hasGoalTargetDateOverride
-      ? normalizeWorkoutGoalTargetDate(incomingPlanner?.metadata?.goalTargetDate)
-      : { isSet: false, isValid: true, value: null };
-    if (hasGoalTargetDateOverride && !goalTargetDateValidation.isValid) {
-      return res.status(400).json({ error: goalTargetDateValidation.error || 'Invalid goal target date. Use YYYY-MM-DD.' });
-    }
-    const hasPlanDurationWeeksOverride = Object.prototype.hasOwnProperty.call(incomingPlanner?.metadata || {}, 'planDurationWeeks');
-    const planDurationWeeksValidation = hasPlanDurationWeeksOverride
-      ? normalizePlanDurationWeeks(incomingPlanner?.metadata?.planDurationWeeks)
-      : { isSet: false, isValid: true, value: null };
-    if (hasPlanDurationWeeksOverride && !planDurationWeeksValidation.isValid) {
-      return res.status(400).json({ error: planDurationWeeksValidation.error || 'Invalid plan duration in weeks. Use a positive integer or leave blank.' });
-    }
-    const planId = Number(normalizedPlanner?.planId || 0);
-
-    await connection.beginTransaction();
-    const scheduleSchemaState = await ensureWorkoutPlannerOrderingColumns(connection);
-    const linkedGoalId = scheduleSchemaState.hasLinkedGoalId
-      ? await resolveLinkedGoalIdForUser(connection, userId, normalizedPlanner?.metadata?.goalId)
-      : null;
-
-    const requestedStatus = String(req.body?.status ?? incomingPlanner?.metadata?.status ?? 'draft').trim().toLowerCase();
-    const statusTransition = validateGlobalPlanStatusTransition(currentPlanner?.status || 'draft', requestedStatus);
-    if (!statusTransition.ok) {
-      connection.release();
-      return res.status(statusTransition.status).json({ error: statusTransition.error });
-    }
-    const normalizedStatus = statusTransition.next;
-    const requirePublishCompleteness = normalizedStatus === 'active';
-
-    if (requirePublishCompleteness) {
-      const completenessMissing = collectGlobalPlanCompletenessErrors(incomingPlanner);
-      if (completenessMissing.length) {
-        connection.release();
-        return res.status(422).json({
-          error: buildGlobalPlanCompletenessErrorMessage(completenessMissing),
-          missingRequirements: completenessMissing,
-        });
+    if (!didCommit) {
+      try {
+        await connection.rollback();
+      } catch (_) {
+        // ignore rollback errors
+      }
+
+      if (coverCloneResult?.copied && coverCloneResult?.destinationStorageKey) {
+        try {
+          await deleteObjectViaGateway({
+            storageKey: coverCloneResult.destinationStorageKey,
+            appName: 'Workout-Atlas',
+          });
+        } catch (cleanupErr) {
+          console.error('⚠️ Failed to clean up destination cover object after conversion rollback:', cleanupErr?.message || cleanupErr);
+        }
       }
     }
-
-    await connection.beginTransaction();
-
-    const scheduleUpdateFields = [
-      'title = ?',
-      'description = ?',
-      'workout_type = ?',
-      'estimated_duration_minutes = ?',
-      'status = ?',
-      'visibility = ?',
-      'schedule_mode = ?',
-    ];
-    const scheduleUpdateParams = [
-      sanitizeText(normalizedPlanner?.metadata?.name || '', 150) || 'Untitled Workout',
-      sanitizeText(normalizedPlanner?.metadata?.description || '', 1000),
-      sanitizeText(normalizedPlanner?.metadata?.type || 'Strength', 50) || 'Strength',
-      parseNumber(normalizedPlanner?.metadata?.estimatedDuration) || 0,
-      normalizedStatus,
-      accessVisibility,
-      normalizedPlanner?.scheduleMode === 'week' ? 'week' : 'day',
-    ];
-    scheduleUpdateFields.push('category = ?');
-    scheduleUpdateParams.push(normalizedCategory.isSet ? normalizedCategory.value : null);
-
-    if (schemaState.hasGoalType) {
-      scheduleUpdateFields.push('goal_type = ?');
-      scheduleUpdateParams.push(normalizedGoalType);
-    }
-    if (schemaState.hasGoalTargetDate && hasGoalTargetDateOverride) {
-      scheduleUpdateFields.push('goal_target_date = ?');
-      scheduleUpdateParams.push(goalTargetDateValidation.value);
-    }
-    if (schemaState.hasPlanDurationWeeks && hasPlanDurationWeeksOverride) {
-      scheduleUpdateFields.push('plan_duration_weeks = ?');
-      scheduleUpdateParams.push(planDurationWeeksValidation.value);
-    }
-
-    scheduleUpdateFields.push('updated_at = CURRENT_TIMESTAMP');
-
-    const [updateResult] = await connection.query(
-      `UPDATE workout_schedules
-       SET
-         ${scheduleUpdateFields.join(',\n         ')}
-       WHERE id = ?
-         AND workout_plan_type IN (${GLOBAL_WORKOUT_PLAN_TYPE_SQL_PLACEHOLDERS})`,
-      [
-        ...scheduleUpdateParams,
-        scheduleId,
-        ...GLOBAL_WORKOUT_PLAN_TYPE_VALUES,
-      ]
-    );
-
-    if (!updateResult.affectedRows) {
-      await connection.rollback();
-      connection.release();
-      return res.status(404).json({ error: 'Global workout plan not found' });
-    }
-
-    const dayGroups = normalizedPlanner.dayGroups || [];
-    const weekGroups = normalizedPlanner.weekGroups || [];
-
-    const normalizedDayAssignments = {};
-    for (const day of dayGroups) {
-      const exactKey = Object.keys(persistedDayAssignments).find((key) => String(key).trim().toLowerCase() === day.toLowerCase());
-      const candidate = exactKey ? String(persistedDayAssignments[exactKey] || '').trim() : '';
-      const matchedWeek = weekGroups.find((week) => week.toLowerCase() === candidate.toLowerCase());
-      normalizedDayAssignments[day] = matchedWeek || 'Week 1';
-    }
-
-    await connection.query(
-      `INSERT INTO workout_schedule_groups (workout_schedule_id, label, group_type, sort_order)
-       VALUES (?, ?, ?, 1)`,
-      [scheduleId, 'Any Day', 'any']
-    );
-
-    await connection.query(
-      'UPDATE workout_schedules SET settings_json = ? WHERE id = ?',
-      [JSON.stringify({ workoutPlanner: {
-        dayGroupWeekAssignments: planner?.dayGroupWeekAssignments && typeof planner.dayGroupWeekAssignments === 'object'
-          ? planner.dayGroupWeekAssignments
-          : {},
-        selectedWeekName: String(planner?.selectedWeekName || 'Week 1').trim() || 'Week 1',
-        weekGroups: normalizedWeekGroups,
-        dayGroups: normalizedDayGroups,
-      } }), scheduleId]
-    );
-
-    await connection.commit();
-
-    const planner = await buildGlobalWorkoutPlanById(scheduleId);
-    const workoutLists = await loadGlobalWorkoutPlans();
-
-    connection.release();
-    return res.json({
-      message: 'Global workout plan updated',
-      planner,
-      workoutLists,
-      hasWorkoutLists: workoutLists.length > 0,
+    console.error('❌ Failed to convert workout plan type:', err);
+    return res.status(Number(err?.statusCode || 500)).json({
+      error: err?.message || 'Failed to convert workout plan type',
+      canCreateConvertedPlan: false,
     });
-  } catch (err) {
-    try {
-      await connection.rollback();
-    } catch (_) {
-      // ignore rollback errors
-    }
+  } finally {
     connection.release();
-    console.error('❌ Failed to update global workout plan:', err);
-    return res.status(500).json({ error: 'Failed to update global workout plan' });
   }
 });
 
@@ -3625,109 +2982,6 @@ const extractWorkoutPlanCoverUploadFile = (req) => {
   }
 
   return null;
-};
-
-const SESSION_CLEANUP_DURATION_SQL = `CASE
-  WHEN started_at IS NULL THEN 0
-  ELSE GREATEST(TIMESTAMPDIFF(SECOND, started_at, NOW()), 0)
-END`;
-
-const listActiveSessionsForPlan = async ({ connection, scheduleId, userId }) => {
-  const [rows] = await connection.query(
-    `SELECT
-       id,
-       source_workout_schedule_id AS workoutPlanId,
-       workout_day_id             AS workoutDayId,
-       workout_day_name           AS workoutDayName,
-       workout_date               AS workoutDate,
-       started_at                 AS startedAt,
-       status,
-       notes
-     FROM workout_log_sessions
-     WHERE user_id = ?
-       AND source_workout_schedule_id = ?
-       AND status IN ('in_progress', 'in-progress', 'active', 'paused')
-     ORDER BY started_at DESC, id DESC`,
-    [userId, scheduleId]
-  );
-
-  return rows.map((row) => ({
-    id: Number(row.id),
-    workoutPlanId: Number(row.workoutPlanId || 0) || null,
-    workoutDayId: row.workoutDayId == null ? null : Number(row.workoutDayId),
-    workoutDayName: String(row.workoutDayName || '').trim(),
-    workoutDate: row.workoutDate || null,
-    startedAt: row.startedAt || null,
-    status: String(row.status || '').trim().toLowerCase(),
-    hasSavedProgress: (() => {
-      try {
-        const draft = typeof row.notes === 'string' ? JSON.parse(row.notes) : row.notes;
-        return Array.isArray(draft?.exercises) && draft.exercises.length > 0;
-      } catch (_) {
-        return false;
-      }
-    })(),
-  }));
-};
-
-const cancelActiveSessionsForPlan = async ({ connection, scheduleId, userId }) => {
-  const [result] = await connection.query(
-    `UPDATE workout_log_sessions
-     SET status = 'cancelled',
-         ended_at = NOW(),
-         completed_at = NULL,
-         duration_seconds = ${SESSION_CLEANUP_DURATION_SQL}
-     WHERE user_id = ?
-       AND source_workout_schedule_id = ?
-       AND status IN ('in_progress', 'in-progress', 'active', 'paused')`,
-    [userId, scheduleId]
-  );
-
-  return Number(result?.affectedRows || 0);
-};
-
-const normalizeWorkoutPlanPublicationStatus = (statusValue, fallback = 'draft') => {
-  const normalized = String(statusValue || '').trim().toLowerCase();
-  if (['draft', 'active', 'archived'].includes(normalized)) {
-    return normalized;
-  }
-
-  const normalizedFallback = String(fallback || 'draft').trim().toLowerCase();
-  if (['draft', 'active', 'archived'].includes(normalizedFallback)) {
-    return normalizedFallback;
-  }
-
-  return 'draft';
-};
-
-const validateWorkoutPlanPublicationStatusTransition = (currentStatus, nextStatus) => {
-  const current = normalizeWorkoutPlanPublicationStatus(currentStatus, 'draft');
-  const next = String(nextStatus || '').trim().toLowerCase();
-
-  if (!['draft', 'active', 'archived'].includes(next)) {
-    return {
-      ok: false,
-      status: 400,
-      error: `Invalid status "${next}". Allowed values: draft, active, archived.`,
-    };
-  }
-
-  const allowedTransitions = {
-    draft: ['draft', 'active'],
-    active: ['active', 'draft', 'archived'],
-    archived: ['draft', 'archived'],
-  };
-
-  const allowed = allowedTransitions[current] || [];
-  if (!allowed.includes(next)) {
-    return {
-      ok: false,
-      status: 400,
-      error: `Status transition from "${current}" to "${next}" is not allowed.`,
-    };
-  }
-
-  return { ok: true, current, next };
 };
 
 router.post('/workout-schedules/:id/cover', (req, res) => {
@@ -4243,6 +3497,65 @@ router.delete('/workout-schedules/:id/exercises/:scheduleExerciseId', async (req
   }
 });
 
+const SESSION_CLEANUP_DURATION_SQL = `CASE
+  WHEN started_at IS NULL THEN 0
+  ELSE GREATEST(TIMESTAMPDIFF(SECOND, started_at, NOW()), 0)
+END`;
+
+const listActiveSessionsForPlan = async ({ connection, scheduleId, userId }) => {
+  const [rows] = await connection.query(
+    `SELECT
+       id,
+       source_workout_schedule_id AS workoutPlanId,
+       workout_day_id             AS workoutDayId,
+       workout_day_name           AS workoutDayName,
+       workout_date               AS workoutDate,
+       started_at                 AS startedAt,
+       status,
+       notes
+     FROM workout_log_sessions
+     WHERE user_id = ?
+       AND source_workout_schedule_id = ?
+       AND status IN ('in_progress', 'in-progress', 'active', 'paused')
+     ORDER BY started_at DESC, id DESC`,
+    [userId, scheduleId]
+  );
+
+  return rows.map((row) => ({
+    id: Number(row.id),
+    workoutPlanId: Number(row.workoutPlanId || 0) || null,
+    workoutDayId: row.workoutDayId == null ? null : Number(row.workoutDayId),
+    workoutDayName: String(row.workoutDayName || '').trim(),
+    workoutDate: row.workoutDate || null,
+    startedAt: row.startedAt || null,
+    status: String(row.status || '').trim().toLowerCase(),
+    hasSavedProgress: (() => {
+      try {
+        const draft = typeof row.notes === 'string' ? JSON.parse(row.notes) : row.notes;
+        return Array.isArray(draft?.exercises) && draft.exercises.length > 0;
+      } catch (_) {
+        return false;
+      }
+    })(),
+  }));
+};
+
+const cancelActiveSessionsForPlan = async ({ connection, scheduleId, userId }) => {
+  const [result] = await connection.query(
+    `UPDATE workout_log_sessions
+     SET status = 'cancelled',
+         ended_at = NOW(),
+         completed_at = NULL,
+         duration_seconds = ${SESSION_CLEANUP_DURATION_SQL}
+     WHERE user_id = ?
+       AND source_workout_schedule_id = ?
+       AND status IN ('in_progress', 'in-progress', 'active', 'paused')`,
+    [userId, scheduleId]
+  );
+
+  return Number(result?.affectedRows || 0);
+};
+
 router.get('/workout-schedules/:id/delete-impact', async (req, res) => {
   try {
     const userId = req.session?.user?.id;
@@ -4649,6 +3962,717 @@ router.post('/global-workout-plans/:id/use', async (req, res) => {
   }
 });
 
+router.post('/featured-workout-plans/:id/clone', async (req, res) => {
+  const connection = await pool.getConnection();
+  const copiedMediaStorageKeys = [];
+  try {
+    const userId = req.session?.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User not logged in' });
+    }
+
+    const sourcePlanId = Number(req.params?.id || 0);
+    if (!sourcePlanId) {
+      return res.status(400).json({ error: 'Invalid featured workout plan id' });
+    }
+
+    const schemaState = await getWorkoutPlannerSchemaState(connection);
+    if (!schemaState.hasWorkoutPlanType) {
+      return res.status(400).json({ error: 'Database migration required: workout_plan_type column is missing.' });
+    }
+
+    const [sourceRows] = await connection.query(
+      `SELECT id, user_id, cover_image_storage_key, cover_image_content_type
+       FROM workout_schedules
+       WHERE id = ?
+         AND workout_plan_type = ?
+         AND LOWER(COALESCE(status, '')) IN (?, ?, ?)
+         AND LOWER(COALESCE(visibility, '')) = 'public'
+         AND EXISTS (
+           SELECT 1
+           FROM workout_schedule_exercises wse
+           WHERE wse.workout_schedule_id = workout_schedules.id
+         )
+       LIMIT 1`,
+      [sourcePlanId, FEATURED_WORKOUT_PLAN_TYPE, ...PUBLISHED_GLOBAL_STATUSES]
+    );
+
+    if (!sourceRows.length) {
+      return res.status(404).json({ error: 'Featured workout plan not found' });
+    }
+
+    const sourceOwnerUserId = Number(sourceRows[0]?.user_id || 0);
+    if (!sourceOwnerUserId) {
+      return res.status(404).json({ error: 'Featured workout plan owner not found' });
+    }
+
+    const sourcePlanner = await buildPlannerFromSchedule(sourcePlanId, sourceOwnerUserId);
+    if (!sourcePlanner) {
+      return res.status(404).json({ error: 'Featured workout plan details not found' });
+    }
+
+    const sourceMetadata = sourcePlanner?.metadata || {};
+    const sourceName = sanitizeText(sourceMetadata?.name || 'Featured Workout', 150) || 'Featured Workout';
+    const sourceDescription = sanitizeText(sourceMetadata?.description || '', 1000);
+    const sourceType = sanitizeText(sourceMetadata?.type || 'Strength', 50) || 'Strength';
+    const sourceCategory = normalizeWorkoutPlanCategory(sourceMetadata?.category).value;
+    const sourceDuration = parseNumber(sourceMetadata?.estimatedDuration) || 0;
+    const sourceGoalType = parseWorkoutGoalType(sourceMetadata?.goalType).value;
+    const sourceScheduleMode = sourcePlanner?.scheduleMode === 'week' ? 'week' : 'day';
+
+    await connection.beginTransaction();
+
+    const cloneColumns = [
+      'user_id',
+      'title',
+      'description',
+      'workout_type',
+      'category',
+      'workout_plan_type',
+      'estimated_duration_minutes',
+      'status',
+      'visibility',
+      'schedule_mode',
+    ];
+    const cloneValues = [
+      userId,
+      sourceName,
+      sourceDescription,
+      sourceType,
+      sourceCategory,
+      null,
+      sourceDuration,
+      'draft',
+      'private',
+      sourceScheduleMode,
+    ];
+
+    if (schemaState.hasGoalType) {
+      cloneColumns.splice(6, 0, 'goal_type');
+      cloneValues.splice(6, 0, sourceGoalType);
+    }
+    if (schemaState.hasSourceGlobalPlanId) {
+      const insertAt = cloneColumns.indexOf('workout_plan_type') + 1;
+      cloneColumns.splice(insertAt, 0, 'source_global_plan_id');
+      cloneValues.splice(insertAt, 0, sourcePlanId);
+    }
+    if (schemaState.hasGlobalPlanAdoptedAt) {
+      const insertAt = cloneColumns.indexOf('source_global_plan_id') >= 0
+        ? cloneColumns.indexOf('source_global_plan_id') + 1
+        : cloneColumns.indexOf('workout_plan_type') + 1;
+      cloneColumns.splice(insertAt, 0, 'global_plan_adopted_at');
+      cloneValues.splice(insertAt, 0, new Date());
+    }
+
+    const [insertResult] = await connection.query(
+      `INSERT INTO workout_schedules (${cloneColumns.join(', ')})
+       VALUES (${cloneColumns.map(() => '?').join(', ')})`,
+      cloneValues
+    );
+
+    const clonedScheduleId = Number(insertResult.insertId || 0);
+    if (!clonedScheduleId) {
+      await connection.rollback();
+      return res.status(500).json({ error: 'Failed to create personal workout copy' });
+    }
+
+    const mappedPlanner = await mapPlannerExercisesForAdoption({
+      connection,
+      req,
+      recipientUserId: userId,
+      sourcePlanner,
+      copiedMediaStorageKeys,
+    });
+
+    const plannerForClone = {
+      ...mappedPlanner,
+      planId: String(clonedScheduleId),
+      metadata: {
+        ...sourceMetadata,
+        category: sourceCategory,
+        planType: null,
+        goalType: sourceGoalType,
+        goalId: '',
+        goalContext: null,
+      },
+    };
+
+    await replaceScheduleGroupsAndExercises(connection, clonedScheduleId, plannerForClone);
+
+    await cloneWorkoutPlanCoverToPlan({
+      pool: connection,
+      sourcePlan: {
+        id: sourcePlanId,
+        cover_image_storage_key: sourceRows[0]?.cover_image_storage_key,
+        cover_image_content_type: sourceRows[0]?.cover_image_content_type,
+      },
+      destinationPlanId: clonedScheduleId,
+    });
+
+    await connection.commit();
+
+    const planner = await buildPlannerFromSchedule(clonedScheduleId, userId);
+    const workoutLists = await loadSchedulesForUser(userId);
+    const hasSavedExerciseList = await hasSavedExercisesForUser(userId);
+
+    return res.status(201).json({
+      message: 'Featured workout plan copied to your Workout Builder.',
+      planner,
+      workoutLists,
+      hasWorkoutLists: workoutLists.length > 0,
+      hasSavedWorkoutExerciseList: hasSavedExerciseList,
+      canCreateFeaturedPlans: isAdminUser(req),
+      sourcePlanId: String(sourcePlanId),
+    });
+  } catch (err) {
+    try {
+      await connection.rollback();
+    } catch (_) {
+      // ignore rollback errors
+    }
+    await cleanupAdoptionCopiedMedia(copiedMediaStorageKeys);
+    console.error('❌ Failed to clone featured workout plan:', err);
+    return res.status(Number(err?.statusCode || 500)).json({ error: err?.message || 'Failed to clone featured workout plan' });
+  } finally {
+    connection.release();
+  }
+});
+
+router.get('/admin/global-workout-plans', async (req, res) => {
+  try {
+    const userId = await requireAdminSessionUserForGlobalPlans(req, res);
+    if (!userId) {
+      return;
+    }
+
+    await ensureWorkoutPlannerOrderingColumns();
+
+    const workoutLists = await loadGlobalWorkoutPlans();
+    const visibleLists = isAdminUser(req)
+      ? workoutLists
+      : workoutLists.filter((plan) => Number(plan?.ownerUserId || 0) === Number(userId));
+    return res.json({
+      workoutLists: visibleLists,
+      hasWorkoutLists: visibleLists.length > 0,
+    });
+  } catch (err) {
+    console.error('❌ Failed to load global workout plans:', err);
+    return res.status(500).json({ error: 'Failed to load global workout plans' });
+  }
+});
+
+router.get('/admin/user-workout-plans', async (req, res) => {
+  try {
+    const userId = requireAdminSessionUser(req, res);
+    if (!userId) {
+      return;
+    }
+
+    await ensureWorkoutPlannerOrderingColumns();
+
+    const workoutLists = await loadAdminUserWorkoutPlans();
+    return res.json({
+      workoutLists,
+      hasWorkoutLists: workoutLists.length > 0,
+    });
+  } catch (err) {
+    console.error('❌ Failed to load admin user workout plans:', err);
+    return res.status(500).json({ error: 'Failed to load admin user workout plans' });
+  }
+});
+
+router.get('/admin/global-workout-plans/:id', async (req, res) => {
+  try {
+    const userId = await requireAdminSessionUserForGlobalPlans(req, res);
+    if (!userId) {
+      return;
+    }
+
+    await ensureWorkoutPlannerOrderingColumns();
+
+    const scheduleId = Number(req.params?.id || 0);
+    if (!scheduleId) {
+      return res.status(400).json({ error: 'Invalid schedule id' });
+    }
+
+    const planner = await buildGlobalWorkoutPlanById(scheduleId);
+    if (!planner) {
+      return res.status(404).json({ error: 'Global workout plan not found' });
+    }
+
+    return res.json({ planner });
+  } catch (err) {
+    console.error('❌ Failed to load global workout plan:', err);
+    return res.status(500).json({ error: 'Failed to load global workout plan' });
+  }
+});
+
+router.post('/admin/global-workout-plans', async (req, res) => {
+  try {
+    const userId = await requireAdminSessionUserForGlobalPlans(req, res);
+    if (!userId) {
+      return;
+    }
+
+    const schemaState = await ensureWorkoutPlannerOrderingColumns();
+    if (!schemaState.hasWorkoutPlanType) {
+      return res.status(400).json({ error: 'Database migration required: workout_plan_type column is missing.' });
+    }
+
+    const payload = req.body || {};
+    const requestedGlobalPlanType = payload?.planType == null ? GLOBAL_WORKOUT_PLAN_TYPE : payload?.planType;
+    const parsedPlanType = parseGlobalWorkoutPlanTypeForAdmin(req, requestedGlobalPlanType);
+    if (!parsedPlanType.ok) {
+      return res.status(parsedPlanType.status).json({ error: parsedPlanType.error });
+    }
+    const createTypeSupport = await ensureWorkoutPlanTypeSupportedBySchema(parsedPlanType.value);
+    if (!createTypeSupport.ok) {
+      return res.status(createTypeSupport.status).json({ error: createTypeSupport.error });
+    }
+    const parsedGoalType = parseWorkoutGoalType(payload?.goalType);
+    if (!parsedGoalType.isValid) {
+      return res.status(400).json({ error: 'Invalid Goal Type. Allowed values: No Specific Goal, Body Weight, Exercise Weight.' });
+    }
+    const hasCategoryOverride = Object.prototype.hasOwnProperty.call(payload, 'category');
+    const categoryValidation = hasCategoryOverride
+      ? normalizeWorkoutPlanCategory(payload?.category)
+      : { isSet: false, isValid: true, value: null };
+    if (hasCategoryOverride && !categoryValidation.isValid) {
+      return res.status(400).json({ error: categoryValidation.error || getWorkoutPlanCategoryValidationError() });
+    }
+    const hasGoalTargetDateOverride = Object.prototype.hasOwnProperty.call(payload, 'goalTargetDate');
+    const goalTargetDateValidation = hasGoalTargetDateOverride
+      ? normalizeWorkoutGoalTargetDate(payload?.goalTargetDate)
+      : { isSet: false, isValid: true, value: null };
+    if (hasGoalTargetDateOverride && !goalTargetDateValidation.isValid) {
+      return res.status(400).json({ error: goalTargetDateValidation.error || 'Invalid goal target date. Use YYYY-MM-DD.' });
+    }
+    const hasPlanDurationWeeksOverride = Object.prototype.hasOwnProperty.call(payload, 'planDurationWeeks');
+    const planDurationWeeksValidation = hasPlanDurationWeeksOverride
+      ? normalizePlanDurationWeeks(payload?.planDurationWeeks)
+      : { isSet: false, isValid: true, value: null };
+    if (hasPlanDurationWeeksOverride && !planDurationWeeksValidation.isValid) {
+      return res.status(400).json({ error: planDurationWeeksValidation.error || 'Invalid plan duration in weeks. Use a positive integer or leave blank.' });
+    }
+
+    const title = sanitizeText(payload?.title || 'Untitled Workout', 150) || 'Untitled Workout';
+    const description = sanitizeText(payload?.description || '', 1000);
+    const estimatedDuration = parseNumber(payload?.estimatedDurationMinutes) || 0;
+    const visibility = normalizeGlobalAccessVisibility(payload?.accessLevel, 'private');
+
+    const insertColumns = [
+      'user_id',
+      'title',
+      'description',
+      'workout_type',
+    ];
+    const insertValues = [
+      userId,
+      title,
+      description,
+      'Strength',
+    ];
+    if (hasCategoryOverride) {
+      insertColumns.push('category');
+      insertValues.push(categoryValidation.value);
+    }
+    insertColumns.push('workout_plan_type', 'estimated_duration_minutes', 'status', 'visibility', 'schedule_mode');
+    insertValues.push(parsedPlanType.value, estimatedDuration, 'draft', visibility, 'day');
+
+    if (schemaState.hasGoalType) {
+      insertColumns.splice(5, 0, 'goal_type');
+      insertValues.splice(5, 0, parsedGoalType.value);
+    }
+    if (schemaState.hasGoalTargetDate) {
+      insertColumns.push('goal_target_date');
+      insertValues.push(goalTargetDateValidation.value);
+    }
+    if (schemaState.hasPlanDurationWeeks) {
+      insertColumns.push('plan_duration_weeks');
+      insertValues.push(planDurationWeeksValidation.value);
+    }
+
+    const [result] = await pool.query(
+      `INSERT INTO workout_schedules (${insertColumns.join(', ')})
+       VALUES (${insertColumns.map(() => '?').join(', ')})`,
+      insertValues
+    );
+
+    const scheduleId = Number(result.insertId || 0);
+    if (!scheduleId) {
+      return res.status(500).json({ error: 'Failed to create global workout plan' });
+    }
+
+    await pool.query(
+      `INSERT INTO workout_schedule_groups (workout_schedule_id, label, group_type, sort_order)
+       VALUES (?, 'Any Day', 'any', 1)`,
+      [scheduleId]
+    );
+
+    const planner = await buildGlobalWorkoutPlanById(scheduleId);
+    const workoutLists = await loadGlobalWorkoutPlans();
+
+    return res.status(201).json({
+      message: 'Global workout plan draft created',
+      planner,
+      workoutLists,
+      hasWorkoutLists: workoutLists.length > 0,
+    });
+  } catch (err) {
+    console.error('❌ Failed to create global workout plan:', err);
+    return res.status(500).json({ error: 'Failed to create global workout plan' });
+  }
+});
+
+router.patch('/admin/global-workout-plans/:id', async (req, res) => {
+  try {
+    const userId = await requireAdminSessionUserForGlobalPlans(req, res);
+    if (!userId) {
+      return;
+    }
+
+    const schemaState = await ensureWorkoutPlannerOrderingColumns();
+    if (!schemaState.hasWorkoutPlanType) {
+      return res.status(400).json({ error: 'Database migration required: workout_plan_type column is missing.' });
+    }
+
+    const scheduleId = Number(req.params?.id || 0);
+    if (!scheduleId) {
+      return res.status(400).json({ error: 'Invalid schedule id' });
+    }
+
+    const body = req.body || {};
+    const parsedGoalType = parseWorkoutGoalType(body?.goalType);
+    if (!parsedGoalType.isValid) {
+      return res.status(400).json({ error: 'Invalid Goal Type. Allowed values: No Specific Goal, Body Weight, Exercise Weight.' });
+    }
+    const hasCategoryOverride = Object.prototype.hasOwnProperty.call(body, 'category');
+    const categoryValidation = hasCategoryOverride
+      ? normalizeWorkoutPlanCategory(body?.category)
+      : { isSet: false, isValid: true, value: null };
+    if (hasCategoryOverride && !categoryValidation.isValid) {
+      return res.status(400).json({ error: categoryValidation.error || getWorkoutPlanCategoryValidationError() });
+    }
+    const hasGoalTargetDateOverride = Object.prototype.hasOwnProperty.call(body, 'goalTargetDate');
+    const goalTargetDateValidation = hasGoalTargetDateOverride
+      ? normalizeWorkoutGoalTargetDate(body?.goalTargetDate)
+      : { isSet: false, isValid: true, value: null };
+    if (hasGoalTargetDateOverride && !goalTargetDateValidation.isValid) {
+      return res.status(400).json({ error: goalTargetDateValidation.error || 'Invalid goal target date. Use YYYY-MM-DD.' });
+    }
+    const hasPlanDurationWeeksOverride = Object.prototype.hasOwnProperty.call(body, 'planDurationWeeks');
+    const planDurationWeeksValidation = hasPlanDurationWeeksOverride
+      ? normalizePlanDurationWeeks(body?.planDurationWeeks)
+      : { isSet: false, isValid: true, value: null };
+    if (hasPlanDurationWeeksOverride && !planDurationWeeksValidation.isValid) {
+      return res.status(400).json({ error: planDurationWeeksValidation.error || 'Invalid plan duration in weeks. Use a positive integer or leave blank.' });
+    }
+
+    const [currentRows] = await pool.query(
+      `SELECT id, workout_plan_type
+       FROM workout_schedules
+       WHERE id = ?
+         AND workout_plan_type IN (${GLOBAL_WORKOUT_PLAN_TYPE_SQL_PLACEHOLDERS})
+       LIMIT 1`,
+      [scheduleId, ...GLOBAL_WORKOUT_PLAN_TYPE_VALUES]
+    );
+
+    if (!currentRows.length) {
+      return res.status(404).json({ error: 'Global workout plan not found' });
+    }
+
+    const requestedPlanType = validateRequestedWorkoutPlanType(req, body?.planType, {
+      surface: PLAN_TYPE_SURFACE_ADMIN_GLOBAL,
+    });
+    if (!requestedPlanType.ok) {
+      return res.status(requestedPlanType.status).json({ error: requestedPlanType.error });
+    }
+
+    const immutablePlanType = resolveImmutableWorkoutPlanType({
+      existingValue: currentRows[0]?.workout_plan_type,
+      requestedValue: requestedPlanType.isSet ? requestedPlanType.value : null,
+    });
+    if (!immutablePlanType.ok) {
+      return res.status(immutablePlanType.status).json({ error: immutablePlanType.error });
+    }
+    const updateTypeSupport = await ensureWorkoutPlanTypeSupportedBySchema(immutablePlanType.value);
+    if (!updateTypeSupport.ok) {
+      return res.status(updateTypeSupport.status).json({ error: updateTypeSupport.error });
+    }
+
+    const title = sanitizeText(body?.title || '', 150);
+    const description = sanitizeText(body?.description || '', 1000);
+    const estimatedDuration = parseNumber(body?.estimatedDurationMinutes);
+    const visibility = normalizeGlobalAccessVisibility(body?.accessLevel, 'public');
+
+    const updateFields = [
+      "title = COALESCE(NULLIF(?, ''), title)",
+      'description = COALESCE(?, description)',
+      'workout_plan_type = ?',
+      'estimated_duration_minutes = COALESCE(?, estimated_duration_minutes)',
+      'visibility = ?',
+    ];
+    const updateParams = [
+      title,
+      description,
+      immutablePlanType.value,
+      estimatedDuration,
+      visibility,
+    ];
+
+    if (schemaState.hasGoalType) {
+      updateFields.push('goal_type = ?');
+      updateParams.push(parsedGoalType.value);
+    }
+    if (schemaState.hasGoalTargetDate && hasGoalTargetDateOverride) {
+      updateFields.push('goal_target_date = ?');
+      updateParams.push(goalTargetDateValidation.value);
+    }
+    if (schemaState.hasPlanDurationWeeks && hasPlanDurationWeeksOverride) {
+      updateFields.push('plan_duration_weeks = ?');
+      updateParams.push(planDurationWeeksValidation.value);
+    }
+    if (hasCategoryOverride) {
+      updateFields.push('category = ?');
+      updateParams.push(categoryValidation.value);
+    }
+
+    updateFields.push('updated_at = CURRENT_TIMESTAMP');
+
+    const [result] = await pool.query(
+      `UPDATE workout_schedules
+       SET
+         ${updateFields.join(',\n         ')}
+       WHERE id = ?
+         AND workout_plan_type IN (${GLOBAL_WORKOUT_PLAN_TYPE_SQL_PLACEHOLDERS})`,
+      [
+        ...updateParams,
+        scheduleId,
+        ...GLOBAL_WORKOUT_PLAN_TYPE_VALUES,
+      ]
+    );
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ error: 'Global workout plan not found' });
+    }
+
+    const planner = await buildGlobalWorkoutPlanById(scheduleId);
+    const workoutLists = await loadGlobalWorkoutPlans();
+
+    return res.json({
+      message: 'Global workout plan updated',
+      planner,
+      workoutLists,
+      hasWorkoutLists: workoutLists.length > 0,
+    });
+  } catch (err) {
+    console.error('❌ Failed to update global workout plan:', err);
+    return res.status(500).json({ error: 'Failed to update global workout plan' });
+  }
+});
+
+const validateGlobalPlanStatusTransition = (currentStatus, nextStatus) => {
+  const current = String(currentStatus || 'draft').trim().toLowerCase();
+  const next = String(nextStatus || 'draft').trim().toLowerCase();
+
+  if (!['draft', 'active', 'archived'].includes(next)) {
+    return {
+      ok: false,
+      status: 400,
+      error: `Invalid status "${next}". Allowed values: draft, active, archived.`,
+    };
+  }
+
+  const allowedTransitions = {
+    draft: ['draft', 'active'],
+    active: ['active', 'draft'],
+    archived: ['draft'],
+  };
+
+  const allowed = allowedTransitions[current] || [];
+  if (!allowed.includes(next)) {
+    return {
+      ok: false,
+      status: 400,
+      error: `Status transition from "${current}" to "${next}" is not allowed for global workout plans.`,
+    };
+  }
+
+  return { ok: true, current, next };
+};
+
+router.patch('/admin/global-workout-plans/:id/schedule', async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    const userId = await requireAdminSessionUserForGlobalPlans(req, res);
+    if (!userId) {
+      connection.release();
+      return;
+    }
+
+    const scheduleId = Number(req.params?.id || 0);
+    if (!scheduleId) {
+      connection.release();
+      return res.status(400).json({ error: 'Invalid schedule id' });
+    }
+
+    const schemaState = await ensureWorkoutPlannerOrderingColumns(connection);
+
+    const currentPlanner = await buildGlobalWorkoutPlanById(scheduleId);
+    if (!currentPlanner) {
+      connection.release();
+      return res.status(404).json({ error: 'Global workout plan not found' });
+    }
+
+    const incomingPlanner = req.body?.planner;
+    if (!incomingPlanner || typeof incomingPlanner !== 'object') {
+      connection.release();
+      return res.status(400).json({ error: 'planner object is required' });
+    }
+
+    const normalizedPlanner = normalizePlannerPayload({
+      ...incomingPlanner,
+      planId: String(scheduleId),
+      metadata: {
+        ...(incomingPlanner?.metadata || {}),
+        category: incomingPlanner?.metadata?.category ?? currentPlanner?.metadata?.category ?? null,
+        // Preserve global plan classification during schedule edits.
+        planType: currentPlanner?.metadata?.planType,
+        goalType: parseWorkoutGoalType(incomingPlanner?.metadata?.goalType).isValid
+          ? parseWorkoutGoalType(incomingPlanner?.metadata?.goalType).value
+          : currentPlanner?.metadata?.goalType,
+        goalTargetDate: incomingPlanner?.metadata?.goalTargetDate ?? currentPlanner?.metadata?.goalTargetDate ?? null,
+        planDurationWeeks: incomingPlanner?.metadata?.planDurationWeeks ?? currentPlanner?.metadata?.planDurationWeeks ?? null,
+      },
+    });
+    const normalizedCategory = normalizeWorkoutPlanCategory(normalizedPlanner?.metadata?.category);
+    if (normalizedPlanner?.metadata && Object.prototype.hasOwnProperty.call(normalizedPlanner.metadata, 'category') && normalizedCategory.isSet && !normalizedCategory.isValid) {
+      return res.status(400).json({ error: normalizedCategory.error || getWorkoutPlanCategoryValidationError() });
+    }
+    const normalizedGoalType = parseWorkoutGoalType(normalizedPlanner?.metadata?.goalType).value;
+    const hasGoalTargetDateOverride = Object.prototype.hasOwnProperty.call(normalizedPlanner?.metadata || {}, 'goalTargetDate');
+    const goalTargetDateValidation = hasGoalTargetDateOverride
+      ? normalizeWorkoutGoalTargetDate(normalizedPlanner?.metadata?.goalTargetDate)
+      : { isSet: false, isValid: true, value: null };
+    if (hasGoalTargetDateOverride && !goalTargetDateValidation.isValid) {
+      connection.release();
+      return res.status(400).json({ error: goalTargetDateValidation.error || 'Invalid goal target date. Use YYYY-MM-DD.' });
+    }
+    const hasPlanDurationWeeksOverride = Object.prototype.hasOwnProperty.call(normalizedPlanner?.metadata || {}, 'planDurationWeeks');
+    const planDurationWeeksValidation = hasPlanDurationWeeksOverride
+      ? normalizePlanDurationWeeks(normalizedPlanner?.metadata?.planDurationWeeks)
+      : { isSet: false, isValid: true, value: null };
+    if (hasPlanDurationWeeksOverride && !planDurationWeeksValidation.isValid) {
+      connection.release();
+      return res.status(400).json({ error: planDurationWeeksValidation.error || 'Invalid plan duration in weeks. Use a positive integer or leave blank.' });
+    }
+    const accessVisibility = normalizeGlobalAccessVisibility(
+      normalizedPlanner?.metadata?.accessLevel,
+      normalizeGlobalAccessVisibility(currentPlanner?.visibility, 'public')
+    );
+
+    const requestedStatus = String(req.body?.status ?? incomingPlanner?.metadata?.status ?? 'draft').trim().toLowerCase();
+    const statusTransition = validateGlobalPlanStatusTransition(currentPlanner?.status || 'draft', requestedStatus);
+    if (!statusTransition.ok) {
+      connection.release();
+      return res.status(statusTransition.status).json({ error: statusTransition.error });
+    }
+    const normalizedStatus = statusTransition.next;
+    const requirePublishCompleteness = normalizedStatus === 'active';
+
+    if (requirePublishCompleteness) {
+      const completenessMissing = collectGlobalPlanCompletenessErrors(incomingPlanner);
+      if (completenessMissing.length) {
+        connection.release();
+        return res.status(422).json({
+          error: buildGlobalPlanCompletenessErrorMessage(completenessMissing),
+          missingRequirements: completenessMissing,
+        });
+      }
+    }
+
+    await connection.beginTransaction();
+
+    const scheduleUpdateFields = [
+      'title = ?',
+      'description = ?',
+      'workout_type = ?',
+      'estimated_duration_minutes = ?',
+      'status = ?',
+      'visibility = ?',
+      'schedule_mode = ?',
+    ];
+    const scheduleUpdateParams = [
+      sanitizeText(normalizedPlanner?.metadata?.name || '', 150) || 'Untitled Workout',
+      sanitizeText(normalizedPlanner?.metadata?.description || '', 1000),
+      sanitizeText(normalizedPlanner?.metadata?.type || 'Strength', 50) || 'Strength',
+      parseNumber(normalizedPlanner?.metadata?.estimatedDuration) || 0,
+      normalizedStatus,
+      accessVisibility,
+      normalizedPlanner?.scheduleMode === 'week' ? 'week' : 'day',
+    ];
+    scheduleUpdateFields.push('category = ?');
+    scheduleUpdateParams.push(normalizedCategory.isSet ? normalizedCategory.value : null);
+
+    if (schemaState.hasGoalType) {
+      scheduleUpdateFields.push('goal_type = ?');
+      scheduleUpdateParams.push(normalizedGoalType);
+    }
+    if (schemaState.hasGoalTargetDate && hasGoalTargetDateOverride) {
+      scheduleUpdateFields.push('goal_target_date = ?');
+      scheduleUpdateParams.push(goalTargetDateValidation.value);
+    }
+    if (schemaState.hasPlanDurationWeeks && hasPlanDurationWeeksOverride) {
+      scheduleUpdateFields.push('plan_duration_weeks = ?');
+      scheduleUpdateParams.push(planDurationWeeksValidation.value);
+    }
+
+    scheduleUpdateFields.push('updated_at = CURRENT_TIMESTAMP');
+
+    const [updateResult] = await connection.query(
+      `UPDATE workout_schedules
+       SET
+         ${scheduleUpdateFields.join(',\n         ')}
+       WHERE id = ?
+         AND workout_plan_type IN (${GLOBAL_WORKOUT_PLAN_TYPE_SQL_PLACEHOLDERS})`,
+      [
+        ...scheduleUpdateParams,
+        scheduleId,
+        ...GLOBAL_WORKOUT_PLAN_TYPE_VALUES,
+      ]
+    );
+
+    if (!updateResult.affectedRows) {
+      await connection.rollback();
+      connection.release();
+      return res.status(404).json({ error: 'Global workout plan not found' });
+    }
+
+    await replaceScheduleGroupsAndExercises(connection, scheduleId, normalizedPlanner);
+    await connection.commit();
+
+    const planner = await buildGlobalWorkoutPlanById(scheduleId);
+    const workoutLists = await loadGlobalWorkoutPlans();
+
+    connection.release();
+    return res.json({
+      message: 'Global workout plan schedule updated',
+      planner,
+      workoutLists,
+      hasWorkoutLists: workoutLists.length > 0,
+    });
+  } catch (err) {
+    try {
+      await connection.rollback();
+    } catch (_) {
+      // ignore rollback errors
+    }
+    connection.release();
+    console.error('❌ Failed to update global workout plan schedule:', err);
+    return res.status(500).json({ error: 'Failed to update global workout plan schedule' });
+  }
+});
+
 router.post('/admin/global-workout-plans/:id/exercises', async (req, res) => {
   try {
     const userId = await requireAdminSessionUserForGlobalPlans(req, res);
@@ -4874,7 +4898,6 @@ router.delete('/admin/global-workout-plans/:id', async (req, res) => {
 });
 
 // Compatibility endpoint used by existing frontend workflow
-
 router.get('/workout-planner', async (req, res) => {
   try {
     const userId = req.session?.user?.id;
@@ -5012,6 +5035,51 @@ router.get('/workout-planner/provenance', async (req, res) => {
   }
 });
 
+const normalizeWorkoutPlanPublicationStatus = (statusValue, fallback = 'draft') => {
+  const normalized = String(statusValue || '').trim().toLowerCase();
+  if (['draft', 'active', 'archived'].includes(normalized)) {
+    return normalized;
+  }
+
+  const normalizedFallback = String(fallback || 'draft').trim().toLowerCase();
+  if (['draft', 'active', 'archived'].includes(normalizedFallback)) {
+    return normalizedFallback;
+  }
+
+  return 'draft';
+};
+
+const validateWorkoutPlanPublicationStatusTransition = (currentStatus, nextStatus) => {
+  const current = normalizeWorkoutPlanPublicationStatus(currentStatus, 'draft');
+  const next = String(nextStatus || '').trim().toLowerCase();
+
+  if (!['draft', 'active', 'archived'].includes(next)) {
+    return {
+      ok: false,
+      status: 400,
+      error: `Invalid status "${next}". Allowed values: draft, active, archived.`,
+    };
+  }
+
+  const allowedTransitions = {
+    draft: ['draft', 'active'],
+    active: ['active', 'draft', 'archived'],
+    archived: ['draft', 'archived'],
+  };
+
+  const allowed = allowedTransitions[current] || [];
+  if (!allowed.includes(next)) {
+    return {
+      ok: false,
+      status: 400,
+      error: `Status transition from "${current}" to "${next}" is not allowed.`,
+    };
+  }
+
+  return { ok: true, current, next };
+};
+
+// Compatibility endpoint used by existing frontend workflow
 router.put('/workout-planner', async (req, res) => {
   const connection = await pool.getConnection();
   try {

@@ -105,7 +105,7 @@ const updateField = (field, value, isNumeric = false) => {
         <div>
           <div class="exercise-block__badges">
             <span class="exercise-block__badge">Block {{ index + 1 }}</span>
-            <span :class="['type-badge', workoutTypeBadgeClass]">{{ workoutTypeBadgeLabel }}</span>
+            <span v-if="workoutTypeBadgeLabel" :class="['type-badge', workoutTypeBadgeClass]">{{ workoutTypeBadgeLabel }}</span>
           </div>
           <h4>{{ exercise.name }}</h4>
           <p>{{ exercise.muscleGroup || 'N/A' }} • {{ exercise.equipment || 'Bodyweight' }}</p>

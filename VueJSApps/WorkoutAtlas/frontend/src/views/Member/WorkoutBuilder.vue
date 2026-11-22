@@ -12,13 +12,6 @@ import { DEFAULT_WORKOUT_PLAN_IMAGE, buildWorkoutPlanCoverImageUrl, applyWorkout
 import { countUniqueWorkoutPlanExercises } from '@/utils/workoutPlanExerciseCount';
 import { getPreviewDescriptionDisplay } from '@/utils/workoutPreviewDescription.mjs';
 import { normalizeRecordingType } from '@/utils/exerciseRecordingFields';
-import {
-  DEFAULT_WORKOUT_WEEK_NAME,
-  ensureDefaultWorkoutWeek,
-  normalizeWeekAssignments,
-  resolveAssignedWorkoutDays,
-  validateAdditionalWeekCreation,
-} from '@/utils/workoutWeekAssignments.mjs';
 import Swal from 'sweetalert2';
 import { showConfirmDialog } from '@/utils/browserDialogs';
 import {
@@ -143,8 +136,6 @@ const mainAccordion = ref({
 const scheduleMode = ref('day');
 const dayGroups = ref([]);
 const weekGroups = ref([]);
-const dayGroupWeekAssignments = ref({});
-const selectedWeekName = ref(DEFAULT_WORKOUT_WEEK_NAME);
 const dayGroupOrders = ref([]);
 const weekGroupOrders = ref([]);
 const selectedScheduleGroup = ref(null);
@@ -1335,8 +1326,6 @@ const storeUnsavedBuilderDraft = () => {
       workoutExercises: workoutExercises.value,
       dayGroups: dayGroups.value,
       weekGroups: weekGroups.value,
-      dayGroupWeekAssignments: dayGroupWeekAssignments.value,
-      selectedWeekName: selectedWeekName.value,
       dayGroupOrders: dayGroupOrders.value,
       weekGroupOrders: weekGroupOrders.value,
       selectedScheduleGroup: selectedScheduleGroup.value,
@@ -1379,10 +1368,6 @@ const restoreUnsavedBuilderDraft = () => {
     workoutExercises.value = Array.isArray(snapshot.workoutExercises) ? snapshot.workoutExercises : workoutExercises.value;
     dayGroups.value = Array.isArray(snapshot.dayGroups) ? snapshot.dayGroups : dayGroups.value;
     weekGroups.value = Array.isArray(snapshot.weekGroups) ? snapshot.weekGroups : weekGroups.value;
-    dayGroupWeekAssignments.value = snapshot.dayGroupWeekAssignments && typeof snapshot.dayGroupWeekAssignments === 'object'
-      ? snapshot.dayGroupWeekAssignments
-      : dayGroupWeekAssignments.value;
-    selectedWeekName.value = String(snapshot.selectedWeekName || DEFAULT_WORKOUT_WEEK_NAME).trim() || DEFAULT_WORKOUT_WEEK_NAME;
     dayGroupOrders.value = Array.isArray(snapshot.dayGroupOrders) ? snapshot.dayGroupOrders : dayGroupOrders.value;
     weekGroupOrders.value = Array.isArray(snapshot.weekGroupOrders) ? snapshot.weekGroupOrders : weekGroupOrders.value;
     selectedScheduleGroup.value = snapshot.selectedScheduleGroup ?? selectedScheduleGroup.value;
@@ -2420,10 +2405,6 @@ const getGroupOrderRefForMode = (modeCandidate = scheduleMode.value) => {
 
 const activeGroups = computed(() => {
   const mode = normalizeScheduleMode(scheduleMode.value);
-  if (mode === 'week') {
-    const groups = resolveAssignedWorkoutDays(dayGroups.value, dayGroupWeekAssignments.value, selectedWeekName.value);
-    return sortGroupsByOrder(groups, dayGroupOrders.value);
-  }
   const groups = getGroupRefForMode(mode);
   const orders = getGroupOrderRefForMode(mode);
   return sortGroupsByOrder(groups.value, orders.value);
@@ -2656,12 +2637,6 @@ const clearScheduleGroupEditorError = (source = 'all') => {
 };
 
 const hasMultipleScheduleGroups = computed(() => activeGroups.value.length > 1);
-
-const bottomScheduleControlsVisible = computed(() => {
-  return activeGroups.value.length > 0
-    && countUniqueWorkoutPlanExercises(workoutExercises.value) >= 2;
-});
-
 const isAdminGlobalPlanDraftFlow = computed(() => {
   if (!isAdminUser.value) {
     return false;
@@ -3020,6 +2995,11 @@ const showSaveFooter = computed(() => builderTab.value === 'create' || isViewEdi
 const canModifyScheduleDayActions = computed(() => {
   return builderTab.value === 'create' || isViewEditMode.value || isCreatingWorkout.value;
 });
+const showBottomScheduleGroupControls = computed(() => {
+  if (!canModifyScheduleDayActions.value) return false;
+  if (activeGroups.value.length < 1) return false;
+  return countUniqueWorkoutPlanExercises(workoutExercises.value) >= 2;
+});
 const planDetailsHeaderText = computed(() => {
   if (builderTab.value === 'create') {
     return 'Create Workout Plan';
@@ -3188,8 +3168,6 @@ const buildPlannerDirtyState = () => {
     scheduleMode: normalizeScheduleMode(scheduleMode.value),
     dayGroups: Array.isArray(dayGroups.value) ? dayGroups.value : [],
     weekGroups: Array.isArray(weekGroups.value) ? weekGroups.value : [],
-    dayGroupWeekAssignments: dayGroupWeekAssignments.value,
-    selectedWeekName: selectedWeekName.value,
     dayGroupOrders: Array.isArray(dayGroupOrders.value) ? dayGroupOrders.value : [],
     weekGroupOrders: Array.isArray(weekGroupOrders.value) ? weekGroupOrders.value : [],
     selectedScheduleGroup: selectedScheduleGroup.value || null,
@@ -3240,16 +3218,6 @@ const resetPlannerDraft = ({ preserveSaveMessage = false } = {}) => {
   scheduleMode.value = 'day';
   dayGroups.value = [];
   weekGroups.value = [];
-  dayGroupWeekAssignments.value = {};
-  weekGroups.value = ensureDefaultWorkoutWeek(weekGroups.value);
-  dayGroupWeekAssignments.value = normalizeWeekAssignments(
-    dayGroupWeekAssignments.value,
-    dayGroups.value,
-    weekGroups.value
-  );
-  selectedWeekName.value = weekGroups.value.some((week) => normalizeGroupKey(week) === normalizeGroupKey(selectedWeekName.value))
-    ? selectedWeekName.value
-    : DEFAULT_WORKOUT_WEEK_NAME;
   dayGroupOrders.value = [];
   weekGroupOrders.value = [];
   selectedScheduleGroup.value = null;
@@ -3424,20 +3392,6 @@ const hydratePlanner = (planner = {}, {
   dayGroups.value = appendMissingGroups(dayGroups.value);
   syncGroupOrders('day', dayGroups.value);
 
-  dayGroupWeekAssignments.value = planner?.dayGroupWeekAssignments && typeof planner.dayGroupWeekAssignments === 'object'
-    ? planner.dayGroupWeekAssignments
-    : {};
-  selectedWeekName.value = String(planner?.selectedWeekName || DEFAULT_WORKOUT_WEEK_NAME).trim() || DEFAULT_WORKOUT_WEEK_NAME;
-  weekGroups.value = ensureDefaultWorkoutWeek(weekGroups.value);
-  dayGroupWeekAssignments.value = normalizeWeekAssignments(
-    dayGroupWeekAssignments.value,
-    dayGroups.value,
-    weekGroups.value
-  );
-  selectedWeekName.value = weekGroups.value.some((week) => normalizeGroupKey(week) === normalizeGroupKey(selectedWeekName.value))
-    ? selectedWeekName.value
-    : DEFAULT_WORKOUT_WEEK_NAME;
-
   syncScheduleGroupIdentityMap('day', dayGroups.value);
   syncScheduleGroupIdentityMap('week', weekGroups.value);
   ensureAccordionSelectionForMode('day');
@@ -3598,19 +3552,9 @@ const createWorkoutPlan = async () => {
     scheduleMode.value = 'day';
     dayGroups.value = [];
     weekGroups.value = [];
-    dayGroupWeekAssignments.value = {};
-    weekGroups.value = ensureDefaultWorkoutWeek(weekGroups.value);
-    dayGroupWeekAssignments.value = normalizeWeekAssignments(
-      dayGroupWeekAssignments.value,
-      dayGroups.value,
-      weekGroups.value
-    );
-    selectedWeekName.value = weekGroups.value.some((week) => normalizeGroupKey(week) === normalizeGroupKey(selectedWeekName.value))
-      ? selectedWeekName.value
-      : DEFAULT_WORKOUT_WEEK_NAME;
 
     syncGroupOrders('day', []);
-    syncGroupOrders('week', weekGroups.value);
+    syncGroupOrders('week', []);
 
     selectedScheduleGroup.value = null;
     
@@ -3683,35 +3627,7 @@ const addScheduleGroupFromValue = ({
     return;
   }
 
-  if (mode === 'week') {
-    const validation = validateAdditionalWeekCreation({
-      weekName: selectedWeekName.value,
-      dayGroups: dayGroups.value,
-      weekAssignments: dayGroupWeekAssignments.value,
-      exercises: workoutExercises.value,
-    });
-    if (!validation.ok) {
-      if (source === 'bottom') {
-        scheduleGroupBottomEditorError.value = validation.message;
-      } else {
-        scheduleGroupEditorError.value = validation.message;
-      }
-      return;
-    }
-  }
-
   target.value = [...target.value, name];
-  if (mode === 'day') {
-    weekGroups.value = ensureDefaultWorkoutWeek(weekGroups.value);
-    dayGroupWeekAssignments.value = normalizeWeekAssignments(
-      { ...dayGroupWeekAssignments.value, [name]: selectedWeekName.value },
-      [...dayGroups.value, name],
-      weekGroups.value
-    );
-  } else {
-    weekGroups.value = ensureDefaultWorkoutWeek(target.value);
-    syncGroupOrders('week', weekGroups.value);
-  }
   syncGroupOrders(mode, target.value);
   syncScheduleGroupIdentityMap(mode, target.value);
 
@@ -4183,9 +4099,7 @@ const plannerPayload = computed(() => ({
   },
   scheduleMode: normalizeScheduleMode(scheduleMode.value),
   dayGroups: dayGroups.value,
-  weekGroups: Array.isArray(weekGroups.value) ? weekGroups.value : [],
-  dayGroupWeekAssignments: dayGroupWeekAssignments.value,
-  selectedWeekName: selectedWeekName.value,
+  weekGroups: weekGroups.value,
   dayGroupOrders: buildOrderEntries(dayGroups.value),
   weekGroupOrders: buildOrderEntries(weekGroups.value),
   exercises: workoutExercises.value,
@@ -5376,7 +5290,7 @@ watch(
             </span>
           </div>
 
-          <div v-if="builderTab === 'create' && !isViewEditMode" class="plan-info-action-row plan-info-action-row--create" role="group" aria-label="Create mode navigation and save actions">
+          <div v-if="builderTab === 'create' && !isViewEditMode" class="plan-info-action-row plan-info-action-row--create" role="group" aria-label="Create mode navigation">
             <button
               type="button"
               class="plan-info-action-row__back"
@@ -5385,7 +5299,6 @@ watch(
               <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
               <span>Back to Plans</span>
             </button>
-
             <button
               type="button"
               class="plan-info-action-row__save"
@@ -5393,7 +5306,7 @@ watch(
               @click="handlePrimarySave"
             >
               <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
-              <span>Save</span>
+              <span>{{ saving || publishing ? 'Saving...' : 'Save' }}</span>
             </button>
           </div>
 
@@ -5409,7 +5322,6 @@ watch(
                 <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
                 <span>Back to Plans</span>
               </button>
-
               <button
                 type="button"
                 class="plan-info-action-row__save"
@@ -5417,7 +5329,7 @@ watch(
                 @click="handlePrimarySave"
               >
                 <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
-                <span>Save</span>
+                <span>{{ saving || publishing ? 'Saving...' : 'Save' }}</span>
               </button>
             </div>
 
@@ -5796,23 +5708,6 @@ watch(
                 </transition-group>
               </div>
 
-              <div v-if="bottomScheduleControlsVisible && canModifyScheduleDayActions" class="planner-bottom-group-actions" role="group" :aria-label="`Add another workout ${scheduleModeLabelLower}`">
-                <div class="planner-bottom-group-actions__editor">
-                  <label class="planner-group-editor__label" :for="`planner-add-${scheduleModeLabelLower}-bottom-input`">{{ scheduleGroupEditorLabel }}</label>
-                  <input
-                    :id="`planner-add-${scheduleModeLabelLower}-bottom-input`"
-                    v-model="newScheduleGroupNameBottom"
-                    type="text"
-                    :maxlength="WORKOUT_DAY_NAME_MAX_LENGTH"
-                    :placeholder="scheduleGroupInputPlaceholder"
-                    @input="clearScheduleGroupEditorError('bottom')"
-                    @keydown.enter.prevent="addScheduleGroupBottom"
-                  />
-                  <button type="button" class="planner-group-add planner-group-add--bottom" @click="addScheduleGroupBottom">{{ scheduleGroupAddButtonLabel }}</button>
-                  <p v-if="scheduleGroupBottomEditorError" class="planner-group-editor__error">{{ scheduleGroupBottomEditorError }}</p>
-                </div>
-              </div>
-
               <p v-if="plannerMessage" class="planner-feedback planner-feedback--error">
                 {{ plannerMessage }}
               </p>
@@ -5821,6 +5716,34 @@ watch(
                 {{ scheduleGroupEmptyStateText }}
               </div>
             </div>
+
+              <p v-if="plannerMessage" class="planner-feedback planner-feedback--error">
+                {{ plannerMessage }}
+              </p>
+
+              <div v-if="showBottomScheduleGroupControls" class="planner-bottom-group-actions">
+                <div class="planner-bottom-group-actions__editor">
+                  <label class="planner-group-editor__label" for="planner-add-day-bottom-input">{{ scheduleGroupEditorLabel }}</label>
+                  <input
+                    id="planner-add-day-bottom-input"
+                    v-model="newScheduleGroupNameBottom"
+                    type="text"
+                    :placeholder="scheduleGroupInputPlaceholder"
+                    @input="clearScheduleGroupEditorError('bottom')"
+                    @keydown.enter.prevent="addScheduleGroupBottom"
+                  />
+                  <button
+                    type="button"
+                    class="planner-group-add planner-group-add--bottom wa-green-action-btn"
+                    @click="addScheduleGroupBottom"
+                  >
+                    {{ scheduleGroupAddButtonLabel }}
+                  </button>
+                  <p v-if="scheduleGroupBottomEditorError" class="planner-group-editor__error">
+                    {{ scheduleGroupBottomEditorError }}
+                  </p>
+                </div>
+              </div>
 
             <div v-if="loadingExercises" class="builder-empty planner-empty planner-empty--loading" aria-live="polite">
               <div class="planner-empty__icon">⏳</div>
@@ -8268,35 +8191,38 @@ watch(
 
 .plan-info-action-row {
   display: flex;
-  width: 100%;
-  margin: 12px 0;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   flex-wrap: nowrap;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 12px;
+  padding: 0;
 }
 
 .plan-info-action-row__back,
 .plan-info-action-row__save {
-  height: 36px;
-  min-height: 36px;
-  padding: 0 12px;
-  border-radius: 6px;
-  font-weight: 700;
-  font-size: 0.74rem;
-  line-height: 1;
-  display: inline-flex;
+  height: 32px;
+  min-height: 32px;
+  box-sizing: border-box;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  cursor: pointer;
-  white-space: nowrap;
-  box-sizing: border-box;
+  line-height: 32px;
 }
 
 .plan-info-action-row__back {
+  padding: 0 10px;
+  border-radius: 6px;
   border: 1px solid #1d4ed8;
   background: #2563eb;
   color: #ffffff;
+  font-weight: 700;
+  font-size: 0.74rem;
+  display: inline-flex;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .plan-info-action-row__back:hover {
@@ -8304,13 +8230,23 @@ watch(
 }
 
 .plan-info-action-row__save {
+  padding: 0 12px;
   border: 1px solid #15803D;
+  border-radius: 6px;
   background: #15803D;
   color: #FFFFFF;
+  font-weight: 700;
+  font-size: 0.74rem;
+  margin-left: auto;
+  display: inline-flex;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .plan-info-action-row__save:hover:not(:disabled) {
   background: #166534;
+  border-color: #166534;
 }
 
 .plan-info-action-row__save:disabled {
@@ -8610,6 +8546,15 @@ watch(
 
 .planner-group-add--bottom {
   max-width: 100%;
+  border-color: #15803D;
+  background: #15803D;
+  color: #FFFFFF;
+  box-shadow: none;
+}
+
+.planner-group-add--bottom:hover:not(:disabled) {
+  background: #166534;
+  border-color: #166534;
 }
 
 .workout-day-card {
@@ -12118,6 +12063,24 @@ watch(
     display: grid;
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+
+  .plan-info-action-row {
+    margin: 0 0 12px;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    width: 100%;
+  }
+
+  .plan-info-action-row__back {
+    width: auto;
+    justify-content: center;
+  }
+
+  .plan-info-action-row__save {
+    width: auto;
+    justify-content: center;
+    margin-left: auto;
   }
 
   .planner-mode-pill-wrap {
