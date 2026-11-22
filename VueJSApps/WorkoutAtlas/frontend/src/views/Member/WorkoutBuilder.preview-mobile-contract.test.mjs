@@ -51,3 +51,55 @@ test('Find Plans card actions reuse existing preview and use-plan handlers', () 
   assert.equal(source.includes('@click="viewGlobalPlanSummary(plan)"'), true);
   assert.equal(source.includes('@click="requestDeleteGlobalPlan(plan)"'), true);
 });
+
+test('Create and Edit plan expose a top Save control using the existing primary save handler', () => {
+  const createRow = source.slice(source.indexOf('plan-info-action-row--create'), source.indexOf('class="collapsible-panel__body"', source.indexOf('plan-info-action-row--create')));
+  assert.match(createRow, /plan-info-action-row__back/);
+  assert.match(createRow, /plan-info-action-row__save/);
+  assert.match(createRow, /@click="handlePrimarySave"/);
+  assert.match(createRow, /fa-floppy-disk/);
+
+  const editRow = source.slice(source.indexOf('aria-label="Edit mode navigation and save actions"'), source.indexOf('<WorkoutMetadataForm', source.indexOf('aria-label="Edit mode navigation and save actions"')));
+  assert.match(editRow, /plan-info-action-row__back/);
+  assert.match(editRow, /plan-info-action-row__save/);
+  assert.match(editRow, /@click="handlePrimarySave"/);
+  assert.match(editRow, /fa-floppy-disk/);
+});
+
+test('top plan action row is full-width with left Back and right green Save controls', () => {
+  assert.match(source, /\.plan-info-action-row\s*\{[^}]*justify-content:\s*space-between;/s);
+  assert.match(source, /\.plan-info-action-row\s*\{[^}]*width:\s*100%;/s);
+  assert.match(source, /\.plan-info-action-row__save\s*\{[^}]*background:\s*#15803D;/s);
+  assert.match(source, /\.plan-info-action-row__save\s*\{[^}]*color:\s*#FFFFFF;/s);
+});
+
+test('top plan action row uses identical aligned Back and Save control heights', () => {
+  assert.match(source, /\.plan-info-action-row\s*\{[^}]*align-items:\s*center;/s);
+  assert.match(source, /\.plan-info-action-row__back,\s*\.plan-info-action-row__save\s*\{[^}]*height:\s*32px;/s);
+  assert.match(source, /\.plan-info-action-row__back,\s*\.plan-info-action-row__save\s*\{[^}]*min-height:\s*32px;/s);
+  assert.match(source, /\.plan-info-action-row__back,\s*\.plan-info-action-row__save\s*\{[^}]*line-height:\s*32px;/s);
+  assert.match(source, /\.plan-info-action-row__save\s*\{[^}]*margin-left:\s*auto;/s);
+});
+
+test('0.85.312 shows bottom Add Day or Add Week after one schedule and two exercises', () => {
+  assert.match(source, /const showBottomScheduleGroupControls = computed/);
+  assert.match(source, /activeGroups\.value\.length < 1/);
+  assert.match(source, /countUniqueWorkoutPlanExercises\(workoutExercises\.value\) >= 2/);
+  assert.match(source, /planner-bottom-group-actions/);
+  assert.match(source, /v-model="newScheduleGroupNameBottom"/);
+  assert.match(source, /@click="addScheduleGroupBottom"/);
+});
+
+test('0.85.312 bottom controls reuse schedule labels and existing validation handler', () => {
+  assert.match(source, /scheduleGroupEditorLabel/);
+  assert.match(source, /scheduleGroupInputPlaceholder/);
+  assert.match(source, /scheduleGroupAddButtonLabel/);
+  assert.match(source, /@keydown\.enter\.prevent="addScheduleGroupBottom"/);
+  assert.match(source, /addScheduleGroupBottom.*addScheduleGroupFromValue/s);
+});
+
+test('0.85.312 bottom Add control uses green background and white text', () => {
+  assert.match(source, /\.planner-group-add--bottom\s*\{[^}]*border-color:\s*#15803D;/s);
+  assert.match(source, /\.planner-group-add--bottom\s*\{[^}]*background:\s*#15803D;/s);
+  assert.match(source, /\.planner-group-add--bottom\s*\{[^}]*color:\s*#FFFFFF;/s);
+});

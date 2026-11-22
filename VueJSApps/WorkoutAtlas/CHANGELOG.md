@@ -6,6 +6,80 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.312] - 2026-11-21 - Recovery checkpoint for 0.85.309 through 0.85.312
+
+- **Status:** Recovery checkpoint complete; 0.85.309, 0.85.309a, 0.85.311 FIX, and 0.85.312 restored implementations are present; user acceptance remains pending.
+- **0.85.309:** Top Save control is present in Create/Edit Plan above Workout Plan Information and reuses the existing primary save handler.
+- **0.85.309a:** Back and Save share one full-width row, with identical 32px heights and far-left/far-right placement.
+- **0.85.311 FIX:** Recording Type exclusively determines field order; Workout Type independently determines tags; LBS, horizontal three-field rows, 44px More/Less, and empty-tag suppression are implemented.
+- **0.85.312:** Bottom Add Day/Add Week controls are restored outside collapsed schedule accordions when at least one schedule and two exercises exist.
+- **Automated verification:** Focused 0.85.311/309/312 contract suites passed 19/19; touched Vue/utility diagnostics passed; Vite production build passed with 701 modules and generated `dist`.
+- **Visual acceptance outstanding:** Live browser verification remains pending for Save/Create/Edit alignment, bottom Day/Week controls, recording layouts, and all requested recording surfaces/viewports.
+- **Next version:** 0.85.313 is reset to TODO and may not begin until current user acceptance or a separate implementation authorization.
+- **Commit scope:** Restored frontend source, focused tests, and canonical release/documentation evidence only; no backend API, database, protected PlanID 5, or package-version changes.
+
+## [0.85.312] - 2026-11-21 - Restore bottom Add Day and Add Week controls
+
+- **Status:** Code complete; focused automated verification and production build passed; user acceptance pending.
+- **Problem:** Bottom Add Day/Add Week controls were not rendered in the schedule planner, forcing users to scroll to the top controls after creating schedule content.
+- **Root cause:** Bottom editor state, validation, and `addScheduleGroupBottom` handling existed, but the bottom template rendering and eligibility condition were missing from the schedule-footer region.
+- **Changed:** Restored one bottom schedule editor below the complete day/week accordion list for Create and Edit Plan modes.
+- **Eligibility:** The bottom controls appear after at least one Day or Week exists and at least two exercises have been added; they remain outside the collapsed accordion content.
+- **Functionality:** The bottom input/button reuse `scheduleGroupEditorLabel`, `scheduleGroupInputPlaceholder`, `scheduleGroupAddButtonLabel`, existing duplicate-name validation, Enter/click submission, and `addScheduleGroupFromValue`; new groups append to the end and expand on bottom submission.
+- **Styling:** Bottom button uses green `#15803D`, white `#FFFFFF`, matching the existing bottom control height conventions and responsive mobile layout.
+- **Scope preserved:** Existing top controls, Add Exercise controls, Save behavior, 0.85.311 recording-field layout, navigation tabs, database structures, and backend APIs were not modified.
+- **Files modified:** `frontend/src/views/Member/WorkoutBuilder.vue`; `frontend/src/views/Member/WorkoutBuilder.preview-mobile-contract.test.mjs`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`; `docs/engineering/CURRENT-STATE.md`; `docs/engineering/SESSION-HANDOFF.md`; `docs/engineering/DEVLOG.md`; `docs/qa/releases/0.85/0.85.309.md`; `docs/releases/RELEASE-READINESS.md`; `docs/qa/ACCEPTANCE-MATRIX.md`.
+- **Verification:** Focused WorkoutBuilder contract suite passed `12/12`, including bottom visibility, existing handler reuse, and green/white styling. VS Code diagnostics reported no errors for the touched Vue/test files. Vite production build passed with `701` modules transformed and `dist` generated successfully.
+- **Known limitations:** Live browser Create/Edit, Day/Week, collapsed-accordion, and desktop/tablet/mobile interaction acceptance was not performed in this pass.
+- **User acceptance:** Pending; do not declare final acceptance until the user verifies the change.
+
+## [0.85.311 FIX] - 2026-11-21 - Consolidated recording field, layout, button, and tag correction
+
+- **Status:** Code complete; focused automated and production-build verification passed; live visual/user acceptance pending.
+- **Corrected:** Consolidated recording behavior across `WorkoutExerciseBlock.vue` and `ExerciseSessionCard.vue` using the shared `exerciseRecordingFields.js` utility.
+- **Recording Type:** Sets & Reps uses LBS/Reps/Sets first and Time/Calories/Distance second. Time & Distance uses Time/Calories/Distance first and LBS/Reps/Sets second. Custom uses LBS/Reps/Sets first and Time/Calories/Distance second.
+- **Workout Type independence:** Recording field ordering no longer depends on Workout Type. Workout Type controls the exercise classification and displayed badge independently of Recording Type.
+- **Labels/layout:** Replaced Wt/Weight labels with LBS. Primary fields remain in exactly three horizontal fields on the first row with the 44px More/Less control in the fourth column; additional fields render in a second full-width three-field row when expanded.
+- **More/Less:** Additional fields are collapsed by default. The control uses a blue `#2563EB` circular chevron, white icon, upward Less/downward More chevron, compact 44px size, and preserves values when toggled.
+- **Tags:** Builder/session tags hide empty values and derive the visible badge only from Workout Type. Existing Strength/Cardio/Other badge colors are preserved.
+- **Coverage:** Corrections apply to the shared workout-builder and active/session components used across Create, Edit, preview, active, resume, history, and workout-log surfaces. Live coverage by each surface remains pending browser verification.
+- **Preserved:** 0.85.309/0.85.309a Save controls, 0.85.312 bottom schedule controls, backend APIs, database schema, and protected PlanID 5 were not modified.
+- **Files modified:** `frontend/src/utils/exerciseRecordingFields.js`; `frontend/src/utils/exerciseRecordingFields.test.mjs`; `frontend/src/components/workout-builder/WorkoutExerciseBlock.vue`; `frontend/src/components/workout-session/ExerciseSessionCard.vue`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`; `docs/engineering/CURRENT-STATE.md`; `docs/engineering/SESSION-HANDOFF.md`; `docs/engineering/DEVLOG.md`; `docs/qa/ACCEPTANCE-MATRIX.md`; `docs/qa/releases/0.85/0.85.309.md`; `docs/releases/RELEASE-READINESS.md`.
+- **Verification:** Focused recording and builder contract tests passed `19/19`; touched Vue/utility diagnostics passed with no errors. Vite production build passed `701` modules and generated `dist`.
+- **Outstanding:** Live desktop/tablet/mobile visual geometry, preview/history surface coverage, and user acceptance require browser verification.
+
+## [0.85.309a] - 2026-11-21 - Top Save Button Alignment
+
+- **Status:** Code complete; implementation and build verification performed; user acceptance pending.
+- **Changed:** Refined the existing 0.85.309 top Save control for Create and Edit Workout Plan modes.
+- **Alignment:** Back to Plans remains in the far-left position and Save remains in the far-right position. Both controls share the same full-width row, `32px` fixed/minimum height, `32px` line height, centered content, and `align-items: center` vertical alignment.
+- **Responsive behavior:** Save retains `margin-left: auto`, while the row remains `100%` width and single-line at desktop, tablet, and mobile widths.
+- **Styling:** Save remains green `#15803D` with white `#FFFFFF` text and the existing save icon; no button functionality or styling outside the plan action row was changed.
+- **Files modified:** `frontend/src/views/Member/WorkoutBuilder.vue`; `frontend/src/views/Member/WorkoutBuilder.preview-mobile-contract.test.mjs`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`; `docs/engineering/CURRENT-STATE.md`; `docs/engineering/SESSION-HANDOFF.md`; `docs/qa/releases/0.85/0.85.309.md`; `docs/releases/RELEASE-READINESS.md`; `docs/engineering/DEVLOG.md`.
+- **Verification:** Focused frontend contract suite passed `21/21`, including Create/Edit handler reuse, full-width left/right placement, green Save styling, and identical 32px control heights. Vite production build passed with `701` modules transformed and `dist` generated successfully.
+- **Remaining limitations:** Live browser geometry and save-workflow acceptance were not performed in this implementation pass. User acceptance remains pending. No backend, database, save handler, navigation-tab, or unrelated UI changes were made.
+
+## [0.85.309] - 2026-11-21 - Top Save button for Create and Edit Workout Plan
+
+- **Status:** Code complete; implementation verification performed; user acceptance pending.
+- **Changed:** Added an additional `Save` button to the existing plan-navigation row directly above `WORKOUT PLAN INFORMATION` in both Create Plan and Edit Plan modes.
+- **Layout:** Back to Plans remains left, Save remains right, both occupy one full-width row, and the row remains single-line across desktop, tablet, and mobile breakpoints.
+- **Styling:** The top Save control uses green `#15803D`, white `#FFFFFF`, the existing save icon, existing button-height conventions, hover/disabled states, and compact application styling.
+- **Behavior:** Both top Save controls call the existing `handlePrimarySave` handler. No separate save business logic was added, and existing validation, permissions, status transitions, publishing modals, notifications, duplicate-submission guards, and bottom Save controls remain in place.
+- **Files modified:** `frontend/src/views/Member/WorkoutBuilder.vue`; `frontend/src/views/Member/WorkoutBuilder.preview-mobile-contract.test.mjs`; `CHANGELOG.md`; `WORKOUTATLAS_BATCH_RESULTS.md`; `docs/qa/releases/0.85/0.85.309.md`.
+- **Verification:** Focused frontend contract suite passed `20/20`, including Create/Edit top-Save wiring and layout/styling assertions. Frontend production build passed with Vite `4.5.9`: `701` modules transformed and `dist` assets generated successfully.
+- **Known unresolved issues:** Automated source-contract tests do not replace live browser verification for Create/Edit save workflows. Live create/save/publish acceptance remains pending until the user verifies the change. Existing live acceptance gates recorded under 0.85.309 remain unresolved where applicable.
+- **User acceptance:** Pending; do not declare final acceptance until verified by the user.
+
+## 2026-11-21 — Restored-code verification-only audit (0.85.309 through 0.85.312)
+
+- **Scope:** Read-only verification of restored `BETA` HEAD `6dbf903b1e7ae1dd4e25fc34b07a1508fe6ed043`; no application source, version, migration, server, database, or protected-data changes.
+- **0.85.309 — top-right Save button:** FAIL. The primary Save control remains in the bottom `.planner-primary-actions` footer and is not implemented as a top-right button.
+- **0.85.309a — Save-button alignment:** FAIL. No top-right Save control or 0.85.309a alignment implementation was found; the existing Save control is bottom-aligned.
+- **0.85.311 — recording type, field ordering, layout, More/Less, and tags:** PASS. Source and focused automated evidence verify recording-type normalization, primary/secondary field ordering, workout-builder and session layouts, and More/Less controls. `goal-tag-select` / Goal Tags controls are present in the metadata form. Focused recording-type tests passed `5/5`.
+- **0.85.312 — bottom Add Day/Add Week after one day/week and two exercises:** MISSING. No 0.85.312 implementation or commit was found. The restored code has top Schedule Planner Add Day/Week controls and a bottom contextual `Add Exercise to End` after more than one exercise, but no bottom Add Day/Add Week control matching the requirement.
+- **Release classification:** Verification only; no implementation completion, live acceptance, or 0.85.313 work is claimed.
+
 ## [0.85.309] - 2026-11-18 - Final functional QA and release-readiness investigation
 
 - **Status:** Investigation/blocked; this was a verification-first audit, not a completed release candidate and no source-code changes were made.

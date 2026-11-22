@@ -2995,6 +2995,11 @@ const showSaveFooter = computed(() => builderTab.value === 'create' || isViewEdi
 const canModifyScheduleDayActions = computed(() => {
   return builderTab.value === 'create' || isViewEditMode.value || isCreatingWorkout.value;
 });
+const showBottomScheduleGroupControls = computed(() => {
+  if (!canModifyScheduleDayActions.value) return false;
+  if (activeGroups.value.length < 1) return false;
+  return countUniqueWorkoutPlanExercises(workoutExercises.value) >= 2;
+});
 const planDetailsHeaderText = computed(() => {
   if (builderTab.value === 'create') {
     return 'Create Workout Plan';
@@ -5294,6 +5299,15 @@ watch(
               <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
               <span>Back to Plans</span>
             </button>
+            <button
+              type="button"
+              class="plan-info-action-row__save"
+              :disabled="saving || publishing"
+              @click="handlePrimarySave"
+            >
+              <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+              <span>{{ saving || publishing ? 'Saving...' : 'Save' }}</span>
+            </button>
           </div>
 
           <div class="collapsible-panel__body">
@@ -5307,6 +5321,15 @@ watch(
               >
                 <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
                 <span>Back to Plans</span>
+              </button>
+              <button
+                type="button"
+                class="plan-info-action-row__save"
+                :disabled="saving || publishing"
+                @click="handlePrimarySave"
+              >
+                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+                <span>{{ saving || publishing ? 'Saving...' : 'Save' }}</span>
               </button>
             </div>
 
@@ -5693,6 +5716,34 @@ watch(
                 {{ scheduleGroupEmptyStateText }}
               </div>
             </div>
+
+              <p v-if="plannerMessage" class="planner-feedback planner-feedback--error">
+                {{ plannerMessage }}
+              </p>
+
+              <div v-if="showBottomScheduleGroupControls" class="planner-bottom-group-actions">
+                <div class="planner-bottom-group-actions__editor">
+                  <label class="planner-group-editor__label" for="planner-add-day-bottom-input">{{ scheduleGroupEditorLabel }}</label>
+                  <input
+                    id="planner-add-day-bottom-input"
+                    v-model="newScheduleGroupNameBottom"
+                    type="text"
+                    :placeholder="scheduleGroupInputPlaceholder"
+                    @input="clearScheduleGroupEditorError('bottom')"
+                    @keydown.enter.prevent="addScheduleGroupBottom"
+                  />
+                  <button
+                    type="button"
+                    class="planner-group-add planner-group-add--bottom wa-green-action-btn"
+                    @click="addScheduleGroupBottom"
+                  >
+                    {{ scheduleGroupAddButtonLabel }}
+                  </button>
+                  <p v-if="scheduleGroupBottomEditorError" class="planner-group-editor__error">
+                    {{ scheduleGroupBottomEditorError }}
+                  </p>
+                </div>
+              </div>
 
             <div v-if="loadingExercises" class="builder-empty planner-empty planner-empty--loading" aria-live="polite">
               <div class="planner-empty__icon">⏳</div>
@@ -8143,13 +8194,24 @@ watch(
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  width: 100%;
+  box-sizing: border-box;
   margin: 0 0 12px;
   padding: 0;
 }
 
-.plan-info-action-row__back {
+.plan-info-action-row__back,
+.plan-info-action-row__save {
+  height: 32px;
   min-height: 32px;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  line-height: 32px;
+}
+
+.plan-info-action-row__back {
   padding: 0 10px;
   border-radius: 6px;
   border: 1px solid #1d4ed8;
@@ -8157,9 +8219,7 @@ watch(
   color: #ffffff;
   font-weight: 700;
   font-size: 0.74rem;
-  line-height: 1;
   display: inline-flex;
-  align-items: center;
   gap: 6px;
   cursor: pointer;
   white-space: nowrap;
@@ -8170,10 +8230,28 @@ watch(
 }
 
 .plan-info-action-row__save {
-  min-height: 32px;
   padding: 0 12px;
+  border: 1px solid #15803D;
+  border-radius: 6px;
+  background: #15803D;
+  color: #FFFFFF;
+  font-weight: 700;
   font-size: 0.74rem;
-  margin-left: 0;
+  margin-left: auto;
+  display: inline-flex;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.plan-info-action-row__save:hover:not(:disabled) {
+  background: #166534;
+  border-color: #166534;
+}
+
+.plan-info-action-row__save:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .planner-primary-actions {
@@ -8468,6 +8546,15 @@ watch(
 
 .planner-group-add--bottom {
   max-width: 100%;
+  border-color: #15803D;
+  background: #15803D;
+  color: #FFFFFF;
+  box-shadow: none;
+}
+
+.planner-group-add--bottom:hover:not(:disabled) {
+  background: #166534;
+  border-color: #166534;
 }
 
 .workout-day-card {
@@ -11980,14 +12067,20 @@ watch(
 
   .plan-info-action-row {
     margin: 0 0 12px;
-    justify-content: stretch;
-    flex-wrap: wrap;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    width: 100%;
   }
 
-  .plan-info-action-row__back,
-  .plan-info-action-row__save {
-    width: 100%;
+  .plan-info-action-row__back {
+    width: auto;
     justify-content: center;
+  }
+
+  .plan-info-action-row__save {
+    width: auto;
+    justify-content: center;
+    margin-left: auto;
   }
 
   .planner-mode-pill-wrap {

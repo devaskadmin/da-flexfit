@@ -63,3 +63,48 @@ No implementation action is authorized until scoped approval is provided. The ex
 - Live browser checks passed at 320, 390, 768, 800, 820, 1024, and 1366px.
 - Search, no-match/empty behavior, and read-only preview were verified without persistent mutation.
 - Status: USER ACCEPTANCE PENDING.
+
+## 0.85.309a top Save alignment closeout - 2026-11-21
+
+- Aligned Back to Plans and Save in one full-width row for Create and Edit Plan.
+- Back is far left and Save is far right.
+- Both controls use `32px` height/min-height and `32px` line height.
+- Save remains `#15803D` with `#FFFFFF` text.
+- Existing `handlePrimarySave` and save/publish behavior are unchanged.
+- Focused frontend contract tests passed `21/21`; Vite production build passed `701` modules and generated `dist`.
+- Live browser acceptance remains pending. Do not begin 0.85.313 or other implementation work.
+
+## Restored-code verification-only closeout - 2026-11-21
+
+- HEAD verified: `6dbf903b1e7ae1dd4e25fc34b07a1508fe6ed043`.
+- 0.85.309 top-right Save: FAIL.
+- 0.85.309a alignment: FAIL.
+- 0.85.311 recording type/fields/layout/More-Less/tags: PASS in source and focused automated verification.
+- 0.85.312 bottom Add Day/Add Week: MISSING.
+- No source, version, migration, server, database, or protected-data changes were made.
+- Stop point: verification complete; no implementation or 0.85.313 work authorized or started.
+
+## 0.85.312 bottom Add Day/Add Week closeout - 2026-11-21
+
+- Restored bottom Add Workout Day/Add Workout Week controls after at least one schedule and two exercises.
+- Controls remain visible outside collapsed accordion content and append new groups to the end.
+- Existing top controls, 0.85.311 fields, Add Exercise controls, Save logic, backend, and database remain unchanged.
+- Focused contract suite passed `12/12`; Vue/test diagnostics passed; Vite build passed `701` modules and generated `dist`.
+- Live browser acceptance remains pending for Create/Edit, Day/Week, accordions, and responsive layouts.
+- Stop; do not begin 0.85.313.
+
+## 0.85.311 FIX closeout - 2026-11-21
+
+- Consolidated Recording Type field ordering, LBS labels, universal row layout, More/Less behavior, and independent Workout Type tags.
+- `exerciseRecordingFields.js`, `WorkoutExerciseBlock.vue`, and `ExerciseSessionCard.vue` are the shared implementation sources.
+- Existing 0.85.309/309a Save controls and 0.85.312 bottom controls were preserved.
+- Focused tests passed `19/19`; diagnostics passed; Vite build passed `701` modules and generated `dist`.
+- Live desktop/tablet/mobile and Create/Edit/View/preview/log/history/active/resume visual acceptance is NOT VERIFIED.
+- User acceptance remains pending. Stop; do not begin 0.85.313 or 0.85.315.
+
+## 0.85.312 recovery checkpoint closeout - 2026-11-21
+
+- Consolidated status: 0.85.309, 0.85.309a, 0.85.311 FIX, and 0.85.312 implementations are present and build/test verified.
+- Automated evidence: 19/19 focused recording/builder tests; production build passed 701 modules.
+- Outstanding acceptance: live Save alignment, bottom Day/Week controls, recording surfaces/viewports, and Create/Edit save workflows require user browser verification.
+- 0.85.313: TODO; no implementation or change starts until authorized.

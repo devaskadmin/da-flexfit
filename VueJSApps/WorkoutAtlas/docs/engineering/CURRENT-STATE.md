@@ -56,3 +56,50 @@ Current evidence: implementation and automated coverage exist for many areas. Li
 - `WA-UI-TABLET-001` implementation is code complete and automated/browser verification passed.
 - Find Plans uses cards at 769–1024px and preserves the desktop table above 1024px.
 - Automated and live read-only viewport evidence does not replace explicit user acceptance.
+
+## Restored-code verification audit - 2026-11-21
+
+- Verification HEAD: `6dbf903b1e7ae1dd4e25fc34b07a1508fe6ed043`.
+- Scope: read-only source verification; no application code, versions, migrations, server/database state, or protected data changed.
+- `0.85.309` top-right Save button: FAIL — Save remains in the bottom primary-actions footer.
+- `0.85.309a` Save-button alignment: FAIL — no top-right Save implementation or alignment correction found.
+- `0.85.311` recording type, field ordering, layout, More/Less, tags: PASS — source trace and focused tests passed `5/5`.
+- `0.85.312` bottom Add Day/Add Week controls after one day/week and two exercises: MISSING — no matching implementation or commit found.
+- No live user acceptance is inferred; no 0.85.313 implementation was started.
+
+## 0.85.309a top Save alignment - 2026-11-21
+
+- Implementation complete in `frontend/src/views/Member/WorkoutBuilder.vue`.
+- Back to Plans is far left and Save is far right in one full-width row.
+- Back and Save use identical `32px` height and `32px` line height for vertical alignment.
+- Save retains `#15803D` background and `#FFFFFF` text.
+- Create and Edit modes share the responsive row alignment; no backend or save-handler changes were made.
+- Focused frontend contract tests passed `21/21`; Vite production build passed with `701` modules transformed.
+- User acceptance remains pending. Do not begin 0.85.313 or any subsequent implementation.
+
+## 0.85.312 bottom Add Day/Add Week controls - 2026-11-21
+
+- Implementation complete in `frontend/src/views/Member/WorkoutBuilder.vue`.
+- Bottom controls appear after at least one Day/Week and at least two exercises, remain outside accordion bodies, and reuse existing bottom/top handler validation and append behavior.
+- Create and Edit modes share the implementation; the controls use `#15803D` with `#FFFFFF` text.
+- Existing top controls, Add Exercise controls, Save behavior, recording-field layout, backend APIs, and database structures were unchanged.
+- Focused contract suite passed `12/12`; touched Vue/test diagnostics passed; Vite production build passed `701` modules and generated `dist`.
+- Live browser visual and interaction acceptance remains pending. Do not begin 0.85.313.
+
+## 0.85.311 FIX - Consolidated recording implementation - 2026-11-21
+
+- Shared utility now uses Recording Type exclusively for field ordering and preserves independent Workout Type badges.
+- Builder/session components retain exactly three horizontal fields per row, LBS labels, and 44px More/Less controls.
+- Empty workout tags are hidden; valid Strength/Cardio/Other values remain Workout-Type-derived.
+- 0.85.309/309a Save controls and 0.85.312 bottom schedule controls were preserved.
+- Focused recording/builder tests passed `19/19`; touched diagnostics passed; Vite build passed `701` modules.
+- Live visual acceptance across Create/Edit/View/preview/log/active/resume/history/mobile remains NOT VERIFIED.
+- User acceptance remains pending; do not begin 0.85.313 or 0.85.315.
+
+## 0.85.312 recovery checkpoint - 2026-11-21
+
+- 0.85.309 top Save: implementation complete; automated contract/build verification passed; live acceptance pending.
+- 0.85.309a Save alignment: implementation complete; Back-left/Save-right 32px controls verified by source/contracts; live acceptance pending.
+- 0.85.311 FIX: recording utility/component corrections complete; focused tests passed `19/19`; live surface/viewport acceptance NOT VERIFIED.
+- 0.85.312 bottom Add Day/Add Week: implementation complete; focused 12/12 coverage and build passed; live create/edit/week/collapsed/mobile acceptance pending.
+- 0.85.313: TODO; no implementation authorized or started.

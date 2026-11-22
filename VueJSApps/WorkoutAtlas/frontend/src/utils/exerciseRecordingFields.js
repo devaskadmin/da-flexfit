@@ -7,12 +7,6 @@ export const normalizeRecordingType = (exerciseOrValue = {}) => {
   if (normalized === 'custom') return 'custom';
   if (normalized === 'time & distance' || normalized === 'time distance') return 'time-distance';
   if (normalized === 'sets & reps' || normalized === 'sets reps') return 'sets-reps';
-
-  if (!raw && typeof exerciseOrValue === 'object') {
-    const workoutType = String(exerciseOrValue.workoutType ?? exerciseOrValue.WorkoutType ?? '').trim().toLowerCase();
-    if (workoutType === 'cardio') return 'time-distance';
-    if (workoutType === 'strength') return 'sets-reps';
-  }
   return '';
 };
 
@@ -32,7 +26,7 @@ export const getRecordingFieldGroups = (exerciseOrValue = {}) => {
 };
 
 export const getRecordingFieldLabels = () => ({
-  weight: 'Weight (lbs)',
+  weight: 'LBS',
   reps: 'Reps',
   sets: 'Sets',
   duration: 'Target Time (min)',

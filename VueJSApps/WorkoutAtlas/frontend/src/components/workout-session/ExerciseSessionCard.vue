@@ -71,7 +71,7 @@ const showAdditionalFields = ref(false);
 const workoutTypeBadgeLabel = computed(() => normalizeWorkoutTypeBadge(props.exercise));
 
 const sessionFieldDefinitions = {
-  weight: { key: 'weight', label: 'Weight (lbs)', shortLabel: 'LBS' },
+  weight: { key: 'weight', label: 'LBS', shortLabel: 'LBS' },
   reps: { key: 'reps', label: 'Reps', shortLabel: 'Reps' },
   sets: { key: 'sets', label: 'Sets', shortLabel: 'Sets' },
   duration: { key: 'duration', label: 'Target Time (min)', shortLabel: 'Time' },
@@ -179,15 +179,11 @@ onUnmounted(() => {
 });
 
 const workoutType = computed(() => {
-  const recordingType = recordingFields.value.recordingType;
-  if (recordingType === 'time-distance') return 'cardio';
-  if (recordingType === 'sets-reps' || recordingType === 'custom') return 'strength';
-
-  if (props.isCardio) return 'cardio';
-  const raw = String(props.exercise.WorkoutType || props.exercise.workoutType || '').trim().toLowerCase();
+  const raw = String(props.exercise.WorkoutType || props.exercise.workoutType || props.exercise.workout_type || props.exercise.type || '').trim().toLowerCase();
   if (raw === 'cardio') return 'cardio';
   if (raw === 'other') return 'other';
-  return 'strength';
+  if (raw === 'strength') return 'strength';
+  return '';
 });
 </script>
 
@@ -214,7 +210,7 @@ const workoutType = computed(() => {
         </div>
       </div>
       <div class="sec-header-actions">
-        <span class="sec-type-chip">{{ workoutTypeBadgeLabel || 'Strength' }}</span>
+        <span v-if="workoutTypeBadgeLabel" class="sec-type-chip">{{ workoutTypeBadgeLabel }}</span>
         <span class="sec-sets-summary" :class="{ 'sec-sets-summary--done': allDone }">
           <i v-if="allDone" class="fa-solid fa-circle-check"></i>
           <i v-else class="fa-regular fa-circle"></i>
@@ -359,7 +355,7 @@ const workoutType = computed(() => {
           <!-- Weight row -->
           <div class="c3-row">
             <span class="c3-col-set c3-set-num">{{ set.setNum }}</span>
-            <span class="c3-col-info">Weight (lbs)</span>
+            <span class="c3-col-info">LBS</span>
             <div class="c3-col-value">
               <input
                 type="number"
@@ -425,7 +421,7 @@ const workoutType = computed(() => {
         :class="{ 'strength-mobile-row--done': set.done }"
       >
         <label class="strength-mobile-field">
-          <span>Weight (lbs)</span>
+          <span>LBS</span>
           <input
             type="number"
             :class="['set-input', prefillClass(set, 'weight')]"
@@ -1258,7 +1254,7 @@ const workoutType = computed(() => {
     align-items: center;
   }
 
-  .session-recording-additional-row {
+  .session_recording-additional-row {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
     margin-top: 10px;

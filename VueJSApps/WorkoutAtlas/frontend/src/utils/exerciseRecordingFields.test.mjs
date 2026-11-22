@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   getRecordingFieldGroups,
+  getRecordingFieldLabels,
   normalizeRecordingType,
   normalizeWorkoutTypeBadge,
 } from './exerciseRecordingFields.js';
@@ -24,10 +25,17 @@ test('Custom records strength fields first', () => {
   assert.deepEqual(fields.secondary, ['duration', 'calories', 'distance']);
 });
 
-test('legacy fallback uses Workout Type only when Recording Type is missing', () => {
-  assert.equal(normalizeRecordingType({ WorkoutType: 'Strength' }), 'sets-reps');
-  assert.equal(normalizeRecordingType({ WorkoutType: 'Cardio' }), 'time-distance');
+test('Workout Type never determines Recording field order', () => {
+  assert.equal(normalizeRecordingType({ WorkoutType: 'Strength' }), '');
+  assert.equal(normalizeRecordingType({ WorkoutType: 'Cardio' }), '');
   assert.equal(normalizeRecordingType({ WorkoutType: 'Cardio', RecordingType: 'Sets & Reps' }), 'sets-reps');
+});
+
+test('LBS replaces the Weight label in shared recording fields', () => {
+  const labels = getRecordingFieldLabels();
+  assert.equal(labels.weight, 'LBS');
+  assert.equal(labels.reps, 'Reps');
+  assert.equal(labels.sets, 'Sets');
 });
 
 test('Workout Type badge labels resolve Strength, Cardio, and Other independently of Recording Type', () => {
@@ -35,4 +43,15 @@ test('Workout Type badge labels resolve Strength, Cardio, and Other independentl
   assert.equal(normalizeWorkoutTypeBadge({ WorkoutType: 'Cardio', RecordingType: 'Sets & Reps' }), 'Cardio');
   assert.equal(normalizeWorkoutTypeBadge({ WorkoutType: 'Other', RecordingType: 'Custom' }), 'Other');
   assert.equal(normalizeWorkoutTypeBadge({ WorkoutType: '' }), '');
+});
+
+test('six recording fields and primary/additional layouts remain complete', () => {
+  const labels = getRecordingFieldLabels();
+  assert.deepEqual(Object.keys(labels).sort(), ['calories', 'distance', 'duration', 'reps', 'sets', 'weight']);
+  const setsReps = getRecordingFieldGroups({ RecordingType: 'Sets & Reps' });
+  assert.equal(setsReps.primary.length, 3);
+  assert.equal(setsReps.secondary.length, 3);
+  const timeDistance = getRecordingFieldGroups({ RecordingType: 'Time & Distance' });
+  assert.equal(timeDistance.primary.length, 3);
+  assert.equal(timeDistance.secondary.length, 3);
 });
