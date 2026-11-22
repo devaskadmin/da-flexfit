@@ -163,5 +163,6 @@ test('users.js wires settings_json persistence surgically and keeps the route ta
   assert.match(usersSource, /dayWeekAssignments: schemaState\.hasSettingsJson\s*\?\s*extractDayWeekAssignments\(schedule\.settings_json\)/);
   assert.equal(/ADD COLUMN settings_json|ALTER TABLE[^`]*settings_json/i.test(usersSource), false);
   assert.equal((usersSource.match(/\brouter\.(get|post|put|patch|delete)\s*\(/g) || []).length, 37);
-  assert.equal(usersSource.split('persistDayWeekAssignments(connection').length - 1, 1);
+  // a3 wired the PUT route; a3.4 added the global schedule PATCH, global adopt, featured clone and plan-type conversion.
+  assert.equal(usersSource.split('persistDayWeekAssignments(connection').length - 1, 5);
 });

@@ -172,3 +172,18 @@ Stage 1/10 re-verification (2026-11-21): branch name FAIL; 0.85.312 baseline PAS
 | Regression | `21/21`, `11/11`, frontend `29/29`, Vite build passed | PASS |
 | SQL on real MySQL; add-exercise default group and `workout-sessions.js` lookups | Not executed / not changed | OPEN |
 | Browser: Workout Log day order, dashboard card and Find Plans day counts for day and week plans | Not performed | PENDING USER ACCEPTANCE |
+
+## 0.85.313.a3.4 Global Plan Persistence (2026-11-21)
+
+| Check | Evidence | Status |
+| --- | --- | --- |
+| Global/Featured/Community create and edit keep day-to-week assignments | Source contract on `PATCH /admin/global-workout-plans/:id/schedule`; fixture edit replaces stale assignments and keeps other settings | PASS (automated; `users.js` not runnable locally) |
+| Global adopt and featured clone copy assignments | Source contract on both routes; fixture clone copies assignments, source row unchanged | PASS (automated) |
+| Plan-type conversion and register-time featured copy keep assignments | Source contract on `users.js` and `auth.js` | PASS (automated, contract only) |
+| Week names, exercises, recording values, permissions | Unchanged code paths (a3.2 group copy); assignments stored verbatim | PASS (by design) |
+| No write when `settings_json` is missing; no DDL; statements scoped to the new schedule | Fixture: no queries issued without the column; no ALTER/DROP/CREATE | PASS (automated) |
+| PlanID 5 | Fixture snapshot unchanged | PASS |
+| Routes | `users.js` 37, identical to HEAD | PASS |
+| Regression | settings `11/11`, groups `21/21`, group filter `24/24`, frontend 7 files, Vite build | PASS |
+| SQL on real MySQL; register/conversion integration suites | Not executed (`express`/`mysql2` missing locally) | OPEN |
+| Browser: create/edit a global plan with week assignments, clone a plan, adopt a global and a featured plan, reopen each | Not performed | PENDING USER ACCEPTANCE |

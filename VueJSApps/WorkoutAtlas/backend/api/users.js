@@ -2857,9 +2857,15 @@ router.post('/workout-schedules/:id/plan-type-conversion', async (req, res) => {
       return res.status(500).json({ error: 'Failed to create converted workout plan.' });
     }
 
-    await replaceScheduleGroupsAndExercises(connection, convertedPlanId, {
+    // 0.85.313.a3.4: the conversion template does not carry settings, so reuse the source plan's day-to-week assignments.
+    const convertedPlannerForSave = {
       ...convertedPlannerPayload,
       planId: String(convertedPlanId),
+      settings: sourcePlanner.settings,
+    };
+    await replaceScheduleGroupsAndExercises(connection, convertedPlanId, convertedPlannerForSave);
+    await persistDayWeekAssignments(connection, convertedPlanId, convertedPlannerForSave, {
+      hasSettingsJson: schemaState.hasSettingsJson,
     });
 
     coverCloneResult = await cloneWorkoutPlanCoverToPlan({
@@ -3873,6 +3879,10 @@ router.post('/global-workout-plans/:id/use', async (req, res) => {
     };
 
     await replaceScheduleGroupsAndExercises(connection, clonedScheduleId, plannerForClone);
+    // 0.85.313.a3.4: carry the source day-to-week assignments into the adopted copy.
+    await persistDayWeekAssignments(connection, clonedScheduleId, plannerForClone, {
+      hasSettingsJson: schemaState.hasSettingsJson,
+    });
 
     await cloneWorkoutPlanCoverToPlan({
       pool: connection,
@@ -4049,6 +4059,10 @@ router.post('/featured-workout-plans/:id/clone', async (req, res) => {
     };
 
     await replaceScheduleGroupsAndExercises(connection, clonedScheduleId, plannerForClone);
+    // 0.85.313.a3.4: carry the source day-to-week assignments into the cloned copy.
+    await persistDayWeekAssignments(connection, clonedScheduleId, plannerForClone, {
+      hasSettingsJson: schemaState.hasSettingsJson,
+    });
 
     await cloneWorkoutPlanCoverToPlan({
       pool: connection,
@@ -4600,6 +4614,10 @@ router.patch('/admin/global-workout-plans/:id/schedule', async (req, res) => {
     }
 
     await replaceScheduleGroupsAndExercises(connection, scheduleId, normalizedPlanner);
+    // 0.85.313.a3.4: global create/edit saves go through this route; keep day-to-week assignments.
+    await persistDayWeekAssignments(connection, scheduleId, normalizedPlanner, {
+      hasSettingsJson: schemaState.hasSettingsJson,
+    });
     await connection.commit();
 
     const planner = await buildGlobalWorkoutPlanById(scheduleId);

@@ -186,3 +186,10 @@ No implementation action is authorized until scoped approval is provided. The ex
 - New `backend/utils/workoutScheduleGroupFilter.js` (JS and SQL form of one rule). Day-mode plans: every group type except `week`. Legacy Week View (`schedule_mode = 'week'`): week groups, unchanged. Edited `workout-log.js` (`GET`/`PUT /day-order`), `dashboard.js` (`weeklyTarget`), `users.js` (`group_agg` subquery plus import). No save-logic, UI, route or schema change; PlanID 5 untouched.
 - Verification: new suite `24/24` (real route modules, stubbed express and pool), `21/21` + `11/11`, frontend `29/29`, Vite build passed, route tables identical to HEAD, CRLF kept.
 - Still open: SQL unexecuted on real MySQL; day-mode plans with only weeks show 0 days and miss the global publish gate; add-exercise default group (`users.js`) and `workout-sessions.js` day lookups not filtered; browser acceptance of day and week modes. STOP; await acceptance. Do not begin Stage 5.
+
+## 0.85.313.a3.4 Global Plan Persistence closeout - 2026-11-21
+
+- a3.2/a3.3 were accepted and pushed as `20fefbfff` (branch `0.85.113`). a3.4 is uncommitted; do not commit or push unless asked.
+- Day-to-week assignments now persist on global/featured/community create and edit (`PATCH /admin/global-workout-plans/:id/schedule`), global adopt, featured clone, plan-type conversion (`users.js`) and the register-time featured copy (`auth.js`). Reuses `persistDayWeekAssignments`; frontend unchanged; no schema, route, data or package change; PlanID 5 untouched; 37 `users.js` routes identical to HEAD.
+- Verification: new `workout-plan-global-persistence` `11/11`, settings `11/11`, groups `21/21`, group filter `24/24`, frontend 7 files pass, Vite build passed, `node --check` clean, CRLF kept.
+- Still open: browser acceptance (create/edit a global plan with week assignments, clone a plan, adopt a global and a featured plan, reopen each and confirm weeks and assignments); `settings_json` must exist in each target DB; SQL not run on real MySQL. STOP; await acceptance. Do not begin Stage 5.

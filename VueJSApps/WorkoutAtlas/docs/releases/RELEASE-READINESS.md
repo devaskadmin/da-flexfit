@@ -76,4 +76,9 @@ No release should be marked released or accepted merely because automated tests 
 ## 0.85.313.a3.3 Schedule Group Filtering
 
 - Backend only: shared filter util plus edits in `workout-log.js`, `dashboard.js` and `users.js` (plan-list subquery). Closes the a3.2 gate on readers that counted every group. No migration, deploy or package change; routes unchanged.
-- Release gates: user acceptance in the browser (Workout Log order, dashboard weekly target, Find Plans day counts for day and week plans); verify the new SQL on a real MySQL server before release (not executable locally); decide whether the add-exercise default group and `workout-sessions.js` day lookups need the same filter. a3.2 and a3.3 uncommitted; not release-ready until accepted.
+- Release gates: user acceptance in the browser (Workout Log order, dashboard weekly target, Find Plans day counts for day and week plans); verify the new SQL on a real MySQL server before release (not executable locally); decide whether the add-exercise default group and `workout-sessions.js` day lookups need the same filter. a3.2 and a3.3 accepted and pushed as `20fefbfff`.
+
+## 0.85.313.a3.4 Global Plan Persistence
+
+- Backend only (`users.js`, `auth.js`): day-to-week assignments persist on global create/edit, clone, adoption, conversion and register-time featured copy via the existing helper. No migration, deploy or package change; routes unchanged.
+- Release gates: user acceptance in the browser (create/edit a global plan with week assignments, clone a plan, adopt a global and a featured plan, reopen each); confirm `settings_json` exists in every target database (checked only in `stephenk_flexfit`; otherwise assignments are silently not copied); run the new calls on a real MySQL server (not executable locally). a3.4 uncommitted; not release-ready until accepted.

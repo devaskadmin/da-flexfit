@@ -527,3 +527,15 @@
 - Routes: `users.js` 37, `workout-log.js` 14, `dashboard.js` 3, identical to HEAD. No schema change, migration, package change or production data write; PlanID 5 untouched.
 - Limitations: SQL not run on a real MySQL server (no `mysql2`/`express` locally); day-mode plans with only weeks show 0 days and miss the publish gate until a day exists; add-exercise default group and `workout-sessions.js` day lookups were left alone; no live DB or browser verification.
 - User acceptance: PENDING. STOP; Stage 5 not started.
+
+## 0.85.313.a3.4 - Global Plan Persistence (2026-11-21)
+
+- Checkpoint: the accepted a3.2/a3.3 work was committed and pushed first (`20fefbfff`, branch `0.85.113`). a3.4 is uncommitted.
+- Goal: keep the day-to-week assignments (`workout_schedules.settings_json` -> `dayWeekAssignments`) when Global/Featured/Community plans are created or edited, and when plans are cloned or adopted. Before a3.4 only `PUT /workout-planner` wrote them.
+- Change: reused `persistDayWeekAssignments` (no new persistence code), called after `replaceScheduleGroupsAndExercises` inside the existing transaction in `PATCH /admin/global-workout-plans/:id/schedule`, `POST /global-workout-plans/:id/use`, `POST /featured-workout-plans/:id/clone` and `POST /workout-schedules/:id/plan-type-conversion` (`users.js`), and in the register-time featured copy (`auth.js`, `settings_json` added to its schema probe; no-op when the column is absent). The frontend already sends `settings`; no frontend change.
+- Preserved: week names and order (a3.2 group copy), exercises and recording values, permissions and plan types (code untouched), other keys already in the destination `settings_json`; the source plan is never written.
+- Tests: new `workout-plan-global-persistence` `11/11` (in-memory table fixture; source contract for the five wired paths; PlanID 5 snapshot unchanged; statements scoped to the destination id; no DDL); `workout-plan-settings` `11/11` (wiring count assertion 1 -> 5); `workout-plan-groups` `21/21`; `workout-schedule-group-filter` `24/24`; other runnable backend suites unchanged; frontend: all 7 test files pass; Vite build passed; `node --check` clean for `users.js` and `auth.js`; CRLF kept; `users.js` 37 routes identical to HEAD.
+- Not runnable locally (pre-existing, `express`/`mysql2` missing): the register, session and conversion integration suites.
+- Safety: no schema change, migration, package change or production data write; PlanID 5 untouched.
+- Limitations: new calls not executed on real MySQL; `settings_json` must exist in each target DB (verified only in `stephenk_flexfit`), otherwise assignments are silently not copied; clones of plans without assignments store an empty `dayWeekAssignments`; assignments rely on week names being copied unchanged; no live DB or browser verification.
+- User acceptance: PENDING. STOP; Stage 5 not started.

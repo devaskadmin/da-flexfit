@@ -6,6 +6,21 @@
 - Each entry must identify the date, Added / Changed / Fixed / Removed impact, affected functionality and source files, available Git commit or session checkpoint, verification status, and known unresolved issues.
 - Investigation-only or blocked versions must be labeled as such and must not be described as completed functionality.
 
+## [0.85.313.a3.4] - 2026-11-21 - Global Plan Persistence
+
+- **Status:** Code complete; focused tests, syntax checks and production build passed; user acceptance pending. a3.4 changes are uncommitted. The accepted a3.2/a3.3 checkpoint was committed and pushed first (`20fefbfff`, branch `0.85.113`). Package versions remain `0.85.308`.
+- **Problem fixed:** a3 stored the builder's day-to-week assignments (`workout_schedules.settings_json`, key `dayWeekAssignments`) only on `PUT /workout-planner`. Global plan create/edit, cloning and adoption saved groups and exercises but dropped the assignments, so a reopened copy lost its week mapping.
+- **Change (reuses `persistDayWeekAssignments`, no new persistence code):** the call runs inside each existing transaction right after `replaceScheduleGroupsAndExercises`.
+  - `PATCH /admin/global-workout-plans/:id/schedule` (`users.js`): the single save step of Global, Featured and Community Shared create and edit (the editor creates the draft, then PATCHes the schedule with `plannerPayload`, which already carries `settings`).
+  - `POST /global-workout-plans/:id/use` and `POST /featured-workout-plans/:id/clone` (`users.js`): the source planner exposes its stored assignments through `buildPlannerFromSchedule`; the copy writes them to the new schedule id.
+  - `POST /workout-schedules/:id/plan-type-conversion` (`users.js`): the conversion template does not carry settings, so the source plan's `settings` is added to the payload saved for the converted copy.
+  - Register-time featured plan assignment (`auth.js`, `assignFeaturedPlanToNewUser`): when `settings_json` exists the source assignments are read and written to the new member's copy (the schema probe gained `settings_json`).
+- **Preserved:** week names and group order (a3.2 group sync), exercises and recording values (unchanged code), permissions and plan type handling (unchanged), other keys already stored in the destination `settings_json`. The source plan is never written.
+- **Safety:** no schema change, migration, package change or production data write; PlanID #5 untouched; no `ALTER` added; the helper stays a no-op when `settings_json` is absent. `users.js` keeps all 37 routes in the same order (identical to HEAD) and CRLF; `auth.js` keeps CRLF.
+- **Frontend:** no change; the global save already sends `settings`.
+- **Verification:** new `workout-plan-global-persistence` suite `11/11` (in-memory table fixture, source-contract checks for all five wired paths, PlanID 5 snapshot unchanged, statements scoped to the destination id, no DDL); `workout-plan-settings` `11/11` (call-count assertion updated 1 to 5); `workout-plan-groups` `21/21`; `workout-schedule-group-filter` `24/24`; other runnable backend suites unchanged; all 7 frontend test files pass; Vite build passed; `node --check` clean for `users.js` and `auth.js`.
+- **Limitations:** `users.js` and `auth.js` cannot be loaded locally (`express`/`mysql2` missing, so the register and users integration suites cannot run); the new SQL path is the existing helper but is not executed against real MySQL. `settings_json` must exist in each target database (verified only in `stephenk_flexfit`); where it is missing, assignments are silently not copied. A clone of a plan with no assignments stores `{"dayWeekAssignments":{}}`. Assignments are copied verbatim, so they rely on the a3.2 group copy keeping the same week names. Exercise row IDs still regenerate on each save. No live-database or browser verification.
+
 ## [0.85.313.a3.3] - 2026-11-21 - Schedule Group Filtering
 
 - **Status:** Code complete; focused tests, syntax checks and production build passed; user acceptance pending. Changes are uncommitted, together with the also-uncommitted a3.2 work. Package versions remain `0.85.308`.
