@@ -27,12 +27,6 @@ const seeDropdown = ref(false)
             <router-link to="/view-profile" class="dropdown-item"><span class="dropdown-icon"><i class="fa-regular fa-circle-user"></i></span> Profile</router-link>
           </li>
           <li>
-            <router-link to="/chat" class="dropdown-item"><span class="dropdown-icon"><i class="fa-regular fa-message-lines"></i></span> Message</router-link>
-          </li>
-          <li>
-            <router-link to="/task" class="dropdown-item"><span class="dropdown-icon"><i class="fa-regular fa-calendar-check"></i></span> Taskboard</router-link>
-          </li>
-          <li>
             <a class="dropdown-item" href="#"><span class="dropdown-icon"><i class="fa-regular fa-circle-question"></i></span> Help</a>
           </li>
         </ul>

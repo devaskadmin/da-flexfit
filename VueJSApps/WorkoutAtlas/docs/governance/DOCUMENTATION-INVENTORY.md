@@ -18,6 +18,7 @@
 | `backend/docs/exercise_scope_implementation_checklist_085100.md` | ExerciseScope implementation checklist | Source-supported | Overlaps stage design/migration | CONSOLIDATE |
 | `backend/migrations/security/20261017_exercise_scope_stage1_migration_package.md` | ExerciseScope migration package | Migration artifact evidence | Overlaps stage docs | CONSOLIDATE with an index |
 | `frontend/README.md` | Frontend setup | Source-supported | Minimal overlap | KEEP |
+| `docs/engineering/APP-CLEANUP-INVENTORY.md` | 0.85.cleanup application and legacy template inventory (2026-11-24, base `6fdec962`), plus 0.85.cleanup.1 execution status section | Static analysis, not runtime-verified | Overlaps none; references `CURRENT-STATE.md` staleness | KEEP |
 | `backend/free-exercise-db-main/README.md` | Third-party dependency | Third-party | Exclude from project docs | EXCLUDE |
 
 ## Major conflicts
@@ -26,6 +27,7 @@
 - `backend/RENDER_SETUP.md` identifies a last-updated 0.81.7 era while the repository is at 0.85.308.
 - `CURRENT_SCHEMA_VERSION.md` was last dated 2026-08-04, while repository migrations include 2026-11-17 work.
 - ExerciseScope design/checklist/migration documents are related but not centralized; canonical implementation status is source-backed by code/tests.
+- `docs/engineering/CURRENT-STATE.md` and `SESSION-HANDOFF.md` record BETA HEAD `b7a44817`; the verified BETA HEAD on 2026-11-24 is `6fdec96255110ce1588051bbf93afde2073a38b6`. A 0.85.cleanup status block was added without rewriting the BETA block; the BETA block refresh is pending approval.
 
 ## Broken or unverified references
 

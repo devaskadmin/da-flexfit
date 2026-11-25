@@ -174,12 +174,12 @@ const closeMainLeftSidebar = (() => {
 })
 
 const onDocumentClick = (e) => {
+  // Only the two-column menu reacts to outside clicks; skip all other work on every click.
+  if (!isTwoColumnMenu.value) return;
   if (!e.target.matches('.main-sidebar *')) {
     // isSidebarMini.value = false;
     if (window.innerWidth < 1200) {
-      if (isTwoColumnMenu.value) {
-        isSubMenuCollapsed.value = true;
-      }
+      isSubMenuCollapsed.value = true;
     }
   }
 };
@@ -246,7 +246,7 @@ onMounted(() => {
   }, 600);
 
   document.addEventListener('click', onDocumentClick);
-  syncRouteShellState(route)
+  // Initial shell state is already applied by the immediate route.fullPath watcher below.
   applyCanonicalAppearance()
 
   mobileNavMql = window.matchMedia('(max-width: 768px)');
@@ -260,6 +260,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  document.removeEventListener('click', onDocumentClick);
   if (mobileNavMql?.removeEventListener) {
     mobileNavMql.removeEventListener('change', onMobileViewportChange);
   } else if (mobileNavMql?.removeListener) {
@@ -293,8 +294,7 @@ watch(
 )
 
 router.afterEach((to) => {
-  syncRouteShellState(to)
-
+  // Shell state (isPartials/layout) is kept in sync by the route.fullPath watcher above.
   isActive.value = false
   document.documentElement.classList.remove('overflow-hidden')
   document.body.classList.remove('overflow-hidden')

@@ -1,6 +1,6 @@
 <script setup>
 const props = defineProps(['onNavCloseClick', 'isExpanded', 'toggleSidebar', 'profileToggleSidebar', 'canUseThemeSettings'])
-import {onMounted, ref, onUnmounted, watchEffect, computed} from 'vue'
+import {onMounted, ref, onUnmounted, computed} from 'vue'
 import { useRouter } from 'vue-router'
 import {layoutPosition} from "@/composable/navPositionSetting";
 import { API_BASE } from '@/config/env'
@@ -25,19 +25,6 @@ const isAdmin = computed(() => {
 })
 
 const isMobileExpanded = ref(false)
-const isMobile = ref(false)
-
-const windowWidth = ref(window.innerWidth)
-const windowHeight = ref(window.innerHeight)
-
-const handleResize = () => {
-  windowWidth.value = window.innerWidth
-  windowHeight.value = window.innerHeight
-}
-
-const checkScreenSize = (() => {
-  isMobile.value = windowWidth.value >= 320 && windowWidth.value <= 991;
-})
 
 const toggleHeader = (() => {
   isMobileExpanded.value = !isMobileExpanded.value;
@@ -69,21 +56,18 @@ const openNotifications = () => {
 
 const loadCurrentUser = async () => {
   try {
-    const response = await fetch(`${API_BASE}/api/session`, {
-      credentials: 'include',
-      headers: { 'Cache-Control': 'no-cache' },
-    })
+    // Shared session request: joins a request already pending from another caller instead of
+    // issuing a duplicate /api/session call. fetchUser never throws; it resets user on failure.
+    await authStore.fetchUser()
 
-    if (!response.ok) return
+    const sessionUser = authStore.user?.value
+    const username = sessionUser?.username
+    const avatarPath = sessionUser?.avatarPath
 
-    const data = await response.json()
-    const username = data?.user?.username
-    const avatarPath = data?.user?.avatarPath
-    
     if (username && String(username).trim()) {
       currentUsername.value = String(username).trim()
     }
-    
+
     if (avatarPath && String(avatarPath).trim()) {
       currentAvatarPath.value = `${API_BASE}${avatarPath}`
     } else {
@@ -95,20 +79,13 @@ const loadCurrentUser = async () => {
   }
 }
 
-watchEffect(() => {
-  window.addEventListener('resize', checkScreenSize);
-  checkScreenSize();
-})
-
 onMounted(() => {
-  window.addEventListener('resize', handleResize)
   loadUnreadCount()
   loadCurrentUser()
   unreadPollTimer = setInterval(loadUnreadCount, 60000)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
   if (unreadPollTimer) {
     clearInterval(unreadPollTimer)
   }

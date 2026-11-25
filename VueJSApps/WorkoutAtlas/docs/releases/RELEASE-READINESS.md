@@ -14,6 +14,46 @@
 
 No release should be marked released or accepted merely because automated tests pass.
 
+## 0.85.cleanup final BETA integration (2026-11-25): MERGED INTO BETA - CLEANUP BRANCH RETIRED - POST-MERGE QA PENDING
+
+Supersedes the earlier cleanup sections below (kept for history, including their "BETA integration NOT AUTHORIZED" statements, which applied at the time). The owner confirmed noticeable performance improvement after a3 and authorised committing the cleanup, merging it into BETA, pushing BETA and retiring the local cleanup branch. This is an integration, not a release or user acceptance: full regression testing and authentication regression testing are PENDING, no measured performance benchmark exists, the Vue `parentNode` exception is not conclusively resolved, and responsive breakpoint improvements are deferred. No package version change; no deployment; main untouched. See [../../CHANGELOG.md](../../CHANGELOG.md).
+
+## 0.85.cleanup.5.a3 navigation performance optimization (2026-11-25): PERFORMANCE OPTIMIZATION IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+Owner feedback after a2: the application works but is slow. Task `0.85.cleanup.5.a3` changed seven source files in the uncommitted working tree of `0.85.cleanup` (`useAuth.js`, `router/index.js`, `primaryColorChangeSetting.js`, `App.vue`, `layouts/App.vue`, `HeaderComponent.vue`, `HomeDashboard.vue`): near-simultaneous `/api/session` requests are shared (no caching; the router guard still validates the server session on every protected navigation), dashboard requests run concurrently, and redundant per-navigation writes and listeners were removed. Verification was static only; no tests, build, browser run or timing measurement, so no improvement is claimed as measured. The Vue `parentNode` exception is unresolved. Manual acceptance pending; final cleanup acceptance blocked. No package version change. Nothing here advances release readiness. BETA integration NOT AUTHORIZED. See [../../CHANGELOG.md](../../CHANGELOG.md).
+
+## 0.85.cleanup.5.a2 mobile navigation targeted repair (2026-11-25): TARGETED REPAIR IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+Owner testing of `0.85.cleanup.5` FAILED mobile/tablet acceptance. Read-only investigation `0.85.cleanup.5.a1` found the defects predate cleanup. Task `0.85.cleanup.5.a2` changed two files in the uncommitted working tree of `0.85.cleanup`: `ProfileDropdown.vue` (diagnostics opt-in, closed-state early returns) and `AppBottomNav.vue` (cyclic custom properties removed). Verification was static only; no tests, build or browser run. The Vue `parentNode` exception is unresolved and not claimed fixed. Deferred: session-request pattern, breakpoint alignment, header offset. Manual acceptance pending; final cleanup acceptance blocked. No package version change. Nothing here advances release readiness. BETA integration NOT AUTHORIZED. See [../../CHANGELOG.md](../../CHANGELOG.md).
+
+## 0.85.cleanup.5 Batch 5 composable cleanup (2026-11-25): IMPLEMENTED - PENDING FINAL OWNER ACCEPTANCE (mobile/tablet acceptance subsequently FAILED; see the a2 section above)
+
+Batch 5 (four unused template composables: `chartsDataManage.js`, `dashboardManage.js`, `nestableList.js`, `sweetalertManage.js`; 4 files, 0 routes, no navigation edit) is applied to the uncommitted working tree of `0.85.cleanup` on top of Batches 1-4 (cumulative 165 files, 44 routes, 37 route paths). Acceptance of Batches 1-4 was not stated by the owner and remains pending. Verification was static only; no tests, build or browser run. No package version change. Nothing here advances release readiness. BETA integration NOT AUTHORIZED. See [../engineering/APP-CLEANUP-INVENTORY.md](../engineering/APP-CLEANUP-INVENTORY.md).
+
+## 0.85.cleanup.4 Batch 4 template removal (2026-11-25): IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+Batch 4 (unused Digiboard UI demonstrations: charts, tables, form, icon, map, utility, animation, nestable list, sweet alert and swiper slider; 48 files, 10 routes, no navigation edit) is applied to the uncommitted working tree of `0.85.cleanup` on top of Batches 1-3 (cumulative 161 files, 44 routes, 37 route paths). Six owner-protected or same-name inventory files were preserved. Acceptance of Batches 1, 2 and 3 was not stated by the owner and remains pending. Verification was static only; no tests, build or browser run. No package version change. Nothing here advances release readiness. Batch 5 not started; BETA integration NOT AUTHORIZED. See [../engineering/APP-CLEANUP-INVENTORY.md](../engineering/APP-CLEANUP-INVENTORY.md).
+
+## 0.85.cleanup.3 Batch 3 template removal (2026-11-25): IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+Batch 3 (unused Digiboard authentication, registration, status, pricing, subscription, promotion and email-template demonstration pages: 19 files, 14 routes, one stale `Guest.vue` entry) is applied to the uncommitted working tree of `0.85.cleanup` on top of Batches 1 and 2 (cumulative 113 files, 34 routes, 47 route paths). Acceptance of Batches 1 and 2 was not stated by the owner and remains pending. Real WorkoutAtlas authentication, guards and backend were not touched. Verification was static only; no tests, build or browser run. No package version change. Nothing here advances release readiness. Batch 4 not started; BETA integration NOT AUTHORIZED. See [../engineering/APP-CLEANUP-INVENTORY.md](../engineering/APP-CLEANUP-INVENTORY.md).
+
+## 0.85.cleanup.2 Batch 2 template removal (2026-11-25): IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+Batch 2 (chat, standalone calendar, email, invoices, contacts and file manager demos: 27 files, 6 routes, related navigation entries) is applied to the uncommitted working tree of `0.85.cleanup` on top of Batch 1 (cumulative 94 files, 20 routes, 61 route paths). Batch 1 manual testing had reported broken menu links; the read-only `0.85.cleanup.1.a2` investigation could not attribute them to Batch 1. Verification was static only; no tests, build or browser run. No package version change. Nothing here advances release readiness. Batch 3 not started; BETA integration NOT AUTHORIZED. See [../engineering/APP-CLEANUP-INVENTORY.md](../engineering/APP-CLEANUP-INVENTORY.md).
+
+## 0.85.cleanup.1.a1 Batch 1 template removal (2026-11-25): IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+Batch 1 only (CRM, HRM and e-commerce demos: 67 files, 14 routes, Taskboard link) is applied to the uncommitted working tree of `0.85.cleanup`. Verification was static only; no tests, build or browser run. No package version change. Nothing here advances release readiness. Batches 2-5 not started; BETA integration NOT AUTHORIZED. See [../engineering/APP-CLEANUP-INVENTORY.md](../engineering/APP-CLEANUP-INVENTORY.md).
+
+## 0.85.cleanup.1 template feature removal (2026-11-24): FAILED ACCEPTANCE — ROLLBACK REQUESTED
+
+The removal was rolled back (source restored to `6fdec962`, uncommitted). Nothing here advances release readiness. Open blocker: the backend cannot authenticate to its configured MySQL server (`ER_ACCESS_DENIED_ERROR`); owner action required. BETA integration NOT AUTHORIZED. Superseded text follows as history: owner-approved removal of standalone template demo features was implemented but uncommitted; automated checks had passed (frontend 140/140, Vite build, backend 238/238). See [../engineering/APP-CLEANUP-INVENTORY.md](../engineering/APP-CLEANUP-INVENTORY.md).
+
+## 0.85.cleanup inventory (2026-11-24)
+
+Investigation-only branch `0.85.cleanup` (base `6fdec962`). No release content, no package version change, no tests run. Nothing here advances release readiness; see [../engineering/APP-CLEANUP-INVENTORY.md](../engineering/APP-CLEANUP-INVENTORY.md).
+
 ## 0.85.309a top Save alignment
 
 - 0.85.309a is implementation-complete and automated-verification-passed.
