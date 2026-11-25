@@ -33,12 +33,26 @@ let lastAvatarActivationSource = ''
 
 const OUTSIDE_SYNTHETIC_GUARD_MS = 900
 
+// Diagnostics (console logging and /api/debug/* requests) are opt-in and disabled by default.
+// To enable for a manual debugging session, run in the browser console, then reload:
+//   localStorage.setItem('wa:debug:profile-dropdown', '1')
+// Remove with localStorage.removeItem('wa:debug:profile-dropdown').
+const DIAGNOSTICS_STORAGE_KEY = 'wa:debug:profile-dropdown'
+const diagnosticsEnabled = (() => {
+  try {
+    return typeof window !== 'undefined' && window.localStorage.getItem(DIAGNOSTICS_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+})()
+
 const hasTouchPrimaryInput = (() => {
   if (typeof navigator === 'undefined') return false
   return Number(navigator.maxTouchPoints || 0) > 0
 })()
 
 const menuLog = (...args) => {
+  if (!diagnosticsEnabled) return
   console.log('[ProfileDropdown]', ...args)
 }
 
@@ -52,6 +66,7 @@ const mapReasonForProfileDebug = (reason = '') => {
 }
 
 const emitProfileStateDebug = ({ action, reason, before, after, eventType = '' }) => {
+  if (!diagnosticsEnabled) return
   const entry = {
     timestamp: new Date().toISOString(),
     eventName: 'PROFILE_DEBUG_STATE',
@@ -98,6 +113,7 @@ const getTargetSummary = (event) => {
 }
 
 const sendMenuDebug = (entry) => {
+  if (!diagnosticsEnabled) return
   const url = `${API_BASE}/api/debug/mobile-menu`
   const body = JSON.stringify(entry)
 
@@ -119,6 +135,7 @@ const sendMenuDebug = (entry) => {
 }
 
 const emitMenuDebug = ({ eventName, event = null, eventType = '', before = isOpen.value, after = isOpen.value }) => {
+  if (!diagnosticsEnabled) return
   const entry = {
     timestamp: new Date().toISOString(),
     eventName,
@@ -135,6 +152,7 @@ const emitMenuDebug = ({ eventName, event = null, eventType = '', before = isOpe
 }
 
 const sendProfileMenuClickDebug = ({ before, after }) => {
+  if (!diagnosticsEnabled) return
   const entry = {
     timestamp: new Date().toISOString(),
     event: 'PROFILE_ICON_CLICK',
@@ -296,11 +314,9 @@ const toggleDropdown = (event) => {
 
 // Close dropdown
 const closeDropdown = (reason = 'unknown') => {
+  // Already closed: nothing to do (no redundant close events).
+  if (!isOpen.value) return
   const beforeState = isOpen.value
-  if (!isOpen.value) {
-    menuLog('close ignored (already closed)', { reason })
-    return
-  }
   isOpen.value = false
   emitProfileStateDebug({
     action: 'CLOSE',
@@ -320,17 +336,15 @@ const closeDropdown = (reason = 'unknown') => {
 
 // Handle pointer/touch outside so mobile taps do not immediately collapse the menu.
 const handlePointerOutside = (event) => {
+  // Closed menu: nothing to dismiss, so do no further work (no debug events, no logging).
+  if (!isOpen.value) return
+
   emitMenuDebug({
     eventName: event?.type === 'touchstart' ? 'TOUCH_START' : 'POINTER_DOWN',
     event,
     before: isOpen.value,
     after: isOpen.value,
   })
-
-  if (!isOpen.value) {
-    menuLog('outside ignored (menu closed)', { eventType: event?.type || 'unknown' })
-    return
-  }
 
   if (touchOpenGuardUntil.value > Date.now()) {
     menuLog('outside ignored (touch open guard)', {
@@ -474,6 +488,8 @@ onUnmounted(() => {
 
 // Close dropdown when route changes
 const unsubscribe = router.afterEach(() => {
+  // Already closed: no debug event and no redundant close.
+  if (!isOpen.value) return
   emitMenuDebug({
     eventName: 'ROUTE_CHANGE',
     before: isOpen.value,
@@ -482,37 +498,40 @@ const unsubscribe = router.afterEach(() => {
   closeDropdown('route-change')
 })
 
-watch(isOpen, (next, prev) => {
-  if (next === prev) return
-  emitMenuDebug({
-    eventName: next ? 'MENU_OPEN' : 'MENU_CLOSE',
-    before: prev,
-    after: next,
+// Diagnostic-only watchers: registered only when diagnostics are explicitly opted in.
+if (diagnosticsEnabled) {
+  watch(isOpen, (next, prev) => {
+    if (next === prev) return
+    emitMenuDebug({
+      eventName: next ? 'MENU_OPEN' : 'MENU_CLOSE',
+      before: prev,
+      after: next,
+    })
   })
-})
 
-watch(logoutInProgress, (next, prev) => {
-  if (next === prev) return
-  emitMenuDebug({
-    eventName: 'AUTH_STATE_CHANGE',
-    eventType: `logoutInProgress:${next}`,
-    before: isOpen.value,
-    after: isOpen.value,
-  })
-})
-
-watch(
-  () => Boolean(authUser?.value),
-  (next, prev) => {
+  watch(logoutInProgress, (next, prev) => {
     if (next === prev) return
     emitMenuDebug({
       eventName: 'AUTH_STATE_CHANGE',
-      eventType: `userSessionPresent:${next}`,
+      eventType: `logoutInProgress:${next}`,
       before: isOpen.value,
       after: isOpen.value,
     })
-  }
-)
+  })
+
+  watch(
+    () => Boolean(authUser?.value),
+    (next, prev) => {
+      if (next === prev) return
+      emitMenuDebug({
+        eventName: 'AUTH_STATE_CHANGE',
+        eventType: `userSessionPresent:${next}`,
+        before: isOpen.value,
+        after: isOpen.value,
+      })
+    }
+  )
+}
 
 onUnmounted(() => {
   if (unsubscribe) {

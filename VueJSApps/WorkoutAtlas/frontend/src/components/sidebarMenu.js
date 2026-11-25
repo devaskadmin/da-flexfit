@@ -42,21 +42,6 @@ export const sidebarMenus = ref([
         ]
     },
     {
-        menu_name: 'Trainer',
-        menus: [
-            {
-                name: 'Chat with Trainer',
-                link_name: 'chat',
-                icon: 'fa-regular fa-message'
-            },
-            {
-                name: 'Scheduling',
-                link_name: 'calendar',
-                icon: 'fa-light fa-calendar'
-            },
-        ]
-    },
-    {
         menu_name: 'Administrator',
         linkClass: 'admin-light-gray',
         menus: [
@@ -71,11 +56,6 @@ export const sidebarMenus = ref([
                 icon: 'fa-solid fa-images'
             },
             {
-                name: 'Scheduling',
-                link_name: 'calendar',
-                icon: 'fa-light fa-calendar'
-            },
-            {
                 name: 'Users',
                 link_name: 'admin_users',
                 icon: 'fa-solid fa-users'
@@ -84,11 +64,6 @@ export const sidebarMenus = ref([
                 name: 'Roles',
                 link_name: 'admin_roles',
                 icon: 'fa-solid fa-id-badge'
-            },
-            {
-                name: 'Chat',
-                link_name: 'chat',
-                icon: 'fa-solid fa-comments'
             },
         ]
     },

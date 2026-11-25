@@ -4,6 +4,7 @@ Canonical entry points:
 
 - Current development state: [engineering/CURRENT-STATE.md](engineering/CURRENT-STATE.md)
 - Session handoff: [engineering/SESSION-HANDOFF.md](engineering/SESSION-HANDOFF.md)
+- Application and legacy template cleanup inventory and 0.85.cleanup.1 execution status (merged into BETA 2026-11-25; post-merge QA pending): [engineering/APP-CLEANUP-INVENTORY.md](engineering/APP-CLEANUP-INVENTORY.md)
 - Backlog: [backlog/BACKLOG.md](backlog/BACKLOG.md)
 - Roadmap: [backlog/ROADMAP.md](backlog/ROADMAP.md)
 - Engineering workflow: [engineering/DEVELOPMENT-WORKFLOW.md](engineering/DEVELOPMENT-WORKFLOW.md)

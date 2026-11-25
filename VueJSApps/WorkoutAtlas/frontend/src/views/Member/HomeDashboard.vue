@@ -227,13 +227,10 @@ const allMenuLinks = [
   { label: 'Progress', shortLabel: 'Track', route: '/progress', icon: 'fa-solid fa-chart-line', section: 'General', roles: ['member', 'trainer', 'admin'] },
   { label: 'Settings', shortLabel: 'Settings', route: '/user-settings', icon: 'fa-solid fa-gear', section: 'General', roles: ['member', 'trainer', 'admin'] },
   { label: 'Logout', shortLabel: 'Logout', route: '/logout', icon: 'fa-solid fa-right-from-bracket', section: 'General', roles: ['member', 'trainer', 'admin'] },
-  { label: 'Chat with Trainer', shortLabel: 'Chat', route: '/chat', icon: 'fa-solid fa-comments', section: 'Trainer', roles: ['member', 'trainer'] },
-  { label: 'Scheduling', shortLabel: 'Plan', route: '/calendar', icon: 'fa-solid fa-calendar-days', section: 'Admin', roles: ['admin'] },
   { label: 'Users', shortLabel: 'Users', route: '/admin/users', icon: 'fa-solid fa-users', section: 'Admin', roles: ['admin'] },
   { label: 'Roles', shortLabel: 'Roles', route: '/admin/roles', icon: 'fa-solid fa-user-shield', section: 'Admin', roles: ['admin'] },
   { label: 'Test Roles', shortLabel: 'Test', route: '/admin/role-tester', icon: 'fa-solid fa-vials', section: 'Admin', roles: ['admin'] },
   { label: 'Tools', shortLabel: 'Tools', route: '/tools', icon: 'fa-solid fa-screwdriver-wrench', section: 'Admin', roles: ['admin'] },
-  { label: 'Admin Chat', shortLabel: 'Chat', route: '/chat', icon: 'fa-solid fa-comments', section: 'Admin', roles: ['admin'] },
 ]
 
 const desktopNavSections = computed(() => {
@@ -294,15 +291,6 @@ const roleActions = computed(() => {
       { title: 'Users', description: 'Manage user accounts', route: '/admin/users', icon: 'fa-solid fa-users' },
       { title: 'Roles', description: 'Manage role permissions', route: '/admin/roles', icon: 'fa-solid fa-id-badge' },
       { title: 'Tools', description: 'Open admin tools', route: '/tools', icon: 'fa-solid fa-toolbox' },
-      { title: 'Scheduling', description: 'Manage calendar and events', route: '/calendar', icon: 'fa-solid fa-calendar-days' },
-      { title: 'Chat', description: 'Open team chat', route: '/chat', icon: 'fa-solid fa-comments' },
-    ]
-  }
-
-  if (isTrainer.value) {
-    return [
-      { title: 'Chat with Clients', description: 'Open trainer communication', route: '/chat', icon: 'fa-solid fa-comments' },
-      { title: 'Scheduling', description: 'Manage training schedule', route: '/calendar', icon: 'fa-solid fa-calendar-days' },
     ]
   }
 
@@ -323,9 +311,7 @@ const goToQuickAction = (route) => {
   router.push(route)
 }
 
-onMounted(async () => {
-  await authStore.fetchUser()
-
+const loadProfileFirstName = async () => {
   try {
     const res = await axios.get(`${API_BASE}/api/user-profile-settings`, { withCredentials: true })
     const profile = res.data?.profile || {}
@@ -333,8 +319,18 @@ onMounted(async () => {
   } catch {
     // Dashboard still works without profile details.
   }
+}
 
-  await Promise.all([fetchDashboardStats(), fetchActivityFeed(), fetchNutritionActivity()])
+onMounted(async () => {
+  // These requests are independent (role-dependent UI is reactive on authStore), so run them
+  // concurrently instead of as a sequential waterfall. Each handles its own errors.
+  await Promise.all([
+    authStore.fetchUser(),
+    loadProfileFirstName(),
+    fetchDashboardStats(),
+    fetchActivityFeed(),
+    fetchNutritionActivity(),
+  ])
 })
 </script>
 

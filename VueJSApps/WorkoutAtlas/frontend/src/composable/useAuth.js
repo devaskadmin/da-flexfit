@@ -33,10 +33,62 @@ const canViewAdministratorMenu = computed(() => isAdministrator.value);
 /** Logout in progress flag to prevent duplicate calls */
 const logoutInProgress = ref(false);
 
+/**
+ * Session request sharing (a3 performance pass).
+ * - Near-simultaneous callers share ONE /api/session request instead of each issuing their own
+ *   (the backend does a role lookup plus a users SELECT per call).
+ * - Nothing is cached: a request is only shared while it is still pending and was started
+ *   less than SESSION_SHARE_WINDOW_MS ago. Every later call performs a fresh request.
+ * - A response is applied to `user` only if no logout/auth reset happened since the request
+ *   started (epoch) and no newer response was already applied (seq), so a late response can
+ *   never restore authentication state after logout or overwrite newer state.
+ */
+const SESSION_SHARE_WINDOW_MS = 500;
+let sessionEpoch = 0;
+let sessionSeq = 0;
+let lastAppliedSessionSeq = 0;
+let pendingSession = null;
+
+const invalidateSessionRequests = () => {
+  sessionEpoch += 1;
+  pendingSession = null;
+};
+
+const startOrShareSessionRequest = () => {
+  const now = Date.now();
+  if (
+    pendingSession &&
+    pendingSession.epoch === sessionEpoch &&
+    now - pendingSession.startedAt < SESSION_SHARE_WINDOW_MS
+  ) {
+    return pendingSession;
+  }
+
+  const entry = { epoch: sessionEpoch, seq: ++sessionSeq, startedAt: now, promise: null };
+  entry.promise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/session`, { credentials: 'include' });
+      const data = await res.json();
+      return { ok: res.ok, status: res.status, data };
+    } finally {
+      if (pendingSession === entry) pendingSession = null;
+    }
+  })();
+  pendingSession = entry;
+  return entry;
+};
+
+/**
+ * Raw session response ({ ok, status, data }) from the shared /api/session request.
+ * Rejects on network/parse failure. Used by the router guard, which makes its own decisions.
+ */
+export const fetchSessionSnapshot = () => startOrShareSessionRequest().promise;
+
 export function useAuth() {
   const router = useRouter();
 
   const clearClientAuthState = () => {
+    invalidateSessionRequests();
     user.value = null;
 
     localStorage.removeItem('token');
@@ -87,15 +139,21 @@ export function useAuth() {
   };
 
   const fetchUser = async () => {
+    const entry = startOrShareSessionRequest();
+    const canApply = () => entry.epoch === sessionEpoch && entry.seq > lastAppliedSessionSeq;
+
     try {
-      const res = await fetch(`${API_BASE}/api/session`, {
-        credentials: 'include',
-      });
-      const data = await res.json();
-      user.value = data.loggedIn ? data.user : null;
+      const { data } = await entry.promise;
+      if (canApply()) {
+        lastAppliedSessionSeq = entry.seq;
+        user.value = data.loggedIn ? data.user : null;
+      }
     } catch (err) {
       console.error('Session check failed:', err);
-      user.value = null;
+      if (canApply()) {
+        lastAppliedSessionSeq = entry.seq;
+        user.value = null;
+      }
     }
   };
 
@@ -115,6 +173,7 @@ export function useAuth() {
     if (logoutInProgress.value) return false;
 
     logoutInProgress.value = true;
+    invalidateSessionRequests();
 
     try {
       let loggedOut = await postLogout();

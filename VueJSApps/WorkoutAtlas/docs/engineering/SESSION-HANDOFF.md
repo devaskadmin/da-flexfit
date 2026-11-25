@@ -1,5 +1,79 @@
 # WorkoutAtlas Session Handoff
 
+## 0.85.cleanup final handoff (2026-11-25): MERGED INTO BETA - CLEANUP BRANCH RETIRED - POST-MERGE QA PENDING
+
+- Supersedes the a1-a3 and earlier cleanup handoffs below (kept for history). Owner confirmed noticeable performance improvement after a3 and authorised commit, merge into BETA, push of BETA and retirement of the local `0.85.cleanup` branch. Baseline BETA = `6fdec96255110ce1588051bbf93afde2073a38b6`; checkpoint and merge SHAs are in Git history. 165 template files removed, routes 81 -> 37. No tests, build or runtime check were run for the integration. `.env*` files untouched; 13 stashes preserved; `APP-CLEANUP-INVENTORY.md` remains untracked.
+- Outstanding for the next session: full regression testing, authentication regression testing, a measured performance benchmark (none exists), the Vue `parentNode` exception (not conclusively resolved), responsive breakpoint work (deferred), and remaining direct `/api/session` fetches listed in the a3 block. No deployment or main-branch change is authorised.
+
+## 0.85.cleanup.5.a3 handoff (2026-11-25): PERFORMANCE OPTIMIZATION IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+- Applied on `0.85.cleanup` (HEAD `6fdec962`, uncommitted) after the owner reported the application works but is slow. Seven source files changed (`useAuth.js`, `router/index.js`, `primaryColorChangeSetting.js`, `App.vue`, `layouts/App.vue`, `HeaderComponent.vue`, `HomeDashboard.vue`); a2 repairs untouched. Core change: near-simultaneous `/api/session` calls share one pending request (500 ms window, no caching, stale responses ignored after logout), the router guard still validates the server session on every protected navigation, dashboard requests run concurrently, and redundant per-navigation DOM/storage writes and listeners were removed.
+- Static verification only; no tests, build or runtime check; no timing measured. 165 deletions, 37 route paths, 13 stashes and BETA unchanged. `.env*` files and environment variables untouched.
+- Unresolved: Vue `parentNode` exception (not claimed fixed). Deferred: other direct session fetches (`Logout.vue`, `exercises.vue`, `LogWorkout.vue`, `WorkoutBuilder.vue`, `UpdatePassword.vue`, `router/Session.js`), sidebar session request per 768 px crossing, breakpoint alignment, header offset, dead drawer CSS, AOS, nested overflow. Do not change these without separate authorisation.
+- Next step for the owner: manual performance and mobile/tablet acceptance (compare Network counts for `/api/session` and navigation latency at 375 to 1920 px). Final cleanup acceptance remains blocked. Do not commit, push or merge without approval.
+
+## 0.85.cleanup.5.a2 handoff (2026-11-25): TARGETED REPAIR IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+- Applied on `0.85.cleanup` (HEAD `6fdec962`, uncommitted) after owner testing FAILED mobile/tablet acceptance of `0.85.cleanup.5`. Read-only investigation `0.85.cleanup.5.a1` showed the defects predate cleanup. Only two source files changed: `ProfileDropdown.vue` (all console debug output and `/api/debug/*` requests now opt-in via `localStorage` key `wa:debug:profile-dropdown` = `1`; closed-state early returns) and `navigation/AppBottomNav.vue` (cyclic `--wa-mobile-bottom-nav-height` / `-gap` declarations removed; `70px` fallback on `height`).
+- Static verification only; no tests, build or runtime check. 165 deletions, 37 route paths, 13 stashes and BETA unchanged. `.env*` files and environment variables untouched.
+- Unresolved: the Vue `parentNode` exception (not claimed fixed; probable secondary error). Deferred: router `/api/session` validation per navigation and duplicate session requests, breakpoint alignment (767/768/769/991/1199), header offset, dead drawer CSS, AOS, nested overflow. Do not change these without separate authorisation.
+- Next step for the owner: manual mobile/tablet acceptance; if the freeze or `parentNode` error persists, supply the first console error with source-mapped stack (Preserve log), a Performance recording at ~700px, Network counts for `/api/session` and `/api/debug/*`, and `html`/`body` classes at the failure moment. Final cleanup acceptance remains blocked. Do not commit, push or merge without approval.
+
+## 0.85.cleanup.5 handoff (2026-11-25): IMPLEMENTED - PENDING FINAL OWNER ACCEPTANCE (mobile/tablet acceptance subsequently FAILED; see the a2 block above)
+
+- Applied on `0.85.cleanup` (HEAD `6fdec962`, uncommitted) on top of Batches 1-4: 4 unused template composables deleted (`chartsDataManage.js`, `dashboardManage.js`, `nestableList.js`, `sweetalertManage.js`). No route, navigation, component, package, asset or CSS change. Cumulative 165 files, 44 routes removed, 37 route paths. Lists in [APP-CLEANUP-INVENTORY.md](APP-CLEANUP-INVENTORY.md) (section for task `0.85.cleanup.5`).
+- All protected reusable components, `sidebarMenu-TEMPLATE.js` and the unreachable `template/MainSidebarComponent.vue` were left untouched. Orphans left for a separately authorised decision (none authorised now): demo-only npm packages, images, styles.
+- Acceptance of Batches 1-4 was not stated by the owner; all remain pending. Verified statically only; no tests or build. `.env*` files and environment variables were not touched.
+- Next step for the owner: manual acceptance (checklist in the inventory section) and final cleanup verification. Do not commit, push or merge without approval.
+- Do not touch BETA or the 13 stashes. `.env*` files remain permanently protected.
+
+## 0.85.cleanup.4 handoff (2026-11-25): BATCH 4 IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+- Applied on `0.85.cleanup` (HEAD `6fdec962`, uncommitted) on top of Batches 1-3: 48 unused Digiboard UI demonstration files deleted (10 views and 38 components: charts, tables, dragable lists, product, sliders, `ProductTableAction`); 10 routes removed (47 -> 37 route paths): `/sweet-alert`, `/nestable-list`, `/animation`, `/swiper-slider`, `/form`, `/table`, `/charts`, `/icon`, `/map`, `/utility`. Cumulative 161 files and 44 routes. Lists in [APP-CLEANUP-INVENTORY.md](APP-CLEANUP-INVENTORY.md) (section for task `0.85.cleanup.4`).
+- No navigation or layout file was edited (no live reference to the 10 routes existed). Six inventory files were preserved: `PagePanelHeader.vue`, `TextEditorComponent.vue`, `datatable/DigiDataTable.vue`, `datatable/TableFilterOption.vue`, `form/DropzoneComponent.vue`, `employee/TableFilterOption.vue`. Composables (`nestableList.js`, `chartsDataManage.js`), packages and assets were not touched.
+- Acceptance of Batches 1, 2 and 3 was not stated by the owner; all remain pending. Verified statically only; no tests or build. `.env*` files and environment variables were not touched; no backend, DB, package, CSS/SCSS or lockfile change.
+- Next step for the owner: manual acceptance (checklist in the inventory section). Do not start Batch 5 or commit, push or merge without approval.
+- Do not touch BETA or the 13 stashes. `.env*` files remain permanently protected.
+
+## 0.85.cleanup.3 handoff (2026-11-25): BATCH 3 IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+- Applied on `0.85.cleanup` (HEAD `6fdec962`, uncommitted) on top of Batches 1 and 2: 19 unused template authentication, registration, status, pricing, subscription, promotion and email-template views deleted; 14 routes removed (61 -> 47 route paths); stale `pricing_table` removed from `layouts/Guest.vue`. Cumulative 113 files and 34 routes. Lists in [APP-CLEANUP-INVENTORY.md](APP-CLEANUP-INVENTORY.md) (section for task `0.85.cleanup.3`).
+- Real WorkoutAtlas authentication (`views/Guest/*`, `/login`, `/register`, `/reset-password`, `/update-password`, `/ext-register`, `/terms-policy`, `/logout`), router guards and the backend were not touched.
+- Acceptance of Batches 1 and 2 was not stated by the owner; both remain pending. Verified statically only; no tests or build. `.env*` files and environment variables were not touched; no backend, DB, package, CSS/SCSS or lockfile change. Skipped: `filemanager/FolderList.vue`, `ComingSoon`/`ComingSoon2`/`UnderConstruction` (not in Batch 3).
+- Next step for the owner: manual acceptance (checklist in the inventory section). Do not start Batch 4 or commit, push or merge without approval.
+- Do not touch BETA or the 13 stashes. `.env*` files remain permanently protected.
+
+## 0.85.cleanup.2 handoff (2026-11-25): BATCH 2 IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+- Applied on `0.85.cleanup` (HEAD `6fdec962`, uncommitted) on top of Batch 1: 27 files deleted (chat, calendar, email, invoices, contacts, file manager template views and components), 6 routes removed, navigation entries for those routes removed (`sidebarMenu.js` Trainer section and Administrator Scheduling/Chat; profile right sidebar Message; `HomeDashboard.vue` Chat/Scheduling role actions). Cumulative 94 files and 20 routes; 61 route paths. Lists in [APP-CLEANUP-INVENTORY.md](APP-CLEANUP-INVENTORY.md) (section for task `0.85.cleanup.2`).
+- Batch 1 background: owner-reported broken menu links after a1; read-only investigation `0.85.cleanup.1.a2` found no link broken by Batch 1 and could not reproduce the symptom. If links still fail, collect the exact labels, the symptom (login redirect, blank page or console error), the role, desktop or mobile, and the `/api/session` response; the recorded DB credential blocker (`ER_ACCESS_DENIED_ERROR`) can make the router guard redirect everything to login.
+- Verified statically only; no tests or build. `.env*` files and environment variables were not touched; no backend, DB, package, CSS/SCSS or lockfile change. Skipped: orphan `filemanager/FolderList.vue` (not in any approved batch).
+- Next step for the owner: manual acceptance (checklist in the inventory section). Do not start Batch 3 or commit, push or merge without approval.
+- Do not touch BETA or the 13 stashes. `.env*` files remain permanently protected.
+
+## 0.85.cleanup.1.a1 handoff (2026-11-25): BATCH 1 IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+- Applied on `0.85.cleanup` (HEAD `6fdec962`, uncommitted): Batch 1 only. 67 files deleted, 14 routes removed, Taskboard link removed; `/hrm-dashboard` kept. Lists in [APP-CLEANUP-INVENTORY.md](APP-CLEANUP-INVENTORY.md) (section for task `0.85.cleanup.1.a1`).
+- Verified statically only; no tests or build were run. `.env*` files and environment variables were not touched; no backend, DB, package, CSS/SCSS or lockfile change.
+- Next step for the owner: manual acceptance (sign-in, dashboard and date range, desktop and mobile navigation, `/hrm-dashboard`, profile sidebar, `/view-profile`, `/edit-profile`, `/settings`, builder, Schedule Planner, logging, nutrition, admin, error pages). Do not start Batch 2 or commit, push or merge without approval. The previous DB credential blocker (`ER_ACCESS_DENIED_ERROR`) recorded below may still affect manual testing.
+- Do not touch BETA or the 13 stashes. `.env*` files remain permanently protected.
+
+## 0.85.cleanup.1 handoff (2026-11-24): FAILED ACCEPTANCE — ROLLBACK REQUESTED
+
+- Source rolled back to `6fdec962` (working tree only, uncommitted). The description below is the superseded implementation, kept as history.
+- Blocker for the owner: `backend/.env` (untouched) points at a MySQL server that rejects the connection (`ER_ACCESS_DENIED_ERROR`); the backend starts but DB-backed routes return 503. Check the DB user password and the host's remote-access allowlist for the current address. Do not disable MySQL session storage. No further cleanup authorised; BETA integration NOT AUTHORIZED.
+- (Superseded) Implemented (uncommitted) on `0.85.cleanup`: owner-approved removal of standalone template demo features (details and exact file lists in [APP-CLEANUP-INVENTORY.md](APP-CLEANUP-INVENTORY.md), execution status section). Profile pages retained by owner decision.
+- Verified: frontend tests 140/140, Vite build, backend tests 238/238, `users.js` unchanged, 13 stashes intact.
+- Next step for the owner: manual browser acceptance (sign-in, dashboard, nav, profile pages, Workout Builder, Schedule Planner, logging, nutrition, admin tools, error pages), then decide on deferred items (coming-soon/under-construction, unreferenced shared components, `sidebarMenu-TEMPLATE.js`). Do not commit, push or merge without approval; BETA integration NOT AUTHORIZED.
+
+## 0.85.cleanup branch status (distinct from BETA status below)
+
+- Branch `0.85.cleanup` at base `6fdec96255110ce1588051bbf93afde2073a38b6` (verified `BETA` HEAD; the `b7a44817` value below is stale).
+- Completed: inventory and analysis only, recorded in [APP-CLEANUP-INVENTORY.md](APP-CLEANUP-INVENTORY.md). Documentation files changed are listed in its Appendix E.
+- Not done and not authorized: any removal, refactor, dependency or database change; commit; push; merge.
+- Next step: the user reviews the inventory, answers the open questions (section 14) and approves, or rejects, each proposed batch (section 13) separately. Run the baseline (Batch 0) before any code change.
+- Do not touch `BETA`, `0.85.113`, the 13 stashes, or PlanID 5.
+
 ## Current objective
 A fresh agent should continue from enterprise documentation validation and synchronize implementation to the 0.85.309 backlog. No application or data changes are authorized until a task is explicitly scoped and approved.
 

@@ -6,9 +6,16 @@ export const selectedStyleSheet = ref(localStorage.getItem('selectedStyleSheet')
 
 export const setStyleSheet = (color) => {
     selectedStyleSheet.value = color;
-    localStorage.setItem('selectedStyleSheet', color);
+    if (localStorage.getItem('selectedStyleSheet') !== String(color)) {
+        localStorage.setItem('selectedStyleSheet', color);
+    }
     // You might need to adjust this part based on how you are applying the style sheet
     const colorStyleLink = document.getElementById('primaryColor');
-    // Set the 'href' attribute to the new CSS file path
-    colorStyleLink.href = new URL(`/src/assets/css/${color}.css`, import.meta.url);
+    if (!colorStyleLink) return;
+    // Set the 'href' attribute to the new CSS file path. Re-assigning an unchanged href makes the
+    // browser re-resolve the stylesheet on every protected navigation, so only write on change.
+    const stylesheetUrl = new URL(`/src/assets/css/${color}.css`, import.meta.url).href;
+    if (colorStyleLink.href !== stylesheetUrl) {
+        colorStyleLink.href = stylesheetUrl;
+    }
 };

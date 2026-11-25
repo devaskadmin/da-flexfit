@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import appRoutes from "@/router/routing";
-import axios from "axios";
-import { API_BASE } from '@/config/env';
+import { fetchSessionSnapshot } from '@/composable/useAuth';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -42,7 +41,14 @@ router.beforeEach(async (to, from, next) => {
   }
 
   try {
-    const sessionResult = await axios.get(`${API_BASE}/api/session`, { withCredentials: true });
+    // Still validated against the server on every protected navigation (never cached). Only a
+    // request that is already pending and was started moments ago is shared with other callers.
+    // Non-2xx responses and network errors reject, exactly like the previous axios call.
+    const snapshot = await fetchSessionSnapshot();
+    if (!snapshot.ok) {
+      throw new Error(`Session check failed with status ${snapshot.status}`);
+    }
+    const sessionResult = { data: snapshot.data };
 
     const isLoggedIn = sessionResult?.data?.loggedIn === true;
     const requiresPasswordReset = sessionResult?.data?.requiresPasswordReset === true;

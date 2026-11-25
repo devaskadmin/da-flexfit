@@ -83,14 +83,13 @@ const handleNavClick = (item, event) => {
 
 <style scoped>
 .wa-app-bottom-nav {
-  --wa-mobile-bottom-nav-height: var(--wa-mobile-bottom-nav-height, 70px);
-  --wa-mobile-bottom-nav-gap: var(--wa-mobile-bottom-nav-gap, 10px);
+  /* Canonical --wa-mobile-bottom-nav-height / -gap are defined on :root in App.vue (max-width: 768px). */
   position: fixed;
   left: 12px;
   right: 12px;
   bottom: env(safe-area-inset-bottom);
   z-index: 1300;
-  height: var(--wa-mobile-bottom-nav-height);
+  height: var(--wa-mobile-bottom-nav-height, 70px);
   border-radius: 16px;
   border: 1px solid var(--wa-border, rgba(145, 160, 200, 0.24));
   background: color-mix(in srgb, var(--wa-panel-bg, #1b2444) 92%, transparent 8%);

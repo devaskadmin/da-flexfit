@@ -4,8 +4,16 @@ import {OverlayScrollbars} from "overlayscrollbars";
 
 const mainContentMinHeight = ref(0);
 
+// Only write when the value actually differs (this runs on every layout update).
+const ensureAppDisplayInherit = () => {
+  const appElement = document.getElementById('app');
+  if (appElement && appElement.style.display !== 'inherit') {
+    appElement.style.display = 'inherit';
+  }
+};
+
 onMounted(() => {
-  document.getElementById('app').style.display = 'inherit';
+  ensureAppDisplayInherit();
 
   const windowHeight = window.innerHeight;
   mainContentMinHeight.value = windowHeight - 70;
@@ -20,7 +28,7 @@ onMounted(() => {
 })
 
 onUpdated(() => {
-  document.getElementById('app').style.display = 'inherit';
+  ensureAppDisplayInherit();
 });
 </script>
 
