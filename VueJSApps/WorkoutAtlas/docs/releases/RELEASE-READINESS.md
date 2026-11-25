@@ -1,6 +1,10 @@
 # WorkoutAtlas Release Readiness
 
-## Current checkpoint
+## 0.85.320 Official 0.85 release closeout (2026-11-25): COMPLETE - OWNER ACCEPTED
+
+The project owner declared the `0.85` milestone complete (owner statement). All eight initial Global Workout Plans are owner-verified and published (8 of 8). This checkpoint is documentation only: no tests, builds or runtime checks were run and none are claimed. The earlier checkpoint sections below are preserved as history; their unverified live items (WA-QA-309-01 to 04, WA-QA-299-01, WA-UI-TABLET-001) and open content item WA-CONTENT-003 are carried forward as deferred, not marked passed. Package versions remain `0.85.308`. Next milestone `0.86` (not started), then `0.87` iPhone and `0.88` Android. See [../../CHANGELOG.md](../../CHANGELOG.md).
+
+## Current checkpoint (historical, superseded by 0.85.320 owner acceptance)
 
 `0.85.312` is **not user accepted** and has unresolved live acceptance items.
 
@@ -13,6 +17,50 @@
 - Content: remaining manual Global plans and exercises are separate content work.
 
 No release should be marked released or accepted merely because automated tests pass.
+
+## 0.85.318 Add Day button color (2026-11-25): IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+Cosmetic, frontend-only: top and bottom Schedule Planner Add Day buttons use `#2563EB` with white text via scoped CSS in `WorkoutBuilder.vue`; Add Exercise and Add Week unchanged. Uncommitted; no package version change; no tests, build or runtime check run; not visually verified; owner manual acceptance pending. See [../../CHANGELOG.md](../../CHANGELOG.md).
+
+## 0.85.317 Recording Type correction (2026-11-25): IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+Frontend-only: saved plan exercises (which carry no Recording Type) resolve it from the Exercise Database catalog by id so Cardio exercises with `Time & Distance` show Target Time / Target Calories / Distance primary. Catalog values for the three reported exercises are unverified; database and backend not modified. Uncommitted; no package version change; no tests, build or runtime check run; owner manual acceptance pending. See [../../CHANGELOG.md](../../CHANGELOG.md).
+
+## 0.85.316.4 Schedule Planner horizontal week navigation (2026-11-25): IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+Week dropdown replaced by horizontal week tabs (max four visible, arrows above four weeks), Add Week and More menu moved into the planner header row, and the first Add Day creates `Week 1` when the plan has no week; all in `WorkoutBuilder.vue`. Owner-stated acceptance of 0.85.316.3.a4 recorded. Four source-contract tests updated, not run. Uncommitted; no package version change; no tests, build or runtime check run; not visually verified; owner manual acceptance pending. See [../../CHANGELOG.md](../../CHANGELOG.md).
+
+## 0.85.316.3.a4 single accordion expansion (2026-11-25): OWNER ACCEPTED (owner-stated)
+
+Sub-fix of 0.85.316.3 (owner-stated acceptance of a3): one Workout Plan Information accordion open at a time via a single state in `WorkoutMetadataForm.vue`; Publish validation reveal order aligned to accordion order in `WorkoutBuilder.vue`. Uncommitted; no package version change; no tests, build or runtime check run; owner manual acceptance pending. See [../../CHANGELOG.md](../../CHANGELOG.md).
+
+## 0.85.316.3.a3 accordion header border-radius override (2026-11-25): OWNER ACCEPTED (owner-stated)
+
+Sub-fix of 0.85.316.3 after 0.85.316.3.a2 failed owner acceptance: scoped `border-radius: 0 !important` on accordion header buttons in `WorkoutMetadataForm.vue` to beat the global `design-system.css` `button` rule. Uncommitted; no package version change; no tests, build or runtime check run; not visually verified; owner manual acceptance pending. See [../../CHANGELOG.md](../../CHANGELOG.md).
+
+## 0.85.316.3.a2 accordion header corners (2026-11-25): FAILED OWNER ACCEPTANCE (superseded by a3)
+
+Sub-fix of 0.85.316.3: CSS-only square header corners (`border-radius: 0`) in `WorkoutMetadataForm.vue`. Uncommitted; no package version change; no tests, build or runtime check run; owner manual acceptance pending. See [../../CHANGELOG.md](../../CHANGELOG.md).
+
+## 0.85.316.3.a1 accordion header colors (2026-11-25): IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+Sub-fix of 0.85.316.3: CSS-only header colors (`#203252` collapsed, `#24477E` expanded) in `WorkoutMetadataForm.vue`. Uncommitted; no package version change; no tests, build or runtime check run; owner manual acceptance pending. See [../../CHANGELOG.md](../../CHANGELOG.md).
+
+## 0.85.316.3 Plan Information vertical accordions (2026-11-25): IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+Layout reorganization of Create and Edit Workout Plan (`WorkoutMetadataForm.vue`, small hook and cover CSS in `WorkoutBuilder.vue`). 0.85.316.2 and 0.85.316.2.a1 are owner-stated accepted. Uncommitted; no package version change; no tests, build or runtime check run; owner manual acceptance pending. See [../../CHANGELOG.md](../../CHANGELOG.md).
+
+## 0.85.316.2.a1 two-column layout correction (2026-11-25): IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+The owner rejected 0.85.316.2 (panels stacked in the left 33%). Root cause: legacy desktop `grid-column: 1` rule matched the information panel; fixed in `WorkoutMetadataForm.vue` scoped CSS. Uncommitted; no package version change; no tests, build or runtime check run; owner manual acceptance pending. See [../../CHANGELOG.md](../../CHANGELOG.md).
+
+## 0.85.316.2 two-column Plan Information layout (2026-11-25): IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+Layout-only change to Create and Edit Workout Plan (`WorkoutMetadataForm.vue`, cover CSS in `WorkoutBuilder.vue`). 0.85.316.1 and 0.85.316.1.a1 are owner-stated accepted. Uncommitted; no package version change; no tests, build or runtime check run; owner manual acceptance pending. See [../../CHANGELOG.md](../../CHANGELOG.md).
+
+## 0.85.316.1 header action buttons (2026-11-25): IMPLEMENTED - PENDING OWNER ACCEPTANCE
+
+Layout-only relocation of Back to Plans / Save (Create, Edit) and Back to Plans / Use Plan (View preview) into section headers in `WorkoutBuilder.vue`. Uncommitted; no package version change; no tests, build or runtime check run; owner manual acceptance pending. See [../../CHANGELOG.md](../../CHANGELOG.md).
 
 ## 0.85.cleanup final BETA integration (2026-11-25): MERGED INTO BETA - CLEANUP BRANCH RETIRED - POST-MERGE QA PENDING
 

@@ -10,6 +10,29 @@ export const normalizeRecordingType = (exerciseOrValue = {}) => {
   return '';
 };
 
+// 0.85.317: saved plan exercises do not carry Recording Type (the plan API returns no RecordingType column), so a loaded
+// exercise is resolved from the Exercise Database catalog by exercise id. An explicit Recording Type on the exercise always
+// wins; Workout Type is never used. Returns the stored catalog value (e.g. 'Time & Distance') or '' when unknown.
+export const buildCatalogRecordingTypeMap = (catalog = []) => {
+  const map = new Map();
+  if (!Array.isArray(catalog)) return map;
+  catalog.forEach((entry) => {
+    const id = Number(entry?.ExerciseID ?? entry?.exerciseId ?? 0);
+    if (id > 0 && normalizeRecordingType(entry)) {
+      map.set(id, String(entry.RecordingType ?? entry.recordingType).trim());
+    }
+  });
+  return map;
+};
+
+export const resolveExerciseRecordingType = (exercise = {}, catalogRecordingTypes = new Map()) => {
+  if (normalizeRecordingType(exercise)) {
+    return String(exercise.recordingType ?? exercise.RecordingType).trim();
+  }
+  const id = Number(exercise?.exerciseId ?? exercise?.ExerciseID ?? 0);
+  return (id > 0 && catalogRecordingTypes.get(id)) || '';
+};
+
 export const getRecordingFieldGroups = (exerciseOrValue = {}) => {
   const recordingType = normalizeRecordingType(exerciseOrValue);
   const usesTimePrimary = recordingType === 'time-distance';

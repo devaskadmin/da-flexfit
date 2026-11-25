@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// 0.85.313.a7: Rename Week menu beside the Week dropdown. Source-contract checks only.
+// 0.85.313.a7: Rename Week menu in the Schedule Planner. Source-contract checks only.
+// 0.85.316.4: the menu now sits in the planner header row beside Add Week; the week dropdown is replaced by tabs.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const source = fs.readFileSync(path.join(__dirname, 'WorkoutBuilder.vue'), 'utf8');
 const scriptEnd = source.indexOf('</script>');
@@ -12,7 +13,7 @@ const script = source.slice(source.indexOf('<script setup'), scriptEnd);
 const template = source.slice(source.indexOf('<template>', scriptEnd), source.indexOf('<style'));
 const plannerTemplate = template.slice(template.indexOf('<section class="planner-shell">'));
 const weekBlock = plannerTemplate.slice(
-  plannerTemplate.indexOf('class="planner-week-select"'),
+  plannerTemplate.indexOf('class="planner-week-header-actions"'),
   plannerTemplate.indexOf('class="planner-group-editor"')
 );
 
@@ -23,10 +24,11 @@ const sliceFn = (startMarker, endMarker) => {
 };
 const saveRename = sliceFn('const saveWeekRename = () => {', 'const isFirstScheduleGroup');
 
-test('a three-dot menu with Rename Week sits beside the Week dropdown, inside the planner', () => {
-  const selectAt = weekBlock.indexOf('id="planner-week-select"');
+test('a three-dot menu with Rename Week sits beside Add Week in the planner header row, before the week tabs', () => {
+  const addAt = weekBlock.indexOf('@click="addWeek"');
   const menuAt = weekBlock.indexOf('planner-week-menu-wrap');
-  assert.equal(selectAt > 0 && menuAt > selectAt, true);
+  const tabsAt = weekBlock.indexOf('class="planner-week-tabs"');
+  assert.equal(addAt > 0 && menuAt > addAt && tabsAt > menuAt, true);
   assert.match(weekBlock, /fa-ellipsis-vertical/);
   assert.match(weekBlock, /Rename Week/);
   assert.match(weekBlock, /@click="startWeekRename"/);
@@ -92,14 +94,14 @@ test('the week menu closes on an outside click', () => {
   assert.match(close, /isWeekMenuOpen\.value = false;/);
 });
 
-test('day filtering is not added; the dropdown, Add Week and existing controls remain', () => {
+test('day filtering is not added; the week tabs, Add Week and existing controls remain', () => {
   const cardsStart = script.indexOf('const accordionGroupsWithExercises');
   assert.equal(script.slice(cardsStart, cardsStart + 1500).includes('selectedWeek'), false);
-  ['id="planner-week-select"', '@click="addWeek"', 'id="planner-add-day-input"', '@click="addScheduleGroup"', 'Add Exercise to End', 'Rename Day'].forEach((needle) =>
+  ['class="planner-week-tabs"', '@click="addWeek"', 'id="planner-add-day-input"', '@click="addScheduleGroup"', 'Add Exercise to End', 'Rename Day'].forEach((needle) =>
     assert.equal(plannerTemplate.includes(needle), true, needle)
   );
-  const selectTag = weekBlock.slice(weekBlock.indexOf('<select'), weekBlock.indexOf('</select>'));
-  assert.equal(/disabled/.test(selectTag), false);
+  const strip = weekBlock.slice(weekBlock.indexOf('class="planner-week-tabs__strip"'), weekBlock.indexOf('Show next weeks'));
+  assert.equal(/disabled/.test(strip), false);
 });
 
 test('nothing above Workout Plan Information is touched', () => {

@@ -98,6 +98,15 @@ test('renaming a week only moves the selection when the renamed week is the sele
   assert.match(body, /selectedWeek\.value = validation\.value;/);
 });
 
+test('the first Add Day (top or bottom) creates and selects the default Week 1 only when the plan has no week (0.85.316.4)', () => {
+  const body = bodyOf(script, 'const addScheduleGroupFromValue', '\nconst addScheduleGroup =');
+  assert.match(body, /if \(!weekGroups\.value\.length\) \{\s*weekGroups\.value = \[DEFAULT_NEW_PLAN_WEEK_NAME\];/);
+  assert.match(body, /syncGroupOrders\('week', weekGroups\.value\);/);
+  assert.match(body, /syncScheduleGroupIdentityMap\('week', weekGroups\.value\);/);
+  assert.match(body, /if \(!selectedWeek\.value\) \{\s*selectedWeek\.value = resolveSelectedWeek\(weekGroups\.value\);/);
+  assert.equal(body.indexOf('DEFAULT_NEW_PLAN_WEEK_NAME') < body.indexOf('findDayWithLabelInWeek('), true);
+});
+
 test('Add Week, Rename Week and the day-card actions are still in place', () => {
   ['@click="addWeek"', 'startWeekRename', 'saveWeekRename', 'duplicateScheduleGroup(day.name)', 'moveScheduleGroupUp(day.name)', 'moveScheduleGroupDown(day.name)', 'Add Exercise to End']
     .forEach((needle) => assert.equal(plannerTemplate.includes(needle), true, needle));

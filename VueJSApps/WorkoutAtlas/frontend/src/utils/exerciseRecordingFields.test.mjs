@@ -1,10 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  buildCatalogRecordingTypeMap,
   getRecordingFieldGroups,
   getRecordingFieldLabels,
   normalizeRecordingType,
   normalizeWorkoutTypeBadge,
+  resolveExerciseRecordingType,
 } from './exerciseRecordingFields.js';
 
 test('Sets & Reps is primary with cardio fields secondary', () => {
@@ -54,4 +56,27 @@ test('six recording fields and primary/additional layouts remain complete', () =
   const timeDistance = getRecordingFieldGroups({ RecordingType: 'Time & Distance' });
   assert.equal(timeDistance.primary.length, 3);
   assert.equal(timeDistance.secondary.length, 3);
+});
+
+test('0.85.317: saved plan exercises resolve Recording Type from the Exercise Database catalog by id', () => {
+  const catalog = buildCatalogRecordingTypeMap([
+    { ExerciseID: 11, RecordingType: 'Time & Distance', WorkoutType: 'Cardio' },
+    { ExerciseID: 12, RecordingType: 'Sets & Reps', WorkoutType: 'Cardio' },
+    { ExerciseID: 13, RecordingType: 'Custom' },
+    { ExerciseID: 14, RecordingType: 'Cardio' },
+    { ExerciseID: 15, WorkoutType: 'Cardio' },
+  ]);
+  assert.equal(resolveExerciseRecordingType({ exerciseId: 11 }, catalog), 'Time & Distance');
+  assert.deepEqual(getRecordingFieldGroups(resolveExerciseRecordingType({ exerciseId: 11 }, catalog)).primary, ['duration', 'calories', 'distance']);
+  assert.deepEqual(getRecordingFieldGroups(resolveExerciseRecordingType({ exerciseId: 12 }, catalog)).primary, ['weight', 'reps', 'sets']);
+  assert.deepEqual(getRecordingFieldGroups(resolveExerciseRecordingType({ exerciseId: 13 }, catalog)).primary, ['weight', 'reps', 'sets']);
+});
+
+test('0.85.317: an explicit Recording Type on the exercise wins; unknown values and Workout Type never create one', () => {
+  const catalog = buildCatalogRecordingTypeMap([{ ExerciseID: 11, RecordingType: 'Time & Distance' }]);
+  assert.equal(resolveExerciseRecordingType({ exerciseId: 11, recordingType: 'Sets & Reps' }, catalog), 'Sets & Reps');
+  assert.equal(resolveExerciseRecordingType({ exerciseId: 99, workoutType: 'Cardio' }, catalog), '');
+  assert.equal(resolveExerciseRecordingType({ workoutType: 'Cardio' }, catalog), '');
+  assert.equal(buildCatalogRecordingTypeMap([{ ExerciseID: 14, RecordingType: 'Cardio' }, { ExerciseID: 15, WorkoutType: 'Cardio' }]).size, 0);
+  assert.deepEqual(getRecordingFieldGroups('').primary, ['weight', 'reps', 'sets']);
 });

@@ -24,6 +24,11 @@ const props = defineProps({
     type: String,
     default: 'day',
   },
+  // 0.85.317: Recording Type resolved from the Exercise Database for saved plan exercises that carry none.
+  recordingType: {
+    type: String,
+    default: '',
+  },
 });
 
 const emit = defineEmits(['update-field', 'remove', 'move-up', 'move-down']);
@@ -50,8 +55,9 @@ const normalizedWorkoutType = computed(() =>
 
 const workoutTypeBadgeLabel = computed(() => normalizeWorkoutTypeBadge(props.exercise));
 
-const normalizedRecordingType = computed(() => normalizeRecordingType(props.exercise));
-const recordingFieldGroups = computed(() => getRecordingFieldGroups(props.exercise));
+const recordingSource = computed(() => (normalizeRecordingType(props.exercise) ? props.exercise : props.recordingType));
+const normalizedRecordingType = computed(() => normalizeRecordingType(recordingSource.value));
+const recordingFieldGroups = computed(() => getRecordingFieldGroups(recordingSource.value));
 const fieldLabels = getRecordingFieldLabels();
 const showAdditionalFields = ref(false);
 

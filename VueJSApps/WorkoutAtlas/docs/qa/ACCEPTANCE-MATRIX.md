@@ -13,6 +13,19 @@
 | 390/800 mobile | Existing coverage | Live-tested | No | LIVE TESTED |
 | WA-UI-TABLET-001 page-level overflow | Passed at 320/390/768/800/820/1024/1366px | Read-only browser-tested; no mutation | No | USER ACCEPTANCE PENDING |
 | WA-UI-TABLET-001 internal table overflow and action access | Passed at 768/800/820/1024px; cards replace table | Read-only browser-tested; all card actions visible | No | USER ACCEPTANCE PENDING |
+| 0.85.316.1 header action buttons (Create/Edit/View) | Static inspection only; no tests run | Not live tested | Owner-stated accepted (with sub-fix 0.85.316.1.a1) | OWNER ACCEPTED (owner-stated) |
+| 0.85.316.2 Plan Information two-column layout (Create/Edit) | Static inspection only; no tests run | Not live tested | Owner rejected (panels stacked in left 33%) | OWNER REJECTED - superseded by 0.85.316.2.a1 |
+| 0.85.316.2.a1 two-column layout correction (Create/Edit) | Static inspection only; no tests run | Not live tested | Owner-stated accepted | OWNER ACCEPTED (owner-stated) |
+| 0.85.316.3 Plan Information vertical accordions (Create/Edit) | Static inspection only; no tests run | Not live tested | No | PENDING OWNER ACCEPTANCE |
+| 0.85.316.3.a1 accordion header colors (Create/Edit) | Static inspection only; no tests run | Not live tested | No | PENDING OWNER ACCEPTANCE |
+| 0.85.316.3.a2 accordion header corners (Create/Edit) | Static inspection only; no tests run | Not live tested | Owner reported failure (headers still rounded) | FAILED OWNER ACCEPTANCE (superseded by a3) |
+| 0.85.316.3.a3 accordion header border-radius override (Create/Edit) | Static inspection only; no tests run | Not live tested | Owner-stated accepted | OWNER ACCEPTED (owner-stated) |
+| 0.85.316.3.a4 single accordion expansion (Create/Edit) | Static inspection only; no tests run | Not live tested | Owner-stated accepted | OWNER ACCEPTED (owner-stated) |
+| 0.85.316.4 Schedule Planner horizontal week navigation (Create/Edit) | Static inspection only; contract tests updated, not run | Not live tested | No | PENDING OWNER ACCEPTANCE |
+| 0.85.317 Recording Type for saved plan exercises (Create/Edit/View) | Static inspection only; unit tests added, not run | Not live tested | No | PENDING OWNER ACCEPTANCE |
+| 0.85.318 Add Day button color #2563EB, top and bottom (Create/Edit) | Static inspection only; no tests run | Not live tested | No | PENDING OWNER ACCEPTANCE |
+| 0.85.320 Overall 0.85 milestone closeout (all of 0.85) | Documentation only; no tests run, none claimed | Not live tested in this checkpoint | Owner declared 0.85 complete (owner statement, 2026-11-25) | OWNER ACCEPTED (milestone level; individual rows above keep their recorded status) |
+| 0.85.320 Global Workout Plans 8 of 8 published (Maintain Health x2, At Home x2, Build Muscle x2, Weight Loss x2) | Not re-run | Not re-run | Owner-verified (owner statement) | OWNER ACCEPTED (owner-stated) |
 
 ## Restored-code implementation verification - 2026-11-21
 

@@ -1,5 +1,110 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.320 - Official 0.85 Release Closeout - 2026-11-25
+- Status: COMPLETE - OWNER ACCEPTED (owner statement; task label, packages remain `0.85.308`). Milestone 0.85 closed; next milestone 0.86 (not started).
+- Global Workout Plans: 8 of 8 owner-verified and published (Maintain Health x2, At Home x2, Build Muscle x2, Weight Loss x2; titles in `CHANGELOG.md`). No cover image or plan changes in this checkpoint.
+- Evidence: documentation only. No automated tests, builds or application startup were run, and no test result is claimed. Earlier entries below are preserved unchanged with their own verification status; owner acceptance of the overall milestone does not mark any individual unverified case as passed.
+- Deferred items remain as recorded (live QA backlog WA-QA-309-01 to 04, WA-QA-299-01, WA-UI-TABLET-001, WA-CONTENT-003, 0.85.317 follow-ups). Environment files: 0 accessed; environment variables: 0 changed.
+
+## 0.85.318 - Add Day Button Color - 2026-11-25
+- Status: IMPLEMENTED - PENDING OWNER ACCEPTANCE (task label; packages remain `0.85.308`). Working tree only on `BETA`; no staging, commit, push or merge.
+- File modified: `frontend/src/views/Member/WorkoutBuilder.vue` (one scoped CSS block, `.workout-builder-page button.planner-group-add`).
+- Change: top and bottom Schedule Planner Add Day buttons use `#2563EB` with white text/icon; hover/focus/active `#1D4ED8`; focus-visible ring blue. Shape, size, alignment, disabled behavior and responsive layout unchanged; same rule for desktop, tablet and mobile. Add Exercise stays green; Add Week unchanged.
+- Static verification (actual, not visual): diagnostics clean; CRLF kept. Not run: tests, builds, server start, browser. Environment files: 0 accessed; environment variables: 0 changed.
+- Pending: owner manual acceptance.
+
+## 0.85.317 - Recording Type Correction for Saved Plan Exercises - 2026-11-25
+- Status: RECORDING TYPE CORRECTION IMPLEMENTED - PENDING OWNER ACCEPTANCE (task label; packages remain `0.85.308`). Working tree only on `BETA`; no staging, commit, push or merge.
+- Regression (owner): Cardio exercises (Marching in Place, Step Jacks (No Jumping), Standing Knee Raises) showed LBS / Reps / Sets primary.
+- Root cause (source inspection): 0.85.311 logic is intact and Workout Type is not used by design. Saved plan exercises carry no Recording Type (`backend/api/users.js` neither stores nor selects it), so Edit/View blocks default to Sets & Reps. New blocks from the catalog are unaffected.
+- Files modified: `frontend/src/utils/exerciseRecordingFields.js`, `frontend/src/components/workout-builder/WorkoutExerciseBlock.vue`, `frontend/src/views/Member/WorkoutBuilder.vue`, `frontend/src/utils/exerciseRecordingFields.test.mjs` (two new tests, not run).
+- Correction: when an exercise has no Recording Type, the block uses the Exercise Database `RecordingType` for its `exerciseId` from the loaded catalog (shared resolver); explicit values win; no data is written; no new classification rules; preview uses the same resolver.
+- Remaining: catalog values for the three exercises not verified (no database access; database not modified) - owner to confirm `RecordingType = 'Time & Distance'`; backend does not persist Recording Type (alternative fix needs approval); Log Workout fallback unchanged.
+- Static verification (actual): diagnostics clean; CRLF kept. Not run: tests, builds, server start, browser. Environment files: 0 accessed; environment variables: 0 changed.
+- Pending: owner manual acceptance.
+
+## 0.85.316.4 - Schedule Planner Horizontal Week Navigation - 2026-11-25
+- Status: HORIZONTAL WEEK NAVIGATION IMPLEMENTED - PENDING OWNER ACCEPTANCE (task label; packages remain `0.85.308`). Working tree only on `BETA`; no staging, commit, push or merge.
+- Owner acceptance recorded (owner-stated): `0.85.316.3.a4` accepted (and `0.85.316.3` with its sub-fixes).
+- Files modified: `frontend/src/views/Member/WorkoutBuilder.vue`; contract tests (strings only, not run): `WorkoutBuilder.week-dropdown-contract.test.mjs`, `.add-week-contract.test.mjs`, `.rename-week-contract.test.mjs`, `.week-filter-contract.test.mjs`.
+- Change: Week dropdown replaced by horizontal week tabs (max 4 visible; arrows shift the window by one above 4 weeks and never change the selection; selected tab revealed on load, Add Week and selection change). Header order: Row 1 title + Add Week + More menu; Row 2 tabs; Row 3 Add Day. Add Day (top and bottom) creates and selects `Week 1` when the plan has no week; never adds a second default week.
+- Preserved: Add Week gating, rename, persistence, week filtering of days, bottom Add Day (no bottom Add Week), day cards, save/publish. Selection stays name-keyed (`selectedWeek`); tab keys use the stable identity id.
+- Static verification (actual, not visual): diagnostics clean; CRLF kept. Not run: tests, builds, server start, browser. Environment files: 0 accessed; environment variables: 0 changed.
+- Pending: owner manual acceptance.
+
+## 0.85.316.3.a4 - Single Accordion Expansion Sub-Fix - 2026-11-25 (OWNER ACCEPTED, owner-stated)
+- Status: IMPLEMENTED - PENDING OWNER ACCEPTANCE. Sub-fix of `0.85.316.3` (task label; packages remain `0.85.308`). Working tree only on `BETA`; no staging, commit, push or merge.
+- Owner acceptance recorded (owner-stated): `0.85.316.3.a3` accepted.
+- Files modified: `frontend/src/components/workout-builder/WorkoutMetadataForm.vue` (script); `frontend/src/views/Member/WorkoutBuilder.vue` (validation reveal order only).
+- Change: single state `openAccordion` (`'info'` default, `''` = all collapsed) replaces four independent flags; `toggleAccordion` opens one and closes the previous, or collapses the open one; `revealField` opens the accordion owning the first invalid field (Plan Name, Category, Workout Type order). `accordionOpen` is a computed view so the template is unchanged. Values retained (`v-show`); no watchers, remounting, requests or animations.
+- Preserved: header colors, square corners, white text/chevrons, dimensions/spacing, label/input alignment, equal-height columns, mobile rules, cover image, all fields/validation/save, Schedule Planner.
+- Static verification (actual): source inspection; diagnostics clean; CRLF kept. Not run: tests, builds, server start, browser. Environment files: 0 accessed; environment variables: 0 changed.
+- Pending: owner manual acceptance.
+
+## 0.85.316.3.a3 - Accordion Header Border Radius Override Sub-Fix - 2026-11-25 (OWNER ACCEPTED, owner-stated)
+- Status: PENDING OWNER ACCEPTANCE. Sub-fix of `0.85.316.3` (task label; packages remain `0.85.308`). Working tree only on `BETA`; no staging, commit, push or merge.
+- Failed acceptance (owner-stated): `0.85.316.3.a2` did not fix the rounded header buttons (only outer containers became square).
+- Conflicting rule: `frontend/src/styles/design-system.css` `.btn, button, ... { border-radius: 999px !important; }` (global, imported in `src/main.js`) overrode the scoped `border-radius: 0` on `.plan-accordion__header`.
+- Correction: `WorkoutMetadataForm.vue` scoped CSS adds `border-radius: 0 !important` for `.plan-accordion__header` (base, `:hover`, `:focus`, `:focus-visible`, `:active`) and `.plan-accordion--open > .plan-accordion__header`. Higher specificity wins over the global rule; global button styling not modified.
+- Preserved: colors, white text/chevron, dimensions/spacing, equal-height columns, accordion behavior, mobile rules, all other button/input radii.
+- Static verification (actual, not visual): rule found by source inspection; diagnostics clean; CRLF kept. Not run: tests, builds, server start, browser. Environment files: 0 accessed; environment variables: 0 changed.
+- Pending: owner manual acceptance.
+
+## 0.85.316.3.a2 - Accordion Header Corners Sub-Fix - 2026-11-25 (FAILED OWNER ACCEPTANCE; superseded by 0.85.316.3.a3)
+- Status: IMPLEMENTED - PENDING OWNER ACCEPTANCE. Sub-fix of `0.85.316.3` (task label; packages remain `0.85.308`). Working tree only on `BETA`; no staging, commit, push or merge.
+- File modified: `frontend/src/components/workout-builder/WorkoutMetadataForm.vue` (scoped CSS only).
+- Change: accordion header `border-radius` set to 0 on all four headers; wrapper `.plan-accordion` radius also set to 0 so headers are rectangular and flush with the accordion edges.
+- Preserved: header colors, white text/chevron, header height/spacing, equal-height columns, accordion behavior, mobile rules; radii of all other controls unchanged.
+- Static verification (actual): diagnostics clean; CRLF kept. Not run: tests, builds, server start, browser. Environment files: 0 accessed; environment variables: 0 changed.
+- Pending: owner manual acceptance.
+
+## 0.85.316.3.a1 - Accordion Header Styling Sub-Fix - 2026-11-25
+- Status: IMPLEMENTED - PENDING OWNER ACCEPTANCE. Sub-fix of `0.85.316.3` (task label; packages remain `0.85.308`). Working tree only on `BETA`; no staging, commit, push or merge.
+- File modified: `frontend/src/components/workout-builder/WorkoutMetadataForm.vue` (scoped CSS only).
+- Change: accordion header background collapsed `#203252`, expanded `#24477E` on all four headers (driven by the existing `plan-accordion--open` class, so it updates on toggle); text and chevron remain white.
+- Preserved: header size/spacing, body backgrounds, label/input alignment, equal-height two-column layout, mobile rules, Cover Image, Schedule Planner, all fields. No new icons, gradients or animations.
+- Static verification (actual): diagnostics clean; CRLF kept. Not run: tests, builds, server start, browser. Environment files: 0 accessed; environment variables: 0 changed.
+- Pending: owner manual acceptance.
+
+## 0.85.316.3 - Workout Plan Information Vertical Accordions - 2026-11-25
+- Status: VERTICAL ACCORDIONS IMPLEMENTED - PENDING OWNER ACCEPTANCE. Task label, not a package version (packages remain `0.85.308`). Working tree only on `BETA`; no staging, commit, push or merge.
+- Owner acceptance recorded (owner-stated): `0.85.316.2` and `0.85.316.2.a1` accepted.
+- Files modified: `frontend/src/components/workout-builder/WorkoutMetadataForm.vue`; `frontend/src/views/Member/WorkoutBuilder.vue` (template ref, validation reveal hook, mobile cover CSS).
+- Accordion structure (Create and Edit, shared component; right column of the preserved two-column layout): 1 Plan Information (Plan Name, Plan Type [renamed from Workout Plan Type], Convert button) expanded; 2 Goal (Goal Category, goal selector with Select Goal / + New Goal, context note, Plan Goal Target Date, Goal Tags, conditional Objective/Goal fields) collapsed; 3 Settings (Workout Type, Est. Session Time (Minutes), Plan Duration (Weeks)) collapsed; 4 Description (textarea) collapsed.
+- Field relocation: standalone Objectives & Goals section removed, controls moved into Goal; Goal Category -> Goal; Workout Type / Est. Session Time / Plan Duration -> Settings; Description -> own accordion. No duplicates.
+- Behavior: full-width 44px header buttons, `aria-expanded`/`aria-controls`, CSS chevron, white headings and labels, `v-show` bodies (collapsed fields stay mounted, keep values, still validated/saved), `revealField()` expands and focuses the owning accordion when Save/Publish validation fails. No new watchers, requests, listeners, dependencies or heavy animation.
+- Equal heights: grid stretch (1fr / 2fr), no fixed heights; cover image `object-fit: contain`, `height: auto`.
+- Responsive: two columns above 768px; stacked at 768px and below (including ~700px) at 100% width, natural heights, compact cover; 35/65 label/input rows kept at all widths, stacked labels only at 340px and below; 40px controls on mobile.
+- Preserved: bindings, validation, plan-type permissions, goal picker, conversion, upload, Save/Publish, headers, tabs, View layout, Schedule Planner (full width below), earlier performance work.
+- Static verification (actual): four accordions in order; tags balanced; no duplicated controls; no Objectives & Goals heading; diagnostics clean; CRLF kept. Not run: tests, builds, server start, browser. Environment files: 0 accessed; environment variables: 0 changed.
+- Pending: owner manual acceptance. 0.85.316.4 not started.
+
+## 0.85.316.2.a1 - Two-Column Layout Sub-Fix - 2026-11-25
+- Status: SUB-FIX IMPLEMENTED - PENDING OWNER ACCEPTANCE. Task label, not a package version (packages remain `0.85.308`). Working tree only on `BETA`; no staging, commit, push or merge.
+- Failed acceptance: owner rejected `0.85.316.2` (both panels stacked in the left ~33%, remaining width empty).
+- Confirmed root cause: legacy `@media (min-width: 769px)` rule `.metadata-section--plan-info, .metadata-section--goals { grid-column: 1; }` in `WorkoutMetadataForm.vue` also matched the new right panel (same specificity, later in file), forcing it into grid column 1 / row 2. Parent containers, `.builder-grid`, 768px overrides and Bootstrap were not at fault (no Bootstrap column classes in use).
+- Correction (`frontend/src/components/workout-builder/WorkoutMetadataForm.vue`, scoped CSS only): removed `.metadata-section--plan-info` from that rule; explicit desktop placement cover = column 1 / row 1, information = column 2 / row 1; `.plan-info-columns` `width: 100%`; at 768px and below both panels reset to column 1, auto row, 100% width on a single track.
+- Preserved: fields, bindings, upload controls, header button alignment, Objectives & Goals full width below, Schedule Planner, colors. No accordions (0.85.316.3 not started).
+- Static verification (actual): diagnostics clean; CRLF kept. Not run: tests, builds, server start, browser. Environment files: 0 accessed; environment variables: 0 changed.
+- Pending: owner manual acceptance.
+
+## 0.85.316.2 - Workout Plan Information Two-Column Layout - 2026-11-25
+- Status: TWO-COLUMN LAYOUT IMPLEMENTED - PENDING OWNER ACCEPTANCE. Task label, not a package version (packages remain `0.85.308`). Working tree only on `BETA`; no staging, commit, push or merge.
+- Owner acceptance recorded (owner-stated): `0.85.316.1` and sub-fix `0.85.316.1.a1` accepted. Header changes preserved untouched.
+- Files modified: `frontend/src/components/workout-builder/WorkoutMetadataForm.vue`; `frontend/src/views/Member/WorkoutBuilder.vue` (cover panel CSS only).
+- Layout: Create and Edit (shared component) now show Cover Image on the left (~33%) and Workout Plan Information on the right (~67%), equal-height panels. Right column rows: Plan Name; Workout Plan Type + Convert button; Workout Type | Goal Category; Est. Session Time | Plan Duration (Weeks); Description. Objectives & Goals unchanged, full width below both columns. Cover image centered, aspect ratio kept (`object-fit: contain`, max 240px), Upload Image centered below.
+- Responsive: stacked (Cover above Information, full width) at 768px and below using the existing breakpoint; paired fields and the Convert row already stack at 768px; `min-width: 0` grid tracks prevent horizontal overflow.
+- Preserved: all fields, labels, bindings, validation, events, cover upload/replace/remove and gateway handlers, plan conversion, headers, tabs, goals, Schedule Planner.
+- Static verification (actual): shared component and slot confirm Create and Edit coverage; goals section untouched; diagnostics clean; CRLF kept; two source files changed. Not run: tests, builds, server start. Environment files: 0 accessed; environment variables: 0 changed.
+- Pending: owner manual acceptance at desktop, tablet and mobile widths.
+
+## 0.85.316.1 - Move Action Buttons into Section Headers - 2026-11-25
+- Status: IMPLEMENTED - PENDING OWNER ACCEPTANCE. Task label, not a package version (packages remain `0.85.308`). Working tree only on `BETA`; no staging, commit, push or merge.
+- Change (1 file, layout only): `frontend/src/views/Member/WorkoutBuilder.vue`. Create/Edit Workout Plan: `Back to Plans` and `Save` moved into the existing header on the right (Save far right), title/description left, original action rows removed. View preview: `Back to Plans` and `Use Plan` moved beside the preview title (Use Plan far right), original top row removed; bottom row unchanged. Header CSS wraps on narrow screens.
+- Preserved: labels, icons, colors, sizes, handlers, permissions, validation, header background, navigation tabs, all content below WORKOUT PLAN INFORMATION. No new buttons, icons, badges or decoration.
+- Verification (actual): static only; diagnostics clean; CRLF kept; no other source, backend, DB, package or env change. Not run: tests, builds, server start. Environment files: 0 accessed; environment variables: 0 changed.
+- Pending: owner manual acceptance at desktop, tablet and mobile widths.
+
 ## 0.85.cleanup - Final Cleanup Commit and BETA Integration - 2026-11-25
 - Status: MERGED INTO BETA - CLEANUP BRANCH RETIRED - POST-MERGE QA PENDING. Branch/task label, not a package version (packages remain `0.85.308`). Baseline BETA = `origin/BETA` = `6fdec96255110ce1588051bbf93afde2073a38b6`; exact checkpoint and merge SHAs are in Git history and the owner report.
 - Owner: confirmed noticeable performance improvement after a3; authorised commit, merge into BETA, push of BETA and cleanup branch retirement.

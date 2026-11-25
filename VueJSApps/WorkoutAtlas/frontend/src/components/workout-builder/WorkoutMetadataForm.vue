@@ -57,6 +57,50 @@ const props = defineProps({
 
 const emit = defineEmits(['update:metadata', 'create-goal', 'convert-plan-type']);
 
+// Single accordion state: the key of the one open accordion ('' = all collapsed), so two
+// accordions can never be open at once. It only controls visibility (v-show). Form values
+// live in the parent-owned metadata object, so switching never clears or resets them.
+const openAccordion = ref('info');
+
+const accordionOpen = computed(() => ({
+  info: openAccordion.value === 'info',
+  goal: openAccordion.value === 'goal',
+  settings: openAccordion.value === 'settings',
+  description: openAccordion.value === 'description',
+}));
+
+const toggleAccordion = (key) => {
+  openAccordion.value = openAccordion.value === key ? '' : key;
+};
+
+const rootRef = ref(null);
+
+const FIELD_ACCORDION = {
+  name: 'info',
+  planType: 'info',
+  category: 'goal',
+  goalId: 'goal',
+  goalTargetDate: 'goal',
+  goals: 'goal',
+  type: 'settings',
+  estimatedDuration: 'settings',
+  planDurationWeeks: 'settings',
+  description: 'description',
+};
+
+// Called by the parent when validation fails so a field inside a collapsed accordion is visible.
+const revealField = (field) => {
+  const key = FIELD_ACCORDION[field];
+  if (!key) return false;
+  openAccordion.value = key;
+  nextTick(() => {
+    rootRef.value?.querySelector(`[data-plan-field="${field}"]`)?.focus?.();
+  });
+  return true;
+};
+
+defineExpose({ revealField });
+
 const visiblePlanTypeOptions = computed(() => {
   return (Array.isArray(props.planTypeOptions) ? props.planTypeOptions : [])
     .map((option) => ({
@@ -412,28 +456,52 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="builder-metadata-layout">
+  <div ref="rootRef" class="builder-metadata-layout">
     <div class="builder-grid">
-      <div class="metadata-section metadata-section--plan-info">
-        <div class="metadata-section__header">Workout Plan Information</div>
-        <div class="metadata-section__body">
-          <slot name="plan-cover" />
+      <div class="plan-info-columns">
+      <div class="plan-info-columns__cover">
+        <slot name="plan-cover" />
+      </div>
 
+      <div class="metadata-section metadata-section--plan-info plan-info-columns__info">
+        <div class="metadata-section__header">Workout Plan Information</div>
+        <div class="plan-accordions">
+        <section class="plan-accordion" :class="{ 'plan-accordion--open': accordionOpen.info }">
+          <button
+            id="plan-accordion-info-header"
+            type="button"
+            class="plan-accordion__header"
+            :aria-expanded="accordionOpen.info ? 'true' : 'false'"
+            aria-controls="plan-accordion-info-body"
+            @click="toggleAccordion('info')"
+          >
+            <span class="plan-accordion__title">Plan Information</span>
+            <span class="plan-accordion__chevron" aria-hidden="true"></span>
+          </button>
+        <div
+          v-show="accordionOpen.info"
+          id="plan-accordion-info-body"
+          class="plan-accordion__body"
+          role="region"
+          aria-labelledby="plan-accordion-info-header"
+        >
           <label class="builder-field builder-field--row">
             <span>Plan Name <span class="label-required-star" aria-hidden="true">*</span></span>
             <input
               :value="metadata.name"
               type="text"
               placeholder="e.g., Upper Body Power"
+              data-plan-field="name"
               @input="updateField('name', $event.target.value)"
             />
           </label>
 
           <label v-if="visiblePlanTypeOptions.length" class="builder-field builder-field--row">
-            <span>Workout Plan Type <span class="label-required-star" aria-hidden="true">*</span></span>
+            <span>Plan Type <span class="label-required-star" aria-hidden="true">*</span></span>
             <select
               v-if="canEditPlanType"
               :value="metadata.planType || ''"
+              data-plan-field="planType"
               @change="updateField('planType', $event.target.value)"
             >
               <option
@@ -466,67 +534,42 @@ onUnmounted(() => {
             </div>
           </label>
 
-          <div class="plan-info-two-col" role="group" aria-label="Plan Information detail fields">
-            <label class="builder-field builder-field--row">
-              <span>Workout Type <span class="label-required-star" aria-hidden="true">*</span></span>
-              <select :value="metadata.type" @change="updateField('type', $event.target.value)">
-                <option value="Strength">Strength</option>
-                <option value="Cardio">Cardio</option>
-                <option value="Hybrid">Hybrid</option>
-                <option value="Mobility">Mobility</option>
-              </select>
-            </label>
-
-            <label class="builder-field builder-field--row">
-              <span>Goal Category <span class="label-required-star" aria-hidden="true">*</span></span>
-              <select :value="String(metadata.category || '')" @change="updateField('category', $event.target.value)">
-                <option value="">Select a category</option>
-                <option v-for="option in categoryOptionList" :key="`category-${option}`" :value="option">
-                  {{ option }}
-                </option>
-              </select>
-            </label>
-
-            <label class="builder-field builder-field--duration builder-field--row">
-              <span>Est. Session Time</span>
-              <input
-                :value="metadata.estimatedDuration"
-                type="number"
-                min="1"
-                placeholder="45"
-                @input="updateField('estimatedDuration', Number($event.target.value || 0))"
-              />
-            </label>
-
-            <label class="builder-field builder-field--row">
-              <span>Plan Duration (Weeks)</span>
-              <input
-                :value="metadata.planDurationWeeks == null || metadata.planDurationWeeks === undefined || metadata.planDurationWeeks === '' ? '' : Number(metadata.planDurationWeeks)"
-                type="number"
-                min="1"
-                step="1"
-                inputmode="numeric"
-                placeholder="e.g. 8"
-                @input="updateField('planDurationWeeks', $event.target.value === '' ? null : Number($event.target.value))"
-              />
-            </label>
-          </div>
-
-          <label class="builder-field builder-field--wide">
-            <span>Description</span>
-            <textarea
-              :value="metadata.description"
-              rows="2"
-              placeholder="Overview of this workout plan"
-              @input="updateField('description', $event.target.value)"
-            />
-          </label>
         </div>
-      </div>
+        </section>
 
-      <div class="metadata-section metadata-section--goals">
-        <div class="metadata-section__header">Objectives &amp; Goals</div>
-        <div class="metadata-section__body">
+        <section class="plan-accordion" :class="{ 'plan-accordion--open': accordionOpen.goal }">
+          <button
+            id="plan-accordion-goal-header"
+            type="button"
+            class="plan-accordion__header"
+            :aria-expanded="accordionOpen.goal ? 'true' : 'false'"
+            aria-controls="plan-accordion-goal-body"
+            @click="toggleAccordion('goal')"
+          >
+            <span class="plan-accordion__title">Goal</span>
+            <span class="plan-accordion__chevron" aria-hidden="true"></span>
+          </button>
+        <div
+          v-show="accordionOpen.goal"
+          id="plan-accordion-goal-body"
+          class="plan-accordion__body"
+          role="region"
+          aria-labelledby="plan-accordion-goal-header"
+        >
+          <label class="builder-field builder-field--row">
+            <span>Goal Category <span class="label-required-star" aria-hidden="true">*</span></span>
+            <select
+              :value="String(metadata.category || '')"
+              data-plan-field="category"
+              @change="updateField('category', $event.target.value)"
+            >
+              <option value="">Select a category</option>
+              <option v-for="option in categoryOptionList" :key="`category-${option}`" :value="option">
+                {{ option }}
+              </option>
+            </select>
+          </label>
+
           <div v-if="hasObjectiveField || hasGoalField" class="goal-info-two-col" role="group" aria-label="Objective and goal fields">
             <label v-if="hasObjectiveField" class="builder-field builder-field--row">
               <span>Objective</span>
@@ -697,6 +740,98 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
+        </section>
+
+        <section class="plan-accordion" :class="{ 'plan-accordion--open': accordionOpen.settings }">
+          <button
+            id="plan-accordion-settings-header"
+            type="button"
+            class="plan-accordion__header"
+            :aria-expanded="accordionOpen.settings ? 'true' : 'false'"
+            aria-controls="plan-accordion-settings-body"
+            @click="toggleAccordion('settings')"
+          >
+            <span class="plan-accordion__title">Settings</span>
+            <span class="plan-accordion__chevron" aria-hidden="true"></span>
+          </button>
+          <div
+            v-show="accordionOpen.settings"
+            id="plan-accordion-settings-body"
+            class="plan-accordion__body"
+            role="region"
+            aria-labelledby="plan-accordion-settings-header"
+          >
+            <label class="builder-field builder-field--row">
+              <span>Workout Type <span class="label-required-star" aria-hidden="true">*</span></span>
+              <select :value="metadata.type" data-plan-field="type" @change="updateField('type', $event.target.value)">
+                <option value="Strength">Strength</option>
+                <option value="Cardio">Cardio</option>
+                <option value="Hybrid">Hybrid</option>
+                <option value="Mobility">Mobility</option>
+              </select>
+            </label>
+
+            <label class="builder-field builder-field--duration builder-field--row">
+              <span>Est. Session Time (Minutes)</span>
+              <input
+                :value="metadata.estimatedDuration"
+                type="number"
+                min="1"
+                placeholder="45"
+                data-plan-field="estimatedDuration"
+                @input="updateField('estimatedDuration', Number($event.target.value || 0))"
+              />
+            </label>
+
+            <label class="builder-field builder-field--row">
+              <span>Plan Duration (Weeks)</span>
+              <input
+                :value="metadata.planDurationWeeks == null || metadata.planDurationWeeks === undefined || metadata.planDurationWeeks === '' ? '' : Number(metadata.planDurationWeeks)"
+                type="number"
+                min="1"
+                step="1"
+                inputmode="numeric"
+                placeholder="e.g. 8"
+                data-plan-field="planDurationWeeks"
+                @input="updateField('planDurationWeeks', $event.target.value === '' ? null : Number($event.target.value))"
+              />
+            </label>
+          </div>
+        </section>
+
+        <section class="plan-accordion" :class="{ 'plan-accordion--open': accordionOpen.description }">
+          <button
+            id="plan-accordion-description-header"
+            type="button"
+            class="plan-accordion__header"
+            :aria-expanded="accordionOpen.description ? 'true' : 'false'"
+            aria-controls="plan-accordion-description-body"
+            @click="toggleAccordion('description')"
+          >
+            <span class="plan-accordion__title">Description</span>
+            <span class="plan-accordion__chevron" aria-hidden="true"></span>
+          </button>
+          <div
+            v-show="accordionOpen.description"
+            id="plan-accordion-description-body"
+            class="plan-accordion__body"
+            role="region"
+            aria-labelledby="plan-accordion-description-header"
+          >
+            <label class="builder-field builder-field--wide">
+              <span>Description</span>
+              <textarea
+                :value="metadata.description"
+                rows="4"
+                placeholder="Overview of this workout plan"
+                data-plan-field="description"
+                @input="updateField('description', $event.target.value)"
+              />
+            </label>
+          </div>
+        </section>
+        </div>
+      </div>
       </div>
     </div>
   </div>
@@ -741,17 +876,261 @@ onUnmounted(() => {
 }
 
 .metadata-section--plan-info .metadata-section__header {
-  color: #9bd2ff;
-}
-
-.metadata-section--goals .metadata-section__header {
-  color: #f59e0b;
+  color: #ffffff;
 }
 
 .metadata-section__body {
   display: grid;
   gap: 8px;
   min-width: 0;
+}
+
+.plan-info-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 10px;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+
+.plan-info-columns__cover {
+  display: grid;
+  min-width: 0;
+}
+
+.plan-info-columns__info {
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 8px;
+  background: rgba(11, 22, 34, 0.64);
+  padding: 10px;
+  align-content: start;
+  min-width: 0;
+}
+
+.metadata-section.plan-info-columns__info:first-child,
+.metadata-section.plan-info-columns__info {
+  border-top: 1px solid rgba(148, 163, 184, 0.34);
+  padding-top: 10px;
+}
+
+@media (max-width: 768px) {
+  .plan-info-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .plan-info-columns__cover,
+  .plan-info-columns__info {
+    grid-column: 1;
+    grid-row: auto;
+    width: 100%;
+  }
+}
+
+/* 0.85.316.3 vertical accordions (Plan Information / Goal / Settings / Description) */
+.plan-info-columns__info > .metadata-section__header {
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: normal;
+  text-transform: none;
+  color: #ffffff;
+}
+
+.plan-accordions {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.plan-accordion {
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 0;
+  background: rgba(11, 22, 34, 0.64);
+  min-width: 0;
+}
+
+.plan-accordion__header {
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 0;
+  background: #203252;
+  box-shadow: none;
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: normal;
+  text-transform: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.plan-accordion--open > .plan-accordion__header {
+  background: #24477e;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.34);
+}
+
+/* src/styles/design-system.css applies `button { border-radius: 999px !important }`
+   site-wide. Same-technique override as `.builder-tabs .builder-tab`: a scoped
+   !important rule (higher specificity) keeps only these header buttons square. */
+.plan-accordion__header,
+.plan-accordion__header:hover,
+.plan-accordion__header:focus,
+.plan-accordion__header:focus-visible,
+.plan-accordion__header:active,
+.plan-accordion--open > .plan-accordion__header {
+  border-radius: 0 !important;
+}
+
+.plan-accordion__header:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: -2px;
+}
+
+.plan-accordion__title {
+  min-width: 0;
+  color: #ffffff;
+}
+
+.plan-accordion__chevron {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.15s ease;
+}
+
+.plan-accordion--open > .plan-accordion__header .plan-accordion__chevron {
+  transform: translateY(2px) rotate(-135deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-accordion__chevron {
+    transition: none;
+  }
+}
+
+.plan-accordion__body {
+  --plan-row-cols: minmax(0, 35fr) minmax(0, 65fr);
+  --plan-input-col: 2;
+  --plan-control-h: 34px;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  min-width: 0;
+}
+
+/* Label | Input rows (about 35% / 65%) */
+.plan-accordion__body .builder-field--row,
+.plan-accordion__body .builder-field--goals {
+  grid-template-columns: var(--plan-row-cols);
+  column-gap: 10px;
+  row-gap: 4px;
+  align-items: start;
+}
+
+.plan-accordion__body .builder-field--row > span,
+.plan-accordion__body .builder-field--wide > span {
+  color: #ffffff;
+}
+
+.plan-accordion__body .builder-field--row > span,
+.plan-accordion__body .builder-field--goals > span {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  min-height: var(--plan-control-h);
+  overflow-wrap: anywhere;
+}
+
+.plan-accordion__body .builder-field--row > input,
+.plan-accordion__body .builder-field--row > select,
+.plan-accordion__body .builder-field--row > .plan-type-readonly-row,
+.plan-accordion__body .builder-field--row > .goal-selector-inline,
+.plan-accordion__body .builder-field--row > .goal-date-input-wrap,
+.plan-accordion__body .builder-field--row > .builder-field__hint,
+.plan-accordion__body .builder-field--goals > .goal-tag-select,
+.plan-accordion__body .builder-field--goals > .builder-field--other-goal {
+  grid-column: var(--plan-input-col);
+}
+
+.plan-accordion__body .builder-field--row > .goal-context-note {
+  grid-column: 1 / -1;
+}
+
+.plan-accordion__body .builder-field input,
+.plan-accordion__body .builder-field select,
+.plan-accordion__body .goal-selector-inline__selected,
+.plan-accordion__body .goal-selector-inline__btn,
+.plan-accordion__body .plan-type-readonly-row__label,
+.plan-accordion__body .goal-tag-select__trigger {
+  min-height: var(--plan-control-h);
+}
+
+.plan-accordion__body .builder-field textarea {
+  resize: vertical;
+}
+
+.plan-accordion__body .goal-info-two-col,
+.plan-accordion__body .goals-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.plan-accordion__body .goal-selector-inline {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.plan-accordion__body .goal-selector-inline__selected {
+  grid-column: 1 / -1;
+}
+
+.plan-accordion__body .plan-type-readonly-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.plan-accordion__body .plan-type-readonly-row__button {
+  white-space: normal;
+  height: auto;
+  line-height: 1.25;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.plan-accordion__body .goal-tag-select__menu {
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+
+@media (max-width: 768px) {
+  .plan-accordion__body {
+    --plan-control-h: 40px;
+    padding: 10px;
+    gap: 8px;
+  }
+}
+
+/* Only on very narrow screens, where 35/65 columns would be unreadable, labels stack above inputs. */
+@media (max-width: 340px) {
+  .plan-accordion__body {
+    --plan-row-cols: minmax(0, 1fr);
+    --plan-input-col: 1;
+  }
+
+  .plan-accordion__body .builder-field--row > span,
+  .plan-accordion__body .builder-field--goals > span {
+    min-height: 0;
+  }
 }
 
 .builder-field-group--meta-row {
@@ -1368,9 +1747,14 @@ onUnmounted(() => {
     gap: 8px;
   }
 
-  .metadata-section--plan-info,
-  .metadata-section--goals {
+  .plan-info-columns__cover {
     grid-column: 1;
+    grid-row: 1;
+  }
+
+  .plan-info-columns__info {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .builder-field--duration {

@@ -37,7 +37,7 @@ import {
   readGroupEntries,
   matchSavedGroupIds,
 } from '@/utils/workoutDayWeekAssignment.mjs';
-import { normalizeRecordingType } from '@/utils/exerciseRecordingFields';
+import { buildCatalogRecordingTypeMap, normalizeRecordingType, resolveExerciseRecordingType } from '@/utils/exerciseRecordingFields';
 import Swal from 'sweetalert2';
 import { showConfirmDialog } from '@/utils/browserDialogs';
 import {
@@ -250,6 +250,7 @@ const diagnosticsExpandedByArea = ref({
 const personalGoals = ref([]);
 const WORKOUT_BUILDER_DRAFT_STORAGE_KEY = 'wa_workout_builder_unsaved_draft_v1';
 const coverUploadInputRef = ref(null);
+const metadataFormRef = ref(null);
 const coverImageRevision = ref(0);
 const currentPlanHasCustomCover = ref(false);
 const persistedCoverImageReference = ref('');
@@ -2304,8 +2305,13 @@ const formatPreviewText = (value, fallback = '—') => {
   return text || fallback;
 };
 
+// 0.85.317: saved plan exercises carry no Recording Type, so it is resolved from the loaded Exercise Database catalog
+// by exercise id (an explicit value on the exercise wins; Workout Type is never used).
+const catalogRecordingTypeById = computed(() => buildCatalogRecordingTypeMap(allExercises.value));
+const getExerciseRecordingType = (exercise) => resolveExerciseRecordingType(exercise, catalogRecordingTypeById.value);
+
 const resolvePreviewExerciseType = (exercise = {}) => {
-  const recordingType = normalizeRecordingType(exercise);
+  const recordingType = normalizeRecordingType(getExerciseRecordingType(exercise));
 
   if (recordingType === 'time-distance') {
     return 'cardio';
@@ -3769,6 +3775,19 @@ const addScheduleGroupFromValue = ({
   const name = validation.value;
 
   const mode = normalizeScheduleMode(scheduleMode.value);
+  // 0.85.316.4: the first workout day never needs a manually created week. When the plan has no week yet, Add Day
+  // (top or bottom) creates "Week 1" (the default week) and selects it, so the new day is assigned to it below.
+  // A plan that already has weeks is never given a second default week.
+  if (mode === 'day') {
+    if (!weekGroups.value.length) {
+      weekGroups.value = [DEFAULT_NEW_PLAN_WEEK_NAME];
+      syncGroupOrders('week', weekGroups.value);
+      syncScheduleGroupIdentityMap('week', weekGroups.value);
+    }
+    if (!selectedWeek.value) {
+      selectedWeek.value = resolveSelectedWeek(weekGroups.value);
+    }
+  }
   const target = getGroupRefForMode(mode);
   const normalizedName = normalizeGroupKey(name);
 
@@ -4331,6 +4350,47 @@ watch([dayGroups, weekGroups], reconcileDayWeekAssignmentState, { deep: true });
 
 const weekOptions = computed(() => buildWeekOptions(weekGroups.value));
 
+// 0.85.316.4: horizontal week tabs. They list the existing weeks only (weekOptions), show at most four at a time and
+// are driven by the existing selectedWeek state. The arrows only move the visible window; they never change the
+// selected week, the days shown or any unsaved data.
+const WEEK_TABS_VISIBLE = 4;
+const weekTabStart = ref(0);
+const maxWeekTabStart = computed(() => Math.max(0, weekOptions.value.length - WEEK_TABS_VISIBLE));
+const effectiveWeekTabStart = computed(() => Math.min(Math.max(weekTabStart.value, 0), maxWeekTabStart.value));
+const visibleWeekTabs = computed(() => weekOptions.value.slice(
+  effectiveWeekTabStart.value,
+  effectiveWeekTabStart.value + WEEK_TABS_VISIBLE
+));
+const showWeekTabArrows = computed(() => weekOptions.value.length > WEEK_TABS_VISIBLE);
+const canShiftWeekTabsLeft = computed(() => effectiveWeekTabStart.value > 0);
+const canShiftWeekTabsRight = computed(() => effectiveWeekTabStart.value < maxWeekTabStart.value);
+const isWeekTabSelected = (week) => normalizeGroupKey(week) === normalizeGroupKey(selectedWeek.value);
+
+const shiftWeekTabs = (step) => {
+  weekTabStart.value = Math.min(Math.max(effectiveWeekTabStart.value + step, 0), maxWeekTabStart.value);
+};
+
+const selectWeekTab = (week) => {
+  selectedWeek.value = week;
+};
+
+// Keeps the selected week's tab inside the visible window after a plan loads, a week is added or the selection moves.
+// It is not run by the arrows, so browsing the strip never forces the selection back into view.
+const revealSelectedWeekTab = () => {
+  const index = weekOptions.value.findIndex((week) => isWeekTabSelected(week.value));
+  if (index < 0) {
+    return;
+  }
+  const start = effectiveWeekTabStart.value;
+  if (index < start) {
+    weekTabStart.value = index;
+  } else if (index >= start + WEEK_TABS_VISIBLE) {
+    weekTabStart.value = index - WEEK_TABS_VISIBLE + 1;
+  }
+};
+
+watch([selectedWeek, () => weekOptions.value.length], revealSelectedWeekTab);
+
 // Keep the selection valid: Week 1 by default, else the first existing week; a still-existing choice is kept.
 watch(
   weekGroups,
@@ -4627,6 +4687,7 @@ const persistWorkout = async (status = 'draft') => {
 
   if (!metadata.value.name.trim()) {
     saveMessage.value = 'Please enter a workout name.';
+    metadataFormRef.value?.revealField('name');
     return;
   }
 
@@ -4671,6 +4732,13 @@ const persistWorkout = async (status = 'draft') => {
 
     if (missingRequirements.length) {
       saveMessage.value = `Publish failed. Missing required: ${missingRequirements.join(', ')}.`;
+      if (!String(metadata.value.name || '').trim()) {
+        metadataFormRef.value?.revealField('name');
+      } else if (!String(metadata.value.category || '').trim()) {
+        metadataFormRef.value?.revealField('category');
+      } else if (!String(metadata.value.type || '').trim()) {
+        metadataFormRef.value?.revealField('type');
+      }
       return;
     }
   }
@@ -5698,31 +5766,27 @@ watch(
               <strong>{{ planDetailsHeaderText }}</strong>
               <small>{{ planDetailsSubtitleText }}</small>
             </span>
-          </div>
 
-          <div v-if="builderTab === 'create' && !isViewEditMode" class="plan-info-action-row plan-info-action-row--create" role="group" aria-label="Create mode navigation">
-            <button
-              type="button"
-              class="plan-info-action-row__back"
-              @click="returnToPlansFromCreate"
-            >
-              <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-              <span>Back to Plans</span>
-            </button>
-            <button
-              type="button"
-              class="plan-info-action-row__save"
-              :disabled="saving || publishing"
-              @click="handlePrimarySave"
-            >
-              <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
-              <span>{{ saving || publishing ? 'Saving...' : 'Save' }}</span>
-            </button>
-          </div>
+            <div v-if="builderTab === 'create' && !isViewEditMode" class="plan-info-action-row plan-info-action-row--create" role="group" aria-label="Create mode navigation">
+              <button
+                type="button"
+                class="plan-info-action-row__back"
+                @click="returnToPlansFromCreate"
+              >
+                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                <span>Back to Plans</span>
+              </button>
+              <button
+                type="button"
+                class="plan-info-action-row__save"
+                :disabled="saving || publishing"
+                @click="handlePrimarySave"
+              >
+                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+                <span>{{ saving || publishing ? 'Saving...' : 'Save' }}</span>
+              </button>
+            </div>
 
-          <div class="collapsible-panel__body">
-
-            
             <div v-if="isViewEditMode" class="plan-info-action-row" role="group" aria-label="Edit mode navigation and save actions">
               <button
                 type="button"
@@ -5742,8 +5806,12 @@ watch(
                 <span>{{ saving || publishing ? 'Saving...' : 'Save' }}</span>
               </button>
             </div>
+          </div>
+
+          <div class="collapsible-panel__body">
 
             <WorkoutMetadataForm
+              ref="metadataFormRef"
               :metadata="metadata"
               :plan-type-options="workoutPlanTypeOptions"
               :category-options="workoutPlanCategoryOptions"
@@ -5860,49 +5928,75 @@ watch(
               <h3>Schedule Planner</h3>
               <p>Plan your training week, then add exercises to each day.</p>
             </div>
+            <!-- 0.85.316.4: Add Week and the week More menu sit in the Schedule Planner header row. -->
+            <div class="planner-week-header-actions">
+              <button
+                type="button"
+                class="planner-week-add wa-blue-action-btn"
+                :disabled="!canAddWeek"
+                :title="canAddWeek ? 'Add a new empty week' : 'Add at least one exercise to a day in this week to add a new week.'"
+                @click="addWeek"
+              >
+                + Add Week
+              </button>
+              <div class="day-kebab-wrap planner-week-menu-wrap">
+                <button
+                  type="button"
+                  class="day-kebab-btn planner-week-menu-btn"
+                  aria-label="Week actions"
+                  aria-haspopup="menu"
+                  :aria-expanded="isWeekMenuOpen"
+                  :disabled="!canRenameWeek"
+                  @click.stop="toggleWeekMenu"
+                >
+                  <i class="fa-solid fa-ellipsis-vertical"></i>
+                </button>
+                <div v-if="isWeekMenuOpen" class="day-kebab-menu" role="menu">
+                  <button type="button" class="day-kebab-item" role="menuitem" @click="startWeekRename">
+                    <i class="fa-regular fa-pen-to-square"></i>
+                    Rename Week
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="planner-tools">
-              <div class="planner-week-select">
-                <label class="planner-week-select__label" for="planner-week-select">Week</label>
-                <select
-                  id="planner-week-select"
-                  v-model="selectedWeek"
-                  class="planner-week-select__control"
-                  aria-label="Select week"
-                >
-                  <option v-for="week in weekOptions" :key="week.value" :value="week.value">
-                    {{ week.label }}
-                  </option>
-                </select>
+              <!-- 0.85.316.4: horizontal week tabs replace the Week dropdown (existing weeks only, max four visible). -->
+              <div v-if="weekOptions.length" class="planner-week-tabs" role="group" aria-label="Select week">
                 <button
+                  v-if="showWeekTabArrows"
                   type="button"
-                  class="planner-week-add wa-blue-action-btn"
-                  :disabled="!canAddWeek"
-                  :title="canAddWeek ? 'Add a new empty week' : 'Add at least one exercise to a day in this week to add a new week.'"
-                  @click="addWeek"
+                  class="planner-week-tabs__arrow"
+                  aria-label="Show previous weeks"
+                  :disabled="!canShiftWeekTabsLeft"
+                  @click="shiftWeekTabs(-1)"
                 >
-                  + Add Week
+                  <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
                 </button>
-                <div class="day-kebab-wrap planner-week-menu-wrap">
+                <div class="planner-week-tabs__strip">
                   <button
+                    v-for="week in visibleWeekTabs"
+                    :key="getScheduleGroupId(week.value, 'week') || week.value"
                     type="button"
-                    class="day-kebab-btn planner-week-menu-btn"
-                    aria-label="Week actions"
-                    aria-haspopup="menu"
-                    :aria-expanded="isWeekMenuOpen"
-                    :disabled="!canRenameWeek"
-                    @click.stop="toggleWeekMenu"
+                    :class="['planner-week-tab', { 'planner-week-tab--selected': isWeekTabSelected(week.value) }]"
+                    :aria-pressed="isWeekTabSelected(week.value) ? 'true' : 'false'"
+                    :title="week.label"
+                    @click="selectWeekTab(week.value)"
                   >
-                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                    <span class="planner-week-tab__label">{{ week.label }}</span>
                   </button>
-                  <div v-if="isWeekMenuOpen" class="day-kebab-menu" role="menu">
-                    <button type="button" class="day-kebab-item" role="menuitem" @click="startWeekRename">
-                      <i class="fa-regular fa-pen-to-square"></i>
-                      Rename Week
-                    </button>
-                  </div>
                 </div>
+                <button
+                  v-if="showWeekTabArrows"
+                  type="button"
+                  class="planner-week-tabs__arrow"
+                  aria-label="Show next weeks"
+                  :disabled="!canShiftWeekTabsRight"
+                  @click="shiftWeekTabs(1)"
+                >
+                  <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+                </button>
               </div>
 
               <div v-if="isRenamingWeek" class="planner-week-rename">
@@ -6114,6 +6208,7 @@ watch(
                             v-for="(exercise, idx) in day.exercises"
                             :key="exercise.id"
                             :exercise="exercise"
+                            :recording-type="getExerciseRecordingType(exercise)"
                             :index="idx"
                             :total="day.exercises.length"
                             :schedule-groups="activeGroups"
@@ -6382,30 +6477,32 @@ watch(
               aria-label="Workout plan preview"
               aria-live="polite"
             >
-              <div class="global-library-inline-preview__actions global-library-inline-preview__actions--top">
-                <button
-                  type="button"
-                  class="btn btn-sm global-plans-table__btn global-plans-table__btn--open"
-                  @click="closeGlobalLibraryInlinePreview"
-                >
-                  <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-                  <span>Back to Plans</span>
-                </button>
+              <div class="global-library-inline-preview__header">
+                <h3 class="global-library-inline-preview__title">Workout Plan Preview (Read-Only)</h3>
 
-                <button
-                  v-if="canUsePlanFromPreview"
-                  type="button"
-                  class="btn btn-sm global-plans-table__btn global-plans-table__btn--edit"
-                  :disabled="cloningFeaturedPlanId === globalLibraryViewPlan?.planId"
-                  @click="triggerUsePlanFromPreview"
-                >
-                  <i v-if="cloningFeaturedPlanId === globalLibraryViewPlan?.planId" class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-                  <i v-else class="fa-solid fa-copy" aria-hidden="true"></i>
-                  <span>{{ cloningFeaturedPlanId === globalLibraryViewPlan?.planId ? 'Using...' : 'Use Plan' }}</span>
-                </button>
+                <div class="global-library-inline-preview__actions global-library-inline-preview__actions--top">
+                  <button
+                    type="button"
+                    class="btn btn-sm global-plans-table__btn global-plans-table__btn--open"
+                    @click="closeGlobalLibraryInlinePreview"
+                  >
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                    <span>Back to Plans</span>
+                  </button>
+
+                  <button
+                    v-if="canUsePlanFromPreview"
+                    type="button"
+                    class="btn btn-sm global-plans-table__btn global-plans-table__btn--edit"
+                    :disabled="cloningFeaturedPlanId === globalLibraryViewPlan?.planId"
+                    @click="triggerUsePlanFromPreview"
+                  >
+                    <i v-if="cloningFeaturedPlanId === globalLibraryViewPlan?.planId" class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                    <i v-else class="fa-solid fa-copy" aria-hidden="true"></i>
+                    <span>{{ cloningFeaturedPlanId === globalLibraryViewPlan?.planId ? 'Using...' : 'Use Plan' }}</span>
+                  </button>
+                </div>
               </div>
-
-              <h3 class="global-library-inline-preview__title">Workout Plan Preview (Read-Only)</h3>
 
               <div v-if="globalLibraryViewError" class="global-library-inline-preview__error-wrap">
                 <p class="global-library-inline-preview__error">{{ globalLibraryViewError }}</p>
@@ -8321,10 +8418,21 @@ watch(
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   text-align: left;
   cursor: pointer;
   transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.collapsible-header .plan-info-action-row {
+  width: auto;
+  max-width: 100%;
+  margin: 0 0 0 auto;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .collapsible-header:hover {
@@ -8336,6 +8444,7 @@ watch(
   display: grid;
   gap: 3px;
   min-width: 0;
+  flex: 1 1 220px;
 }
 
 .collapsible-header__text strong {
@@ -8371,13 +8480,15 @@ watch(
 }
 
 .plan-cover-panel {
-  margin-top: 6px;
+  margin-top: 0;
   border: 1px solid rgba(148, 163, 184, 0.34);
   border-radius: 8px;
   background: rgba(11, 22, 34, 0.64);
-  padding: 8px;
+  padding: 10px;
   display: grid;
   gap: 8px;
+  align-content: start;
+  min-width: 0;
 }
 
 .plan-cover-panel__header {
@@ -8408,26 +8519,32 @@ watch(
 
 .plan-cover-main-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  flex-wrap: nowrap;
   justify-content: center;
   align-items: center;
   gap: 12px;
   width: 100%;
+  min-width: 0;
 }
 
 .plan-cover-preview-wrap {
-  width: 120px;
-  flex: 0 0 120px;
+  width: 100%;
+  max-width: 240px;
+  flex: 0 0 auto;
+  margin: 0 auto;
 }
 
 .plan-cover-preview {
-  width: 120px;
-  height: 120px;
+  width: 100%;
+  height: auto;
+  max-height: 240px;
   border-radius: 8px;
   border: 1px solid rgba(148, 163, 184, 0.3);
-  object-fit: cover;
+  object-fit: contain;
   background: rgba(15, 23, 42, 0.72);
   display: block;
+  margin: 0 auto;
 }
 
 .plan-cover-preview--placeholder {
@@ -8445,6 +8562,7 @@ watch(
   gap: 8px;
   align-content: center;
   justify-items: stretch;
+  justify-self: center;
   width: min(156px, 100%);
   max-width: 100%;
   min-width: 0;
@@ -8453,7 +8571,7 @@ watch(
 .plan-cover-actions-desktop {
   display: grid;
   gap: 8px;
-  justify-content: start;
+  justify-content: stretch;
   width: 100%;
 }
 
@@ -8858,11 +8976,15 @@ watch(
   background: #1d4ed8;
 }
 
-.planner-week-select {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr) auto auto;
+/* 0.85.316.4: Add Week + More menu in the Schedule Planner header row; wraps below the title on narrow screens. */
+.planner-week-header-actions {
+  display: flex;
   align-items: center;
-  column-gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+  margin-left: auto;
   min-width: 0;
 }
 
@@ -8874,17 +8996,89 @@ watch(
   white-space: nowrap;
 }
 
-.planner-week-select__control {
-  border: 1px solid rgba(148, 163, 184, 0.5);
-  border-radius: 6px;
-  min-height: 36px;
-  padding: 6px 10px;
-  background: linear-gradient(180deg, rgba(15, 28, 46, 0.9), rgba(11, 22, 34, 0.92));
+/* 0.85.316.4: horizontal week tabs (all breakpoints). Same palette as the Plan Information accordion headers.
+   Square corners need !important because design-system.css sets `button { border-radius: 999px !important }`. */
+.planner-week-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  color: #ecf6ff;
-  font-size: 0.82rem;
+}
+
+.planner-week-tabs__strip {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  scrollbar-width: none;
+}
+
+.planner-week-tabs__strip::-webkit-scrollbar {
+  display: none;
+}
+
+.planner-week-tab,
+.planner-week-tabs__arrow {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin: 0;
+  border: 0;
+  border-radius: 0 !important;
+  background: #203252;
+  box-shadow: none;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+}
+
+.planner-week-tab {
+  flex: 0 0 calc((100% - 12px) / 4);
+  min-width: 64px;
+  padding: 4px 6px;
+  border-bottom: 3px solid transparent;
+}
+
+.planner-week-tab--selected {
+  background: #24477e;
+  border-bottom-color: #ffffff;
+}
+
+.planner-week-tab__label {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.planner-week-tabs__arrow {
+  flex: 0 0 36px;
+  width: 36px;
+  padding: 0;
+}
+
+.planner-week-tabs__arrow:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.planner-week-tab:focus-visible,
+.planner-week-tabs__arrow:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: -2px;
 }
 
 .planner-group-editor {
@@ -11570,6 +11764,27 @@ watch(
   flex-wrap: wrap;
 }
 
+.global-library-inline-preview__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.global-library-inline-preview__header .global-library-inline-preview__title {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.global-library-inline-preview__header .global-library-inline-preview__actions {
+  flex: 0 1 auto;
+  justify-content: flex-end;
+  margin-left: auto;
+  max-width: 100%;
+}
+
 .global-library-inline-preview__title {
   margin: 0;
   color: #ffffff;
@@ -12046,15 +12261,19 @@ watch(
   }
 
   .plan-cover-main-row {
+    flex-direction: row;
+    flex-wrap: wrap;
     gap: 10px;
   }
 
   .plan-cover-preview {
-    height: 120px;
+    height: auto;
+    max-height: 140px;
   }
 
   .plan-cover-preview-wrap {
-    width: 120px;
+    width: 128px;
+    flex: 0 1 128px;
   }
 
   .plan-cover-actions {
@@ -13679,5 +13898,26 @@ watch(
 .workout-builder-page .planner-group-add:focus-visible,
 .workout-builder-page .btn-add-exercise-day:focus-visible {
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.28);
+}
+
+/* 0.85.318: both Schedule Planner Add Day buttons (top and bottom) use #2563EB. Add Exercise stays green and Add Week
+   (.planner-week-add) is unchanged. Only colors change; shape, size and alignment come from the rules above. */
+.workout-builder-page button.planner-group-add {
+  background: #2563EB;
+  border-color: #2563EB;
+  color: #FFFFFF;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
+}
+
+.workout-builder-page button.planner-group-add:hover:not(:disabled),
+.workout-builder-page button.planner-group-add:focus:not(:disabled),
+.workout-builder-page button.planner-group-add:active:not(:disabled) {
+  background: #1D4ED8;
+  border-color: #1D4ED8;
+  color: #FFFFFF;
+}
+
+.workout-builder-page button.planner-group-add:focus-visible {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
 }
 </style>
