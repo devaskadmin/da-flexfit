@@ -15,7 +15,7 @@ const props = defineProps({
   }
 })
 
-const { logout: authLogout, logoutInProgress, user: authUser } = useAuth()
+const { logoutInProgress, user: authUser } = useAuth()
 const router = useRouter()
 const isOpen = ref(false)
 const dropdownRef = ref(null)
@@ -438,8 +438,8 @@ const handleHelp = () => {
 
 const handleSignOut = async () => {
   closeDropdown('menu-item:sign-out')
-  // Use shared logout function from useAuth
-  await authLogout()
+  // Open the existing logout confirmation (Confirm runs the shared useAuth logout; Cancel dismisses)
+  await router.push({ name: 'logout' }).catch(() => {})
 }
 
 let removeOutsideListener = () => {}

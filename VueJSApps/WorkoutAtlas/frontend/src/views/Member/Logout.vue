@@ -1,8 +1,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { useAuth } from '@/composable/useAuth';
-import { API_BASE } from '@/config/env';
+import { useAuth, fetchSessionSnapshot } from '@/composable/useAuth';
 
 const router = useRouter();
 const { user, logout: authLogout, logoutInProgress } = useAuth();
@@ -10,33 +9,41 @@ const username = ref(""); // ✅ Store logged-in username
 const logoutMessage = ref("");
 const showNotification = ref(false);
 const showConfirmation = ref(true); // ✅ Show confirmation first
+const logoutError = ref("");
 
-// ✅ Fetch the logged-in user from session
+// ✅ Fetch the logged-in user from session (shares the router guard's /api/session request)
 const fetchUserSession = async () => {
   try {
-    const response = await fetch(`${API_BASE}/api/session`, { credentials: 'include' });
-    const data = await response.json();
+    const { data } = await fetchSessionSnapshot();
 
-    if (data.loggedIn && data.user) {
+    if (data?.loggedIn && data.user) {
       username.value = data.user.username;
     } else {
       router.push({ name: "login" });
     }
   } catch (error) {
+    // A transient request failure must not dismiss the confirmation (the session is still active).
     console.error("❌ Session fetch error:", error);
-    router.push({ name: "login" });
+    username.value = user.value?.username || "";
   }
 };
 
 // ✅ Logout Function - uses shared logout from useAuth
 const logout = async () => {
-  // Show brief notification
-  logoutMessage.value = `Signing out, ${username.value}...`;
+  logoutError.value = "";
+  logoutMessage.value = username.value ? `Signing out, ${username.value}...` : "Signing out...";
   showNotification.value = true;
   showConfirmation.value = false;
 
-  // Use shared logout function (handles everything)
-  await authLogout();
+  // Shared logout handles session termination, state clearing and redirect.
+  // On failure it stays on this page so success is never reported for a failed logout.
+  const loggedOut = await authLogout({ stayOnFailure: true });
+
+  if (!loggedOut) {
+    showNotification.value = false;
+    showConfirmation.value = true;
+    logoutError.value = "Logout failed. You are still signed in. Please try again.";
+  }
 };
 
 // ✅ Cancel Logout - Redirects back to home without logging out
@@ -55,7 +62,8 @@ onMounted(fetchUserSession);
 
       <!-- ✅ Show Confirmation Message Before Logging Out -->
       <div v-if="showConfirmation">
-        <p>Are you sure you want to log out, <strong>{{ username }}</strong>?</p>
+        <p>Are you sure you want to log out<template v-if="username">, <strong>{{ username }}</strong></template>?</p>
+        <p v-if="logoutError" class="logout-error" role="alert">{{ logoutError }}</p>
         <div class="button-group">
           <button 
             @click="logout" 
@@ -121,6 +129,11 @@ onMounted(fetchUserSession);
 
 .logout-body strong {
   color: var(--wa-text-primary, #F7F9FF);
+}
+
+.logout-body .logout-error {
+  margin-top: 12px;
+  color: #FCA5A5;
 }
 
 .button-group {

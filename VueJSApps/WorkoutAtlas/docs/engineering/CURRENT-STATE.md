@@ -2,6 +2,29 @@
 
 **Purpose:** First detailed status document for AI agents.
 
+## 0.85.325 status (2026-11-28): FINAL MAINTENANCE AUDIT AND RENDER READINESS REVIEW COMPLETE - PENDING OWNER ACCEPTANCE
+
+- `0.85` remains officially complete. Branch `BETA` at `c5e1dd698`; all changes uncommitted; packages remain `0.85.308`; `0.86` not started.
+- Static source audit of 0.85.321/322/323/324: one repair `0.85.321.a1` in `ExerciseSessionCard.vue` (set table now follows Recording Type first, matching `LogWorkout.vue` set building). 0.85.322 and 0.85.323 verified with no defect. Static Render Linux review: no code blocker; dashboard-level concerns only (no `render.yaml`, no backend `start` script, SPA rewrite not in repo). No build or runtime verification was run; owner acceptance pending.
+- Owner authorization (2026-11-28): commit and push of 0.85.321, 0.85.321.a1, 0.85.322, 0.85.323, 0.85.324 and 0.85.325 to `BETA` (normal push; any existing Render auto-deploy it triggers is authorized). Static readiness: YES. Render build and runtime verification: PENDING. Manual acceptance testing: PENDING. Next development milestone: `0.86` (not started). Supersedes the uncommitted/"no push" statements above.
+## 0.85.324 status (2026-11-28): FINAL MAINTENANCE CHECKPOINT PREPARED - PENDING OWNER ACCEPTANCE
+
+- `0.85` remains officially complete. Branch `BETA` at `c5e1dd698`; all of the following are uncommitted; packages remain `0.85.308` (task labels only); `0.86` not started.
+- 0.85.321 (Current Workout exercise cards): `ExerciseSessionCard.vue`. 0.85.322 (mobile profile dropdown vs More screen stacking): `HeaderComponent.vue`. 0.85.323 (mobile logout confirmation): `Logout.vue`, `useAuth.js`, `ProfileDropdown.vue`. All IMPLEMENTED, PENDING OWNER ACCEPTANCE.
+- Bounded static review found no conflicts between the three corrections (no shared files; Sign Out closes the dropdown before routing). Diagnostics clean; no tests, builds or startup run. Open, non-blocking: owner manual acceptance; confirm desktop Sign Out confirmation is intended; `ExternalRegister.vue` logout unchanged. Not marked accepted.
+## 0.85.322 status (2026-11-28): MOBILE PROFILE DROPDOWN FIX - PENDING OWNER ACCEPTANCE
+
+- Branch `BETA`, uncommitted. Package versions remain `0.85.308` (task label only). The profile dropdown (`ProfileDropdown.vue`) renders inside the header stacking context (`z-index: 1052` in `HeaderComponent.vue`); on mobile the More screen (`z-index: 1410`) covered it when open. Fix: one unscoped rule in `HeaderComponent.vue` lifts the header to `z-index: 1430` at max-width 768px only while the dropdown is open. `ProfileDropdown.vue` logic unchanged.
+- Static verification only; owner mobile acceptance pending. Not marked accepted. Preserves the 0.85.321 and 0.85.323 changes.
+## 0.85.321 status (2026-11-28): ACTIVE WORKOUT EXERCISE CARDS RESTORED - PENDING OWNER ACCEPTANCE
+
+- Branch `BETA`, uncommitted. Package versions remain `0.85.308` (task label only). Current Workout exercise cards are rendered by `frontend/src/components/workout-session/ExerciseSessionCard.vue`; they failed to render because the component used `normalizeWorkoutTypeBadge` (not imported) and `completedSets`, `totalSets`, `allDone`, `hasPrefilledValues`, `prefillClass` (removed in commit `6dbf903b1`, 0.85.311). All six are restored in that one file; the set-table type falls back to the `isCardio` prop (default strength) when no explicit Workout Type exists. Hydration, filtering, timer, Add Exercise, Complete & End Workout, stored sessions, backend, database, dependencies and `.env*` untouched.
+- Static verification only; owner acceptance (new and resumed workouts, desktop, tablet, mobile) pending. Not marked accepted.
+## 0.85.323 status (2026-11-26): MOBILE LOGOUT CORRECTION - PENDING OWNER ACCEPTANCE
+
+- Branch `BETA`, uncommitted. Package versions remain `0.85.308` (task label only). Logout confirmation is the `/logout` route page (`Logout.vue`); Confirm runs the shared `useAuth().logout()`; Cancel returns to the dashboard.
+- Corrected: no silent redirect to login on a session-probe failure; failed logout shows an error and keeps the confirmation (`stayOnFailure`, default behavior of other callers unchanged); Profile dropdown Sign Out opens the confirmation. Files: `Logout.vue`, `useAuth.js`, `ProfileDropdown.vue`. Backend, database, dependencies, `.env*` untouched.
+- Static verification only; owner mobile acceptance pending. `0.86` not started.
 ## 0.85.320 status (2026-11-25): 0.85 COMPLETE - OWNER ACCEPTED
 
 - Milestone `0.85` is declared complete by the project owner (owner statement). Branch `BETA`. Package versions remain `0.85.308`. All eight initial Global Workout Plans are owner-verified and published: Maintain Health - Active Lifestyle & Mobility; Maintain Health - Total Body Wellness; At Home - Full Body - Light Dumbbells; At Home - Full Body (No Equipment); Build Muscle - Beginner Full Body; Build Muscle - 4 Day Hypertrophy; Weight Loss - Full Body; Weight Loss - Beginner Full Body.

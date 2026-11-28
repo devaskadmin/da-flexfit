@@ -1,5 +1,31 @@
 # WorkoutAtlas Session Handoff
 
+## 0.85.325 handoff (2026-11-28): FINAL MAINTENANCE AUDIT AND RENDER READINESS REVIEW COMPLETE - PENDING OWNER ACCEPTANCE
+
+- Static audit only (no tests, builds, startup or live requests). One frontend repair `0.85.321.a1`: `ExerciseSessionCard.vue` `workoutType` resolves Recording Type first. Uncommitted on `BETA` (HEAD `c5e1dd698`) with 0.85.321-323; packages remain `0.85.308`; `0.86` not started. See `CHANGELOG.md` 0.85.325.
+- Before any Render deploy the owner must confirm in the dashboard: backend Start Command `node server.js` (no `start` script in `package.json`), static-site rewrite `/*` -> `/index.html`, and the existing CORS/session environment values (not inspected). Then run `npm run build` in `frontend` and a runtime check; neither has been run. Owner manual acceptance (Current Workout cards incl. Cardio, Strength and Custom exercises; mobile dropdown; mobile logout) outstanding. No commit, push or merge; `.env*` untouched.
+- Owner authorization (2026-11-28): commit and push of the 0.85.321-0.85.325 maintenance changes (including 0.85.321.a1) to `BETA`, normal push only; any existing Render auto-deploy triggered by it is authorized. Static readiness: YES. Render build/runtime verification: PENDING. Manual acceptance testing: PENDING. Next milestone: `0.86` (not started). Supersedes the "no commit, push or merge" statements above.
+## 0.85.324 handoff (2026-11-28): FINAL MAINTENANCE CHECKPOINT PREPARED - PENDING OWNER ACCEPTANCE
+
+- Documentation and bounded static review only; no source change. Three post-release corrections remain uncommitted on `BETA` (HEAD `c5e1dd698`): 0.85.321 (`ExerciseSessionCard.vue`), 0.85.322 (`HeaderComponent.vue`), 0.85.323 (`Logout.vue`, `useAuth.js`, `ProfileDropdown.vue`). Packages remain `0.85.308`. `0.86` not started.
+- Static review: no conflicts; no file modified by more than one correction. See `CHANGELOG.md` 0.85.324 for root causes and risks.
+- Owner manual acceptance (desktop, tablet, mobile): Current Workout cards for new and resumed workouts; avatar tap with and without the More menu open and its actions; Logout confirmation from More and from the Profile dropdown (Confirm, Cancel, failed logout). Owner to confirm the desktop Sign Out confirmation is intended. After acceptance the owner decides on commit/push.
+- No tests, builds or startup run; `.env*` untouched; no commit, push or merge. Not owner accepted.
+## 0.85.322 handoff (2026-11-28): MOBILE PROFILE DROPDOWN FIX - PENDING OWNER ACCEPTANCE
+
+- Frontend-only CSS fix in `HeaderComponent.vue` (see `CHANGELOG.md` 0.85.322): the header is raised above the More screen only while the profile dropdown is open at 768px and below. Branch `BETA`, uncommitted, packages remain `0.85.308`.
+- Owner to verify on a mobile device: avatar tap opens and keeps the dropdown with and without the More menu open; Profile/Settings/Help/Sign Out work; outside tap closes it; More menu still works; desktop dropdown unchanged. If it still fails with More closed, set `localStorage 'wa:debug:profile-dropdown' = '1'` for a runtime check.
+- No tests, builds or startup run; `.env*` untouched; no commit, push or merge. Not owner accepted.
+## 0.85.321 handoff (2026-11-28): ACTIVE WORKOUT EXERCISE CARDS RESTORED - PENDING OWNER ACCEPTANCE
+
+- Frontend-only fix in `ExerciseSessionCard.vue`: restored the missing import and computed/helper definitions that made every Current Workout card fail to render (see `CHANGELOG.md` 0.85.321). Branch `BETA`, uncommitted, packages remain `0.85.308`.
+- Owner to verify on desktop, tablet and mobile: cards appear for a newly started and a resumed workout; set rows, More/Less fields, images, notes, timer Pause/Resume, Add Exercise and Complete & End Workout still work; existing session data intact.
+- No tests, builds or startup run; `.env*` untouched; no commit, push or merge. Not owner accepted.
+## 0.85.323 handoff (2026-11-26): MOBILE LOGOUT CORRECTION - PENDING OWNER ACCEPTANCE
+
+- Frontend-only fix in `Logout.vue`, `useAuth.js` (optional `stayOnFailure`) and `ProfileDropdown.vue`; backend `/api/logout` inspected read-only and not the cause. Branch `BETA`, uncommitted, packages remain `0.85.308`.
+- Owner to verify on a mobile device: More menu Logout and Profile dropdown Sign Out show the confirmation; Confirm signs out and blocks protected pages; Cancel dismisses with no logout; a failed logout shows an error. Confirm desktop dropdown now showing the confirmation is intended.
+- No tests, builds or startup run; `.env*` untouched; no commit, push or merge. Do not start `0.86` without authorization.
 ## 0.85.320 handoff (2026-11-25): 0.85 COMPLETE - OWNER ACCEPTED
 
 - Official 0.85 closeout (documentation only). Owner declared 0.85 complete; 8 of 8 Global Workout Plans owner-verified and published (titles in `CHANGELOG.md` 0.85.320). Final commit message: `0.85.320 - Complete WorkoutAtlas 0.85 Development Milestone`, authorized by the owner for commit and push to `origin/BETA` after the repository security gate.

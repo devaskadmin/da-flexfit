@@ -26,7 +26,12 @@
 | 0.85.318 Add Day button color #2563EB, top and bottom (Create/Edit) | Static inspection only; no tests run | Not live tested | No | PENDING OWNER ACCEPTANCE |
 | 0.85.320 Overall 0.85 milestone closeout (all of 0.85) | Documentation only; no tests run, none claimed | Not live tested in this checkpoint | Owner declared 0.85 complete (owner statement, 2026-11-25) | OWNER ACCEPTED (milestone level; individual rows above keep their recorded status) |
 | 0.85.320 Global Workout Plans 8 of 8 published (Maintain Health x2, At Home x2, Build Muscle x2, Weight Loss x2) | Not re-run | Not re-run | Owner-verified (owner statement) | OWNER ACCEPTED (owner-stated) |
-
+| 0.85.323 Mobile logout confirmation (More menu and Profile dropdown; Confirm, Cancel, failed logout) | Static inspection only; no tests run | Not live tested; not device tested | No | PENDING OWNER ACCEPTANCE |
+| 0.85.321 Current Workout exercise cards restored (new and resumed workouts; desktop, tablet, mobile) | Static inspection only; no tests run | Not live tested; not device tested | No | PENDING OWNER ACCEPTANCE |## Restored-code implementation verification - 2026-11-21
+| 0.85.322 Mobile profile dropdown (avatar tap with and without More menu open; menu actions; outside tap; desktop unchanged) | Static inspection only; no tests run | Not live tested; not device tested | No | PENDING OWNER ACCEPTANCE |
+| 0.85.324 Maintenance checkpoint: combined 0.85.321 + 0.85.322 + 0.85.323 (no cross-correction conflicts; owner manual pass on desktop, tablet, mobile) | Bounded static review only; diagnostics clean; no tests run | Not live tested; not device tested | No | PENDING OWNER ACCEPTANCE |
+| 0.85.325 Final maintenance audit + Render readiness (0.85.321.a1 set table follows Recording Type; Render dashboard items: Start Command, SPA rewrite, env values) | Static source review only; diagnostics clean; no tests, build or runtime run | Not live tested; not device tested; no Render build/deploy | No | PENDING OWNER ACCEPTANCE |
+| 0.85.325 Commit and push to BETA authorized by owner (Render build verification, runtime verification and manual acceptance testing pending; next milestone 0.86) | Static readiness YES; no tests, build or runtime run | Not live tested; not device tested; Render build/runtime pending | No | PENDING OWNER ACCEPTANCE |
 ## Restored-code implementation verification - 2026-11-21
 
 | Requirement | Automated/source verification | State |

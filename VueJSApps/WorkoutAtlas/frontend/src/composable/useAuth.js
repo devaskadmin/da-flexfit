@@ -168,7 +168,7 @@ export function useAuth() {
    * Immediate, reliable logout function with timeout protection
    * Clears local state first, then attempts backend logout with timeout
    */
-  const logout = async () => {
+  const logout = async ({ stayOnFailure = false } = {}) => {
     // Prevent duplicate logout calls
     if (logoutInProgress.value) return false;
 
@@ -190,6 +190,8 @@ export function useAuth() {
 
       if (!loggedOut) {
         console.error('[Logout] Session still appears authenticated after logout attempts.');
+        // Confirmation flow: do not report success or leave the page while the session is still active.
+        if (stayOnFailure) return false;
       }
 
       clearClientAuthState();
@@ -200,6 +202,7 @@ export function useAuth() {
 
     } catch (err) {
       console.error('[Logout] Failed to complete logout:', err?.message || err);
+      if (stayOnFailure) return false;
       clearClientAuthState();
       await router.replace({ name: 'login' });
       return false;

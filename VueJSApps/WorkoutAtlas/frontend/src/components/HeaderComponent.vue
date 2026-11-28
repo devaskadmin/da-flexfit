@@ -718,3 +718,14 @@ onUnmounted(() => {
   color: var(--wa-shell-text-muted, #748094);
 }
 </style>
+
+<style>
+/* 0.85.322: the profile dropdown is rendered inside the header stacking context (z-index 1052), so on
+   mobile the More screen (1410) covered it when both were open. Lift the header above the More screen
+   only while the dropdown is rendered. Mobile only; desktop and the closed state are unchanged. */
+@media (max-width: 768px) {
+  header.top-navbar:has(.profile-dropdown-menu) {
+    z-index: 1430;
+  }
+}
+</style>

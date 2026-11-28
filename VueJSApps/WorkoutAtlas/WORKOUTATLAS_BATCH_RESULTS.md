@@ -1,5 +1,30 @@
 # WorkoutAtlas Batch Results
 
+## 0.85.325 - Final Maintenance Audit and Render Readiness Review - 2026-11-28
+- Status: COMPLETE - PENDING OWNER ACCEPTANCE (static source review only; `0.85` remains complete; task label, packages remain `0.85.308`). Branch `BETA` at `c5e1dd698`, uncommitted. `0.86` not started.
+- 0.85.321: cards verified for new and resumed workouts; repair `0.85.321.a1` - `ExerciseSessionCard.vue` `workoutType` lost its Recording Type-first logic (0.85.311 -> removed in 0.85.312 recovery); restored so the set table matches how `LogWorkout.vue` builds sets (Time & Distance -> cardio; Sets & Reps/Custom -> strength). 0.85.322, 0.85.323, 0.85.324: verified, no defect.
+- Render (static/expected): no code blocker; dashboard-level items - backend Start Command `node server.js` (no `start` script/`render.yaml`), SPA rewrite `/*` -> `/index.html`, CORS/session env values not inspected. Build and runtime: NOT RUN. `.env*` untouched; no deployment, commit, push or merge.
+- Owner authorization (2026-11-28): commit and push of 0.85.321, 0.85.321.a1, 0.85.322, 0.85.323, 0.85.324 and 0.85.325 to `BETA` (normal push; any existing Render auto-deploy it triggers is authorized). Static readiness: YES. Render build and runtime verification: PENDING. Manual acceptance testing: PENDING. Next milestone: `0.86` (not started). Supersedes "no commit, push or merge" above.
+## 0.85.324 - Final Maintenance Checkpoint - 2026-11-28
+- Status: MAINTENANCE CHECKPOINT PREPARED - PENDING OWNER ACCEPTANCE (documentation and static review only; no source change; `0.85` remains complete; task label, packages remain `0.85.308`). Branch `BETA`, uncommitted. `0.86` not started.
+- 0.85.321 Missing Active Workout Exercises: IMPLEMENTED, pending owner. Root cause: `ExerciseSessionCard.vue` unimported `normalizeWorkoutTypeBadge` and removed computed/helpers. File: `ExerciseSessionCard.vue`.
+- 0.85.322 Mobile Profile Dropdown: IMPLEMENTED, pending owner. Root cause: dropdown in header stacking context (1052) under the mobile More screen (1410). File: `HeaderComponent.vue`.
+- 0.85.323 Mobile Logout Confirmation: IMPLEMENTED, pending owner. Root cause: probe-failure redirect, success-on-failed-logout, direct dropdown logout. Files: `Logout.vue`, `useAuth.js`, `ProfileDropdown.vue`.
+- Conflict review (static): no conflicts; no file touched by more than one correction; Sign Out closes the dropdown before routing so the 0.85.322 header lift is released; exports and the `logout()` default argument verified; diagnostics clean on the five frontend files.
+- Unresolved (non-blocking): owner manual acceptance of all three; desktop Sign Out now confirms (owner to confirm intent); `ExternalRegister.vue` logout unchanged; `:has()` needs a current browser. No tests, builds, startup or browser checks run. `.env*` untouched. No commit, push or merge.## 0.85.322 - Mobile Profile Dropdown Fix - 2026-11-28
+- Status: IMPLEMENTED - PENDING OWNER ACCEPTANCE (post-release maintenance; task label, packages remain `0.85.308`). Branch `BETA`, uncommitted. Static verification only.
+- Root cause (static analysis): the dropdown lives in the header stacking context (`z-index: 1052`); on mobile the More screen (`z-index: 1410`) paints above it, so with More open the dropdown rendered behind it. `ProfileDropdown.vue` event logic traced and unchanged since 0.85.239; no competing listeners found.
+- File: `frontend/src/components/HeaderComponent.vue` (one unscoped rule: at max-width 768px, `header.top-navbar:has(.profile-dropdown-menu)` gets `z-index: 1430` only while the dropdown is open).
+- Evidence: diagnostics clean; CRLF preserved. No tests, builds, startup or browser checks run. `.env*` untouched. No commit, push or merge.## 0.85.321 - Missing Active Workout Exercise Cards - 2026-11-28
+- Status: IMPLEMENTED - PENDING OWNER ACCEPTANCE (post-release maintenance; task label, packages remain `0.85.308`). Branch `BETA`, uncommitted. Static verification only.
+- Root cause (static analysis): `ExerciseSessionCard.vue` used `normalizeWorkoutTypeBadge` without importing it and used `completedSets`, `totalSets`, `allDone`, `hasPrefilledValues` and `prefillClass` that were removed from its script (commit `6dbf903b1`, 0.85.311, kept by `df1f026d5`, 0.85.312), so each card failed to render while the page header, counts, progress, timer and buttons still showed.
+- File: `frontend/src/components/workout-session/ExerciseSessionCard.vue` (import and five definitions restored; legacy `isCardio` fallback for the set-table type when no explicit Workout Type).
+- Evidence: diagnostics clean; CRLF preserved; template identifiers checked. No tests, builds, startup or browser checks run. `.env*` untouched. No commit, push or merge.
+## 0.85.323 - Mobile Logout Confirmation Correction - 2026-11-26
+- Status: PENDING OWNER ACCEPTANCE (task label; packages remain `0.85.308`). Branch `BETA`, uncommitted. Static verification only.
+- Root cause (static analysis): `Logout.vue` redirected to login on any session-probe failure without ending the session, ignored the logout result, and the shared logout cleared state and redirected even when the backend logout failed; the Profile dropdown Sign Out bypassed the confirmation. Backend `/api/logout` inspected read-only; not the cause.
+- Files: `frontend/src/views/Member/Logout.vue`, `frontend/src/composable/useAuth.js` (optional `stayOnFailure`), `frontend/src/components/ProfileDropdown.vue`.
+- Evidence: diagnostics clean; CRLF preserved. No tests, builds, startup or device checks run. `.env*` untouched. No commit, push or merge. `0.86` not started.
 ## 0.85.320 - Official 0.85 Release Closeout - 2026-11-25
 - Status: COMPLETE - OWNER ACCEPTED (owner statement; task label, packages remain `0.85.308`). Milestone 0.85 closed; next milestone 0.86 (not started).
 - Global Workout Plans: 8 of 8 owner-verified and published (Maintain Health x2, At Home x2, Build Muscle x2, Weight Loss x2; titles in `CHANGELOG.md`). No cover image or plan changes in this checkpoint.

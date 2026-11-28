@@ -1,5 +1,21 @@
 # WorkoutAtlas Release Readiness
 
+## 0.85.325 Final maintenance audit and Render readiness review (2026-11-28): PENDING OWNER ACCEPTANCE
+
+Static source verification only. 0.85.321-0.85.324 audited; one frontend repair `0.85.321.a1` (`ExerciseSessionCard.vue`). Expected Render compatibility: no code blocker (case-exact imports/requires, tracked lockfiles, Node 22, `0.0.0.0`/`PORT` binding, `trust proxy`, secure cross-site cookies). Dashboard-level items to confirm before deploy: backend Start Command `node server.js` (no `start` script, no `render.yaml`), SPA rewrite `/*` -> `/index.html`, existing CORS/session environment values (not inspected). Actual build verification: NOT RUN. Actual runtime verification: NOT RUN. Owner acceptance: PENDING. No deployment, commit, push or merge. `0.86` not started.
+Owner authorization (2026-11-28): commit and push to `BETA` of 0.85.321, 0.85.321.a1, 0.85.322, 0.85.323, 0.85.324 and 0.85.325 (normal push; any existing Render auto-deploy it triggers is authorized). Static readiness: YES. Render build verification: PENDING. Runtime verification: PENDING. Manual acceptance testing: PENDING. Next milestone: `0.86` (not started).
+## 0.85.324 Final maintenance checkpoint (2026-11-28): PENDING OWNER ACCEPTANCE
+
+`0.85` remains officially complete. Post-release corrections 0.85.321, 0.85.322 and 0.85.323 are implemented, uncommitted and unaccepted (task labels; packages remain `0.85.308`). Bounded static review found no conflicts between them; diagnostics clean; no tests, builds or startup run. Owner manual acceptance outstanding. No commit, push or merge. `0.86` not started.
+## 0.85.322 Mobile profile dropdown fix (2026-11-28): PENDING OWNER ACCEPTANCE
+
+Post-release maintenance correction in `HeaderComponent.vue` only (task label; packages remain `0.85.308`). Static verification only; mobile device acceptance outstanding (with and without the More menu open). No commit, push or merge.
+## 0.85.321 Active workout exercise cards restored (2026-11-28): PENDING OWNER ACCEPTANCE
+
+Post-release maintenance correction in `ExerciseSessionCard.vue` only (task label; packages remain `0.85.308`). Static verification only; desktop, tablet and mobile acceptance for new and resumed workouts outstanding. No commit, push or merge.
+## 0.85.323 Mobile logout confirmation correction (2026-11-26): PENDING OWNER ACCEPTANCE
+
+Frontend-only correction in `Logout.vue`, `useAuth.js` and `ProfileDropdown.vue` (task label; packages remain `0.85.308`). Backend `/api/logout` inspected read-only; not the cause. Static verification only; mobile device acceptance outstanding. No commit, push or merge.
 ## 0.85.320 Official 0.85 release closeout (2026-11-25): COMPLETE - OWNER ACCEPTED
 
 The project owner declared the `0.85` milestone complete (owner statement). All eight initial Global Workout Plans are owner-verified and published (8 of 8). This checkpoint is documentation only: no tests, builds or runtime checks were run and none are claimed. The earlier checkpoint sections below are preserved as history; their unverified live items (WA-QA-309-01 to 04, WA-QA-299-01, WA-UI-TABLET-001) and open content item WA-CONTENT-003 are carried forward as deferred, not marked passed. Package versions remain `0.85.308`. Next milestone `0.86` (not started), then `0.87` iPhone and `0.88` Android. See [../../CHANGELOG.md](../../CHANGELOG.md).

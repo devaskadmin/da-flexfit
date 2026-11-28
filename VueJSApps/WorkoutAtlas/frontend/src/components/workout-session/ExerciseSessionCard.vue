@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { DEFAULT_EXERCISE_IMAGE, getExerciseImage } from '@/utils/exerciseImage';
-import { getRecordingFieldGroups } from '@/utils/exerciseRecordingFields';
+import { getRecordingFieldGroups, normalizeWorkoutTypeBadge } from '@/utils/exerciseRecordingFields';
 
 const props = defineProps({
   exercise: {
@@ -69,6 +69,18 @@ function completeExercise(exerciseId) {
 const recordingFields = computed(() => getRecordingFieldGroups(props.exercise));
 const showAdditionalFields = ref(false);
 const workoutTypeBadgeLabel = computed(() => normalizeWorkoutTypeBadge(props.exercise));
+
+const completedSets = computed(() =>
+  (props.exercise.sessionSets || []).filter((s) => s.done).length
+);
+const totalSets = computed(() => (props.exercise.sessionSets || []).length);
+const allDone = computed(() => completedSets.value === totalSets.value && totalSets.value > 0);
+
+const hasPrefilledValues = computed(() =>
+  (props.exercise.sessionSets || []).some((set) => Boolean(set?.prefilledFromLastWorkout))
+);
+
+const prefillClass = (set, field) => (set?.prefilledFields?.[field] ? 'set-input--prefilled' : '');
 
 const sessionFieldDefinitions = {
   weight: { key: 'weight', label: 'LBS', shortLabel: 'LBS' },
@@ -179,11 +191,18 @@ onUnmounted(() => {
 });
 
 const workoutType = computed(() => {
+  // Recording Type decides the set table first, matching how LogWorkout.vue builds the session sets
+  // (normalizeExerciseWorkoutType); explicit Workout Type and the isCardio prop are the fallbacks.
+  const recordingType = recordingFields.value.recordingType;
+  if (recordingType === 'time-distance') return 'cardio';
+  if (recordingType === 'sets-reps' || recordingType === 'custom') return 'strength';
+
   const raw = String(props.exercise.WorkoutType || props.exercise.workoutType || props.exercise.workout_type || props.exercise.type || '').trim().toLowerCase();
   if (raw === 'cardio') return 'cardio';
   if (raw === 'other') return 'other';
   if (raw === 'strength') return 'strength';
-  return '';
+  // Legacy fallback: honour the isCardio prop, default to strength
+  return props.isCardio ? 'cardio' : 'strength';
 });
 </script>
 

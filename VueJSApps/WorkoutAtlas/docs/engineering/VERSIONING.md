@@ -19,3 +19,14 @@ Corrective attempts use suffixes such as `0.85.307.a1`. These are release-tracki
 - Critical unaccepted regressions prevent release closeout.
 - Changelog, DEVLOG, QA evidence, backlog, and session handoff must reflect actual state separately.
 - Package changes require explicit release authorization.
+
+Task `0.85.323` (mobile logout confirmation correction; 2026-11-26) is a task label only and made no package version change; packages remain `0.85.308`.
+
+Task `0.85.321` (missing active workout exercise cards correction; 2026-11-28) is a task label only and made no package version change; packages remain `0.85.308`.
+
+Task `0.85.322` (mobile profile dropdown fix; 2026-11-28) is a task label only and made no package version change; packages remain `0.85.308`.
+Task `0.85.324` (final maintenance checkpoint; 2026-11-28) is a task label only and made no package version change; packages remain `0.85.308`.
+
+Task `0.85.325` (final maintenance audit and Render readiness review, including repair `0.85.321.a1`; 2026-11-28) is a task label only and made no package version change; packages remain `0.85.308`.
+
+The owner authorized committing and pushing the `0.85.321`-`0.85.325` maintenance changes to `BETA` (2026-11-28; static readiness YES; Render build/runtime verification and manual acceptance pending). The next development milestone is `0.86` (not started).
